@@ -388,6 +388,7 @@
 ! !DESCRIPTION:
 ! This routine allocates memory for all FABM variables.
 !
+! !INPUT PARAMETERS:
    integer,                   intent(in)             :: nlev
    class (type_field_manager),intent(inout),optional :: field_manager
 !
@@ -441,19 +442,19 @@
       end do
       do i=1,size(model%bottom_state_variables)
          output_level = output_level_default
-         if (model%state_variables(i)%output==output_none) output_level = output_level_debug
+         if (model%bottom_state_variables(i)%output==output_none) output_level = output_level_debug
          call field_manager%register(model%bottom_state_variables(i)%name, model%bottom_state_variables(i)%units, &
             model%bottom_state_variables(i)%long_name, minimum=model%bottom_state_variables(i)%minimum, &
-            maximum=model%bottom_state_variables(i)%maximum, fill_value=model%state_variables(i)%missing_value, &
-            data0d=cc(1,size(model%state_variables)+i), category='fabm'//model%state_variables(i)%target%owner%get_path(), output_level=output_level)
+            maximum=model%bottom_state_variables(i)%maximum, fill_value=model%bottom_state_variables(i)%missing_value, &
+            data0d=cc(1,size(model%state_variables)+i), category='fabm'//model%bottom_state_variables(i)%target%owner%get_path(), output_level=output_level)
       end do
       do i=1,size(model%surface_state_variables)
          output_level = output_level_default
-         if (model%state_variables(i)%output==output_none) output_level = output_level_debug
+         if (model%surface_state_variables(i)%output==output_none) output_level = output_level_debug
          call field_manager%register(model%surface_state_variables(i)%name, model%surface_state_variables(i)%units, &
             model%surface_state_variables(i)%long_name, minimum=model%surface_state_variables(i)%minimum, &
             maximum=model%surface_state_variables(i)%maximum, fill_value=model%surface_state_variables(i)%missing_value, &
-            data0d=cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i), category='fabm'//model%state_variables(i)%target%owner%get_path(), output_level=output_level)
+            data0d=cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i), category='fabm'//model%surface_state_variables(i)%target%owner%get_path(), output_level=output_level)
       end do
 
       check_conservation = .false.

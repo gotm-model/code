@@ -225,7 +225,8 @@ contains
       ! Store time coordinate
       if (self%time_id/=-1) then
          temp_time = (julianday-self%reference_julian)*real(86400,ncrk) + secondsofday-self%reference_seconds
-         iret = nf90_put_var(self%ncid,self%time_id,temp_time,(/self%itime/)); call check_err(iret)
+         iret = nf90_put_var(self%ncid,self%time_id,temp_time,(/self%itime/))
+         if (iret/=NF90_NOERR) call host%fatal_error('netcdf_output:save','error saving variable "time" to '//trim(self%path)//trim(self%postfix)//'.nc: '//nf90_strerror(iret))
       end if
 
       output_field => self%first_field
@@ -242,14 +243,14 @@ contains
             elseif (associated(output_field%data_0d)) then
                iret = nf90_put_var(self%ncid,output_field%varid,output_field%data_0d,output_field%start)
             end if
-            call check_err(iret)
+            if (iret/=NF90_NOERR) call host%fatal_error('netcdf_output:save','error saving variable "'//trim(output_field%output_name)//'" to '//trim(self%path)//trim(self%postfix)//'.nc: '//nf90_strerror(iret))
          end select
          output_field => output_field%next
       end do
 
       if (self%sync_interval>0 .and. mod(self%itime,self%sync_interval)==0) then
          iret = nf90_sync(self%ncid)
-         call check_err(iret)
+         if (iret/=NF90_NOERR) call host%fatal_error('netcdf_output:save','error in call to nf90_sync for '//trim(self%path)//trim(self%postfix)//'.nc: '//nf90_strerror(iret))
       end if
    end subroutine save
 
