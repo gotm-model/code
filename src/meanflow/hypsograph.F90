@@ -165,15 +165,25 @@
          do i=0,nlev_input
             read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
-         do i=0,nlev_input
-            zi_input(i) = zi_input(i)-zi_input(nlev_input)
+!        completely fill given basin => zi_input(nlev_input)=0
+         !do i=0,nlev_input
+         !   zi_input(i) = zi_input(i)-zi_input(nlev_input)
+         !end do
+!        only fill basin to given depth => zi_input(0)=-depth0
+         do i=nlev_input,0,-1
+            zi_input(i) = zi_input(i)-zi_input(0)-depth0
          end do
       case(4)  ! bottom ref, read from surface
          do i=nlev_input,0,-1
             read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
-         do i=0,nlev_input
-            zi_input(i) = zi_input(i)-zi_input(nlev_input)
+!        completely fill given basin => zi_input(nlev_input)=0
+         !do i=0,nlev_input
+         !   zi_input(i) = zi_input(i)-zi_input(nlev_input)
+         !end do
+!        only fill basin to given depth => zi_input(0)=-depth0
+         do i=nlev_input,0,-1
+            zi_input(i) = zi_input(i)-zi_input(0)-depth0
          end do
       case default
    end select
