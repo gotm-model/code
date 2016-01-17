@@ -979,6 +979,9 @@
          end do
 
          if (associated(first_stream)) then
+!           KK-TODO: For now we assume zero advective tracer fluxes due
+!                    to evap/precip (because of zero concentrations).
+!                    We need to consider no_precipitation_dilution!
             do k=1,nlev
                if ( Qres(k) .gt. _ZERO_ ) then
                   Qsour(k) = Qsour(k) + Qres(k)*cc(k,i)
