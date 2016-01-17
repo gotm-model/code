@@ -952,6 +952,8 @@
                   ! See if a specific stream concentration is prescribed for this biogeochemical variable.
                   if (associated(stream%cc(i)%data)) stream_conc = stream%cc(i)%data
                else
+!                 KK-TODO: maybe we should assume inflowing streams
+!                          with zero concentration instead of surface one?!
                   stream_conc = cc(nlev,i)
                end if
 

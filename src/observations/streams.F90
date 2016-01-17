@@ -312,6 +312,7 @@
             TI = current_stream%TI
          else
 !KB         is there a mean !!!!
+!           KK-TODO: maybe the mean should be volume-weighted
             TI = sum(T(nmin:nmax))/(nmax-nmin+1)
          end if
          if (current_stream%has_S) then
