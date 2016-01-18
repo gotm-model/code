@@ -254,11 +254,11 @@ contains
       end if
    end subroutine save
 
-   subroutine finalize(file)
-      class (type_netcdf_file),intent(inout) :: file
+   subroutine finalize(self)
+      class (type_netcdf_file),intent(inout) :: self
       integer :: iret
-      if (file%ncid/=-1) then
-         iret = nf90_close(file%ncid); call check_err(iret)
+      if (self%ncid/=-1) then
+         iret = nf90_close(self%ncid); call check_err(iret)
       end if
    end subroutine finalize
 

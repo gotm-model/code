@@ -167,8 +167,8 @@ contains
       stop 'output_manager_core:save not implemented'
    end subroutine
 
-   subroutine finalize(file)
-      class (type_file),intent(inout) :: file
+   subroutine finalize(self)
+      class (type_file),intent(inout) :: self
    end subroutine
 
    subroutine write_time_string(jul,secs,timestr)

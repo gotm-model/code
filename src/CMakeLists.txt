@@ -189,6 +189,7 @@ if(GOTM_USE_FABM)
                 output/output_manager.F90
                 output/output_manager_core.F90
                 output/netcdf_output.F90
+                output/text_output.F90
                )
     target_link_libraries(output_manager util ${FABM_LIBRARIES})
     set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
