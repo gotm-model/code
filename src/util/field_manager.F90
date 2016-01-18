@@ -24,6 +24,7 @@ module field_manager
    integer, parameter, public :: id_dim_z    = 3
    integer, parameter, public :: id_dim_z1   = 4
    integer, parameter, public :: id_dim_time = 5
+   integer, parameter, public :: id_dim_unused = 20   ! First free id for user-specified dimensions
 
    integer, parameter, public :: status_not_registered       = 0
    integer, parameter, public :: status_registered_no_data   = 1

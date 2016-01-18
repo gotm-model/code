@@ -3,6 +3,7 @@ module output_manager
    use field_manager,type_base_node=>type_node
    use output_manager_core
    use netcdf_output
+   use text_output
 
    use fabm_config_types
    use fabm_yaml,yaml_parse=>parse,yaml_error_length=>error_length
@@ -182,9 +183,6 @@ contains
          end if
          file%first_index = n
 
-         ! Create output file
-         call file%initialize()
-
          ! Initialize fields based on time integrals
          output_field => file%first_field
          do while (associated(output_field))
@@ -252,6 +250,10 @@ contains
 
             output_field => output_field%next
          end do
+
+         ! Create output file
+         call file%initialize()
+
          file => file%next
       end do
       files_initialized = .true.
@@ -417,12 +419,12 @@ contains
          class is (type_dictionary)
             pair => node%first
             do while (associated(pair))
-               if (pair%key=='') call host%fatal_error('configure_from_yaml','Empty file path specified.')
+               if (pair%key=='') call host%fatal_error('configure_from_yaml','Error parsing output.yaml: empty file path specified.')
                select type (dict=>pair%value)
                   class is (type_dictionary)
                      call process_file(field_manager,trim(pair%key),dict,postfix=postfix)
                   class default
-                     call host%fatal_error('configure_from_yaml','Contents of '//trim(dict%path)//' must be a dictionary, not a single value.')
+                     call host%fatal_error('configure_from_yaml','Error parsing output.yaml: contents of '//trim(dict%path)//' must be a dictionary, not a single value.')
                end select
                pair => pair%next
             end do
@@ -447,8 +449,18 @@ contains
       character(len=8)                     :: strmax
       integer                              :: distance
 
+      string = mapping%get_string('format',default='netcdf',error=config_error)
+      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+      select case (string)
+      case ('netcdf')
+         allocate(type_netcdf_file::file)
+      case ('text')
+         allocate(type_text_file::file)
+      case default
+         call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(string)//'" specified for format of output file "'//trim(path)//'". Valid options are netcdf, text.')
+      end select
+
       ! Create file object and prepend to list.
-      allocate(type_netcdf_file::file)
       file%field_manager => field_manager
       file%path = path
       if (present(postfix)) file%postfix = postfix
@@ -476,7 +488,7 @@ contains
          case ('dt')
             file%time_unit = time_unit_dt
          case default
-            call host%fatal_error('process_file','Invalid value "'//trim(scalar%string)//'" specified for time_unit of file "'//trim(path)//'". Valid options are second, day, month, year.')
+            call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for time_unit of output file "'//trim(path)//'". Valid options are second, day, month, year.')
       end select
 
       ! Determine time step
@@ -501,14 +513,14 @@ contains
             output_dim => file%get_dimension(dim)
             output_dim%global_start = mapping%get_integer(trim(dim%iterator)//'_start',default=1,error=config_error)
             if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-            if (output_dim%global_start<1.or.output_dim%global_start>dim%global_length) call host%fatal_error('process_file',trim(dim%iterator)//'_start must lie between 1 and '//trim(strmax))
+            if (output_dim%global_start<1.or.output_dim%global_start>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 1 and '//trim(strmax))
             output_dim%global_stop = mapping%get_integer(trim(dim%iterator)//'_stop',default=dim%global_length,error=config_error)
             if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-            if (output_dim%global_stop<1.or.output_dim%global_stop>dim%global_length) call host%fatal_error('process_file',trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))
-            if (output_dim%global_start>output_dim%global_stop) call host%fatal_error('process_file',trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
+            if (output_dim%global_stop<1.or.output_dim%global_stop>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))
+            if (output_dim%global_start>output_dim%global_stop) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
             output_dim%stride = mapping%get_integer(trim(dim%iterator)//'_stride',default=1,error=config_error)
             if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-            if (output_dim%stride<1) call host%fatal_error('process_file',trim(dim%iterator)//'_stride must be larger than 0.')
+            if (output_dim%stride<1) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stride must be larger than 0.')
 
             ! Reduce stop to last point that is actually included (due to stride>1)
             output_dim%global_stop = output_dim%global_stop - mod(output_dim%global_stop-output_dim%global_start,output_dim%stride)
