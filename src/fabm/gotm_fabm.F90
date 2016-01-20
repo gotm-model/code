@@ -906,10 +906,10 @@
    ! as biogeochemical processes that cause surface fluxes are handled as part of the sink/source terms.
    sfl = _ZERO_
 
-   if (.not. associated(first_stream)) then
    ! Calculate dilution due to surface freshwater flux (m/s)
    dilution = precip+evap
 
+   if (.not. associated(first_stream)) then
    ! If salinity is relaxed to observations, the change in column-integrated salinity can converted into a
    ! a virtual freshwater flux. Optionally, this freshwater flux can be imposed at the surface on biogeochemical
    ! variables, effectively mimicking precipitation or evaporation. This makes sense only if the salinity change
@@ -952,8 +952,6 @@
                   ! See if a specific stream concentration is prescribed for this biogeochemical variable.
                   if (associated(stream%cc(i)%data)) stream_conc = stream%cc(i)%data
                else
-!                 KK-TODO: maybe we should assume inflowing streams
-!                          with zero concentration instead of surface one?!
                   stream_conc = cc(nlev,i)
                end if
 
@@ -981,9 +979,14 @@
          end do
 
          if (associated(first_stream)) then
-!           KK-TODO: For now we assume zero advective tracer fluxes due
-!                    to evap/precip (because of zero concentrations).
-!                    We need to consider no_precipitation_dilution!
+!           KK-TODO: do we need to consider virtual_dilution?
+            if (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution) then
+               if ( dilution .gt. _ZERO_ ) then
+                  Qsour(nlev) = Qsour(nlev) + dilution*Af(nlev)*cc(nlev,i)
+               else
+                  Lsour(nlev) = Lsour(nlev) + dilution*Af(nlev)
+               end if
+            end if
             do k=1,nlev
                if ( Qres(k) .gt. _ZERO_ ) then
                   Qsour(k) = Qsour(k) + Qres(k)*cc(k,i)
