@@ -30,6 +30,7 @@
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
+   public no_precipitation_dilution
    public register_observation, register_stream, register_stream_concentration
    public calculate_conserved_quantities, total0
 
