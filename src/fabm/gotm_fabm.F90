@@ -124,6 +124,7 @@
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
 !  GOTM-specific quantities
+   logical                       :: gotm_lake=.false.
    REALTYPE,pointer,dimension(:) :: Af,Vc,Vco,wq,Qres
 
    REALTYPE,pointer :: I_0,A,g1,g2
@@ -158,7 +159,7 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm(nlev,namlst,fname,dt,field_manager)
+   subroutine init_gotm_fabm(nlev,namlst,fname,dt,field_manager,lake)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
@@ -168,6 +169,7 @@
    character(len=*),          intent(in)             :: fname
    REALTYPE,optional,         intent(in)             :: dt
    class (type_field_manager),intent(inout),optional :: field_manager
+   logical                   ,intent(in)   ,optional :: lake
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -265,6 +267,12 @@
                fill_value=model%horizontal_diagnostic_variables(i)%missing_value, category='fabm'//model%horizontal_diagnostic_variables(i)%target%owner%get_path(), output_level=output_level, used=in_output)
             if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
          end do
+      end if
+
+      if ( present(lake) ) then
+         gotm_lake = lake
+      else
+         gotm_lake = .false.
       end if
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
@@ -909,7 +917,7 @@
    ! Calculate dilution due to surface freshwater flux (m/s)
    dilution = precip+evap
 
-   if (.not. associated(first_stream)) then
+   if (.not. gotm_lake) then
    ! If salinity is relaxed to observations, the change in column-integrated salinity can converted into a
    ! a virtual freshwater flux. Optionally, this freshwater flux can be imposed at the surface on biogeochemical
    ! variables, effectively mimicking precipitation or evaporation. This makes sense only if the salinity change
@@ -978,7 +986,7 @@
             stream => stream%next
          end do
 
-         if (associated(first_stream)) then
+         if (gotm_lake) then
 !           KK-TODO: do we need to consider virtual_dilution?
             if (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution) then
                if ( dilution .gt. _ZERO_ ) then

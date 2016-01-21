@@ -281,7 +281,7 @@
 #ifdef _FABM_
 
 !  Initialize the GOTM-FABM coupler from its configuration file.
-   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml',dt,fm)
+   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml',dt,fm,lake)
 
 !  Link relevant GOTM data to FABM.
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
