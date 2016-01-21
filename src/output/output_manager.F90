@@ -396,7 +396,6 @@ contains
       character(len=yaml_error_length)   :: yaml_error
       class (type_node),         pointer :: node
       type (type_key_value_pair),pointer :: pair
-      character(len=max_path)            :: file_path
       integer,parameter                  :: yaml_unit = 100
       logical                            :: file_exists
 
