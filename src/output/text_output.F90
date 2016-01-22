@@ -40,11 +40,10 @@ module text_output
    type type_scalar
       class (type_output_field), pointer :: field => null()
       real(rk),                  pointer :: value => null()
-      type (type_scalar),        pointer :: next  => null()
    end type
 
    type,extends(type_single_text_file) :: type_single_text_file_with_scalars
-      type (type_scalar),pointer :: first_field => null()
+      type (type_scalar),allocatable :: fields(:)
    contains
       procedure :: write_header => single_text_file_with_scalars_write_header
       procedure :: write_data   => single_text_file_with_scalars_write_data
@@ -76,11 +75,9 @@ contains
       class (type_single_text_file_with_scalars),     pointer :: scalar_file
       class (type_single_text_file),                  pointer :: current_file
       class (type_single_text_file_with_1d_variable), pointer :: file_with_1d_data
-      type (type_scalar),                             pointer :: scalar_field
+      integer                                                 :: nscalar
 
-      ! Create file to write all 0d variables to
-      allocate(scalar_file)
-
+      nscalar = 0
       output_field => self%first_field
       do while (associated(output_field))
          if (associated(output_field%data_1d)) then
@@ -93,22 +90,8 @@ contains
             file_with_1d_data%next => self%first_file
             self%first_file => file_with_1d_data
          elseif (associated(output_field%data_0d)) then
-            ! 0D variable - add to global file with all scalars
-            if (.not.associated(scalar_file%first_field)) then
-               ! First field in list - create head of list.
-               allocate(scalar_file%first_field)
-               scalar_field => scalar_file%first_field
-            else
-               ! Not first field in list - find tail of list and append to it.
-               scalar_field => scalar_file%first_field
-               do while (associated(scalar_field%next))
-                  scalar_field => scalar_field%next
-               end do
-               allocate(scalar_field%next)
-               scalar_field => scalar_field%next
-            end if
-            scalar_field%field => output_field
-            scalar_field%value => output_field%data_0d
+            ! 0D variable - just count these variables for now.
+            nscalar = nscalar + 1
          else
             call host%log_message('WARNING: in output file "'//trim(self%path)//'", skipping variable "'//trim(output_field%output_name) &
                //'" because it has more than one non-singleton dimension. Currently only 0D and 1D variables are supported in text output.')
@@ -117,13 +100,23 @@ contains
       end do
 
       ! If we have one or more 0d fields to write, add the file with scalars to our list.
-      if (associated(scalar_file%first_field)) then
+      if (nscalar>0) then
+         allocate(scalar_file)
          scalar_file%path = trim(self%path)//trim(self%postfix)//extension
          scalar_file%title = self%title
+         allocate(scalar_file%fields(nscalar))
+         nscalar = 0
+         output_field => self%first_field
+         do while (associated(output_field))
+            if (associated(output_field%data_0d)) then
+               nscalar = nscalar + 1
+               scalar_file%fields(nscalar)%field => output_field
+               scalar_file%fields(nscalar)%value => output_field%data_0d
+            end if
+            output_field => output_field%next
+         end do
          scalar_file%next => self%first_file
          self%first_file => scalar_file
-      else
-         deallocate(scalar_file)
       end if
 
       if (.not.associated(self%first_file)) then
@@ -175,22 +168,14 @@ contains
    subroutine single_text_file_with_scalars_write_header(self)
       class (type_single_text_file_with_scalars),intent(in) :: self
 
-      type (type_scalar),pointer :: scalar
+      integer :: i
 
       ! Header (three lines: simulation title, variable short names, variable long names + units)
-      write(self%unit,fmt='(''# '',A)') trim(self%title)
-      write(self%unit,fmt='(''# '',A)',advance='NO') 'time'
-      scalar => self%first_field
-      do while (associated(scalar))
-         write(self%unit,fmt='(A,A)',advance='NO') separator,trim(scalar%field%output_name)
-         scalar => scalar%next
-      end do
-      write(self%unit,*)
-      write(self%unit,fmt='(''# '',A)',advance='NO') 'time'
-      scalar => self%first_field
-      do while (associated(scalar))
-         write(self%unit,fmt='(A,A,'' ('',A,'')'')',advance='NO') separator,trim(scalar%field%source%long_name),trim(scalar%field%source%units)
-         scalar => scalar%next
+      write(self%unit,fmt='("# ",A)') trim(self%title)
+      write(self%unit,fmt='("# ",A,*(:,"'//trim(separator)//'",A))') 'time',(trim(self%fields(i)%field%output_name),i=1,size(self%fields))
+      write(self%unit,fmt='("# ",A)',advance='NO') 'time'
+      do i=1,size(self%fields)
+         write(self%unit,fmt='("'//trim(separator)//'",A," (",A,")")',advance='NO') trim(self%fields(i)%field%source%long_name),trim(self%fields(i)%field%source%units)
       end do
       write(self%unit,*)
    end subroutine single_text_file_with_scalars_write_header
@@ -199,15 +184,9 @@ contains
       class (type_single_text_file_with_scalars),intent(in) :: self
       character(len=*),                          intent(in) :: timestr
 
-      type (type_scalar),pointer :: scalar
+      integer :: i
 
-      write (self%unit,fmt='(A)',advance='NO') timestr
-      scalar => self%first_field
-      do while (associated(scalar))
-         write (self%unit,fmt='("'//separator//'",G0.8)',advance='NO') scalar%value
-         scalar => scalar%next
-      end do
-      write(self%unit,*)
+      write (self%unit,fmt='(A,*(:,"'//separator//'",G0.8))') timestr,(self%fields(i)%value,i=1,size(self%fields))
    end subroutine single_text_file_with_scalars_write_data
 
    subroutine single_text_file_with_1d_variable_write_header(self)
@@ -221,15 +200,15 @@ contains
       end do
 
       ! Header (three lines: simulation title, variable short names, variable long names + units)
-      write(self%unit,fmt='(''# '',A)') trim(self%title)
-      write(self%unit,fmt='(''# '',A)',advance='NO') 'time'
+      write(self%unit,fmt='("# ",A)') trim(self%title)
+      write(self%unit,fmt='("# ",A)',advance='NO') 'time'
       do i=1,size(self%values)
          write(self%unit,fmt='(A,A,A,A,A,I0)',advance='NO') separator,trim(self%field%output_name),'@',trim(dim%name),'=',i
       end do
       write(self%unit,*)
-      write(self%unit,fmt='(''# '',A)',advance='NO') 'time'
+      write(self%unit,fmt='("# ",A)',advance='NO') 'time'
       do i=1,size(self%values)
-         write(self%unit,fmt='(A,A,'' ('',A,'')'')',advance='NO') separator,trim(self%field%source%long_name),trim(self%field%source%units)
+         write(self%unit,fmt='(A,A," (",A,")")',advance='NO') separator,trim(self%field%source%long_name),trim(self%field%source%units)
       end do
       write(self%unit,*)
    end subroutine single_text_file_with_1d_variable_write_header
@@ -238,8 +217,7 @@ contains
       class (type_single_text_file_with_1d_variable),intent(in) :: self
       character(len=*),                              intent(in) :: timestr
 
-      write (self%unit,fmt='(A,"'//separator//'")',advance='NO') timestr
-      write (self%unit,fmt='(*(G0.8,:,"'//separator//'"))') self%values
+      write (self%unit,fmt='(A,*(:,"'//separator//'",G0.8))') timestr,self%values
    end subroutine single_text_file_with_1d_variable_write_data
 
    function get_free_unit(start,stop) result(unit)
