@@ -43,16 +43,18 @@ module text_output
    end type
 
    type,extends(type_single_text_file) :: type_single_text_file_with_scalars
-      type (type_scalar),allocatable :: fields(:)
+      type (type_scalar),allocatable :: variables(:)
+      type (type_scalar),allocatable :: constants(:)
    contains
       procedure :: write_header => single_text_file_with_scalars_write_header
       procedure :: write_data   => single_text_file_with_scalars_write_data
    end type
 
    type,extends(type_single_text_file) :: type_single_text_file_with_1d_variable
-      class (type_output_field),   pointer :: field     => null()
-      real(rk),                    pointer :: values(:) => null()
-      type (type_output_dimension),pointer :: dimension => null()
+      class (type_output_field),   pointer :: field      => null()
+      type (type_output_dimension),pointer :: dimension  => null()
+      type (type_output_field),    pointer :: coordinate => null()
+      real(rk),                    pointer :: values(:)  => null()
    contains
       procedure :: write_header => single_text_file_with_1d_variable_write_header
       procedure :: write_data   => single_text_file_with_1d_variable_write_data
@@ -73,13 +75,14 @@ contains
 
       integer                                                 :: ios
       integer                                                 :: i
-      integer                                                 :: nscalar
+      integer                                                 :: nscalar, nconstants
       class (type_output_field),                      pointer :: output_field
       class (type_single_text_file_with_scalars),     pointer :: scalar_file
       class (type_single_text_file),                  pointer :: current_file
       class (type_single_text_file_with_1d_variable), pointer :: file_with_1d_data
 
       nscalar = 0
+      nconstants = 0
       output_field => self%first_field
       do while (associated(output_field))
          if (associated(output_field%data_1d)) then
@@ -90,13 +93,21 @@ contains
             file_with_1d_data%path = trim(self%path)//'_'//trim(file_with_1d_data%field%output_name)//trim(self%postfix)//extension
             file_with_1d_data%title = self%title
             do i=1,size(output_field%source%dimensions)
-               if (output_field%source%dimensions(i)%p%length>1) file_with_1d_data%dimension => self%get_dimension(output_field%source%dimensions(i)%p)
+               if (output_field%source%dimensions(i)%p%length>1) then
+                  file_with_1d_data%dimension => self%get_dimension(output_field%source%dimensions(i)%p)
+                  file_with_1d_data%coordinate => output_field%coordinates(i)%p
+                  exit
+               end if
             end do
             file_with_1d_data%next => self%first_file
             self%first_file => file_with_1d_data
          elseif (associated(output_field%data_0d)) then
             ! 0D variable - just count these variables for now.
-            nscalar = nscalar + 1
+            if (output_field%source%has_dimension(id_dim_time)) then
+               nscalar = nscalar + 1
+            else
+               nconstants = nconstants + 1
+            end if
          else
             call host%log_message('WARNING: in output file "'//trim(self%path)//'", skipping variable "'//trim(output_field%output_name) &
                //'" because it has more than one non-singleton dimension. Currently only 0D and 1D variables are supported in text output.')
@@ -109,14 +120,22 @@ contains
          allocate(scalar_file)
          scalar_file%path = trim(self%path)//trim(self%postfix)//extension
          scalar_file%title = self%title
-         allocate(scalar_file%fields(nscalar))
+         allocate(scalar_file%variables(nscalar))
+         allocate(scalar_file%constants(nconstants))
          nscalar = 0
+         nconstants = 0
          output_field => self%first_field
          do while (associated(output_field))
             if (associated(output_field%data_0d)) then
-               nscalar = nscalar + 1
-               scalar_file%fields(nscalar)%field => output_field
-               scalar_file%fields(nscalar)%value => output_field%data_0d
+               if (output_field%source%has_dimension(id_dim_time)) then
+                  nscalar = nscalar + 1
+                  scalar_file%variables(nscalar)%field => output_field
+                  scalar_file%variables(nscalar)%value => output_field%data_0d
+               else
+                  nconstants = nconstants + 1
+                  scalar_file%constants(nconstants)%field => output_field
+                  scalar_file%constants(nconstants)%value => output_field%data_0d
+               end if
             end if
             output_field => output_field%next
          end do
@@ -177,10 +196,13 @@ contains
 
       ! Header (three lines: simulation title, variable short names, variable long names + units)
       write(self%unit,fmt='("# ",A)') trim(self%title)
-      write(self%unit,fmt='("# ",A,*(:,"'//trim(separator)//'",A))') 'time',(trim(self%fields(i)%field%output_name),i=1,size(self%fields))
+      do i=1,size(self%constants)
+         write(self%unit,fmt='("# ",A,": ",G0.8,X,A)') trim(self%constants(i)%field%source%long_name),self%constants(i)%value,trim(self%constants(i)%field%source%units)
+      end do
+      write(self%unit,fmt='("# ",A,*(:,"'//trim(separator)//'",A))') 'time',(trim(self%variables(i)%field%output_name),i=1,size(self%variables))
       write(self%unit,fmt='("# ",A)',advance='NO') 'time'
-      do i=1,size(self%fields)
-         write(self%unit,fmt='("'//trim(separator)//'",A," (",A,")")',advance='NO') trim(self%fields(i)%field%source%long_name),trim(self%fields(i)%field%source%units)
+      do i=1,size(self%variables)
+         write(self%unit,fmt='("'//trim(separator)//'",A," (",A,")")',advance='NO') trim(self%variables(i)%field%source%long_name),trim(self%variables(i)%field%source%units)
       end do
       write(self%unit,*)
    end subroutine single_text_file_with_scalars_write_header
@@ -191,7 +213,7 @@ contains
 
       integer :: i
 
-      write (self%unit,fmt='(A,*(:,"'//separator//'",G0.8))') timestr,(self%fields(i)%value,i=1,size(self%fields))
+      write (self%unit,fmt='(A,*(:,"'//separator//'",G0.8))') timestr,(self%variables(i)%value,i=1,size(self%variables))
    end subroutine single_text_file_with_scalars_write_data
 
    subroutine single_text_file_with_1d_variable_write_header(self)
@@ -202,7 +224,8 @@ contains
       ! Header (three lines: simulation title, variable short names, variable long names + units)
       write(self%unit,fmt='("# ",A)') trim(self%title)
       write(self%unit,fmt='("# ",A," (",A,") @ ",A,"=",I0,":",I0,":",I0)') trim(self%field%source%long_name),trim(self%field%source%units),trim(self%dimension%source%name),self%dimension%global_start,self%dimension%global_stop,self%dimension%stride
-      write(self%unit,fmt='("# ",A,*(:,"'//trim(separator)//'",I0))') 'time',(i,i=self%dimension%global_start,self%dimension%global_stop,self%dimension%stride)
+      !if (associated(self%coordinate%data_1d)) write(self%unit,fmt='("# ",A,*(:,"'//trim(separator)//'",G0.8))') trim(self%dimension%source%name),self%coordinate%data_1d
+      write(self%unit,fmt='("# time",*(:,"'//trim(separator)//'",I0))') (i,i=self%dimension%global_start,self%dimension%global_stop,self%dimension%stride)
    end subroutine single_text_file_with_1d_variable_write_header
 
    subroutine single_text_file_with_1d_variable_write_data(self,timestr)
