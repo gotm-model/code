@@ -220,10 +220,50 @@ contains
       class (type_single_text_file_with_1d_variable),intent(in) :: self
 
       integer :: i
+      logical :: first, has_singleton
+      class (type_output_field),pointer :: coordinate
 
       ! Header (three lines: simulation title, variable short names, variable long names + units)
       write(self%unit,fmt='("# ",A)') trim(self%title)
-      write(self%unit,fmt='("# ",A," (",A,") @ ",A,"=",I0,":",I0,":",I0)') trim(self%field%source%long_name),trim(self%field%source%units),trim(self%dimension%source%name),self%dimension%global_start,self%dimension%global_stop,self%dimension%stride
+      write(self%unit,fmt='("# variable: ",A," (",A,")")') trim(self%field%source%long_name),trim(self%field%source%units)
+      write(self%unit,fmt='("# dimensions: ")',advance='NO')
+      first = .true.
+      has_singleton = .false.
+      do i=1,size(self%field%source%dimensions)
+         if (self%field%source%dimensions(i)%p%id==id_dim_time) cycle
+         if (.not.first) write(self%unit,fmt='(A)',advance='NO') ','
+         write(self%unit,fmt='(A,"=")',advance='NO') trim(self%field%source%dimensions(i)%p%name)
+         if (self%field%source%dimensions(i)%p%length>1) then
+            ! This is the only non-singleton dimension.
+            write(self%unit,fmt='(I0,":",I0)',advance='NO') self%dimension%global_start,self%dimension%global_stop
+            if (self%dimension%stride/=1) write(self%unit,fmt='(":",I0)',advance='NO') self%dimension%stride
+         else
+            ! The is a singleton dimension.
+            has_singleton = .true.
+            write(self%unit,fmt='(A)',advance='NO') '1'
+         end if
+         first = .false.
+      end do
+      write (self%unit,*)
+      if (has_singleton) then
+         write(self%unit,fmt='("# fixed coordinates:")')
+         do i=1,size(self%field%source%dimensions)
+            if (self%field%source%dimensions(i)%p%id/=id_dim_time .and. self%field%source%dimensions(i)%p%length==1) then
+               coordinate => self%field%coordinates(i)%p
+               if (associated(coordinate)) write(self%unit,fmt='("#   ",A,": ",G0.8,X,A)') trim(coordinate%source%long_name),coordinate%data_0d,trim(coordinate%source%units)
+            end if
+         end do
+      end if
+      write(self%unit,fmt='("# rows: time")')
+      if (associated(self%coordinate)) then
+         if (associated(self%coordinate,self%field)) then
+            write(self%unit,fmt='("# columns: ",A)') trim(self%coordinate%source%long_name)
+         else
+            write(self%unit,fmt='("# columns: ",A," (for values see ",A,")")') trim(self%coordinate%source%long_name),self%path(1:len_trim(self%path)-len(extension)-len_trim(self%field%output_name))//trim(self%coordinate%output_name)//extension
+         end if
+      else
+         write(self%unit,fmt='("# columns: ",A)') self%dimension%source%name
+      end if
       !if (associated(self%coordinate%data_1d)) write(self%unit,fmt='("# ",A,*(:,"'//trim(separator)//'",G0.8))') trim(self%dimension%source%name),self%coordinate%data_1d
       write(self%unit,fmt='("# time",*(:,"'//trim(separator)//'",I0))') (i,i=self%dimension%global_start,self%dimension%global_stop,self%dimension%stride)
    end subroutine single_text_file_with_1d_variable_write_header
