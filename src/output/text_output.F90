@@ -53,7 +53,7 @@ module text_output
    type,extends(type_single_text_file) :: type_single_text_file_with_1d_variable
       class (type_output_field),   pointer :: field      => null()
       type (type_output_dimension),pointer :: dimension  => null()
-      type (type_output_field),    pointer :: coordinate => null()
+      class (type_output_field),   pointer :: coordinate => null()
       real(rk),                    pointer :: values(:)  => null()
    contains
       procedure :: write_header => single_text_file_with_1d_variable_write_header
