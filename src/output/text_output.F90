@@ -51,8 +51,8 @@ module text_output
    end type
 
    type,extends(type_single_text_file) :: type_single_text_file_with_1d_variable
-      type (type_output_field), pointer :: field => null()
-      real(rk),                 pointer :: values(:) => null()
+      class (type_output_field), pointer :: field     => null()
+      real(rk),                  pointer :: values(:) => null()
    contains
       procedure :: write_header => single_text_file_with_1d_variable_write_header
       procedure :: write_data   => single_text_file_with_1d_variable_write_data
