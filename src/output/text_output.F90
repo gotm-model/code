@@ -50,8 +50,9 @@ module text_output
    end type
 
    type,extends(type_single_text_file) :: type_single_text_file_with_1d_variable
-      class (type_output_field), pointer :: field     => null()
-      real(rk),                  pointer :: values(:) => null()
+      class (type_output_field),   pointer :: field     => null()
+      real(rk),                    pointer :: values(:) => null()
+      type (type_output_dimension),pointer :: dimension => null()
    contains
       procedure :: write_header => single_text_file_with_1d_variable_write_header
       procedure :: write_data   => single_text_file_with_1d_variable_write_data
@@ -71,11 +72,12 @@ contains
       class (type_text_file),intent(inout) :: self
 
       integer                                                 :: ios
+      integer                                                 :: i
+      integer                                                 :: nscalar
       class (type_output_field),                      pointer :: output_field
       class (type_single_text_file_with_scalars),     pointer :: scalar_file
       class (type_single_text_file),                  pointer :: current_file
       class (type_single_text_file_with_1d_variable), pointer :: file_with_1d_data
-      integer                                                 :: nscalar
 
       nscalar = 0
       output_field => self%first_field
@@ -87,6 +89,9 @@ contains
             file_with_1d_data%values => output_field%data_1d
             file_with_1d_data%path = trim(self%path)//'_'//trim(file_with_1d_data%field%output_name)//trim(self%postfix)//extension
             file_with_1d_data%title = self%title
+            do i=1,size(output_field%source%dimensions)
+               if (output_field%source%dimensions(i)%p%length>1) file_with_1d_data%dimension => self%get_dimension(output_field%source%dimensions(i)%p)
+            end do
             file_with_1d_data%next => self%first_file
             self%first_file => file_with_1d_data
          elseif (associated(output_field%data_0d)) then
@@ -193,24 +198,11 @@ contains
       class (type_single_text_file_with_1d_variable),intent(in) :: self
 
       integer :: i
-      type (type_dimension),pointer :: dim
-
-      do i=1,size(self%field%source%dimensions)
-         if (self%field%source%dimensions(i)%p%length>1) dim => self%field%source%dimensions(i)%p
-      end do
 
       ! Header (three lines: simulation title, variable short names, variable long names + units)
       write(self%unit,fmt='("# ",A)') trim(self%title)
-      write(self%unit,fmt='("# ",A)',advance='NO') 'time'
-      do i=1,size(self%values)
-         write(self%unit,fmt='(A,A,A,A,A,I0)',advance='NO') separator,trim(self%field%output_name),'@',trim(dim%name),'=',i
-      end do
-      write(self%unit,*)
-      write(self%unit,fmt='("# ",A)',advance='NO') 'time'
-      do i=1,size(self%values)
-         write(self%unit,fmt='(A,A," (",A,")")',advance='NO') separator,trim(self%field%source%long_name),trim(self%field%source%units)
-      end do
-      write(self%unit,*)
+      write(self%unit,fmt='("# ",A," (",A,") @ ",A,"=",I0,":",I0,":",I0)') trim(self%field%source%long_name),trim(self%field%source%units),trim(self%dimension%source%name),self%dimension%global_start,self%dimension%global_stop,self%dimension%stride
+      write(self%unit,fmt='("# ",A,*(:,"'//trim(separator)//'",I0))') 'time',(i,i=self%dimension%global_start,self%dimension%global_stop,self%dimension%stride)
    end subroutine single_text_file_with_1d_variable_write_header
 
    subroutine single_text_file_with_1d_variable_write_data(self,timestr)
