@@ -195,7 +195,7 @@ contains
       integer :: i
 
       ! Header (three lines: simulation title, variable short names, variable long names + units)
-      write(self%unit,fmt='("# ",A)') trim(self%title)
+      write(self%unit,fmt='("# title: ",A)') trim(self%title)
       do i=1,size(self%constants)
          write(self%unit,fmt='("# ",A,": ",G0.8,X,A)') trim(self%constants(i)%field%source%long_name),self%constants(i)%value,trim(self%constants(i)%field%source%units)
       end do
@@ -224,7 +224,7 @@ contains
       class (type_output_field),pointer :: coordinate
 
       ! Header (three lines: simulation title, variable short names, variable long names + units)
-      write(self%unit,fmt='("# ",A)') trim(self%title)
+      write(self%unit,fmt='("# title: ",A)') trim(self%title)
       write(self%unit,fmt='("# variable: ",A," (",A,")")') trim(self%field%source%long_name),trim(self%field%source%units)
       write(self%unit,fmt='("# dimensions: ")',advance='NO')
       first = .true.
