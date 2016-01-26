@@ -220,12 +220,16 @@ contains
       class (type_single_text_file_with_1d_variable),intent(in) :: self
 
       integer :: i
-      logical :: first, has_singleton
+      logical :: first, has_singleton, real_x
       class (type_output_field),pointer :: coordinate
 
-      ! Header (three lines: simulation title, variable short names, variable long names + units)
+      ! Simulation title
       write(self%unit,fmt='("# title: ",A)') trim(self%title)
+
+      ! Variable name and units
       write(self%unit,fmt='("# variable: ",A," (",A,")")') trim(self%field%source%long_name),trim(self%field%source%units)
+
+      ! Dimensions
       write(self%unit,fmt='("# dimensions: ")',advance='NO')
       first = .true.
       has_singleton = .false.
@@ -234,17 +238,19 @@ contains
          if (.not.first) write(self%unit,fmt='(A)',advance='NO') ','
          write(self%unit,fmt='(A,"=")',advance='NO') trim(self%field%source%dimensions(i)%p%name)
          if (self%field%source%dimensions(i)%p%length>1) then
-            ! This is the only non-singleton dimension.
+            ! This is the only non-singleton dimension (length>1).
             write(self%unit,fmt='(I0,":",I0)',advance='NO') self%dimension%global_start,self%dimension%global_stop
             if (self%dimension%stride/=1) write(self%unit,fmt='(":",I0)',advance='NO') self%dimension%stride
          else
-            ! The is a singleton dimension.
+            ! This is a singleton dimension (length=1).
             has_singleton = .true.
             write(self%unit,fmt='(A)',advance='NO') '1'
          end if
          first = .false.
       end do
       write (self%unit,*)
+
+      ! Coordinates associated with singleton dimensions (length=1).
       if (has_singleton) then
          write(self%unit,fmt='("# fixed coordinates:")')
          do i=1,size(self%field%source%dimensions)
@@ -254,18 +260,37 @@ contains
             end if
          end do
       end if
+
+      ! Row dimension
       write(self%unit,fmt='("# rows: time")')
+
+      ! Column dimension
+      real_x = .false.
       if (associated(self%coordinate)) then
          if (associated(self%coordinate,self%field)) then
+            ! The variable being saved is itself the coordinate variable.
             write(self%unit,fmt='("# columns: ",A)') trim(self%coordinate%source%long_name)
+         elseif (associated(self%coordinate%data_1d).and..not.self%coordinate%source%has_dimension(id_dim_time)) then
+            ! The coordinate variable is 1D and time-invariant. We will use it as column header.
+            real_x = .true.
+            write(self%unit,fmt='("# columns: ",A," (",A,")")') trim(self%coordinate%source%long_name),trim(self%coordinate%source%units)
          else
+            ! The coordinate variable is multidimensional (possibly because it is time-varying). It'll be included in a separate file.
             write(self%unit,fmt='("# columns: ",A," (for values see ",A,")")') trim(self%coordinate%source%long_name),self%path(1:len_trim(self%path)-len(extension)-len_trim(self%field%output_name))//trim(self%coordinate%output_name)//extension
          end if
       else
+         ! No coordinate variable specified. Just use the dimension name.
          write(self%unit,fmt='("# columns: ",A)') self%dimension%source%name
       end if
-      !if (associated(self%coordinate%data_1d)) write(self%unit,fmt='("# ",A,*(:,"'//trim(separator)//'",G0.8))') trim(self%dimension%source%name),self%coordinate%data_1d
-      write(self%unit,fmt='("# time",*(:,"'//trim(separator)//'",I0))') (i,i=self%dimension%global_start,self%dimension%global_stop,self%dimension%stride)
+
+      ! Column names
+      if (real_x) then
+         ! Use actual coordinate in column header.
+         write(self%unit,fmt='("# time",*(:,"'//trim(separator)//'",G0.8))') self%coordinate%data_1d
+      else
+         ! Use dimension indices in column header.
+         write(self%unit,fmt='("# time",*(:,"'//trim(separator)//'",I0))') (i,i=self%dimension%global_start,self%dimension%global_stop,self%dimension%stride)
+      end if
    end subroutine single_text_file_with_1d_variable_write_header
 
    subroutine single_text_file_with_1d_variable_write_data(self,timestr)
