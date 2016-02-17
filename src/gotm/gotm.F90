@@ -272,7 +272,7 @@
    call do_register_all_variables(latitude,longitude,nlev)
 #if defined(_FLEXIBLE_OUTPUT_)
    allocate(type_gotm_host::output_manager_host)
-   call output_manager_init(fm)
+   call output_manager_init(fm,title)
 #else
    call init_output(title,nlev,latitude,longitude)
 #endif

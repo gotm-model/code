@@ -62,7 +62,6 @@ contains
       integer                            :: iret
       integer                            :: i
       integer,allocatable                :: current_dim_ids(:)
-      integer                            :: yyyy,mm,dd
       integer                            :: length
       character(len=19)                  :: time_string
       character(len=256)                 :: coordinates

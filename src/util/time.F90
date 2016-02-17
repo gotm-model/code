@@ -41,8 +41,8 @@
    integer,target,    public           :: julianday,secondsofday
    integer,target,    public           :: yearday
    integer,           public           :: timefmt
-   integer,           public           :: MinN,MaxN
    integer,parameter, public           :: timestepkind = selected_int_kind(12)
+   integer(kind=timestepkind), public  :: MinN,MaxN
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -75,7 +75,7 @@
    IMPLICIT NONE
 !
 ! !INPUT/OUTPUT PARAMETERS:
-   integer, intent(inout)    :: MinN,MaxN
+   integer(kind=timestepkind), intent(inout)    :: MinN,MaxN
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -113,7 +113,7 @@
          call read_time_string(stop,jul2,secs2)
 
          nsecs = time_diff(jul2,secs2,jul1,secs1)
-         MaxN  = nint(nsecs/timestep)
+         MaxN  = nint(nsecs/timestep,kind=timestepkind)
 
          ndays = jul2-jul1
          if (nsecs .lt. 86400 .and. jul1 .ne. jul2) ndays = ndays-1
@@ -126,7 +126,7 @@
 
          call read_time_string(start,jul1,secs1)
 
-         nsecs = nint(MaxN*timestep) + secs1
+         nsecs = nint(MaxN*timestep,kind=timestepkind) + secs1
          ndays = nsecs/86400
          jul2  = jul1 + ndays
          secs2 = mod(nsecs,86400_timestepkind)

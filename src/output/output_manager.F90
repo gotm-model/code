@@ -19,8 +19,9 @@ module output_manager
 
 contains
 
-   subroutine output_manager_init(field_manager,postfix)
+   subroutine output_manager_init(field_manager,title,postfix)
       type (type_field_manager), target :: field_manager
+      character(len=*),           intent(in) :: title
       character(len=*), optional, intent(in) :: postfix
 
       if (.not.associated(host)) then
@@ -29,7 +30,7 @@ contains
       end if
       nullify(first_file)
       files_initialized = .false.
-      call configure_from_yaml(field_manager,postfix)
+      call configure_from_yaml(field_manager,title,postfix)
    end subroutine
 
    subroutine output_manager_clean()
@@ -389,14 +390,14 @@ contains
       end do
    end subroutine output_manager_save
    
-   subroutine configure_from_yaml(field_manager,postfix)
+   subroutine configure_from_yaml(field_manager,title,postfix)
       type (type_field_manager), target      :: field_manager
+      character(len=*),           intent(in) :: title
       character(len=*), optional, intent(in) :: postfix
 
       character(len=yaml_error_length)   :: yaml_error
       class (type_node),         pointer :: node
       type (type_key_value_pair),pointer :: pair
-      character(len=max_path)            :: file_path
       integer,parameter                  :: yaml_unit = 100
       logical                            :: file_exists
 
@@ -422,7 +423,7 @@ contains
                if (pair%key=='') call host%fatal_error('configure_from_yaml','Error parsing output.yaml: empty file path specified.')
                select type (dict=>pair%value)
                   class is (type_dictionary)
-                     call process_file(field_manager,trim(pair%key),dict,postfix=postfix)
+                     call process_file(field_manager,trim(pair%key),dict,title,postfix=postfix)
                   class default
                      call host%fatal_error('configure_from_yaml','Error parsing output.yaml: contents of '//trim(dict%path)//' must be a dictionary, not a single value.')
                end select
@@ -433,10 +434,11 @@ contains
       end select
    end subroutine configure_from_yaml
 
-   subroutine process_file(field_manager,path,mapping,postfix)
+   subroutine process_file(field_manager,path,mapping,title,postfix)
       type (type_field_manager), target      :: field_manager
       character(len=*),           intent(in) :: path
       class (type_dictionary),    intent(in) :: mapping
+      character(len=*),           intent(in) :: title
       character(len=*), optional, intent(in) :: postfix
 
       type (type_error),  pointer :: config_error
@@ -468,7 +470,7 @@ contains
       first_file => file
 
       ! Can be used for CF global attributes
-      file%title = mapping%get_string('title',default='',error=config_error)
+      file%title = mapping%get_string('title',default=title,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
 
       ! Determine time unit

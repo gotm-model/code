@@ -75,6 +75,8 @@ module field_manager
       real(rk),pointer             :: data_2d(:,:)   => null()
       real(rk),pointer             :: data_3d(:,:,:) => null()
       type (type_field),pointer    :: next           => null()
+   contains
+      procedure :: has_dimension => field_has_dimension
    end type type_field
 
    type,abstract :: type_node
@@ -468,6 +470,19 @@ contains
       if (present(data2d)) call self%send_data_2d(field,data2d)
       if (present(data3d)) call self%send_data_3d(field,data3d)
    end subroutine register
+
+   logical function field_has_dimension(self,id)
+      class (type_field),intent(in) :: self
+      integer,           intent(in) :: id
+
+      integer :: i
+
+      field_has_dimension = .true.
+      do i=1,size(self%dimensions)
+         if (self%dimensions(i)%p%id==id) return
+      end do
+      field_has_dimension = .false.
+   end function field_has_dimension
 
    subroutine add_field_to_tree(self,field,category)
       class (type_field_manager),intent(inout),target :: self
