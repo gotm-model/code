@@ -7,7 +7,9 @@ else
    action=install
 fi
 
-compiler=gfortran
+# default Fortran compiler is gfortran - overide by setting compuiler like:
+# export compiler=ifort
+compiler=${compiler:=gfortran}
 
 np=-j8
 cd $compiler
