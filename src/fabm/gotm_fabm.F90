@@ -144,6 +144,8 @@
    integer :: repair_surface_count
    integer :: repair_bottom_count
 
+   logical :: bottom_everywhere
+   integer :: kmax_bot
 !BOP
 
 !-----------------------------------------------------------------------
@@ -183,7 +185,7 @@
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
                             repair_state,no_precipitation_dilution,                  &
                             salinity_relaxation_to_freshwater_flux,save_inputs, &
-                            no_surface,configuration_method
+                            no_surface,configuration_method,bottom_everywhere
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -209,6 +211,7 @@
    no_surface = .false.                             ! disables surface exchange; useful to check mass conservation
    save_inputs = .false.
    configuration_method = -1                        ! -1: auto-detect, 0: namelists, 1: YAML
+   bottom_everywhere = .false.
 
    ! Open the namelist file and read the namelist.
    ! Note that the namelist file is left open until the routine terminates,
@@ -230,6 +233,17 @@
       repair_bottom_count = 0
 
       fabm_ready = .false.
+
+      if ( present(lake) ) then
+         gotm_lake = lake
+      else
+         gotm_lake = .false.
+         ! bottom_everywhere only makes sense when we have a hypsograph.
+         if (bottom_everywhere) bottom_everywhere = .false.
+      end if
+
+      kmax_bot = 1
+      if (bottom_everywhere) kmax_bot = nlev
 
       ! Create model tree
       if (configuration_method==-1) then
@@ -268,12 +282,6 @@
                fill_value=model%horizontal_diagnostic_variables(i)%missing_value, category='fabm'//model%horizontal_diagnostic_variables(i)%target%owner%get_path(), output_level=output_level, used=in_output)
             if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
          end do
-      end if
-
-      if ( present(lake) ) then
-         gotm_lake = lake
-      else
-         gotm_lake = .false.
       end if
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
@@ -424,7 +432,7 @@
       call fabm_link_bulk_state_data(model,i,cc(1:,i))
    end do
    do i=1,size(model%bottom_state_variables)
-      cc(1,size(model%state_variables)+i) = model%bottom_state_variables(i)%initial_value
+      cc(1:kmax_bot,size(model%state_variables)+i) = model%bottom_state_variables(i)%initial_value
       call fabm_link_bottom_state_data(model,i,cc(1,size(model%state_variables)+i))
    end do
    do i=1,size(model%surface_state_variables)
@@ -452,10 +460,17 @@
       do i=1,size(model%bottom_state_variables)
          output_level = output_level_default
          if (model%bottom_state_variables(i)%output==output_none) output_level = output_level_debug
-         call field_manager%register(model%bottom_state_variables(i)%name, model%bottom_state_variables(i)%units, &
-            model%bottom_state_variables(i)%long_name, minimum=model%bottom_state_variables(i)%minimum, &
-            maximum=model%bottom_state_variables(i)%maximum, fill_value=model%bottom_state_variables(i)%missing_value, &
-            data0d=cc(1,size(model%state_variables)+i), category='fabm'//model%bottom_state_variables(i)%target%owner%get_path(), output_level=output_level)
+         if (bottom_everywhere) then
+            call field_manager%register(model%bottom_state_variables(i)%name, model%bottom_state_variables(i)%units, &
+               model%bottom_state_variables(i)%long_name, minimum=model%bottom_state_variables(i)%minimum, &
+               maximum=model%bottom_state_variables(i)%maximum, fill_value=model%state_variables(i)%missing_value, &
+               dimensions=(/id_dim_z/), data1d=cc(1:,size(model%state_variables)+i), category='fabm'//model%bottom_state_variables(i)%target%owner%get_path(), output_level=output_level)
+         else
+            call field_manager%register(model%bottom_state_variables(i)%name, model%bottom_state_variables(i)%units, &
+               model%bottom_state_variables(i)%long_name, minimum=model%bottom_state_variables(i)%minimum, &
+               maximum=model%bottom_state_variables(i)%maximum, fill_value=model%state_variables(i)%missing_value, &
+               data0d=cc(1,size(model%state_variables)+i), category='fabm'//model%bottom_state_variables(i)%target%owner%get_path(), output_level=output_level)
+         end if
       end do
       do i=1,size(model%surface_state_variables)
          output_level = output_level_default
@@ -637,7 +652,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer :: i
+   integer :: i,k
    REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
 !
 !EOP
@@ -649,7 +664,13 @@
    ! Allow individual biogeochemical models to provide a custom initial state.
    call fabm_initialize_state(model,1,nlev)
    call fabm_initialize_surface_state(model)
-   call fabm_initialize_bottom_state(model)
+   do k=1,kmax_bot
+      do i=1,size(model%bottom_state_variables)
+         call fabm_link_bottom_state_data(model,i,cc(k,size(model%state_variables)+i))
+      end do
+      call model%set_bottom_index(k)
+      call fabm_initialize_bottom_state(model)
+   end do
 
    ! If custom initial state have been provided through fabm_input.nml, use these to override the current initial state.
    do i=1,size(model%state_variables)
@@ -1229,6 +1250,7 @@
 !
 ! !LOCAL VARIABLES:
    logical :: valid,tmpvalid
+   integer :: i,k
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -1241,9 +1263,15 @@
       valid = valid.and.tmpvalid
    end if
    if (valid .or. repair_state) then
-      call fabm_check_bottom_state(model,repair_state,tmpvalid)
-      if (repair_state.and..not.tmpvalid) repair_bottom_count = repair_bottom_count + 1
-      valid = valid.and.tmpvalid
+      do k=1,kmax_bot
+         do i=1,size(model%bottom_state_variables)
+            call fabm_link_bottom_state_data(model,i,cc(k,size(model%state_variables)+i))
+         end do
+         call model%set_bottom_index(k)
+         call fabm_check_bottom_state(model,repair_state,tmpvalid)
+         if (repair_state.and..not.tmpvalid) repair_bottom_count = repair_bottom_count + 1
+         valid = valid.and.tmpvalid
+      end do
    end if
    if (.not. (valid .or. repair_state)) then
       FATAL 'State variable values are invalid and repair is not allowed.'
@@ -1278,7 +1306,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer :: i,n
+   integer :: i,k,n
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -1287,6 +1315,7 @@
    n = size(model%state_variables)
 
    ! Provide FABM with (pointers to) the current state.
+   call model%set_bottom_index(1)
    do i=1,size(model%state_variables)
       call fabm_link_bulk_state_data(model,i,cc(1:nlev,i))
    end do
@@ -1307,10 +1336,20 @@
    rhs = _ZERO_
 
    ! Calculate temporal derivatives due to bottom processes (e.g. sedimentation, benthic biota).
-   call fabm_do_bottom(model,rhs(1,1:n),rhs(1,n+1:n+size(model%bottom_state_variables)))
+   do k=1,kmax_bot
+      do i=1,size(model%bottom_state_variables)
+         call fabm_link_bottom_state_data(model,i,cc(k,n+i))
+      end do
+      call model%set_bottom_index(k)
+      call fabm_do_bottom(model,rhs(k,1:n),rhs(k,n+1:n+size(model%bottom_state_variables)))
 
-   ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
-   rhs(1,1:n) = rhs(1,1:n)/curh(1)
+      ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
+      if (k==1) then
+         rhs(1,1:n) = rhs(1,1:n)*Af(1)/Vc(1)
+      else
+         rhs(k,1:n) = rhs(k,1:n)*(Af(k) - Af(k-1))/Vc(k)
+      end if
+   end do
 
    if (.not.no_surface) then
       ! Calculate temporal derivatives due to surface processes (e.g. gas exchange, ice algae).

@@ -1288,7 +1288,12 @@
 					<option value="1" label="fabm.yaml (containing YAML trees)" />
 				</options>
 			</element>
-
+			<element name="bottom_everywhere" type="bool" label="apply benthic-pelagic coupling for all layers">
+				<condition type="and"> 
+					<condition type="eq" variable="./fabm_calc" value="True" />
+					<condition type="ne" variable="/gotmmean/meanflow/hypsograph_file" value="" />
+				</condition> 
+			</element>
 		</element>
 	</element>
 	<element name="fabm_input" label="Input specifications" optional="True">

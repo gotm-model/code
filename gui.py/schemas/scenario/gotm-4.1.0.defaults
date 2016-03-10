@@ -350,6 +350,7 @@
 			<save_inputs>False</save_inputs>
 			<no_surface>False</no_surface>
 			<configuration_method>-1</configuration_method>
+			<bottom_everywhere>False</bottom_everywhere>
 		</gotm_fabm_nml>
 	</gotm_fabm>
 	<fabm_input>
