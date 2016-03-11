@@ -9,6 +9,7 @@ module field_manager
 
    ! Public data types and variables
    public type_node, type_field, type_field_node, type_category_node, type_dimension
+   public type_attribute, type_real_attribute
 
    ! Public parameters
    public string_length,default_fill_value,default_minimum,default_maximum
@@ -39,8 +40,6 @@ module field_manager
    real(rk),parameter :: default_minimum = default_fill_value + spacing(default_fill_value)
    real(rk),parameter :: default_maximum = huge(_ONE_)
 
-   integer            :: counter=0
-
    type type_dimension
       character(len=string_length)   :: name = ''
       character(len=string_length)   :: iterator = ''
@@ -56,6 +55,15 @@ module field_manager
       type (type_dimension), pointer :: p => null()
    end type
 
+   type type_attribute
+      character(len=string_length)   :: name = ''
+      class (type_attribute),pointer :: next => null()
+   end type
+
+   type,extends(type_attribute) :: type_real_attribute
+      real(rk) :: value = 0.0_rk
+   end type
+
    type type_field
       integer                      :: id             = 0
       character(len=string_length) :: name           = ''
@@ -69,6 +77,7 @@ module field_manager
       logical                      :: in_output      = .false.
       integer                      :: status         = status_not_registered
       type (type_dimension_pointer),allocatable :: dimensions(:)
+      class (type_attribute), pointer :: first_attribute => null()
       integer,allocatable          :: extents(:)
       real(rk),pointer             :: data_0d        => null()
       real(rk),pointer             :: data_1d(:)     => null()
@@ -76,7 +85,10 @@ module field_manager
       real(rk),pointer             :: data_3d(:,:,:) => null()
       type (type_field),pointer    :: next           => null()
    contains
-      procedure :: has_dimension => field_has_dimension
+      procedure :: has_dimension      => field_has_dimension
+      procedure :: set_real_attribute => field_set_real_attribute
+      procedure :: delete_attribute   => field_delete_attribute
+      generic :: set_attribute        => set_real_attribute
    end type type_field
 
    type,abstract :: type_node
@@ -104,6 +116,7 @@ module field_manager
 
       type (type_field),pointer :: first_field => null()
       type (type_category_node) :: root
+      integer                   :: nregistered = 0
    contains
       procedure :: initialize
       procedure :: finalize
@@ -372,7 +385,7 @@ contains
       end if
    end function find
 
-   subroutine register(self, name, units, long_name, standard_name, fill_value, minimum, maximum, dimensions, data0d, data1d, data2d, data3d, no_default_dimensions, category, output_level, coordinate_dimension, used)
+   subroutine register(self, name, units, long_name, standard_name, fill_value, minimum, maximum, dimensions, data0d, data1d, data2d, data3d, no_default_dimensions, category, output_level, coordinate_dimension, used, field)
       class (type_field_manager),intent(inout) :: self
       character(len=*),          intent(in)    :: name, units, long_name
       character(len=*),optional, intent(in)    :: standard_name
@@ -384,35 +397,38 @@ contains
       integer,         optional, intent(in)    :: output_level
       integer,         optional, intent(in)    :: coordinate_dimension
       logical,         optional, intent(out)   :: used
+      type (type_field),optional,pointer       :: field
 
-      type (type_field),     pointer :: field
+      type (type_field),     pointer :: field_
       type (type_dimension), pointer :: dim
       logical :: no_default_dimensions_
       integer :: i,n
 
-      if (name=='') call fatal_error('add_field','name cannot be empty.')
-      if (long_name=='') call fatal_error('add_field','long_name cannot be empty.')
+      if (name=='') call fatal_error('field_manager%register','name cannot be empty.')
+      if (long_name=='') call fatal_error('field_manager%register','long_name cannot be empty.')
 
-      ! Find existing field (possible created by select_for_output) or create new one.
-      field => self%find(name,create=.true.)
-      if (field%status>0) call fatal_error('add_field','Field with name "'//trim(name)//'" has already been registered.')
-      field%status = status_registered_no_data
+      ! Find existing field_ (a placeholder with status_not_registered may have been created by a call to select_for_output) or create new one.
+      field_ => self%find(name,create=.true.)
+      if (field_%status>status_not_registered) call fatal_error('field_manager%register','field with name "'//trim(name)//'" has already been registered.')
+      field_%status = status_registered_no_data
 
-      ! Copy field configuration
-      counter = counter + 1
-      field%id   = counter
-      field%name = name
-      field%units = units
-      field%long_name = long_name
-      if (present(standard_name)) field%standard_name = standard_name
-      if (present(fill_value)) field%fill_value = fill_value
-      if (present(minimum)) field%minimum = minimum
-      if (present(maximum)) field%maximum = maximum
-      if (present(output_level)) field%output_level = output_level
+      ! Increment number of registered fields
+      self%nregistered = self%nregistered + 1
+
+      ! Copy field_ configuration
+      field_%id = self%nregistered
+      field_%name = name
+      field_%units = units
+      field_%long_name = long_name
+      if (present(standard_name)) field_%standard_name = standard_name
+      if (present(fill_value)) field_%fill_value = fill_value
+      if (present(minimum)) field_%minimum = minimum
+      if (present(maximum)) field_%maximum = maximum
+      if (present(output_level)) field_%output_level = output_level
       if (present(coordinate_dimension)) then
          dim => find_dimension(self,coordinate_dimension)
-         if (.not.associated(dim)) call fatal_error('register','coordinate dimension of variable '//trim(field%name)//' has not been registered yet.')
-         dim%coordinate => field
+         if (.not.associated(dim)) call fatal_error('field_manager%register','coordinate dimension of variable '//trim(field_%name)//' has not been registered yet.')
+         dim%coordinate => field_
       end if
 
       no_default_dimensions_ = .false.
@@ -420,55 +436,57 @@ contains
       if (no_default_dimensions_) then
          ! Use actual provided dimensions only (no prepend/append)
          if (present(dimensions)) then
-            allocate(field%dimensions(size(dimensions)))
+            allocate(field_%dimensions(size(dimensions)))
             do i=1,size(dimensions)
-               field%dimensions(i)%p => find_dimension(self,dimensions(i))
-               if (.not.associated(field%dimensions(i)%p)) &
-                  call fatal_error('register','Dimension of variable '//trim(field%name)//' has not been registered yet.')
+               field_%dimensions(i)%p => find_dimension(self,dimensions(i))
+               if (.not.associated(field_%dimensions(i)%p)) &
+                  call fatal_error('field_manager%register','Dimension of variable '//trim(field_%name)//' has not been registered yet.')
             end do
          else
-            allocate(field%dimensions(0))
+            allocate(field_%dimensions(0))
          end if
       else
          ! Also prepend/append implicit dimensions
          if (present(dimensions)) then
-            allocate(field%dimensions(size(self%prepend_dimensions)+size(dimensions)+size(self%append_dimensions)))
+            allocate(field_%dimensions(size(self%prepend_dimensions)+size(dimensions)+size(self%append_dimensions)))
             do i=1,size(dimensions)
-               field%dimensions(size(self%prepend_dimensions)+i)%p => find_dimension(self,dimensions(i))
-               if (.not.associated(field%dimensions(size(self%prepend_dimensions)+i)%p)) &
-                  call fatal_error('register','Dimension of variable '//trim(field%name)//' has not been registered yet.')
+               field_%dimensions(size(self%prepend_dimensions)+i)%p => find_dimension(self,dimensions(i))
+               if (.not.associated(field_%dimensions(size(self%prepend_dimensions)+i)%p)) &
+                  call fatal_error('field_manager%register','Dimension of variable '//trim(field_%name)//' has not been registered yet.')
             end do
          else
-            allocate(field%dimensions(size(self%prepend_dimensions)+size(self%append_dimensions)))
+            allocate(field_%dimensions(size(self%prepend_dimensions)+size(self%append_dimensions)))
          end if
-         field%dimensions(:size(self%prepend_dimensions)) = self%prepend_dimensions
-         field%dimensions(size(field%dimensions)-size(self%append_dimensions)+1:) = self%append_dimensions
+         field_%dimensions(:size(self%prepend_dimensions)) = self%prepend_dimensions
+         field_%dimensions(size(field_%dimensions)-size(self%append_dimensions)+1:) = self%append_dimensions
       end if
 
-      ! Determine extents of field (excluding singleton dimensions)
+      ! Determine extents of field_ (excluding singleton dimensions)
       n = 0
-      do i=1,size(field%dimensions)
-         if (field%dimensions(i)%p%length>1) n = n + 1
+      do i=1,size(field_%dimensions)
+         if (field_%dimensions(i)%p%length>1) n = n + 1
       end do
-      allocate(field%extents(n))
+      allocate(field_%extents(n))
       n = 0
-      do i=1,size(field%dimensions)
-         if (field%dimensions(i)%p%length>1) then
+      do i=1,size(field_%dimensions)
+         if (field_%dimensions(i)%p%length>1) then
             n = n + 1
-            field%extents(n) = field%dimensions(i)%p%length
+            field_%extents(n) = field_%dimensions(i)%p%length
          end if
       end do
 
-      call add_field_to_tree(self,field,category)
+      call add_field_to_tree(self,field_,category)
 
       ! Note: the "in_output" flag can have been set by a call to select_for_output (typically from the output manager),
-      ! even before the actual variable is registered with the field manager.
-      if (present(used)) used = field%in_output
+      ! even before the actual variable is registered with the field_ manager.
+      if (present(used)) used = field_%in_output
 
-      if (present(data0d)) call self%send_data_0d(field,data0d)
-      if (present(data1d)) call self%send_data_1d(field,data1d)
-      if (present(data2d)) call self%send_data_2d(field,data2d)
-      if (present(data3d)) call self%send_data_3d(field,data3d)
+      if (present(data0d)) call self%send_data_0d(field_,data0d)
+      if (present(data1d)) call self%send_data_1d(field_,data1d)
+      if (present(data2d)) call self%send_data_2d(field_,data2d)
+      if (present(data3d)) call self%send_data_3d(field_,data3d)
+
+      if (present(field)) field => field_
    end subroutine register
 
    logical function field_has_dimension(self,id)
@@ -483,6 +501,44 @@ contains
       end do
       field_has_dimension = .false.
    end function field_has_dimension
+
+   subroutine field_delete_attribute(self,name)
+      class (type_field),intent(inout) :: self
+      character(len=*),  intent(in)    :: name
+
+      class (type_attribute),pointer :: attribute, previous_attribute
+
+      previous_attribute => null()
+      attribute => self%first_attribute
+      do while (associated(attribute))
+         if (attribute%name==name) then
+            if (associated(previous_attribute)) then
+               previous_attribute%next => attribute%next
+            else
+               self%first_attribute => attribute%next
+            end if
+            deallocate(attribute)
+            return
+         end if
+         previous_attribute => attribute
+         attribute => attribute%next
+      end do
+   end subroutine field_delete_attribute
+
+   subroutine field_set_real_attribute(self,name,value)
+      class (type_field),intent(inout) :: self
+      character(len=*),  intent(in)    :: name
+      real(rk),          intent(in)    :: value
+
+      class (type_real_attribute),pointer :: attribute
+
+      call self%delete_attribute(name)
+      allocate(attribute)
+      attribute%name = name
+      attribute%value = value
+      attribute%next => self%first_attribute
+      self%first_attribute => attribute
+   end subroutine field_set_real_attribute
 
    subroutine add_field_to_tree(self,field,category)
       class (type_field_manager),intent(inout),target :: self
