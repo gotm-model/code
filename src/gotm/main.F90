@@ -99,6 +99,7 @@
    use, intrinsic ::  iso_Fortran_env
 #endif
    IMPLICIT NONE
+   character(LEN=*),parameter:: git_branch_name='master'
    STDERR LINE
 !   STDERR 'GOTM:     www.gotm.net'
 !   STDERR 'version:  ',RELEASE
@@ -106,6 +107,7 @@
 !   STDERR 'compiler: ',FORTRAN_VERSION
    STDERR 'Compilation options: '
    STDERR LINE
+   LEVEL1 git_branch_name,' branch'
 !
 #ifndef GFORTRAN
 !   STDERR compiler_version()
