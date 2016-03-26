@@ -11,8 +11,20 @@ set(gotm_VERSION_MINOR 1)
 set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
 
-# Generate include file with version information.
-configure_file("${PROJECT_SOURCE_DIR}/../include/version.h.in" "${CMAKE_BINARY_DIR}/version.h")
+set(GIT_COMMIT_ID ${gotm_VERSION})
+configure_file("${PROJECT_SOURCE_DIR}/util/compilation.F90.in" compilation.F90)
+configure_file("${PROJECT_SOURCE_DIR}/util/version.F90.in" version.F90)
+option(GOTM_EMBED_VERSION "Embed GOTM version information" OFF)
+if(GOTM_EMBED_VERSION)
+  add_custom_target(version
+    ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/util/version.F90.in -DOUTFILE=${CMAKE_BINARY_DIR}/version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMENT "Retrieving description of last GOTM commit..." 
+    SOURCES ${PROJECT_SOURCE_DIR}/util/version.F90.in "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
+    VERBATIM
+  )
+  set_property(TARGET version PROPERTY FOLDER gotm)
+endif()
 
 # Specify default build type for single-type systems (not VS)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -48,6 +60,7 @@ endif()
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 if(GOTM_USE_FABM)
   add_definitions(-D_FABM_)
+  set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
 endif()
 
 #option(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON)
@@ -91,8 +104,14 @@ add_library(util
             util/tridiagonal.F90
             util/util.F90
             util/field_manager.F90
+            ../include/cppdefs.h
+            ${CMAKE_BINARY_DIR}/version.F90
+            ${CMAKE_BINARY_DIR}/compilation.F90
            )
 set_property(TARGET util PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+if(GOTM_EMBED_VERSION)
+  add_dependencies(util version)
+endif()
 
 add_library(turbulence
             turbulence/algebraiclength.F90

@@ -344,7 +344,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_turbulence: v',RELEASE
+   LEVEL1 'init_turbulence'
 
    a1 = _ZERO_
    a2 = _ZERO_

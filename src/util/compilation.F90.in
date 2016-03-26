@@ -1,0 +1,5 @@
+module gotm_compilation
+   character(len=*),parameter :: compiler = "@CMAKE_Fortran_COMPILER@"
+   character(len=*),parameter :: compiler_id = "@CMAKE_Fortran_COMPILER_ID@"
+   character(len=*),parameter :: compiler_version = "@CMAKE_Fortran_COMPILER_VERSION@"
+end module

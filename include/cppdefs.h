@@ -3,8 +3,6 @@
 ! in a correct format.
 ! KBK 20000220
 
-#include "version.h"
-
 #define PATH_MAX	255
 
 #define stderr		0
