@@ -1,10 +1,19 @@
 #!/bin/sh
 
-# if not set in the environment point to the code here
-#export GOTM_BASE=~/GOTM/code 
-#export FABM_BASE=~/FABM/code
+# if not set use the suggested source code installation directories
+GOTM_BASE=${GOTM_BASE:=~/GOTM/code}
+FABM_BASE=${FABM_BASE:=~/FABM/code}
 
-compiler=gfortran
+# default Fortran compiler is gfortran - overide by setting compuiler like:
+# export compiler=ifort
+compiler=${compiler:=gfortran}
+
+# NetCDF
+# nf-config must be in the path and correpsond to the value of compiler
+# try:
+# nf-config --all
+
+# ready to configure
 mkdir -p $compiler
 cd $compiler
 cmake $GOTM_BASE/src \
