@@ -34,6 +34,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   call cmdline()
 
 !  monitor CPU time and report system time and date
 #ifdef FORTRAN95
@@ -42,17 +43,16 @@
    call Date_And_Time(DATE=systemdate,TIME=systemtime)
 
    STDERR LINE
-   STDERR 'GOTM ver. ',    RELEASE,                           &
-          ' started on ', systemdate(1:4), '/',               &
-                          systemdate(5:6), '/',               &
-                          systemdate(7:8),                    &
-          ' at ',         systemtime(1:2), ':',               &
-                          systemtime(3:4), ':',               &
-                          systemtime(5:6)
+   STDERR 'GOTM started on ', systemdate(1:4), '/', &
+                              systemdate(5:6), '/', &
+                              systemdate(7:8),      &
+                      ' at ', systemtime(1:2), ':', &
+                              systemtime(3:4), ':', &
+                              systemtime(5:6)
    STDERR LINE
 #else
    STDERR LINE
-   STDERR 'GOTM ver. ',    RELEASE
+   STDERR 'GOTM'
    STDERR LINE
 #endif
 
@@ -66,17 +66,16 @@
    call Date_And_Time(DATE=systemdate,TIME=systemtime)
 
    STDERR LINE
-   STDERR 'GOTM ver. ',     RELEASE,                          &
-          ' finished on ', systemdate(1:4), '/',              &
-                           systemdate(5:6), '/',              &
-                           systemdate(7:8),                   &
-          ' at ',          systemtime(1:2), ':',              &
-                           systemtime(3:4), ':',              &
-                           systemtime(5:6)
+   STDERR 'GOTM finished on ', systemdate(1:4), '/', &
+                               systemdate(5:6), '/', &
+                               systemdate(7:8),      &
+                       ' at ', systemtime(1:2), ':', &
+                               systemtime(3:4), ':', &
+                               systemtime(5:6)
    STDERR LINE
 #else
    STDERR LINE
-   STDERR 'GOTM ver. ',    RELEASE
+   STDERR 'GOTM'
    STDERR LINE
 #endif
 
@@ -88,56 +87,102 @@
    STDERR 'Simulated time/CPU time:     ',simtime/(t2-t1)
 #endif
 
-   call compilation_options
+   call print_version()
 
-   end
+   contains
+
 !EOC
-
 !-----------------------------------------------------------------------
-   subroutine compilation_options
-#ifndef GFORTRAN
-   use, intrinsic ::  iso_Fortran_env
+!BOP
+!
+! !IROUTINE: Parse the command line
+!
+! !INTERFACE:
+   subroutine cmdline
+
+   character(len=32) :: arg
+   integer :: i
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   i = 1
+   do while (i <= command_argument_count())
+      call get_command_argument(i, arg)
+      select case (arg)
+      case ('-v', '--version')
+         call print_version()
+         stop
+      case ('-h', '--help')
+         call print_help()
+         stop
+      case default
+         print '(a,a,/)', 'Unrecognized command-line option: ', arg
+         call print_help()
+         stop
+      end select
+      i = i+1
+   end do
+
+   end subroutine  cmdline
+
+   subroutine print_version()
+      use gotm_version
+      use gotm_compilation
+      use fabm_version,fabm_commit_id=>git_commit_id,fabm_branch_name=>git_branch_name
+
+      STDERR LINE
+      STDERR 'GOTM version: ',git_commit_id,' (',git_branch_name,' branch)'
+#ifdef _FABM_
+      STDERR 'FABM version: ',fabm_commit_id,' (',fabm_branch_name,' branch)'
 #endif
-   IMPLICIT NONE
-   STDERR LINE
-!   STDERR 'GOTM:     www.gotm.net'
-!   STDERR 'version:  ',RELEASE
-!   STDERR 'git:      ',GIT_REVISION
-!   STDERR 'compiler: ',FORTRAN_VERSION
-   STDERR 'Compilation options: '
-   STDERR LINE
+      STDERR LINE
+      STDERR 'Compiler: ',compiler_id,' ',compiler_version
+      STDERR 'Compilation options: '
 !
 #ifndef GFORTRAN
 !   STDERR compiler_version()
 !   STDERR compiler_options()
 #else
 #ifdef FORTRAN90
-   LEVEL1 'Fortran 90 compilation'
+      LEVEL1 'Fortran 90 compilation'
 #endif
 #ifdef FORTRAN95
-   LEVEL1 'Fortran 95 compilation'
+      LEVEL1 'Fortran 95 compilation'
 #endif
 #ifdef FORTRAN2003
-   LEVEL1 'Fortran 2003 compilation'
+      LEVEL1 'Fortran 2003 compilation'
 #endif
 #endif
 #ifdef _FABM_
-   LEVEL1 '_FABM_'
+      LEVEL1 '_FABM_'
 #endif
 #ifdef SEAGRASS
-   LEVEL1 'SEAGRASS'
+      LEVEL1 'SEAGRASS'
 #endif
 #ifdef SPM
-   LEVEL1 'SPM'
+      LEVEL1 'SPM'
 #endif
 #ifdef SEDIMENT
-   LEVEL1 'SEDIMENT'
+      LEVEL1 'SEDIMENT'
+#endif
+#ifdef _FLEXIBLE_OUTPUT_
+      LEVEL1 '_FLEXIBLE_OUTPUT_'
 #endif
 
-   STDERR LINE
+      STDERR LINE
+   end subroutine print_version
+   
+   subroutine print_help()
+      print '(a)', 'Usage: gotm [OPTIONS]'
+      print '(a)', ''
+      print '(a)', 'Options:'
+      print '(a)', ''
+      print '(a)', '  -h, --help        print usage information and exit'
+      print '(a)', '  -v, --version     print version information' 
+      print '(a)', ''
+   end subroutine print_help
 
-   return
-   end
+end program
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org

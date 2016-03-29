@@ -67,6 +67,7 @@ contains
       character(len=256)                 :: coordinates
       type (type_dimension), pointer     :: dim
       type (type_output_dimension), pointer :: output_dimension
+      class (type_attribute), pointer    :: attribute
 
       type type_dimension_ids
          type (type_output_dimension),pointer :: output_dimension => null()
@@ -151,6 +152,14 @@ contains
             if (output_field%source%minimum/=default_minimum) iret = nf90_put_att(self%ncid,output_field%varid,'valid_min',real(output_field%source%minimum,ncrk)); call check_err(iret)
             if (output_field%source%maximum/=default_maximum) iret = nf90_put_att(self%ncid,output_field%varid,'valid_max',real(output_field%source%maximum,ncrk)); call check_err(iret)
             if (output_field%source%fill_value/=default_fill_value) iret = nf90_put_att(self%ncid,output_field%varid,'_FillValue',real(output_field%source%fill_value,ncrk)); call check_err(iret)
+            attribute => output_field%source%first_attribute
+            do while (associated(attribute))
+               select type (attribute)
+               class is (type_real_attribute)
+                  iret = nf90_put_att(self%ncid,output_field%varid,trim(attribute%name),attribute%value); call check_err(iret)
+               end select
+               attribute => attribute%next
+            end do
 
             coordinates = ''
             do i=1,size(output_field%coordinates)

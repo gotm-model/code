@@ -20,6 +20,7 @@ install_prefix=${install_prefix:=~/local/gotm/$compiler}
 mkdir -p $compiler
 cd $compiler
 cmake $GOTM_BASE/src \
+      -DGOTM_EMBED_VERSION=on \
       -DGOTM_USE_FLEXIBLE_OUTPUT=on \
       -DGOTM_USE_FABM=on \
       -DFABM_BASE=$FABM_BASE/ \
