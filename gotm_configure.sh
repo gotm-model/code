@@ -13,6 +13,9 @@ compiler=${compiler:=gfortran}
 # try:
 # nf-config --all
 
+# Make install prefix configurable
+install_prefix=${install_prefix:=~/local/gotm/$compiler}
+
 # ready to configure
 mkdir -p $compiler
 cd $compiler
@@ -21,5 +24,5 @@ cmake $GOTM_BASE/src \
       -DGOTM_USE_FABM=on \
       -DFABM_BASE=$FABM_BASE/ \
       -DCMAKE_Fortran_COMPILER=$compiler \
-      -DCMAKE_INSTALL_PREFIX=~/local/gotm/$compiler
+      -DCMAKE_INSTALL_PREFIX=$install_prefix
 cd ..
