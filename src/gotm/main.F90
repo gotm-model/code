@@ -99,7 +99,10 @@
 !
 ! !INTERFACE:
    subroutine cmdline
-
+!
+! !DESCRIPTION:
+!
+! !LOCAL VARIABLES:
    character(len=32) :: arg
    integer :: i
 !EOP
