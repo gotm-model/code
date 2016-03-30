@@ -11,6 +11,7 @@
 !  Simply prints the version number of the GOTM turbulence library to unit.
 !
 ! !USES:
+   use gotm_version
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -22,7 +23,7 @@
 !EOP
 !-------------------------------------------------------------------------
 !BOC
-   write(unit,*) 'GOTM library version: ',RELEASE
+   write(unit,*) 'GOTM library version: ',git_commit_id
 
    return
    end
