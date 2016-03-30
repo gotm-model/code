@@ -19,7 +19,7 @@ if(GOTM_EMBED_VERSION)
   add_custom_target(version
     ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in -DOUTFILE=${CMAKE_BINARY_DIR}/gotm_version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMENT "Retrieving description of last GOTM commit..." 
+    COMMENT "Retrieving description of last GOTM commit..."
     SOURCES ${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
     VERBATIM
   )

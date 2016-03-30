@@ -174,14 +174,14 @@
 
       STDERR LINE
    end subroutine print_version
-   
+
    subroutine print_help()
       print '(a)', 'Usage: gotm [OPTIONS]'
       print '(a)', ''
       print '(a)', 'Options:'
       print '(a)', ''
       print '(a)', '  -h, --help        print usage information and exit'
-      print '(a)', '  -v, --version     print version information' 
+      print '(a)', '  -v, --version     print version information'
       print '(a)', ''
    end subroutine print_help
 

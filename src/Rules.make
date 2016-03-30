@@ -2,7 +2,7 @@
 
 SHELL   = /bin/sh
 
-# The compilation mode is obtained from $COMPILATION_MODE - 
+# The compilation mode is obtained from $COMPILATION_MODE -
 # default production - else debug or profiling
 ifndef COMPILATION_MODE
 compilation=production
@@ -144,7 +144,7 @@ INCDIRS	+= -I/usr/local/include -I$(GOTMDIR)/include -I$(MODDIR)
 
 # Normaly this should not be changed - unless you want something very specific.
 
-# The Fortran compiler is determined from the EV FORTRAN_COMPILER - options 
+# The Fortran compiler is determined from the EV FORTRAN_COMPILER - options
 # sofar NAG(linux), FUJITSU(Linux), DECF90 (OSF1 and likely Linux on alpha),
 # SunOS, PGF90 - Portland Group Fortran Compiler (on Intel Linux).
 
@@ -152,21 +152,21 @@ INCDIRS	+= -I/usr/local/include -I$(GOTMDIR)/include -I$(MODDIR)
 ifeq ($(compilation),debug)
 buildtype = _debug
 DEFINES += -DDEBUG $(STATIC)
-FLAGS   = $(DEBUG_FLAGS) 
+FLAGS   = $(DEBUG_FLAGS)
 endif
 
 # Sets options for profiling compilation
 ifeq ($(compilation),profiling)
 buildtype = _prof
 DEFINES += -DPROFILING $(STATIC)
-FLAGS   = $(PROF_FLAGS) 
+FLAGS   = $(PROF_FLAGS)
 endif
 
 # Sets options for production compilation
 ifeq ($(compilation),production)
 buildtype = _prod
 DEFINES += -DPRODUCTION $(STATIC)
-FLAGS   = $(PROD_FLAGS) 
+FLAGS   = $(PROD_FLAGS)
 endif
 
 include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)

@@ -150,7 +150,7 @@
        , shape(a1))
    REALTYPE, parameter       :: za(10) = (/90.,80.,70.,60.,50.,40.,30.,20.,10.,0.0/)
    REALTYPE, parameter       :: dz =  10.0
-#if 0 
+#if 0
 ! This is the original provided by AS - as Fortran code
    REALTYPE, parameter       :: tim(12)= (/ &
                                            15.21,45.62,76.03,106.44,136.85,167.26, &
