@@ -8,7 +8,8 @@ LIB	= $(LIBDIR)/libgotm$(buildtype).a
 
 DOCSRC	= \
 main.F90  \
-gotm.F90
+gotm.F90  \
+print_version.F90
 
 MOD	= \
 ${LIB}(diagnostics.o) \
@@ -17,6 +18,7 @@ ${LIB}(gotm.o)
 
 
 OBJ   = \
+${LIB}(print_version.o) \
 main.o
 
 all: $(MOD) $(OBJ)
