@@ -281,6 +281,7 @@ add_library(gotm OBJECT
             gotm/gotm.F90
             gotm/diagnostics.F90
             gotm/register_all_variables.F90
+            gotm/print_version.F90
            )
 add_dependencies(gotm input util meanflow turbulence observations airsea)
 if(GOTM_USE_FLEXIBLE_OUTPUT)
