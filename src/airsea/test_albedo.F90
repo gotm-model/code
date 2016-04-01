@@ -27,7 +27,7 @@
 !BOC
    write(*,*) 'Testing for zenith angle ...'
    write(*,*) 'Adjust 3rd parameter in c? to calculate for different year days'
-   write(*,*) 
+   write(*,*)
    write(100,'(a5,5a8)') 'angle','Payne','C1','C2','C3','C4'
    do i=0,90,5
       p1 = albedo_water(1,i*_ONE_)
@@ -40,7 +40,7 @@
 
    write(*,*) 'Testing for annual variation ...'
    write(*,*) 'Adjust 2nd parameter in p? and c? to calculate for zenith solar angels'
-   write(*,*) 
+   write(*,*)
    write(101,'(a4,8a8)') 'day','P1','C1','P2','C2','P3','C3','P4','C4'
    do i=1,365,5
       p1 = albedo_water(1,0.*_ONE_)

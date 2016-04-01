@@ -17,9 +17,9 @@ configure_file("${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in" gotm_version.F90
 option(GOTM_EMBED_VERSION "Embed GOTM version information" OFF)
 if(GOTM_EMBED_VERSION)
   add_custom_target(version
-    ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in -DOUTFILE=${CMAKE_BINARY_DIR}/gotm_version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
+    ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMENT "Retrieving description of last GOTM commit..." 
+    COMMENT "Retrieving description of last GOTM commit..."
     SOURCES ${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
     VERBATIM
   )
@@ -105,8 +105,8 @@ add_library(util
             util/util.F90
             util/field_manager.F90
             ../include/cppdefs.h
-            ${CMAKE_BINARY_DIR}/gotm_version.F90
-            ${CMAKE_BINARY_DIR}/compilation.F90
+            ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90
+            ${CMAKE_CURRENT_BINARY_DIR}/compilation.F90
            )
 set_property(TARGET util PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 if(GOTM_EMBED_VERSION)
@@ -285,6 +285,7 @@ add_library(gotm OBJECT
             gotm/gotm.F90
             gotm/diagnostics.F90
             gotm/register_all_variables.F90
+            gotm/print_version.F90
            )
 add_dependencies(gotm input util meanflow turbulence observations airsea)
 if(GOTM_USE_FLEXIBLE_OUTPUT)

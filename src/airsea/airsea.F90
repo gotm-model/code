@@ -15,7 +15,7 @@
 !  prescribed. Alternatively, they may be calculated by means
 !  of bulk formulae from observed or modelled meteorological
 !  parameters and the solar radiation may be calculated
-!  from longitude, latitude, time and cloudiness. 
+!  from longitude, latitude, time and cloudiness.
 !  Albedo correction is applied according to a namelist variable.
 !  For the prescibed fluxes and solar radiation,
 !  values may be constant or read in from files. All necessary

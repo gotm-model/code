@@ -12,7 +12,7 @@
 !  the number of diagnostics calculated - and have those newly defined
 !  values saved in a file. In addition to adding the variable as a public
 !  variable in this module - like e.g. ekin - add an appropriate line in
-!  register_all_variables.F90 - use agin ekin as example. 
+!  register_all_variables.F90 - use agin ekin as example.
 !
 ! !USES:
    IMPLICIT NONE
@@ -99,23 +99,23 @@
       case(1)          ! MLD according to TKE criterium
          mld_surf = _ZERO_
          do i=nlev,1,-1
-            if (tke(i) .lt. diff_k) exit 
+            if (tke(i) .lt. diff_k) exit
             mld_surf=mld_surf+h(i)
          end do
          mld_bott = _ZERO_
          do i=1,nlev
-            if (tke(i) .lt. diff_k) exit 
+            if (tke(i) .lt. diff_k) exit
             mld_bott=mld_bott+h(i)
-         end do 
+         end do
       case(2)          ! MLD according to critical Ri number
          do i=1,nlev-1
             Ri(i)=NN(i)/(SS(i)+1.e-10)
          end do
          mld_surf    = h(nlev)
          do i=nlev-1,1,-1
-            if (Ri(i) .gt. Ri_crit) exit 
+            if (Ri(i) .gt. Ri_crit) exit
             mld_surf=mld_surf+h(i)
-         end do 
+         end do
       case(3)          ! MLD according to maxiumun NN
          j = maxloc(NN(1:nlev))
          mld_surf = sum(h(j(1):nlev))

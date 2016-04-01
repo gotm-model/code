@@ -13,6 +13,8 @@ DOCSRC	=  util.F90                                                           \
 
 
 MOD   = \
+${LIB}(gotm_version.o)			\
+${LIB}(compilation.o)			\
 ${LIB}(util.o)			\
 ${LIB}(time.o)			\
 ${LIB}(tridiagonal.o)		\

@@ -59,8 +59,8 @@ find_path(NetCDF_INCLUDE_DIRS netcdf.mod
 endif()
 
 # Process default arguments (QUIET, REQUIRED)
-include(FindPackageHandleStandardArgs) 
-find_package_handle_standard_args (NetCDF DEFAULT_MSG NetCDF_LIBRARIES NetCDF_INCLUDE_DIRS) 
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args (NetCDF DEFAULT_MSG NetCDF_LIBRARIES NetCDF_INCLUDE_DIRS)
 
 # For backward compatibility:
 set(NetCDF_LIBRARY NetCDF_LIBRARIES)

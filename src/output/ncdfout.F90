@@ -34,6 +34,7 @@
 !  debuging.
 !
 ! !USES:
+   use gotm_version
    use turbulence, only: turb_method
    use netcdf
    IMPLICIT NONE
@@ -619,7 +620,7 @@
 
 !  global attributes
    iret = nf90_put_att(ncid,NF90_GLOBAL,'title',trim(title))
-   history = 'Created by GOTM v. '//RELEASE
+   history = 'Created by GOTM v. '//git_commit_id//' ('//git_branch_name//' branch)'
    iret = nf90_put_att(ncid,NF90_GLOBAL,'history',trim(history))
    iret = nf90_put_att(ncid,NF90_GLOBAL,'Conventions','COARDS')
    call check_err(iret)

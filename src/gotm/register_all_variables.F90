@@ -71,7 +71,7 @@
 
 !-----------------------------------------------------------------------
 !BOP
-! !IROUTINE: Coordinate variable registration 
+! !IROUTINE: Coordinate variable registration
 !
 ! !INTERFACE:
    subroutine register_coordinate_variables(lat,lon,nlev)
@@ -110,7 +110,7 @@
 
 !-----------------------------------------------------------------------
 !BOP
-! !IROUTINE: airsea variable registration 
+! !IROUTINE: airsea variable registration
 !
 ! !INTERFACE:
    subroutine register_airsea_variables(nlev)
@@ -178,7 +178,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: observation variable registration 
+! !IROUTINE: observation variable registration
 !
 ! !INTERFACE:
    subroutine register_observation_variables(nlev)
@@ -207,7 +207,7 @@
 
 !-----------------------------------------------------------------------
 !BOP
-! !IROUTINE: stream variable registration 
+! !IROUTINE: stream variable registration
 !
 ! !INTERFACE:
    subroutine register_stream_variables(nlev)
@@ -256,7 +256,7 @@
 
 !-----------------------------------------------------------------------
 !BOP
-! !IROUTINE: meanflow variable registration 
+! !IROUTINE: meanflow variable registration
 !
 ! !INTERFACE:
    subroutine register_meanflow_variables(nlev)
@@ -320,7 +320,7 @@
 
 !-----------------------------------------------------------------------
 !BOP
-! !IROUTINE: turbulence variable registration 
+! !IROUTINE: turbulence variable registration
 !
 ! !INTERFACE:
    subroutine register_turbulence_variables(nlev)
@@ -382,7 +382,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: diagnostic variable registration 
+! !IROUTINE: diagnostic variable registration
 !
 ! !INTERFACE:
    subroutine register_diagnostic_variables(nlev)
@@ -429,7 +429,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: AAA variable registration 
+! !IROUTINE: AAA variable registration
 !
 ! !INTERFACE:
    subroutine register_AAA_variables(nlev)

@@ -99,7 +99,10 @@
 !
 ! !INTERFACE:
    subroutine cmdline
-
+!
+! !DESCRIPTION:
+!
+! !LOCAL VARIABLES:
    character(len=32) :: arg
    integer :: i
 !EOP
@@ -111,6 +114,10 @@
       select case (arg)
       case ('-v', '--version')
          call print_version()
+         stop
+      case ('-c', '--compile')
+         call print_version()
+         call compilation_options()
          stop
       case ('-h', '--help')
          call print_help()
@@ -125,34 +132,7 @@
 
    end subroutine  cmdline
 
-   subroutine print_version()
-      use gotm_version
-      use gotm_compilation
-      use fabm_version,fabm_commit_id=>git_commit_id,fabm_branch_name=>git_branch_name
-
-      STDERR LINE
-      STDERR 'GOTM version: ',git_commit_id,' (',git_branch_name,' branch)'
-#ifdef _FABM_
-      STDERR 'FABM version: ',fabm_commit_id,' (',fabm_branch_name,' branch)'
-#endif
-      STDERR LINE
-      STDERR 'Compiler: ',compiler_id,' ',compiler_version
-      STDERR 'Compilation options: '
-!
-#ifndef GFORTRAN
-!   STDERR compiler_version()
-!   STDERR compiler_options()
-#else
-#ifdef FORTRAN90
-      LEVEL1 'Fortran 90 compilation'
-#endif
-#ifdef FORTRAN95
-      LEVEL1 'Fortran 95 compilation'
-#endif
-#ifdef FORTRAN2003
-      LEVEL1 'Fortran 2003 compilation'
-#endif
-#endif
+   subroutine compilation_options()
 #ifdef _FABM_
       LEVEL1 '_FABM_'
 #endif
@@ -168,17 +148,17 @@
 #ifdef _FLEXIBLE_OUTPUT_
       LEVEL1 '_FLEXIBLE_OUTPUT_'
 #endif
-
       STDERR LINE
-   end subroutine print_version
-   
+   end subroutine compilation_options
+
    subroutine print_help()
       print '(a)', 'Usage: gotm [OPTIONS]'
       print '(a)', ''
       print '(a)', 'Options:'
       print '(a)', ''
       print '(a)', '  -h, --help        print usage information and exit'
-      print '(a)', '  -v, --version     print version information' 
+      print '(a)', '  -v, --version     print version information'
+      print '(a)', '  -c, --compiler    print compilation options'
       print '(a)', ''
    end subroutine print_help
 
