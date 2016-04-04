@@ -210,7 +210,7 @@ contains
                elseif (associated(output_field%source%data_2d)) then
                   if (j/=2) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
                   output_field%source_2d => output_field%source%data_2d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2))
-               elseif (associated(output_field%source%data_1d)) then                  
+               elseif (associated(output_field%source%data_1d)) then
                   if (j/=1) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
                   output_field%source_1d => output_field%source%data_1d(starts(1):stops(1):strides(1))
                else
@@ -362,7 +362,7 @@ contains
                   file%next_index = file%next_index + file%time_step
             end select
 
-            ! Reset time step counter   
+            ! Reset time step counter
             file%n = 0
 
             ! Zero out time-step averaged fields (start of new time step)
@@ -388,7 +388,7 @@ contains
          file => file%next
       end do
    end subroutine output_manager_save
-   
+
    subroutine configure_from_yaml(field_manager,title,postfix)
       type (type_field_manager), target      :: field_manager
       character(len=*),           intent(in) :: title
@@ -619,7 +619,7 @@ contains
          pair => pair%next
       end do
    end subroutine process_group
-   
+
    subroutine process_variable(file,mapping,default_time_method)
       class (type_file),      intent(inout) :: file
       class (type_dictionary),intent(in)    :: mapping

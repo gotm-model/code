@@ -21,8 +21,8 @@ find_path(FABM_INCLUDE_DIRS
 mark_as_advanced(FABM_LIBRARIES FABM_INCLUDE_DIRS)
 
 # Process default arguments (QUIET, REQUIRED)
-include(FindPackageHandleStandardArgs) 
-find_package_handle_standard_args (FABM DEFAULT_MSG FABM_LIBRARIES FABM_INCLUDE_DIRS) 
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args (FABM DEFAULT_MSG FABM_LIBRARIES FABM_INCLUDE_DIRS)
 
 # For backward compatibility:
 set(FABM_LIBRARY FABM_LIBRARIES)

@@ -177,7 +177,7 @@ contains
                case (time_method_integrated)
                   iret = nf90_put_att(self%ncid,output_field%varid,'cell_methods','time: sum'); call check_err(iret)
             end select
-   
+
             ! Fill arrays with start index and count per dimension
             allocate(output_field%start(size(output_field%source%dimensions)))
             allocate(output_field%edges(size(output_field%source%dimensions)))
@@ -192,7 +192,7 @@ contains
                   output_field%edges(i) = (output_dimension%stop-output_dimension%start)/output_dimension%stride+1
                end if
             end do
-         end select   
+         end select
          output_field => output_field%next
       end do
 
