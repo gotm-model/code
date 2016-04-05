@@ -19,15 +19,21 @@
    use fabm_version, only: fabm_commit_id=>git_commit_id, &
                            fabm_branch_name=>git_branch_name
 #endif
+#ifdef NETCDF_FMT
+   use netcdf
+#endif
    IMPLICIT NONE
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL0 LINE
-   LEVEL0 'GOTM version: ',gotm_commit_id,' (',gotm_branch_name,' branch)'
+   LEVEL0 'GOTM version:   ',gotm_commit_id,' (',gotm_branch_name,' branch)'
 #ifdef _FABM_
-   LEVEL0 'FABM version: ',fabm_commit_id,' (',fabm_branch_name,' branch)'
+   LEVEL0 'FABM version:   ',fabm_commit_id,' (',fabm_branch_name,' branch)'
+#endif
+#ifdef NETCDF_FMT
+   LEVEL0 'NetCDF version: ',trim(NF90_INQ_LIBVERS())
 #endif
    LEVEL0 LINE
    LEVEL0 'Compiler: ',compiler_id,' ',compiler_version
