@@ -16,6 +16,8 @@
                            gotm_branch_name=>git_branch_name
    use gotm_compilation
 #ifdef _FABM_
+   use fabm, only: fabm_initialize_library
+   use fabm_types, only: type_version,first_module_version
    use fabm_version, only: fabm_commit_id=>git_commit_id, &
                            fabm_branch_name=>git_branch_name
 #endif
@@ -23,6 +25,10 @@
    use netcdf
 #endif
    IMPLICIT NONE
+
+#ifdef _FABM_
+   type (type_version),pointer :: version
+#endif
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -31,6 +37,12 @@
    LEVEL0 'GOTM version:   ',gotm_commit_id,' (',gotm_branch_name,' branch)'
 #ifdef _FABM_
    LEVEL0 'FABM version:   ',fabm_commit_id,' (',fabm_branch_name,' branch)'
+   call fabm_initialize_library()
+   version => first_module_version
+   do while (associated(version))
+      LEVEL0 trim(version%module_name)//' version:   ',trim(version%version_string)
+      version => version%next
+   end do
 #endif
 #ifdef NETCDF_FMT
    LEVEL0 'NetCDF version: ',trim(NF90_INQ_LIBVERS())
