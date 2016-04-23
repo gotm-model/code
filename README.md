@@ -1,6 +1,10 @@
-## Short guide on how to compile GOTM
+## What is GOTM?
 
-A more comprehensive guide at the [GOTM official homepage](http://www.gotm.net) (when opdated mid June 2016)
+GOTM - the **G**eneral **O**cean **T**urbulence **M**odel is an ambitious name for a one-dimensional water column model for marine and limnological applications. It is coupled to a choice of traditional as well as state-of-the-art parameterisations for vertical turbulent mixing. The package consists of the FORTRAN source code, a number of idealised and realistic test cases, and a scientific documentation, all published under the GNU public license.
+
+A more comprehensive description is given at the official [GOTM homepage](http://www.gotm.net) (when opdated mid June 2016).
+
+## Short guide on how to compile GOTM
 
 The following prerequisites must be fulfilled before compilation is started
 
