@@ -8,14 +8,14 @@ A more comprehensive description is given at the official [GOTM homepage](http:/
 
 The following prerequisites must be fulfilled before compilation is started
 
-1. The source code for GOTM and [FABM](www.fabm.net) must have been cloned from Git repositories. The actual cloning will depend on the platform and Git-utilities used. Further information is provide [here](https://help.github.com/articles/cloning-a-repository/#platform-linux)
+1. The source code for GOTM and [FABM](http://www.fabm.net) must have been cloned from Git repositories. The actual cloning will depend on the platform and Git-utilities used. Further information is provide [here](https://help.github.com/articles/cloning-a-repository/#platform-linux)
 2. A Fortran compiler supporting at least Fortran 2003 must be avaialble
    * On Linux [gfortran](https://gcc.gnu.org/fortran/) versions including and above 4.7 have been tested as well has the [Intel Fortran compiler](https://software.intel.com/en-us/fortran-compilers).
    * On Windows the [Intel Fortran compiler](https://software.intel.com/en-us/fortran-compilers) configured with VisualStudio is working.
 3. [NetCDF](http://www.unidata.ucar.edu/software/netcdf)
    * On Linux/Mac GOTM and NetCDF must be compiled with the same Fortran compiler. The configuration and compilation of the NetCDF library is beyond the purpose of this guide.
    * On Windows NetCDF is provided in the repository - compatible with the Intel Fortran compiler
-4. [CMake](www.cmake.org) must be installed. CMake is used to configure the compilation and generate native build systems - i.e. Make-based systems on Linux/Mac and VisualStudio on Windows. CMake can be run in command-line and GUI-mode. Further information is provided [here](https://cmake.org/documentation/). A detailed description is beyond the purpose of this guide.
+4. [CMake](http://www.cmake.org) must be installed. CMake is used to configure the compilation and generate native build systems - i.e. Make-based systems on Linux/Mac and VisualStudio on Windows. CMake can be run in command-line and GUI-mode. Further information is provided [here](https://cmake.org/documentation/). A detailed description is beyond the purpose of this guide.
 
 Only when the above 4 points are checked it makes sense to proceed.
 
