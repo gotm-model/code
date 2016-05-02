@@ -268,6 +268,7 @@
 #if defined(_FLEXIBLE_OUTPUT_)
    allocate(type_gotm_host::output_manager_host)
    call output_manager_init(fm,title)
+   call setup_restart()
 #else
    call init_output(title,nlev,latitude,longitude)
 #endif
@@ -698,6 +699,25 @@
       call calendar_date(julian,yyyy,mm,dd)
    end subroutine
 #endif
+
+   subroutine setup_restart()
+      use netcdf_output
+      use output_manager_core
+
+      class (type_netcdf_file),     pointer :: file
+      class (type_output_category), pointer :: category
+
+      allocate(file)
+      file%path = 'restart'
+      file%time_unit = time_unit_day
+      file%time_step = 1
+      call output_manager_add_file(fm,file)
+
+      allocate(category)
+      category%name = 'state'
+      category%output_level = output_level_debug
+      call file%append_category(category)
+   end subroutine setup_restart
 
 !-----------------------------------------------------------------------
 
