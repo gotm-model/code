@@ -8,8 +8,9 @@ module field_manager
    public type_field_manager
 
    ! Public data types and variables
-   public type_node, type_field, type_field_node, type_category_node, type_dimension
+   public type_field, type_category_node, type_dimension
    public type_attribute, type_real_attribute
+   public type_field_set, type_field_set_member
 
    ! Public parameters
    public string_length,default_fill_value,default_minimum,default_maximum
@@ -106,6 +107,17 @@ module field_manager
    contains
       procedure :: get_all_fields
       procedure :: has_fields
+   end type
+
+   type type_field_set_member
+      type (type_field),            pointer :: field => null()
+      type (type_field_set_member), pointer :: next  => null()
+   end type
+
+   type type_field_set
+      type (type_field_set_member), pointer :: first => null()
+   contains
+      procedure :: add => field_set_add
    end type
 
    type type_field_manager
@@ -317,26 +329,36 @@ contains
       end subroutine activate
    end function select_category_for_output
 
-   recursive subroutine get_all_fields(self,list,output_level)
+   subroutine field_set_add(self,field)
+      class (type_field_set), intent(inout) :: self
+      type (type_field), target             :: field
+
+      type (type_field_set_member),pointer :: member
+
+      member => self%first
+      do while (associated(member))
+         if (associated(member%field,field)) return
+         member => member%next
+      end do
+      allocate(member)
+      member%field => field
+      member%next => self%first
+      self%first => member
+   end subroutine field_set_add
+
+   recursive subroutine get_all_fields(self,set,output_level)
       class (type_category_node), intent(inout) :: self
-      type (type_category_node),  intent(inout) :: list
+      type (type_field_set),      intent(inout) :: set
       integer,                    intent(in)    :: output_level
-      class (type_node), pointer :: child, newnode
+      class (type_node), pointer :: child
 
       child => self%first_child
       do while (associated(child))
          select type (child)
          class is (type_category_node)
-            call get_all_fields(child,list,output_level)
+            call get_all_fields(child,set,output_level)
          class is (type_field_node)
-            if (child%field%output_level<=output_level) then
-               allocate(type_field_node::newnode)
-               select type (newnode)
-               class is (type_field_node)
-                  newnode%field => child%field
-               end select
-               call add_to_category(list,newnode)
-            end if
+            if (child%field%output_level<=output_level) call set%add(child%field)
          end select
          child => child%next_sibling
       end do
@@ -385,7 +407,7 @@ contains
       end if
    end function find
 
-   subroutine register(self, name, units, long_name, standard_name, fill_value, minimum, maximum, dimensions, data0d, data1d, data2d, data3d, no_default_dimensions, category, output_level, coordinate_dimension, used, field)
+   subroutine register(self, name, units, long_name, standard_name, fill_value, minimum, maximum, dimensions, data0d, data1d, data2d, data3d, no_default_dimensions, category, output_level, coordinate_dimension, part_of_state, used, field)
       class (type_field_manager),intent(inout) :: self
       character(len=*),          intent(in)    :: name, units, long_name
       character(len=*),optional, intent(in)    :: standard_name
@@ -396,6 +418,7 @@ contains
       character(len=*),optional, intent(in)    :: category
       integer,         optional, intent(in)    :: output_level
       integer,         optional, intent(in)    :: coordinate_dimension
+      logical,         optional, intent(in)    :: part_of_state
       logical,         optional, intent(out)   :: used
       type (type_field),optional,pointer       :: field
 
@@ -476,6 +499,9 @@ contains
       end do
 
       call add_field_to_tree(self,field_,category)
+      if (present(part_of_state)) then
+         if (part_of_state) call add_field_to_tree(self,field_,'state')
+      end if
 
       ! Note: the "in_output" flag can have been set by a call to select_for_output (typically from the output manager),
       ! even before the actual variable is registered with the field_ manager.

@@ -139,6 +139,7 @@ module output_manager_core
       procedure :: find
       procedure :: append
       procedure :: get_dimension
+      procedure :: append_category
    end type type_file
 
    class (type_host),pointer,save :: host => null()
@@ -275,6 +276,18 @@ contains
       end if
       output_field%next => null()
    end subroutine append
+
+   subroutine append_category(self,output_category)
+      class (type_file),intent(inout)      :: self
+      class (type_output_category), target :: output_category
+
+      ! Select this category for output in the field manager.
+      output_category%source => self%field_manager%select_category_for_output(output_category%name,output_category%output_level)
+
+      ! Prepend to list of output categories.
+      output_category%next => self%first_category
+      self%first_category => output_category
+   end subroutine append_category
 
    function get_dimension(self,dim) result(output_dimension)
       class (type_file),intent(inout) :: self
