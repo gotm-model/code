@@ -73,8 +73,6 @@ contains
          end do
          output_category => output_category%next
       end do
-      write (*,*)
-      write (*,*)
    end subroutine collect_from_categories
 
    subroutine filter_variables(file)
