@@ -214,10 +214,10 @@
    read(namlst,nml=time,err=93)
    if (online_hotstart) then
       LEVEL3 'online hotstart - updating values in the time namelist ...'
-      LEVEL4 'orig: ',start,' -> ',stop
+      LEVEL4 'orignal: ',start,' -> ',stop
       start = t1
       stop  = t2
-      LEVEL4 'new:  ',start,' -> ',stop
+      LEVEL4 'updated: ',start,' -> ',stop
    end if
 #if !defined(_FLEXIBLE_OUTPUT_)
    read(namlst,nml=output,err=94)
@@ -229,6 +229,7 @@
 
    LEVEL2 'done.'
    hotstart = online_hotstart .or. offline_hotstart
+   if (online_hotstart) offline_hotstart = .false.
 
 !  initialize a few things from  namelists
    timestep   = dt
@@ -270,8 +271,26 @@
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
 !  initialise mean fields
-   s = sprof
-   t = tprof
+   if (hotstart) then
+      if (offline_hotstart) then
+         ! here we should read content of restart.nc
+         ! call read_restart()
+         ! for now
+         s = sprof
+         t = tprof
+      end if
+      if (online_hotstart) then
+         ! here we should use a state_vector - like
+         !s = state_vector(salt_range)
+         !t = state_vector(temp_range)
+         ! for now
+         s = sprof
+         t = tprof
+      end if
+   else
+      s = sprof
+      t = tprof
+   end if
    u = uprof
    v = vprof
 
