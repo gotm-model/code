@@ -114,6 +114,7 @@
 !  station description
    character(len=80)         :: name
    REALTYPE,target           :: latitude,longitude
+   logical                   :: hotstart
 
 #if defined(_FLEXIBLE_OUTPUT_)
    type,extends(type_output_manager_host) :: type_gotm_host
@@ -133,7 +134,7 @@
 ! !IROUTINE: Initialise the model \label{initGOTM}
 !
 ! !INTERFACE:
-   subroutine init_gotm()
+   subroutine init_gotm(t1,t2)
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
@@ -151,13 +152,16 @@
 ! !USES:
   IMPLICIT NONE
 !
+! !INPUT PARAMETERS:
+   character(len=*), intent(in), optional  :: t1,t2
+!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !EOP
 !
 ! !LOCAL VARIABLES:
-   namelist /model_setup/ title,nlev,dt,cnpar,buoy_method
+   namelist /model_setup/ title,nlev,dt,offline_hotstart,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
 #if !defined(_FLEXIBLE_OUTPUT_)
@@ -166,12 +170,18 @@
                           diagnostics,mld_method,diff_k,Ri_crit,rad_corr
 #endif
    logical          ::    list_fields=.false.
+   logical          ::    online_hotstart=.false.
+   logical          ::    offline_hotstart = .false.
    integer          ::    rc
 !
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_gotm'
    STDERR LINE
+
+   if (present(t1)) then
+      online_hotstart = .true.
+   end if
 
 !  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
 !  will be set by init_observations.
@@ -202,6 +212,13 @@
    read(namlst,nml=model_setup,err=91)
    read(namlst,nml=station,err=92)
    read(namlst,nml=time,err=93)
+   if (online_hotstart) then
+      LEVEL3 'online hotstart - updating values in the time namelist ...'
+      LEVEL4 'orig: ',start,' -> ',stop
+      start = t1
+      stop  = t2
+      LEVEL4 'new:  ',start,' -> ',stop
+   end if
 #if !defined(_FLEXIBLE_OUTPUT_)
    read(namlst,nml=output,err=94)
 
@@ -211,6 +228,7 @@
 #endif
 
    LEVEL2 'done.'
+   hotstart = online_hotstart .or. offline_hotstart
 
 !  initialize a few things from  namelists
    timestep   = dt
