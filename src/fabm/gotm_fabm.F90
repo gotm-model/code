@@ -228,19 +228,11 @@
       ! Inform field manager about available diagnostics
       if (present(field_manager)) then
          do i=1,size(model%diagnostic_variables)
-            output_level = output_level_default
-            if (model%diagnostic_variables(i)%output==output_none) output_level = output_level_debug
-            call field_manager%register(model%diagnostic_variables(i)%name, model%diagnostic_variables(i)%units, &
-               model%diagnostic_variables(i)%long_name, minimum=model%diagnostic_variables(i)%minimum, maximum=model%diagnostic_variables(i)%maximum, &
-               fill_value=model%diagnostic_variables(i)%missing_value, dimensions=(/id_dim_z/), category='fabm'//model%diagnostic_variables(i)%target%owner%get_path(), output_level=output_level, used=in_output)
+            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
             if (in_output) model%diagnostic_variables(i)%save = .true.
          end do
          do i=1,size(model%horizontal_diagnostic_variables)
-            output_level = output_level_default
-            if (model%horizontal_diagnostic_variables(i)%output==output_none) output_level = output_level_debug
-            call field_manager%register(model%horizontal_diagnostic_variables(i)%name, model%horizontal_diagnostic_variables(i)%units, &
-               model%horizontal_diagnostic_variables(i)%long_name, minimum=model%horizontal_diagnostic_variables(i)%minimum, maximum=model%horizontal_diagnostic_variables(i)%maximum, &
-               fill_value=model%horizontal_diagnostic_variables(i)%missing_value, category='fabm'//model%horizontal_diagnostic_variables(i)%target%owner%get_path(), output_level=output_level, used=in_output)
+            call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=in_output)
             if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
          end do
       end if
@@ -415,27 +407,13 @@
 
    if (present(field_manager)) then
       do i=1,size(model%state_variables)
-         output_level = output_level_default
-         if (model%state_variables(i)%output==output_none) output_level = output_level_debug
-         call field_manager%register(model%state_variables(i)%name, model%state_variables(i)%units, &
-            model%state_variables(i)%long_name, minimum=model%state_variables(i)%minimum, maximum=model%state_variables(i)%maximum, &
-            fill_value=model%state_variables(i)%missing_value, dimensions=(/id_dim_z/), data1d = cc(1:,i), category='fabm'//model%state_variables(i)%target%owner%get_path(), output_level=output_level)
+         call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i))
       end do
       do i=1,size(model%bottom_state_variables)
-         output_level = output_level_default
-         if (model%bottom_state_variables(i)%output==output_none) output_level = output_level_debug
-         call field_manager%register(model%bottom_state_variables(i)%name, model%bottom_state_variables(i)%units, &
-            model%bottom_state_variables(i)%long_name, minimum=model%bottom_state_variables(i)%minimum, &
-            maximum=model%bottom_state_variables(i)%maximum, fill_value=model%bottom_state_variables(i)%missing_value, &
-            data0d=cc(1,size(model%state_variables)+i), category='fabm'//model%bottom_state_variables(i)%target%owner%get_path(), output_level=output_level)
+         call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i))
       end do
       do i=1,size(model%surface_state_variables)
-         output_level = output_level_default
-         if (model%surface_state_variables(i)%output==output_none) output_level = output_level_debug
-         call field_manager%register(model%surface_state_variables(i)%name, model%surface_state_variables(i)%units, &
-            model%surface_state_variables(i)%long_name, minimum=model%surface_state_variables(i)%minimum, &
-            maximum=model%surface_state_variables(i)%maximum, fill_value=model%surface_state_variables(i)%missing_value, &
-            data0d=cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i), category='fabm'//model%surface_state_variables(i)%target%owner%get_path(), output_level=output_level)
+         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i))
       end do
 
       check_conservation = .false.
@@ -577,6 +555,27 @@
 
    end subroutine init_var_gotm_fabm
 !EOC
+
+   subroutine register_field(field_manager,variable,prefix,dimensions,data0d,data1d,used)
+      class (type_field_manager),     intent(inout) :: field_manager
+      class (type_external_variable), intent(in)    :: variable
+      character(len=*),optional,      intent(in)    :: prefix
+      integer,         optional,      intent(in)    :: dimensions(:)
+      real(rk),target, optional                     :: data0d, data1d(:)
+      logical,         optional,      intent(out)   :: used
+
+      integer :: output_level
+      character(len=8) :: prefix_
+
+      output_level = output_level_default
+      prefix_ = ''
+      if (variable%output==output_none) output_level = output_level_debug
+      if (present(prefix)) prefix_ = prefix
+      call field_manager%register(trim(prefix_)//variable%name, variable%units, variable%long_name, &
+         minimum=variable%minimum, maximum=variable%maximum, fill_value=variable%missing_value, &
+         dimensions=dimensions, data0d=data0d, data1d=data1d, category='fabm'//variable%target%owner%get_path(), &
+         output_level=output_level, used=used)
+   end subroutine register_field
 
 !-----------------------------------------------------------------------
 !BOP
