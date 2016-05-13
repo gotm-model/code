@@ -5,6 +5,8 @@
 			<title></title>
 			<nlev>100</nlev>
 			<dt>600.0</dt>
+			<hotstart_offline>False</hotstart_offline>
+			<hotstart_file>restart.nc</hotstart_file>
 			<cnpar>1.0</cnpar>
 			<buoy_method>1</buoy_method>
 		</model_setup>

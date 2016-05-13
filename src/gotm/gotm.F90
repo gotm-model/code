@@ -161,7 +161,8 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   namelist /model_setup/ title,nlev,dt,offline_hotstart,cnpar,buoy_method
+   namelist /model_setup/ title,nlev,dt,hotstart_offline,hotstart_file, &
+                          cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
 #if !defined(_FLEXIBLE_OUTPUT_)
@@ -170,8 +171,9 @@
                           diagnostics,mld_method,diff_k,Ri_crit,rad_corr
 #endif
    logical          ::    list_fields=.false.
-   logical          ::    online_hotstart=.false.
-   logical          ::    offline_hotstart = .false.
+   logical          ::    hotstart_online=.false.
+   character(LEN=PATH_MAX) :: hotstart_file
+   logical          ::    hotstart_offline = .false.
    integer          ::    rc
 !
 !-----------------------------------------------------------------------
@@ -180,7 +182,7 @@
    STDERR LINE
 
    if (present(t1)) then
-      online_hotstart = .true.
+      hotstart_online = .true.
    end if
 
 !  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
@@ -212,7 +214,7 @@
    read(namlst,nml=model_setup,err=91)
    read(namlst,nml=station,err=92)
    read(namlst,nml=time,err=93)
-   if (online_hotstart) then
+   if (hotstart_online) then
       LEVEL3 'online hotstart - updating values in the time namelist ...'
       LEVEL4 'orignal: ',start,' -> ',stop
       start = t1
@@ -228,8 +230,8 @@
 #endif
 
    LEVEL2 'done.'
-   hotstart = online_hotstart .or. offline_hotstart
-   if (online_hotstart) offline_hotstart = .false.
+   hotstart = hotstart_online .or. hotstart_offline
+   if (hotstart_online) hotstart_offline = .false.
 
 !  initialize a few things from  namelists
    timestep   = dt
@@ -241,6 +243,11 @@
    LEVEL2 'The station ',trim(name),' is situated at (lat,long) ',      &
            latitude,longitude
    LEVEL2 trim(name)
+
+   if (hotstart_offline) then
+      LEVEL2 'Offline hotstart - reading initial data from:'
+      LEVEL3 trim(hotstart_file)
+   end if
 
    LEVEL2 'initializing modules....'
    call init_input(nlev)
@@ -272,14 +279,14 @@
 
 !  initialise mean fields
    if (hotstart) then
-      if (offline_hotstart) then
+      if (hotstart_offline) then
          ! here we should read content of restart.nc
          ! call read_restart()
          ! for now
          s = sprof
          t = tprof
       end if
-      if (online_hotstart) then
+      if (hotstart_online) then
          ! here we should use a state_vector - like
          !s = state_vector(salt_range)
          !t = state_vector(temp_range)
