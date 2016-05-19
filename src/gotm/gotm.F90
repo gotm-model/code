@@ -764,6 +764,29 @@
       call file%append_category(category)
    end subroutine setup_restart
 
+   subroutine read_restart()
+      class (type_category_node),   pointer :: category
+      type (type_field_set)                 :: field_set
+      class (type_field_set_member),pointer :: member
+
+      category => fm%find_category('state')
+      if (associated(category)) call category%get_all_fields(field_set,huge(output_level_debug))
+
+      member => field_set%first
+      do while (associated(member))
+         ! This field is part of the model state. Its name is member%field%name.
+         if (associated(member%field%data_0d)) then
+            ! Depth-independent variable with data pointed to by child%field%data_0d
+            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data_0d.
+         elseif (associated(member%field%data_1d)) then
+            ! Depth-dependent variable with data pointed to by child%field%data_1d
+            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data_1d.
+         else
+            stop 'no data assigned to state field'
+         end if
+         member => member%next
+      end do
+   end subroutine read_restart
 !-----------------------------------------------------------------------
 
    end module gotm
