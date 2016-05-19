@@ -120,7 +120,8 @@ module field_manager
    type type_field_set
       type (type_field_set_member), pointer :: first => null()
    contains
-      procedure :: add => field_set_add
+      procedure :: add      => field_set_add
+      procedure :: finalize => field_set_finalize
    end type
 
    type type_field_manager
@@ -149,6 +150,7 @@ module field_manager
       procedure :: register_dimension
       procedure :: find_dimension
       procedure :: find_category
+      procedure :: get_state
       generic :: send_data => send_data_0d,send_data_1d,send_data_2d,send_data_3d,send_data_by_name_0d,send_data_by_name_1d
    end type type_field_manager
 
@@ -367,6 +369,20 @@ contains
       member%next => self%first
       self%first => member
    end subroutine field_set_add
+
+   subroutine field_set_finalize(self)
+      class (type_field_set), intent(inout) :: self
+
+      type (type_field_set_member),pointer :: member,next_member
+
+      member => self%first
+      do while (associated(member))
+         next_member => member%next
+         deallocate(member)
+         member => next_member
+      end do
+      self%first => null()
+   end subroutine field_set_finalize
 
    recursive subroutine get_all_fields(self,set,output_level)
       class (type_category_node), intent(inout) :: self
@@ -829,5 +845,14 @@ contains
       end do
       self%first_child => null()
    end subroutine node_finalize
+
+   function get_state(self) result(field_set)
+      class (type_field_manager),intent(inout) :: self
+      type (type_field_set)                    :: field_set
+
+      class (type_category_node),   pointer :: category
+      category => self%find_category('state')
+      if (associated(category)) call category%get_all_fields(field_set,huge(output_level_debug))
+   end function get_state
 
 end module field_manager
