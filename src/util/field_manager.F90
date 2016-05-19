@@ -148,6 +148,7 @@ module field_manager
       procedure :: select_category_for_output
       procedure :: register_dimension
       procedure :: find_dimension
+      procedure :: find_category
       generic :: send_data => send_data_0d,send_data_1d,send_data_2d,send_data_3d,send_data_by_name_0d,send_data_by_name_1d
    end type type_field_manager
 
@@ -332,7 +333,7 @@ contains
       integer,                   intent(in)    :: output_level
       class (type_category_node), pointer       :: category
 
-      category => find_category(self,name,create=.true.)
+      category => self%find_category(name,create=.true.)
       call activate(category)
    contains
       recursive subroutine activate(category)
@@ -614,7 +615,7 @@ contains
 
       ! Find parent node
       parent => self%root
-      if (present(category)) parent => find_category(self,category,create=.true.)
+      if (present(category)) parent => self%find_category(category,create=.true.)
 
       ! If field has not been selected for output yet, do so if its output_level does not exceed that the parent category.
       if (.not.field%in_output) field%in_output = field%output_level<=parent%output_level
