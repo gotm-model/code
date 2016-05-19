@@ -765,13 +765,10 @@
    end subroutine setup_restart
 
    subroutine read_restart()
-      class (type_category_node),   pointer :: category
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
 
-      category => fm%find_category('state')
-      if (associated(category)) call category%get_all_fields(field_set,huge(output_level_debug))
-
+      field_set = fm%get_state()
       member => field_set%first
       do while (associated(member))
          ! This field is part of the model state. Its name is member%field%name.
@@ -786,6 +783,7 @@
          end if
          member => member%next
       end do
+      call field_set%finalize()
    end subroutine read_restart
 !-----------------------------------------------------------------------
 
