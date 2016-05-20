@@ -224,6 +224,7 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
 add_library(input OBJECT
             input/input.F90
+            input/input_netcdf.F90
            )
 add_dependencies(input util)
 
