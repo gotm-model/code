@@ -45,6 +45,7 @@
 
    use meanflow
    use input
+   use input_netcdf, only: read_restart_data
    use observations
    use time
 
@@ -278,26 +279,8 @@
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
 !  initialise mean fields
-   if (hotstart) then
-      if (hotstart_offline) then
-         ! here we should read content of restart.nc
-         ! call read_restart()
-         ! for now
-         s = sprof
-         t = tprof
-      end if
-      if (hotstart_online) then
-         ! here we should use a state_vector - like
-         !s = state_vector(salt_range)
-         !t = state_vector(temp_range)
-         ! for now
-         s = sprof
-         t = tprof
-      end if
-   else
-      s = sprof
-      t = tprof
-   end if
+   s = sprof
+   t = tprof
    u = uprof
    v = vprof
 
@@ -309,6 +292,24 @@
    call init_air_sea(namlst,latitude,longitude)
 
    call do_register_all_variables(latitude,longitude,nlev)
+
+   if (hotstart) then
+      if (hotstart_offline) then
+         call read_restart()
+      end if
+      if (hotstart_online) then
+         ! here we should use a state_vector - like
+         !s = state_vector(salt_range)
+         !t = state_vector(temp_range)
+         ! for now
+         s = sprof
+         t = tprof
+      end if
+!KB
+      call friction(kappa,avmolu,tx,ty)
+!KB
+   end if
+
 #if defined(_FLEXIBLE_OUTPUT_)
    allocate(type_gotm_host::output_manager_host)
    call output_manager_init(fm,title)
@@ -440,15 +441,17 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (.not. hotstart) then
 #if !defined(_FLEXIBLE_OUTPUT_)
-   LEVEL1 'saving initial conditions'
-   call prepare_output(0_timestepkind)
-   if (write_results) then
-      call do_all_output(0_timestepkind)
-   end if
+      LEVEL1 'saving initial conditions'
+      call prepare_output(0_timestepkind)
+      if (write_results) then
+         call do_all_output(0_timestepkind)
+      end if
 #else
-   call output_manager_save(julianday,secondsofday,0)
+      call output_manager_save(julianday,secondsofday,0)
 #endif
+   end if
    STDERR LINE
    LEVEL1 'time_loop'
    progress = (MaxN-MinN+1)/10
@@ -747,6 +750,7 @@
    subroutine setup_restart()
       use netcdf_output
       use output_manager_core
+      use time, only: jul2,secs2
 
       class (type_netcdf_file),     pointer :: file
       class (type_output_category), pointer :: category
@@ -755,6 +759,8 @@
       file%path = 'restart'
       file%time_unit = time_unit_day
       file%time_step = 1
+      file%first_julian = jul2
+      file%first_seconds = secs2
       file%default_data_type = NF90_DOUBLE
       call output_manager_add_file(fm,file)
 
@@ -775,9 +781,11 @@
          if (associated(member%field%data_0d)) then
             ! Depth-independent variable with data pointed to by child%field%data_0d
             ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data_0d.
+            call read_restart_data(trim(member%field%name),data_0d=member%field%data_0d)
          elseif (associated(member%field%data_1d)) then
             ! Depth-dependent variable with data pointed to by child%field%data_1d
             ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data_1d.
+            call read_restart_data(trim(member%field%name),data_1d=member%field%data_1d)
          else
             stop 'no data assigned to state field'
          end if
