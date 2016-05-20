@@ -57,7 +57,7 @@
 #endif
 
 !  run the model
-#if 0
+#if 1
    call init_gotm()
 #else
    call init_gotm(t1='1998-02-01 00:00:00',t2='1998-07-01 00:00:00')
