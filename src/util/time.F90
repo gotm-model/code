@@ -43,6 +43,7 @@
    integer,           public           :: timefmt
    integer,parameter, public           :: timestepkind = selected_int_kind(12)
    integer(kind=timestepkind), public  :: MinN,MaxN
+   integer, public                     :: jul2,secs2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -83,7 +84,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                    :: jul1,secs1,jul2,secs2
+   integer                    :: jul1,secs1
    integer(kind=timestepkind) :: nsecs
    integer                    :: ndays
 !
