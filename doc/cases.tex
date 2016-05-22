@@ -475,23 +475,33 @@ friction coefficient in m$^{-1}$.
 
 \subsection{Shelf sea scenarios}
 
-All shelf sea scenarios briefly discussed here are from the Irish Sea and the
-North Sea. A Baltic Sea mixed layer scenario is in preparation.
+All shelf sea scenarios briefly discussed here are from the Irish Sea, the
+North Sea and the Baltic Sea.
 
-\subsubsection{Fladenground Experiment}\label{flex}
+\subsubsection{Fladenground Experiment ({\tt flex})}\label{flex}
 
-A data set which has been used throughout the last 20 years
+A data set which has been used throughout the last 40 years
 as a calibration for mixing parameterisations
 has been collected during the
 measurements of the Fladenground
-Experiment 1976 (FLEX'76) campaign. These measurements
+Experiment 1976 (FLEX'76) campaign. 
+Starting from a well-mixed winter situation, a surface mixed layer is
+established, which is several times deepened and partly removed by
+strom events.
+
+The measurements
 of meteorological forcing and potential temperature profiles
 were carried out in spring 1976 in the northern North Sea at a water
 depth of about 145 m and a geographical position
 at 58$^{\circ}$55'N and 0$^{\circ}$32'E. 
+
 The simulation is run from April 6 to June 7, 1976.
-The \cite{Kondo75} bulk formulae have been used for calculating the
-surface fluxes. 
+The \cite{Kondo75} bulk formulae have been used for pre-calculating the
+surface fluxes, which are given in the data files 
+{\tt momentumflux.dat} and {\tt heatflux.dat}.
+Other meteorological data files are for sea surface temperature ({\tt sst.dat}) 
+and short wave radiation ({\tt swr.dat}).
+
 For further details concerning the measurements,
 see \cite{Soetjeetal80} and \cite{Brockmannetal85}.
 This FLEX'76 data set has been used by several authors in order to
@@ -503,23 +513,20 @@ test different mixing schemes (see e.g.\ \cite{Friedrich83},
 {\bf Data files:}
 
 \begin{tabular}{ll}
-{\tt momentumflux.dat}&  surface stress components, $\tau_x$ and
-$\tau_y$ in N\,m$^{-2}$ \\
-{\tt heatflux.dat}    &  solar radiation and outgoing heat flux, $Q_{in}$ and 
-                   $Q_{out}$ in W\,m$^{-2}$ \\
+{\tt momentumflux.dat}&  surface stress components, $\tau_x$ and $\tau_y$ in N\,m$^{-2}$ \\
+{\tt heatflux.dat}    &  net surface heat flux in W\,m$^{-2}$ (negative for outgoing)\\
+{\tt swr.dat}         &  short wave radiation in W\,m$^{-2}$ \\ 
 {\tt sst.dat}         &  observed SST in $^{\circ}$C \\ 
-               
-{\tt pressure.dat}    & time series of surface slopes fitted to the local
-spring-neap cycle  \\ 
+{\tt pressure.dat}    & time series of surface slopes fitted to the local spring-neap cycle  \\ 
 {\tt tprof.dat}       & profiles of measured potential temperature for initial conditions and \\ & validation, data are reanalysed and low pass filtered \\  
-{\tt sprof.dat}       & profiles of idealised salinity for initial conditions and relaxation \\   
-{\tt tprof\_ctd}       & CTD-profiles of potential temperature, with some gaps \\
-{\tt sprof\_ctd}       & CTD-profiles of salinity, with some gaps \\
+{\tt sprof.dat}       & salinity profiles from a 3D model (for initial conditions and relaxation) \\   
+{\tt tprof\_ctd.dat}  & CTD-profiles of potential temperature, with some gaps \\
+{\tt sprof\_ctd.dat}  & CTD-profiles of salinity, with some gaps \\
 {\tt extinction.dat}  & extinction coefficients fitted to measurements \\  
 \end{tabular}
 
 
-\subsubsection{Annual North Sea simulation}\label{nns_annual}
+\subsubsection{Annual North Sea simulation ({\tt nns\_annual})}\label{nns_annual}
 
 Here the annual simulation of the Northern Sea at 59$^{\circ}$20" N
 and 1$^{\circ}$17' E during the year 1998 as discussed
@@ -527,15 +534,16 @@ by \cite{Boldingetal2002} is performed.
 
 For this simulation, time series of surface slopes 
 $\partial_x \zeta$ and $\partial_y \zeta$ were extrapolated from observations
-during autumn 1998 based on four partial tides by means of harmonic analysis
-(the program for doing this was kindly provided by Frank Janssen, now at
-the Baltic Sea Research Institute Warnem\"unde). 
-All necessary meteorological data are from the UK Meteorological Office Model. 
+during autumn 1998 based on four partial tides by means of harmonic analysis.
+All necessary meteorological data are from the UK Meteorological Office Model
+in a 6-hourly temporal resolution ({\tt meteo.dat}).
+For the period of the PROVESS campaign 
+(Sep 7 - Nov 7, 1998, see \cite{Howarth_etal_2002,Boldingetal2002})  
+higher resolution data (half-hourly) 
+from research vessels are available and pasted
+in an extended meteo data file {\tt meteonns.dat}).
 For calculating the resulting surface fluxes, the bulk formulae from
 \cite{Kondo75} are used here.
-Since no observations for the sea surface temperature (SST)
-are available for the whole year 1998 at station NNS, the simulated SST
-is used as input into the bulk formulae.
 For the evolution of the vertical
 salinity profile, which is known to stabilise stratification
 during summer months, a relaxation to results obtained with a
@@ -545,6 +553,9 @@ By doing so, the horizontal advection, which is the dominant process
 for salinity dynamics in the Northern North Sea, is parameterised.
 \\ 
 
+The {\tt nns\_annual} scenario is also used as a basis for
+driving the NPZD model (see section \ref{nns_annual_npzd}).
+
 {\bf Data files:}
 
 \begin{tabular}{ll}
@@ -553,10 +564,15 @@ of \cite{Pohlmann96}\\
 {\tt tprof.dat}         &  potential temperature in $^{\circ}$C from the three-dimensional \\
                         &  model of \cite{Pohlmann96}\\ 
 {\tt pressure.dat} & sea surface slopes from tidal analysis of observations \\
-{\tt meteonns.dat} & meteorological data from UK Met Office model \\
+{\tt meteo.dat} & meteorological data from UK Met Office model (6-hourly) \\
+{\tt meteonns.dat} & meteorological data from UK Met Office model, including 
+half-hourly \\ & PROVESS vampaign data for Sep - Nov 1998 \\
 {\tt sst.dat} & sea surface temperature in $^{\circ}$C
 from analysis by Bundesamt f\"ur \\ & Seeschifffahrt und
-Hydrographie, Hamburg, Germany
+Hydrographie, Hamburg, Germany \\
+{\tt zeta.dat} & sea surface elevation data in m from three-dimensional model
+\\ & 
+of \cite{Pohlmann96}
 \end{tabular}
 
 
