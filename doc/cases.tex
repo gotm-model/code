@@ -528,7 +528,7 @@ test different mixing schemes (see e.g.\ \cite{Friedrich83},
 
 \subsubsection{Annual North Sea simulation ({\tt nns\_annual})}\label{nns_annual}
 
-Here the annual simulation of the Northern Sea at 59$^{\circ}$20" N
+Here the annual simulation of the Northern Sea at 59$^{\circ}$20' N
 and 1$^{\circ}$17' E during the year 1998 as discussed
 by \cite{Boldingetal2002} is performed.
 
@@ -541,7 +541,9 @@ For the period of the PROVESS campaign
 (Sep 7 - Nov 7, 1998, see \cite{Howarth_etal_2002,Boldingetal2002})  
 higher resolution data (half-hourly) 
 from research vessels are available and pasted
-in an extended meteo data file {\tt meteonns.dat}).
+in an extended meteo data file ({\tt meteonns.dat})\footnote{See section
+\ref{nns_seasonal} 
+for a shorter term scenario only including the campaign period.}.
 For calculating the resulting surface fluxes, the bulk formulae from
 \cite{Kondo75} are used here.
 For the evolution of the vertical
@@ -551,10 +553,10 @@ prognostic three-dimensional model of the North Sea
 by \cite{Pohlmann96}. 
 By doing so, the horizontal advection, which is the dominant process
 for salinity dynamics in the Northern North Sea, is parameterised.
-\\ 
 
 The {\tt nns\_annual} scenario is also used as a basis for
 driving the NPZD model (see section \ref{nns_annual_npzd}).
+\\
 
 {\bf Data files:}
 
@@ -576,9 +578,10 @@ of \cite{Pohlmann96}
 \end{tabular}
 
 
-\subsubsection{Seasonal North Sea simulation}\label{nns_seasonal}
+\subsubsection{Seasonal North Sea simulation ({\tt nns\_seasonal})}\label{nns_seasonal}
 
-This Northern North Sea Experiment has been carried out in the framework
+This Northern North Sea seasonal experiment has been carried out in the 
+framework
 of the PROVESS (PROcesses of VErtical mixing in Shealf Seas) project 
 (MAS3-CT97-0025, 1998-2001) which has been funded by the European Communities 
 MAST-III program.
@@ -589,7 +592,7 @@ Here, a period of 20 days from October 7 - 27, 1998 is simulated.
 All forcing and validation data have been carefully processed from
 observations during this PROVESS-NNS experiment. 
 
-Two different dissipation rate data sets are included:
+Two different observational dissipation rate data sets are included:
 
 \begin{tabular}{ll}
 {\tt eps\_fly.dat}& data from a FLY profiler, processed by School
@@ -602,7 +605,8 @@ These files can be read in into GOTM through the {\tt eobs} namelist in
 {\tt obs.nml}.  The dissipation rate has only been observed at 
 short intervals, periods without observations are set to minimum 
 values in the files. These dissipation rate observations are read in
-into GOTM in order to allow for proper interpolation to the temporal and spatial
+into GOTM in order to allow for proper interpolation to the temporal 
+and spatial
 output steps, and they are not used for any type of nudging.
 
 The data files are prepared such that the maximum simulation
