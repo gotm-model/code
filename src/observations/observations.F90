@@ -175,7 +175,7 @@
    REALTYPE, public          :: vel_relax_ramp
 
 !  Observed dissipation profiles
-   integer                   :: e_prof_method
+   integer, public           :: e_prof_method
    REALTYPE                  :: e_obs_const
    CHARACTER(LEN=PATH_MAX)   :: e_prof_file
 
@@ -188,7 +188,7 @@
 ! !DEFINED PARAMETERS:
 
 !  pre-defined parameters
-   integer, parameter        :: NOTHING=0
+   integer, parameter, public :: NOTHING=0
    integer, parameter        :: ANALYTICAL=1
    integer, parameter        :: CONSTANT=1
    integer, parameter        :: FROMFILE=2
