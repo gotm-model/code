@@ -100,7 +100,8 @@
    integer, private          :: mean1_id,mean2_id,mean3_id,mean4_id,mean5_id
    integer, private          :: turb1_id,turb2_id,turb3_id,turb4_id,turb5_id
 # endif
-   integer, private          :: eps_id,epsb_id,eps_obs_id
+   integer, private          :: eps_id,epsb_id
+   integer, private          :: eps_obs_id=-1
    integer, private          :: P_id,G_id,Pb_id
    integer, private          :: uu_id,vv_id,ww_id
    integer, private          :: o2_obs_id
@@ -122,6 +123,7 @@
 !
 ! !USES:
    use airsea,       only: hum_method
+   use observations, only: epsprof
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -332,8 +334,10 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'epsb',NCDF_FLOAT_PRECISION,dim4d,epsb_id)
       call check_err(iret)
-      iret = nf90_def_var(ncid,'eps_obs',NCDF_FLOAT_PRECISION,dim4d,eps_obs_id)
-      call check_err(iret)
+      if (allocated(epsprof)) then
+         iret = nf90_def_var(ncid,'eps_obs',NCDF_FLOAT_PRECISION,dim4d,eps_obs_id)
+         call check_err(iret)
+      end if
       iret = nf90_def_var(ncid,'P',NCDF_FLOAT_PRECISION,dim4d,P_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'G',NCDF_FLOAT_PRECISION,dim4d,G_id)
@@ -474,7 +478,7 @@
       iret = set_attributes(ncid,l_id,units='m',long_name='turbulent macro length scale')
       iret = set_attributes(ncid,eps_id,units='m2/s3',long_name='dissipation rate of tke')
       iret = set_attributes(ncid,epsb_id,units='m2/s5',long_name='destruction of kb')
-      iret = set_attributes(ncid,eps_obs_id,units='m2/s3',long_name='obs. dissipation')
+      if (eps_obs_id.ne.-1) iret = set_attributes(ncid,eps_obs_id,units='m2/s3',long_name='obs. dissipation')
       iret = set_attributes(ncid,P_id,units='m2/s3',long_name='shear production')
       iret = set_attributes(ncid,G_id,units='m2/s3',long_name='buoyancy production')
       iret = set_attributes(ncid,Pb_id,units='m2/s5',long_name='production of kb')
@@ -707,7 +711,7 @@
       iret = store_data(ncid,eps_id,XYZT_SHAPE,nlev,array=eps)
       iret = store_data(ncid,epsb_id,XYZT_SHAPE,nlev,array=epsb)
       iret = store_data(ncid,l_id,XYZT_SHAPE,nlev,array=L)
-      if (allocated(epsprof)) iret = store_data(ncid,eps_obs_id,XYZT_SHAPE,nlev,array=epsprof)
+      if (eps_obs_id.ne.-1) iret = store_data(ncid,eps_obs_id,XYZT_SHAPE,nlev,array=epsprof)
       iret = store_data(ncid,P_id,XYZT_SHAPE,nlev,array=P)
       iret = store_data(ncid,G_id,XYZT_SHAPE,nlev,array=B)
       iret = store_data(ncid,Pb_id,XYZT_SHAPE,nlev,array=Pb)
