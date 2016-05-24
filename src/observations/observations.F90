@@ -175,7 +175,7 @@
    REALTYPE, public          :: vel_relax_ramp
 
 !  Observed dissipation profiles
-   integer, public           :: e_prof_method
+   integer                   :: e_prof_method
    REALTYPE                  :: e_obs_const
    CHARACTER(LEN=PATH_MAX)   :: e_prof_file
 
@@ -188,7 +188,7 @@
 ! !DEFINED PARAMETERS:
 
 !  pre-defined parameters
-   integer, parameter, public :: NOTHING=0
+   integer, parameter        :: NOTHING=0
    integer, parameter        :: ANALYTICAL=1
    integer, parameter        :: CONSTANT=1
    integer, parameter        :: FROMFILE=2
@@ -471,10 +471,6 @@
    if (rc /= 0) stop 'init_observations: Error allocating (vprof)'
    vprof = _ZERO_
 
-   allocate(epsprof(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_observations: Error allocating (epsprof)'
-   epsprof = _ZERO_
-
    db=_ZERO_
    ds=depth
    SRelaxTau(0)=SRelaxTauB
@@ -738,8 +734,10 @@
 !  The observed dissipation profile
    select case (e_prof_method)
       case (NOTHING)
-         epsprof = _ZERO_
       case (FROMFILE)
+         allocate(epsprof(0:nlev),stat=rc)
+         if (rc /= 0) stop 'init_observations: Error allocating (epsprof)'
+         epsprof = _ZERO_
          call register_input_1d(e_prof_file,1,epsprof,'observed turbulence dissipation')
          LEVEL2 'Reading dissipation profiles from:'
          LEVEL3 trim(e_prof_file)

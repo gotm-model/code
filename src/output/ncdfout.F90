@@ -707,7 +707,7 @@
       iret = store_data(ncid,eps_id,XYZT_SHAPE,nlev,array=eps)
       iret = store_data(ncid,epsb_id,XYZT_SHAPE,nlev,array=epsb)
       iret = store_data(ncid,l_id,XYZT_SHAPE,nlev,array=L)
-      iret = store_data(ncid,eps_obs_id,XYZT_SHAPE,nlev,array=epsprof)
+      if (allocated(epsprof)) iret = store_data(ncid,eps_obs_id,XYZT_SHAPE,nlev,array=epsprof)
       iret = store_data(ncid,P_id,XYZT_SHAPE,nlev,array=P)
       iret = store_data(ncid,G_id,XYZT_SHAPE,nlev,array=B)
       iret = store_data(ncid,Pb_id,XYZT_SHAPE,nlev,array=Pb)
