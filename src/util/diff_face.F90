@@ -54,7 +54,7 @@
 
 
 ! !INPUT/OUTPUT PARAMETERS:
-   REALTYPE                            :: Y(0:N)
+   REALTYPE, intent(inout)             :: Y(0:N)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
