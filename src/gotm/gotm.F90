@@ -346,6 +346,7 @@
 #endif
 
    call do_input(julianday,secondsofday,nlev,z)
+   call do_air_sea(julianday,secondsofday)
 
 !  Call stratification to make sure density has sensible value.
 !  This is needed to ensure the initial density is saved correctly by do_all_output, and also for FABM.
@@ -376,6 +377,7 @@
 #ifdef _PRINTSTATE_
    call print_state
 #endif
+
 
    return
 
