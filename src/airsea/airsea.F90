@@ -1,5 +1,5 @@
 #include "cppdefs.h"
-!#define INTERPOLATE_METEO 1
+#define INTERPOLATE_METEO 1
 !-----------------------------------------------------------------------
 !BOP
 !
