@@ -197,7 +197,7 @@
    integer,  intent(in)                :: mode
 !
 ! !INPUT/OUTPUT PARAMETERS:
-   REALTYPE                            :: Y(0:N)
+   REALTYPE, intent(inout)             :: Y(0:N)
 !
 ! !DEFINED PARAMETERS:
    REALTYPE,     parameter             :: one6th=1.0d0/6.0d0
