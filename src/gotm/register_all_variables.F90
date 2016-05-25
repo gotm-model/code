@@ -356,7 +356,7 @@
    call fm%register('Pb', 'm2/s5', 'production of kb', standard_name='??', dimensions=(/id_dim_z1/), data1d=Pb(1:nlev),category='turbulence')
    call fm%register('num', 'm2/s', 'turbulent diffusivity of momentum', standard_name='??', dimensions=(/id_dim_z1/), data1d=num(1:nlev),category='turbulence',part_of_state=.true.)
    call fm%register('nuh', 'm2/s', 'turbulent diffusivity of heat', standard_name='??', dimensions=(/id_dim_z1/), data1d=nuh(1:nlev),category='turbulence',part_of_state=.true.)
-   call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_z1/), data1d=nus(1:nlev),category='turbulence')
+   call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_z1/), data1d=nus(1:nlev),category='turbulence',part_of_state=.true.)
    call fm%register('gamu', 'm2/s2', 'non-local flux of u-momentum', standard_name='??', dimensions=(/id_dim_z1/), data1d=gamu(1:nlev),category='turbulence')
    call fm%register('gamv', 'm2/s2', 'non-local flux of v-momentum', standard_name='??', dimensions=(/id_dim_z1/), data1d=gamv(1:nlev),category='turbulence')
    call fm%register('gamb', 'm2/s3', 'non-local  buoyancy flux', standard_name='??', dimensions=(/id_dim_z1/), data1d=gamb(1:nlev),category='turbulence')
