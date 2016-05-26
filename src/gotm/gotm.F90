@@ -350,6 +350,7 @@
 
 !  Call stratification to make sure density has sensible value.
 !  This is needed to ensure the initial density is saved correctly by do_all_output, and also for FABM.
+   call shear(nlev,cnpar)
    call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
 
 #ifdef _FABM_
