@@ -18,7 +18,7 @@ module netcdf_output
       integer :: reference_julian  = -1
       integer :: reference_seconds = -1
       integer :: sync_interval = 1  ! Number of output time step between calls to nf90_sync (-1 to disable syncing)
-      integer :: default_data_type = NF90_FLOAT ! Floating point type (either NF90_FLOAT or NF90_DOUBLE)
+      integer :: default_xtype = NF90_FLOAT ! Floating point type (either NF90_FLOAT or NF90_DOUBLE)
    contains
       procedure :: configure
       procedure :: initialize
@@ -32,6 +32,7 @@ module netcdf_output
       integer,allocatable :: start(:)
       integer,allocatable :: edges(:)
       integer :: itimedim = -1
+      integer :: xtype = NF90_FLOAT
    end type
 
 contains
@@ -139,15 +140,15 @@ contains
             do i=1,size(output_field%source%dimensions)
                current_dim_ids(i) = get_dim_id(output_field%source%dimensions(i)%p)
             end do
-            iret = nf90_def_var(self%ncid,output_field%output_name, self%default_data_type, current_dim_ids, output_field%varid); call check_err(iret)
+            iret = nf90_def_var(self%ncid,output_field%output_name, output_field%xtype, current_dim_ids, output_field%varid); call check_err(iret)
             deallocate(current_dim_ids)
 
             iret = nf90_put_att(self%ncid,output_field%varid,'units',trim(output_field%source%units)); call check_err(iret)
             iret = nf90_put_att(self%ncid,output_field%varid,'long_name',trim(output_field%source%long_name)); call check_err(iret)
             if (output_field%source%standard_name/='') iret = nf90_put_att(self%ncid,output_field%varid,'standard_name',trim(output_field%source%standard_name)); call check_err(iret)
-            if (output_field%source%minimum/=default_minimum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_min',output_field%source%minimum,self%default_data_type); call check_err(iret)
-            if (output_field%source%maximum/=default_maximum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_max',output_field%source%maximum,self%default_data_type); call check_err(iret)
-            if (output_field%source%fill_value/=default_fill_value) iret = put_att_typed_real(self%ncid,output_field%varid,'_FillValue',output_field%source%fill_value,self%default_data_type); call check_err(iret)
+            if (output_field%source%minimum/=default_minimum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_min',output_field%source%minimum,output_field%xtype); call check_err(iret)
+            if (output_field%source%maximum/=default_maximum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_max',output_field%source%maximum,output_field%xtype); call check_err(iret)
+            if (output_field%source%fill_value/=default_fill_value) iret = put_att_typed_real(self%ncid,output_field%varid,'_FillValue',output_field%source%fill_value,output_field%xtype); call check_err(iret)
             attribute => output_field%source%first_attribute
             do while (associated(attribute))
                select type (attribute)
@@ -226,7 +227,12 @@ contains
    function create_field(self) result(field)
       class (type_netcdf_file),intent(inout) :: self
       class (type_output_field), pointer :: field
+
       allocate(type_netcdf_field::field)
+      select type (field)
+      class is (type_netcdf_field)
+         field%xtype = self%default_xtype
+      end select
    end function create_field
 
    subroutine save(self,julianday,secondsofday)
