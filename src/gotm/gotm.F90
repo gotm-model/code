@@ -764,7 +764,7 @@
       file%time_step = 1
       file%first_julian = jul2
       file%first_seconds = secs2
-      file%default_data_type = NF90_DOUBLE
+      file%default_xtype = NF90_DOUBLE
       call output_manager_add_file(fm,file)
 
       allocate(category)
