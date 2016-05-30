@@ -587,7 +587,7 @@ contains
       class (type_integer_attribute),pointer :: attribute
 
       allocate(attribute)
-      attribute%name = name
+      attribute%value = value
       call field_set_attribute(self,name,attribute)
    end subroutine field_set_integer_attribute
 
