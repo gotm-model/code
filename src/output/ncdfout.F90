@@ -85,14 +85,17 @@
    integer, private          :: u_taus_id,u_taub_id
    integer, private          :: zsbl_id,zbbl_id
    integer, private          :: h_id
-   integer, private          :: u_id,u_obs_id
-   integer, private          :: v_id,v_obs_id
+   integer, private          :: u_id
+   integer, private          :: u_obs_id=-1
+   integer, private          :: v_id
+   integer, private          :: v_obs_id=-1
    integer, private          :: rad_id
    integer, private          :: temp_id,temp_obs_id
    integer, private          :: salt_id,salt_obs_id
    integer, private          :: num_id,nuh_id,nus_id
    integer, private          :: gamu_id,gamv_id,gamh_id,gams_id
-   integer, private          :: SS_id,SS_obs_id
+   integer, private          :: SS_id
+   integer, private          :: SS_obs_id=-1
    integer, private          :: NN_id,NN_obs_id
    integer, private          :: sigma_t_id,sigma_t_obs_id
    integer, private          :: tke_id,kb_id,l_id
@@ -123,7 +126,7 @@
 !
 ! !USES:
    use airsea,       only: hum_method
-   use observations, only: epsprof
+   use observations, only: uprof,vprof,epsprof
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -277,12 +280,16 @@
    call check_err(iret)
    iret = nf90_def_var(ncid,'u',NCDF_FLOAT_PRECISION,dim4d,u_id)
    call check_err(iret)
-   iret = nf90_def_var(ncid,'u_obs',NCDF_FLOAT_PRECISION,dim4d,u_obs_id)
-   call check_err(iret)
+   if (allocated(uprof)) then
+     iret = nf90_def_var(ncid,'u_obs',NCDF_FLOAT_PRECISION,dim4d,u_obs_id)
+     call check_err(iret)
+   end if
    iret = nf90_def_var(ncid,'v',NCDF_FLOAT_PRECISION,dim4d,v_id)
    call check_err(iret)
-   iret = nf90_def_var(ncid,'v_obs',NCDF_FLOAT_PRECISION,dim4d,v_obs_id)
-   call check_err(iret)
+   if (allocated(vprof)) then
+      iret = nf90_def_var(ncid,'v_obs',NCDF_FLOAT_PRECISION,dim4d,v_obs_id)
+      call check_err(iret)
+   end if
    iret = nf90_def_var(ncid,'salt',NCDF_FLOAT_PRECISION,dim4d,salt_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'salt_obs',NCDF_FLOAT_PRECISION,dim4d,salt_obs_id)
@@ -295,8 +302,10 @@
    call check_err(iret)
    iret = nf90_def_var(ncid,'SS',NCDF_FLOAT_PRECISION,dim4d,SS_id)
    call check_err(iret)
-   iret = nf90_def_var(ncid,'SS_obs',NCDF_FLOAT_PRECISION,dim4d,SS_obs_id)
-   call check_err(iret)
+   if (allocated(uprof) .and. allocated(vprof)) then
+      iret = nf90_def_var(ncid,'SS_obs',NCDF_FLOAT_PRECISION,dim4d,SS_obs_id)
+      call check_err(iret)
+   end if
    iret = nf90_def_var(ncid,'NN',NCDF_FLOAT_PRECISION,dim4d,NN_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'NN_obs',NCDF_FLOAT_PRECISION,dim4d,NN_obs_id)
@@ -448,9 +457,9 @@
 !  x,y,z,t
    iret = set_attributes(ncid,h_id,units='m',long_name='layer thickness')
    iret = set_attributes(ncid,u_id,units='m/s',long_name='x-velocity')
-   iret = set_attributes(ncid,u_obs_id,units='m/s',long_name='obs. x-velocity')
+   if (u_obs_id.ne.-1) iret = set_attributes(ncid,u_obs_id,units='m/s',long_name='obs. x-velocity')
    iret = set_attributes(ncid,v_id,units='m/s',long_name='y-velocity')
-   iret = set_attributes(ncid,v_obs_id,units='m/s',long_name='obs. y-velocity')
+   if (v_obs_id.ne.-1) iret = set_attributes(ncid,v_obs_id,units='m/s',long_name='obs. y-velocity')
    iret = set_attributes(ncid,salt_id,units='g/kg',long_name='salinity')
    iret = set_attributes(ncid,salt_obs_id,units='g/kg',long_name='obs. salinity')
    iret = set_attributes(ncid,rad_id,units='W/m2',long_name='radiation')
@@ -459,7 +468,7 @@
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
    iret = set_attributes(ncid,sigma_t_id,units='kg/m3',long_name='sigma_t')
-   iret = set_attributes(ncid,SS_obs_id,units='1/s2',long_name='observed shear frequency')
+   if (SS_obs_id.ne.-1) iret = set_attributes(ncid,SS_obs_id,units='1/s2',long_name='observed shear frequency')
    iret = set_attributes(ncid,NN_obs_id,units='1/s2',long_name='observed buoyancy frequency')
    iret = set_attributes(ncid,sigma_t_obs_id,units='kg/m3',long_name='observed sigma_t')
 
@@ -655,9 +664,9 @@
 !  Time varying profile data : x,y,z,t
    iret = store_data(ncid,h_id,XYZT_SHAPE,nlev,array=h)
    iret = store_data(ncid,u_id,XYZT_SHAPE,nlev,array=u)
-   iret = store_data(ncid,u_obs_id,XYZT_SHAPE,nlev,array=uprof)
+   if (u_obs_id.ne.-1) iret = store_data(ncid,u_obs_id,XYZT_SHAPE,nlev,array=uprof)
    iret = store_data(ncid,v_id,XYZT_SHAPE,nlev,array=v)
-   iret = store_data(ncid,v_obs_id,XYZT_SHAPE,nlev,array=vprof)
+   if (v_obs_id.ne.-1) iret = store_data(ncid,v_obs_id,XYZT_SHAPE,nlev,array=vprof)
    iret = store_data(ncid,salt_id,XYZT_SHAPE,nlev,array=S)
    iret = store_data(ncid,salt_obs_id,XYZT_SHAPE,nlev,array=sprof)
    iret = store_data(ncid,rad_id,XYZT_SHAPE,nlev,array=rad)
@@ -669,12 +678,14 @@
    dum(1:nlev)=-buoy(1:nlev)*rho_0/gravity+rho_0-1000.
    iret = store_data(ncid,sigma_t_id,XYZT_SHAPE,nlev,array=dum)
 
-   do i=1,nlev-1
-     dum(i)=((uprof(i+1)-uprof(i))/(0.5*(h(i+1)+h(i))))**2 +  &
-            ((vprof(i+1)-vprof(i))/(0.5*(h(i+1)+h(i))))**2
-   end do
-   dum(nlev)=dum(nlev-1)
-   iret = store_data(ncid,SS_obs_id,XYZT_SHAPE,nlev,array=dum)
+   if (SS_obs_id.ne.-1) then
+      do i=1,nlev-1
+        dum(i)=((uprof(i+1)-uprof(i))/(0.5*(h(i+1)+h(i))))**2 +  &
+               ((vprof(i+1)-vprof(i))/(0.5*(h(i+1)+h(i))))**2
+      end do
+      dum(nlev)=dum(nlev-1)
+      iret = store_data(ncid,SS_obs_id,XYZT_SHAPE,nlev,array=dum)
+   end if
 
    zz = _ZERO_
    do i=nlev-1,1,-1

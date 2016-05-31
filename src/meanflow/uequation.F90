@@ -121,6 +121,7 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: URelaxTau(0:nlev)
+   REALTYPE                  :: wrk(0:nlev)
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -188,8 +189,13 @@
    end if
 
 !  do diffusion step
+   if (allocated(uprof)) then
+      wrk = uprof
+   else
+      wrk = _ZERO_
+   end if
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uprof,U)
+                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,wrk,U)
 
 
    return

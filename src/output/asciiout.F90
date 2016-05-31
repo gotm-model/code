@@ -104,7 +104,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: d,epsprof_loc
+   REALTYPE                  :: d,uprof_loc,vprof_loc,epsprof_loc
    REALTYPE                  :: zz(0:nlev)
 !
 !-------------------------------------------------------------------------
@@ -130,10 +130,14 @@
    end do
 
    write(unit,113) 'z','Tobs','Sobs','Uobs','Vobs','epsobs'
+   uprof_loc   = -9999.0
+   vprof_loc   = -9999.0
    epsprof_loc = -9999.0
    do i=nlev,1,-1
+     if (allocated(uprof  )) uprof_loc   = uprof  (i)
+     if (allocated(vprof  )) vprof_loc   = vprof  (i)
      if (allocated(epsprof)) epsprof_loc = epsprof(i)
-     write(unit,116) z(i),tprof(i),sprof(i),uprof(i),vprof(i),epsprof_loc
+     write(unit,116) z(i),tprof(i),sprof(i),uprof_loc,vprof_loc,epsprof_loc
    end do
 
 112 format(A9,6(1x,A12))

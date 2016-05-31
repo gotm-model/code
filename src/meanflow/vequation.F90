@@ -99,6 +99,7 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: VRelaxTau(0:nlev)
+   REALTYPE                  :: wrk(0:nlev)
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -166,8 +167,13 @@
    end if
 
 !  do diffusion step
+   if (allocated(vprof)) then
+      wrk = vprof
+   else
+      wrk = _ZERO_
+   end if
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vprof,V)
+                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,wrk,V)
 
    return
    end subroutine vequation

@@ -254,8 +254,8 @@
 !  initialise mean fields
    s = sprof
    t = tprof
-   u = uprof
-   v = vprof
+   if (allocated(uprof)) u = uprof
+   if (allocated(vprof)) v = vprof
 
 !  initialize KPP model
    if (turb_method.eq.99) then
