@@ -46,7 +46,7 @@
    use meanflow,     only: h,v,vo,u,w,avh
    use meanflow,     only: drag,SS,runtimev
    use observations, only: w_adv_method,w_adv_discr
-   use observations, only: vProf,vel_relax_tau,vel_relax_ramp
+   use observations, only: vprof,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
@@ -167,7 +167,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,V)
+                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vprof,V)
 
    return
    end subroutine vequation
