@@ -154,6 +154,10 @@ contains
                select type (attribute)
                class is (type_real_attribute)
                   iret = nf90_put_att(self%ncid,output_field%varid,trim(attribute%name),attribute%value); call check_err(iret)
+               class is (type_integer_attribute)
+                  iret = nf90_put_att(self%ncid,output_field%varid,trim(attribute%name),attribute%value); call check_err(iret)
+               class is (type_string_attribute)
+                  iret = nf90_put_att(self%ncid,output_field%varid,trim(attribute%name),trim(attribute%value)); call check_err(iret)
                end select
                attribute => attribute%next
             end do

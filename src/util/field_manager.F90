@@ -65,6 +65,14 @@ module field_manager
       real(rk) :: value = 0.0_rk
    end type
 
+   type,extends(type_attribute) :: type_integer_attribute
+      integer :: value = 0
+   end type
+
+   type,extends(type_attribute) :: type_string_attribute
+      character(len=string_length) :: value = ''
+   end type
+
    type type_field
       integer                      :: id             = 0
       character(len=string_length) :: name           = ''
@@ -86,11 +94,13 @@ module field_manager
       real(rk),pointer             :: data_3d(:,:,:) => null()
       type (type_field),pointer    :: next           => null()
    contains
-      procedure :: has_dimension      => field_has_dimension
-      procedure :: set_real_attribute => field_set_real_attribute
-      procedure :: delete_attribute   => field_delete_attribute
-      generic :: set_attribute        => set_real_attribute
-      procedure :: finalize           => field_finalize
+      procedure :: has_dimension         => field_has_dimension
+      procedure :: set_real_attribute    => field_set_real_attribute
+      procedure :: set_integer_attribute => field_set_integer_attribute
+      procedure :: set_string_attribute  => field_set_string_attribute
+      procedure :: delete_attribute      => field_delete_attribute
+      generic :: set_attribute           => set_real_attribute, set_integer_attribute, set_string_attribute
+      procedure :: finalize              => field_finalize
    end type type_field
 
    type,abstract :: type_node
@@ -589,6 +599,17 @@ contains
       end do
    end subroutine field_delete_attribute
 
+   subroutine field_set_attribute(self,name,attribute)
+      class (type_field),    intent(inout)        :: self
+      character(len=*),      intent(in)           :: name
+      class (type_attribute),intent(inout),target :: attribute
+
+      call self%delete_attribute(name)
+      attribute%name = name
+      attribute%next => self%first_attribute
+      self%first_attribute => attribute
+   end subroutine field_set_attribute
+
    subroutine field_set_real_attribute(self,name,value)
       class (type_field),intent(inout) :: self
       character(len=*),  intent(in)    :: name
@@ -596,13 +617,34 @@ contains
 
       class (type_real_attribute),pointer :: attribute
 
-      call self%delete_attribute(name)
       allocate(attribute)
-      attribute%name = name
       attribute%value = value
-      attribute%next => self%first_attribute
-      self%first_attribute => attribute
+      call field_set_attribute(self,name,attribute)
    end subroutine field_set_real_attribute
+
+   subroutine field_set_integer_attribute(self,name,value)
+      class (type_field),intent(inout) :: self
+      character(len=*),  intent(in)    :: name
+      integer,           intent(in)    :: value
+
+      class (type_integer_attribute),pointer :: attribute
+
+      allocate(attribute)
+      attribute%value = value
+      call field_set_attribute(self,name,attribute)
+   end subroutine field_set_integer_attribute
+
+   subroutine field_set_string_attribute(self,name,value)
+      class (type_field),intent(inout) :: self
+      character(len=*),  intent(in)    :: name
+      character(len=*),  intent(in)    :: value
+
+      class (type_string_attribute),pointer :: attribute
+
+      allocate(attribute)
+      attribute%value = value
+      call field_set_attribute(self,name,attribute)
+   end subroutine field_set_string_attribute
 
    subroutine field_finalize(self)
       class (type_field),intent(inout) :: self
