@@ -10,6 +10,7 @@ module field_manager
    ! Public data types and variables
    public type_field, type_category_node, type_dimension
    public type_attribute, type_real_attribute
+   public type_integer_attribute, type_string_attribute
    public type_field_set, type_field_set_member
 
    ! Public parameters
