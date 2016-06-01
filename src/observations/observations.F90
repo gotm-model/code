@@ -463,6 +463,14 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (TRelaxTau)'
    TRelaxTau = _ZERO_
 
+   allocate(uprof(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_observations: Error allocating (uprof)'
+   uprof = _ZERO_
+
+   allocate(vprof(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_observations: Error allocating (vprof)'
+   vprof = _ZERO_
+
    db=_ZERO_
    ds=depth
    SRelaxTau(0)=SRelaxTauB
@@ -711,13 +719,9 @@
 !  The observed velocity profile
    select case (vel_prof_method)
       case (NOTHING)
-      case (FROMFILE)
-         allocate(uprof(0:nlev),stat=rc)
-         if (rc /= 0) stop 'init_observations: Error allocating (uprof)'
          uprof = _ZERO_
-         allocate(vprof(0:nlev),stat=rc)
-         if (rc /= 0) stop 'init_observations: Error allocating (vprof)'
          vprof = _ZERO_
+      case (FROMFILE)
          call register_input_1d(vel_prof_file,1,uprof,'observed horizontal velocity: x-direction')
          call register_input_1d(vel_prof_file,2,vprof,'observed horizontal velocity: y-direction')
          LEVEL2 'Reading velocity profiles from:'
