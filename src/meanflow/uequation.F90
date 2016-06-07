@@ -67,7 +67,7 @@
    use meanflow,     only: h,u,uo,v,w,avh
    use meanflow,     only: drag,SS,runtimeu
    use observations, only: w_adv_method,w_adv_discr
-   use observations, only: uProf,vel_relax_tau,vel_relax_ramp
+   use observations, only: uprof,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdx,dpdx
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
@@ -189,7 +189,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uProf,U)
+                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uprof,U)
 
 
    return

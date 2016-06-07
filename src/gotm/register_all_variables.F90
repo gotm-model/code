@@ -201,6 +201,8 @@
    LEVEL2 'register_observation_variables()'
    call fm%register('tprof', 'Celsius', 'observed temperature', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof(1:nlev),category='observations')
    call fm%register('sprof', 'PSU', 'observed salinity', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof(1:nlev),category='observations')
+   call fm%register('u_obs', 'm/s', 'obs. x-velocity', dimensions=(/id_dim_z/), data1d=uprof(1:nlev), category='observations')
+   call fm%register('v_obs', 'm/s', 'obs. y-velocity', dimensions=(/id_dim_z/), data1d=vprof(1:nlev), category='observations')
    call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta,category='observations')
    if (allocated(epsprof)) then
       call fm%register('eps_obs', 'm2/s3', 'obs. dissipation', dimensions=(/id_dim_z/), data1d=epsprof(1:nlev), category='observations')
