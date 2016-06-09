@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 
 # Create main project.
 project(gotm Fortran)
@@ -10,6 +10,10 @@ set(gotm_VERSION_MAJOR 4)
 set(gotm_VERSION_MINOR 1)
 set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
+
+if(GOTM_BUILD_LIBRARY)
+  set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+endif()
 
 set(GIT_COMMIT_ID ${gotm_VERSION})
 set(GIT_BRANCH_NAME unknown)
@@ -186,7 +190,7 @@ if(GOTM_USE_FABM)
     # Include FABM source files
     mark_as_advanced(CLEAR FABM_BASE)
     set(FABM_FORCED_HOST gotm)
-    add_subdirectory(${FABM_BASE}/src fabm_src)
+    add_subdirectory(${FABM_BASE}/src ${CMAKE_CURRENT_BINARY_DIR}/fabm_src)
     set(FABM_LIBRARIES fabm)
     set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
   else()
@@ -331,32 +335,45 @@ if(GOTM_USE_FABM)
   set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
 endif(GOTM_USE_FABM)
 
+set(EXTRA_SRCS
+  $<TARGET_OBJECTS:gotm>
+  $<TARGET_OBJECTS:airsea>
+  $<TARGET_OBJECTS:meanflow>
+  $<TARGET_OBJECTS:observations>
+  $<TARGET_OBJECTS:input>
+  ${EXTRA_SRCS}
+)
+
+if(NOT GOTM_BUILD_LIBRARY)
 # Build GOTM executable.
 add_executable(gotm_exe
                gotm/main.F90
-               $<TARGET_OBJECTS:gotm>
-               $<TARGET_OBJECTS:airsea>
-               $<TARGET_OBJECTS:meanflow>
-               $<TARGET_OBJECTS:observations>
-               $<TARGET_OBJECTS:input>
                ${EXTRA_SRCS}
               )
 set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
-target_link_libraries(gotm_exe turbulence util)
+endif()
+
+set(EXTRA_LIBS turbulence util)
 if(GOTM_USE_FLEXIBLE_OUTPUT)
-  target_link_libraries(gotm_exe output_manager)
+  set(EXTRA_LIBS ${EXTRA_LIBS} output_manager)
 endif()
 
 if(GOTM_USE_NetCDF)
-  target_link_libraries(gotm_exe "${NetCDF_LIBRARIES}")
-  if (NetCDF_STATIC_MSVC_BUILD)
+  set(EXTRA_LIBS ${EXTRA_LIBS} "${NetCDF_LIBRARIES}")
+  if (NetCDF_STATIC_MSVC_BUILD AND NOT GOTM_BUILD_LIBRARY)
     set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
   endif()
 endif(GOTM_USE_NetCDF)
 
 if(GOTM_USE_FABM)
-  target_link_libraries(gotm_exe gotm_fabm gotm_fabm_io ${FABM_LIBRARIES})
+  set(EXTRA_LIBS ${EXTRA_LIBS} gotm_fabm gotm_fabm_io ${FABM_LIBRARIES})
 endif(GOTM_USE_FABM)
+
+if(GOTM_BUILD_LIBRARY)
+  set(GOTM_SOURCES ${EXTRA_SRCS} PARENT_SCOPE)
+  set(GOTM_LIBS ${EXTRA_LIBS} PARENT_SCOPE)
+else(GOTM_BUILD_LIBRARY)
+target_link_libraries(gotm_exe ${EXTRA_LIBS})
 
 # Set default installation prefix.
 if(WIN32)
@@ -418,4 +435,5 @@ add_dependencies( test_all test_airsea test_eqstate test_time)
 
 # End of testing section
 
+endif(GOTM_BUILD_LIBRARY)
 endif(NOT GOTM_BUILD_LIBRARIES_ONLY)

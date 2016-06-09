@@ -1024,7 +1024,8 @@ class PageFinal(commonqt.WizardPage):
 
 class SequenceEditScenario(commonqt.WizardSequence):
     def __init__(self):
-        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageAirSeaInteraction2,PageTurbulence,PageTemperature,PageSalinity,PageBio,PageAdvanced,PageSave])
+        #commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageAirSeaInteraction2,PageTurbulence,PageTemperature,PageSalinity,PageBio,PageAdvanced,PageSave])
+        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageAirSeaInteraction2,PageTurbulence,PageTemperature,PageSalinity,PageAdvanced,PageSave])
 
 def loadScenario():
     # Create the application and enter the main message loop.

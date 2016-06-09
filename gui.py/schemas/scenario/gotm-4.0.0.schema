@@ -1115,7 +1115,7 @@
 			</element>
 		</element>
 	</element>
-
+<!--
 	<element name="bio" label="basic settings for biogeochemical model" optional="True">
 		<element name="bio_nml">
 			<element name="bio_calc"  type="bool"   label="calculate biological model"/>
@@ -1209,7 +1209,7 @@
 			<condition type="eq" variable="/bio/bio_nml/bio_model" value="4" />
 		</condition>
 	</link>
-
+-->
 	<element name="seagrass" label="seagrass model" optional="True">
 		<element name="canopy">
 			<element name="seagrass_calc" type="bool"  label="use seagrass model"/>

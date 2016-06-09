@@ -29,7 +29,8 @@
 		<link source="/obs/velprofile/vel_prof_method"    target="/obs/velprofile"/>
 		<link source="/obs/eprofile/e_prof_method"        target="/obs/eprofile"/>
 		<link source="/obs/o2_profile/o2_prof_method"     target="/obs/o2_profile"/>
-		<link source="/obs/bioprofiles/bio_prof_method"   target="/obs/bioprofiles"/>
+		<!--
+      <link source="/obs/bioprofiles/bio_prof_method"   target="/obs/bioprofiles"/>
 		<link source="/bio/bio_nml"                       target="/bio"/>
 		<link source="/bio_npzd"                          target="/bio/bio_model/bio_npzd"/>
 		<link source="/bio_iow"                           target="/bio/bio_model/bio_iow"/>
@@ -39,7 +40,8 @@
 		<link source="/bio_photo"                         target="/bio/bio_model/bio_photo"/>
 		<link source="/bio_cl"                            target="/bio/bio_model/bio_cl"/>
 		<link source="/bio_mangan"                        target="/bio/bio_model/bio_mangan"/>
-		<!--<link source="/bio_BFM"                           target="/bio/bio_model/bio_BFM"/>-->
+      -->
+      <!--<link source="/bio_BFM"                           target="/bio/bio_model/bio_BFM"/>-->
 	</links>
 	<custom>
 		<forward>
@@ -135,8 +137,8 @@ target['obs/zetaspec/zeta_offset'].setValue(ref)
 # ===============================================
 #  bio
 # ===============================================
-if not source['bio/bio_nml/bio_calc'].getValue():
-    target['bio/bio_model'].setValue(0)
+#if not source['bio/bio_nml/bio_calc'].getValue():
+#    target['bio/bio_model'].setValue(0)
 
 # Note: we implicitly lose output settings out_fmt, out_dir and out_fn; the GUI scenario
 # does not support (or need) these.
@@ -259,9 +261,9 @@ else:
 # ===============================================
 #  bio
 # ===============================================
-usebio = source['bio/bio_model'].getValue()!=0
-target['bio/bio_nml/bio_calc'].setValue(usebio)
-if not usebio: target['bio/bio_nml/bio_model'].setValue(1)
+#usebio = source['bio/bio_model'].getValue()!=0
+#target['bio/bio_nml/bio_calc'].setValue(usebio)
+#if not usebio: target['bio/bio_nml/bio_model'].setValue(1)
 ]]>
 		</backward>
 	</custom>

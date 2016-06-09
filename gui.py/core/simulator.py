@@ -1,9 +1,12 @@
 import tempfile,os,time
 
-import common,result,gotm
+import common,result,pygotm
 
-gotmversion = gotm.gui_util.getversion().rstrip()
-gotmscenarioversion = 'gotm-%s' % gotmversion
+gotmversion = pygotm.get_version()
+if gotmversion.startswith('v'): gotmversion = gotmversion[1:]
+gotmscenarioversion = 'gotm-%s' % gotmversion.split(' ')[0].split('-')[0]
+
+if gotmscenarioversion=='gotm-4.9.0': gotmscenarioversion = 'gotm-4.1.0'
 
 verbose = False
 
@@ -56,20 +59,19 @@ class Simulator(object):
             os.close(h)
             (h,self.errfile) = tempfile.mkstemp('.txt','gotm')
             os.close(h)
-            gotm.gui_util.redirectoutput(self.outfile,self.errfile)
+            pygotm.redirect_output(self.outfile,self.errfile)
 
         if verbose: print 'initializing gotm module'
 
         # Initialize GOTM
         try:
-            gotm.gotm.init_gotm()
+            pygotm.initialize()
         except Exception,e:
             os.chdir(self.olddir)
             raise Exception('Exception thrown while initializing GOTM: %s' % str(e))
 
         # Get # of first step, last step, number of steps for whole GOTM run.
-        self.start = gotm.time.minn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
-        self.stop  = gotm.time.maxn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
+        self.start,self.stop = pygotm.get_time_bounds()
         self.stepcount = self.stop-self.start+1
         
         self.currentpos = self.start
@@ -77,14 +79,14 @@ class Simulator(object):
     def finalize(self):
         # GOTM clean-up
         try:
-            gotm.gotm.clean_up()
+            pygotm.finalize()
         except Exception,e:
             self.result.errormessage = 'Error during GOTM clean-up: %s' % e
             if self.result.returncode==0: self.result.returncode = 1
             
         if self.redirect:
             # Reset FORTRAN output
-            gotm.gui_util.resetoutput()
+            pygotm.reset_output()
 
             def readoutput(path):
                 f = open(path,'r')
@@ -172,14 +174,13 @@ class Simulator(object):
         assert self.currentpos<=self.stop,'Run has already completed'
         
         # Configure GOTM for new slice.
-        gotm.time.minn = self.currentpos
         islicestop = self.currentpos + slicesize - 1
         if islicestop>self.stop: islicestop = self.stop
-        gotm.time.maxn = islicestop
+        pygotm.set_time_bounds(self.currentpos,islicestop)
         
         # Process time batch
         try:
-            gotm.gotm.time_loop()
+            pygotm.run()
         except Exception,e:
             self.result.errormessage = 'Exception thrown in GOTM time loop: %s' % e
             self.result.returncode = 1

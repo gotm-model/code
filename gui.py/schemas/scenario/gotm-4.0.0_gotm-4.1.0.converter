@@ -5,7 +5,7 @@
 		<link source="/airsea/airsea/p_e_method"    target="/airsea/airsea/precip_method"/>
 		<link source="/airsea/airsea/const_p_e"     target="/airsea/airsea/const_precip"/>
 		<link source="/airsea/airsea/p_e_flux_file" target="/airsea/airsea/precip_file"/>
-		<link source="/bio/bio_nml/bio_npar"        target="/bio/bio_nml/npar"/>
+		<!--<link source="/bio/bio_nml/bio_npar"        target="/bio/bio_nml/npar"/>-->
 	</links>
 	<custom>
 		<forward>

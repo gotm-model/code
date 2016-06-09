@@ -397,9 +397,9 @@
 !BOC
 #if !defined(_FLEXIBLE_OUTPUT_)
    LEVEL1 'saving initial conditions'
-   call prepare_output(0_timestepkind)
+   call prepare_output(MinN-1)
    if (write_results) then
-      call do_all_output(0_timestepkind)
+      call do_all_output(MinN-1)
    end if
 #else
    call output_manager_save(julianday,secondsofday,0)
