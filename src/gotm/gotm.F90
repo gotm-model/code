@@ -298,17 +298,9 @@
          call read_restart()
       end if
       if (hotstart_online) then
-         ! here we should use a state_vector - like
-         !s = state_vector(salt_range)
-         !t = state_vector(temp_range)
-         ! for now
-         s = sprof
-         t = tprof
       end if
-!KB
-      call friction(kappa,avmolu,tx,ty)
-!KB
    end if
+   call friction(kappa,avmolu,tx,ty)
 
 #if defined(_FLEXIBLE_OUTPUT_)
    allocate(type_gotm_host::output_manager_host)
@@ -728,7 +720,6 @@
    call print_state_observations
    call print_state_airsea
    call print_state_turbulence
-   call print_state_bio
 
    end subroutine print_state
 !EOC
