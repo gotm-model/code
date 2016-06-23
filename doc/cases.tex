@@ -26,10 +26,10 @@ Section & Title & Scenario name \\ \hline\hline
 \ref{nns_annual} & Annual North Sea simulation & {\tt nns\_annual} \\ \hline 
 \ref{nns_seasonal} & Seasonal North Sea simulation & {\tt nns\_seasonal} \\ \hline 
 \ref{liverpool_bay} &Liverpool Bay  & {\tt liverpool\_bay} \\ \hline 
-\ref{gotland_deep} & Gotland Deep in Baltic Sea & {\tt gotland\_deep} \\ \hline 
-\ref{reynolds} & Middelbank in Baltic Sea & {\tt reynolds} \\ \hline 
+\ref{gotland_deep} & Gotland Deep in Baltic Sea & {\tt gotland} \\ \hline 
+%\ref{reynolds} & Middelbank in Baltic Sea & {\tt reynolds} \\ \hline 
 \ref{ows_papa} &Ocean Weather Ship Papa & {\tt ows\_papa} \\ \hline 
-\ref{lago_maggiore} & Lago Maggiore & {\tt lago\_maggiore} \\ \hline 
+%\ref{lago_maggiore} & Lago Maggiore & {\tt lago\_maggiore} \\ \hline 
 \end{tabular}
 \caption{List of GOTM scenarios described in this section}
 \label{table_scenarios}
@@ -473,25 +473,38 @@ friction coefficient in m$^{-1}$.
 \end{tabular}
 
 
-\subsection{Shelf sea scenarios}
+\subsection{Shelf sea / open ocean realistic scenarios}
 
-All shelf sea scenarios briefly discussed here are from the Irish Sea and the
-North Sea. A Baltic Sea mixed layer scenario is in preparation.
+Here, shelf sea scenarios 
+from the Irish Sea, the
+North Sea and the Baltic Sea,
+as well as the classical Ocean Weather Ship (OWS) Papa data 
+are briefly discussed. 
 
-\subsubsection{Fladenground Experiment}\label{flex}
+\subsubsection{Fladenground Experiment ({\tt flex})}\label{flex}
 
-A data set which has been used throughout the last 20 years
+A data set which has been used throughout the last 40 years
 as a calibration for mixing parameterisations
 has been collected during the
 measurements of the Fladenground
-Experiment 1976 (FLEX'76) campaign. These measurements
+Experiment 1976 (FLEX'76) campaign. 
+Starting from a well-mixed winter situation, a surface mixed layer is
+established, which is several times deepened and partly removed by
+strom events.
+
+The measurements
 of meteorological forcing and potential temperature profiles
 were carried out in spring 1976 in the northern North Sea at a water
 depth of about 145 m and a geographical position
 at 58$^{\circ}$55'N and 0$^{\circ}$32'E. 
+
 The simulation is run from April 6 to June 7, 1976.
-The \cite{Kondo75} bulk formulae have been used for calculating the
-surface fluxes. 
+The \cite{Kondo75} bulk formulae have been used for pre-calculating the
+surface fluxes, which are given in the data files 
+{\tt momentumflux.dat} and {\tt heatflux.dat}.
+Other meteorological data files are for sea surface temperature ({\tt sst.dat}) 
+and short wave radiation ({\tt swr.dat}).
+
 For further details concerning the measurements,
 see \cite{Soetjeetal80} and \cite{Brockmannetal85}.
 This FLEX'76 data set has been used by several authors in order to
@@ -503,39 +516,39 @@ test different mixing schemes (see e.g.\ \cite{Friedrich83},
 {\bf Data files:}
 
 \begin{tabular}{ll}
-{\tt momentumflux.dat}&  surface stress components, $\tau_x$ and
-$\tau_y$ in N\,m$^{-2}$ \\
-{\tt heatflux.dat}    &  solar radiation and outgoing heat flux, $Q_{in}$ and 
-                   $Q_{out}$ in W\,m$^{-2}$ \\
+{\tt momentumflux.dat}&  surface stress components, $\tau_x$ and $\tau_y$ in N\,m$^{-2}$ \\
+{\tt heatflux.dat}    &  net surface heat flux in W\,m$^{-2}$ (negative for outgoing)\\
+{\tt swr.dat}         &  short wave radiation in W\,m$^{-2}$ \\ 
 {\tt sst.dat}         &  observed SST in $^{\circ}$C \\ 
-               
-{\tt pressure.dat}    & time series of surface slopes fitted to the local
-spring-neap cycle  \\ 
+{\tt pressure.dat}    & time series of surface slopes fitted to the local spring-neap cycle  \\ 
 {\tt tprof.dat}       & profiles of measured potential temperature for initial conditions and \\ & validation, data are reanalysed and low pass filtered \\  
-{\tt sprof.dat}       & profiles of idealised salinity for initial conditions and relaxation \\   
-{\tt tprof\_ctd}       & CTD-profiles of potential temperature, with some gaps \\
-{\tt sprof\_ctd}       & CTD-profiles of salinity, with some gaps \\
+{\tt sprof.dat}       & salinity profiles from a 3D model (for initial conditions and relaxation) \\   
+{\tt tprof\_ctd.dat}  & CTD-profiles of potential temperature, with some gaps \\
+{\tt sprof\_ctd.dat}  & CTD-profiles of salinity, with some gaps \\
 {\tt extinction.dat}  & extinction coefficients fitted to measurements \\  
 \end{tabular}
 
 
-\subsubsection{Annual North Sea simulation}\label{nns_annual}
+\subsubsection{Annual North Sea simulation ({\tt nns\_annual})}\label{nns_annual}
 
-Here the annual simulation of the Northern Sea at 59$^{\circ}$20" N
+Here the annual simulation of the Northern Sea at 59$^{\circ}$20' N
 and 1$^{\circ}$17' E during the year 1998 as discussed
 by \cite{Boldingetal2002} is performed.
 
 For this simulation, time series of surface slopes 
 $\partial_x \zeta$ and $\partial_y \zeta$ were extrapolated from observations
-during autumn 1998 based on four partial tides by means of harmonic analysis
-(the program for doing this was kindly provided by Frank Janssen, now at
-the Baltic Sea Research Institute Warnem\"unde). 
-All necessary meteorological data are from the UK Meteorological Office Model. 
+during autumn 1998 based on four partial tides by means of harmonic analysis.
+All necessary meteorological data are from the UK Meteorological Office Model
+in a 6-hourly temporal resolution ({\tt meteo.dat}).
+For the period of the PROVESS campaign 
+(Sep 7 - Nov 7, 1998, see \cite{Howarth_etal_2002,Boldingetal2002})  
+higher resolution data (half-hourly) 
+from research vessels are available and pasted
+in an extended meteo data file ({\tt meteonns.dat})\footnote{See section
+\ref{nns_seasonal} 
+for a shorter term scenario only including the campaign period.}.
 For calculating the resulting surface fluxes, the bulk formulae from
 \cite{Kondo75} are used here.
-Since no observations for the sea surface temperature (SST)
-are available for the whole year 1998 at station NNS, the simulated SST
-is used as input into the bulk formulae.
 For the evolution of the vertical
 salinity profile, which is known to stabilise stratification
 during summer months, a relaxation to results obtained with a
@@ -543,7 +556,10 @@ prognostic three-dimensional model of the North Sea
 by \cite{Pohlmann96}. 
 By doing so, the horizontal advection, which is the dominant process
 for salinity dynamics in the Northern North Sea, is parameterised.
-\\ 
+
+The {\tt nns\_annual} scenario is also used as a basis for
+driving the NPZD model (see section \ref{nns_annual_npzd}).
+\\
 
 {\bf Data files:}
 
@@ -553,16 +569,22 @@ of \cite{Pohlmann96}\\
 {\tt tprof.dat}         &  potential temperature in $^{\circ}$C from the three-dimensional \\
                         &  model of \cite{Pohlmann96}\\ 
 {\tt pressure.dat} & sea surface slopes from tidal analysis of observations \\
-{\tt meteonns.dat} & meteorological data from UK Met Office model \\
+{\tt meteo.dat} & meteorological data from UK Met Office model (6-hourly) \\
+{\tt meteonns.dat} & meteorological data from UK Met Office model, including 
+half-hourly \\ & PROVESS vampaign data for Sep - Nov 1998 \\
 {\tt sst.dat} & sea surface temperature in $^{\circ}$C
 from analysis by Bundesamt f\"ur \\ & Seeschifffahrt und
-Hydrographie, Hamburg, Germany
+Hydrographie, Hamburg, Germany \\
+{\tt zeta.dat} & sea surface elevation data in m from three-dimensional model
+\\ & 
+of \cite{Pohlmann96}
 \end{tabular}
 
 
-\subsubsection{Seasonal North Sea simulation}\label{nns_seasonal}
+\subsubsection{Seasonal North Sea simulation ({\tt nns\_seasonal})}\label{nns_seasonal}
 
-This Northern North Sea Experiment has been carried out in the framework
+This Northern North Sea seasonal experiment has been carried out in the 
+framework
 of the PROVESS (PROcesses of VErtical mixing in Shealf Seas) project 
 (MAS3-CT97-0025, 1998-2001) which has been funded by the European Communities 
 MAST-III program.
@@ -573,7 +595,7 @@ Here, a period of 20 days from October 7 - 27, 1998 is simulated.
 All forcing and validation data have been carefully processed from
 observations during this PROVESS-NNS experiment. 
 
-Two different dissipation rate data sets are included:
+Two different observational dissipation rate data sets are included:
 
 \begin{tabular}{ll}
 {\tt eps\_fly.dat}& data from a FLY profiler, processed by School
@@ -586,7 +608,8 @@ These files can be read in into GOTM through the {\tt eobs} namelist in
 {\tt obs.nml}.  The dissipation rate has only been observed at 
 short intervals, periods without observations are set to minimum 
 values in the files. These dissipation rate observations are read in
-into GOTM in order to allow for proper interpolation to the temporal and spatial
+into GOTM in order to allow for proper interpolation to the temporal 
+and spatial
 output steps, and they are not used for any type of nudging.
 
 The data files are prepared such that the maximum simulation
@@ -617,7 +640,7 @@ shear probes from several ships\\
 \end{tabular}
 
 
-\subsubsection{Liverpool Bay}\label{liverpool_bay}
+\subsubsection{Liverpool Bay ({\tt liverpool\_bay})}\label{liverpool_bay}
 
 The observations for this scenario
 have been carried out by \cite{Rippethetal2001A} 
@@ -678,6 +701,7 @@ anti-clockwise from North.
 {\tt eprof.dat} & observed dissipation rates in W\,kg$^{-1}$ \\
 {\tt heatflux.dat} & surface heat fluxes calculated accroding to \cite{Kondo75} \\
 {\tt momentumflux.dat} & surface momentum fluxes calculated according to \cite{Kondo75} \\
+{\tt swr.dat} & short wave radiation data \\
 \end{tabular}
 \\
 
@@ -685,7 +709,7 @@ anti-clockwise from North.
 The numerical simulations of this scenario
 has been described in \cite{Simpsonetal2002}.
 
-\subsubsection{Gotland Deep}\label{gotland_deep}
+\subsubsection{Gotland Deep ({\tt gotland})}\label{gotland_deep}
 
 These simulations are made for the location of
 station 271 Central Eastern
@@ -717,7 +741,7 @@ Model results and observations are compared for the years 1994-1996.
 For the discretisation, the water column has been
 divided into 100 vertical layers, with a strong zooming towards the surface,
 resulting in a mean near-surface resolution of less than 0.5 m.
-The time step for these simulations is set to $\Delta t=1$ hour.
+The time step for these simulations is set to $\Delta t=600$ s.
 \\
 
 {\bf Data files:}
@@ -725,16 +749,11 @@ The time step for these simulations is set to $\Delta t=1$ hour.
 \begin{tabular}{ll}
 {\tt meteo.dat} &  meteorological data extracted from the ERA15 reanalysis 
                    data set  \\
+{\tt precip.dat} &  precipitation 
+ata extracted from the ERA15 reanalysis 
+                   data set  \\
 {\tt sprof\_271.dat} & deep salinity profiles at station 271\\ 
-{\tt sprof\_271\_all.dat} & all salinity profiles at station 271\\ 
-{\tt sprof\_GB.dat} &  all salinity profiles in Gotland basin, \\ & within
-57$^{\circ}$8.3'N - 57$^{\circ}$28.3'N and
-19$^{\circ}$54.6'E - 20$^{\circ}$14.6'E\\
 {\tt tprof\_271.dat} &  deep temperature profiles at station 271\\
-{\tt tprof\_271\_all.dat} & all temperature profiles at station 271 \\
-{\tt tprof\_GB.dat} &  all temperature profiles in Gotland basin, \\ & within
-57$^{\circ}$8.3'N - 57$^{\circ}$28.3'N and
-19$^{\circ}$54.6'E - 20$^{\circ}$14.6'E\\
 \end{tabular}
 \\
 
@@ -747,59 +766,59 @@ These data have been used for simulating the Gotland Deep ecosystem dynamics
 for the years 1983-1991, see \cite{Burchardetal05},
 see also section \ref{gotland_iow}.
 
-\subsubsection{Middelbank}\label{reynolds}
+%\subsubsection{Middelbank}\label{reynolds}
+%
+%Here a campaign (REYNOLDS, funded by the German Federal Ministry for
+%Education and Research, chief-scientist Hans Ulrich Lass, IOW)
+%in the Eastern Bornholm Basin
+%(55$^{\circ}$ 35' N, 16$^{\circ}$ 39' E, mean water depth: 55 m)
+%is simulated. The simulation period is
+%August 30, 2001 at 17 h to September 9, 2001 at 14 h.
+%The water column is characterised by a thermocline at about 25 m depth 
+%and a halocline at about 50 m depth. The simulation period 
+%is charaterised by storms up to 0.2 N\,m$^{-2}$.
+%As forcing, surface stress, heat fluxes and solar radiation
+%has been calculated on the basis of meteorological observations
+%according to \cite{Kondo75}.
+%The barotropic pressure gradient has been recalculated 
+%from vertically averaged observed velocity profiles, see section
+%\ref{sec:meanflowIntroPhysics}.
+%As initial conditions, observed temperature, salinity and velocity profiles
+%are used. 
+%Additionally the vertical velocity at the thermocline has been diagnosed from
+%temperature observations and is used for vertical advection,
+%see section \ref{sec:meanflowIntroPhysics}.
+%The turbulent dissipation rate $\eps$ has been observed during two 
+%sub-periods, such that turbulence model results may be compared with 
+%observations. 
+%\\
+%
+%{\bf Data files:}
+%
+%\begin{tabular}{ll}
+%{\tt eprof.dat} & profiles of observed dissipation rate in W\,kg$^{-1}$ \\
+%{\tt heatflux.dat} & surface heat flux and solar radiation in  W\,m$^{-2}$ \\
+%{\tt momentumflux.dat} & surface momentum flux in  N\,m$^{-2}$ \\
+%{\tt pressure.dat} & vertically averaged velocity components in m\,s$^{-1}$ \\
+%{\tt sprof.dat} & profiles of observed salinity in psu \\
+%{\tt sss.dat} & time series of sea surface salinity in psu \\
+%{\tt sst.dat} & time series of sea surface temperature in $^{\circ}$C \\
+%{\tt tprof.dat} & profiles of observed temperature in $^{\circ}$C \\
+%{\tt velprof.dat} & profiles of observed velocity components in m\,s$^{-1}$ \\
+%{\tt vertvel.dat} & profiles of diagnosed vertical velocity at thermocline 
+%                    depth in m\,s$^{-1}$ \\
+%\end{tabular}
+%\\
+%
+%So far, these data have not yet been published. 
 
-Here a campaign (REYNOLDS, funded by the German Federal Ministry for
-Education and Research, chief-scientist Hans Ulrich Lass, IOW)
-in the Eastern Bornholm Basin
-(55$^{\circ}$ 35' N, 16$^{\circ}$ 39' E, mean water depth: 55 m)
-is simulated. The simulation period is
-August 30, 2001 at 17 h to September 9, 2001 at 14 h.
-The water column is characterised by a thermocline at about 25 m depth 
-and a halocline at about 50 m depth. The simulation period 
-is charaterised by storms up to 0.2 N\,m$^{-2}$.
-As forcing, surface stress, heat fluxes and solar radiation
-has been calculated on the basis of meteorological observations
-according to \cite{Kondo75}.
-The barotropic pressure gradient has been recalculated 
-from vertically averaged observed velocity profiles, see section
-\ref{sec:meanflowIntroPhysics}.
-As initial conditions, observed temperature, salinity and velocity profiles
-are used. 
-Additionally the vertical velocity at the thermocline has been diagnosed from
-temperature observations and is used for vertical advection,
-see section \ref{sec:meanflowIntroPhysics}.
-The turbulent dissipation rate $\eps$ has been observed during two 
-sub-periods, such that turbulence model results may be compared with 
-observations. 
-\\
+%\subsection{Open ocean scenarios}
+%
+%The two open ocean scenarios introduced here are two classical
+%test cases from the Northern Pacific Ocean. For an overview, see
+%\cite{Martin85}.
 
-{\bf Data files:}
-
-\begin{tabular}{ll}
-{\tt eprof.dat} & profiles of observed dissipation rate in W\,kg$^{-1}$ \\
-{\tt heatflux.dat} & surface heat flux and solar radiation in  W\,m$^{-2}$ \\
-{\tt momentumflux.dat} & surface momentum flux in  N\,m$^{-2}$ \\
-{\tt pressure.dat} & vertically averaged velocity components in m\,s$^{-1}$ \\
-{\tt sprof.dat} & profiles of observed salinity in psu \\
-{\tt sss.dat} & time series of sea surface salinity in psu \\
-{\tt sst.dat} & time series of sea surface temperature in $^{\circ}$C \\
-{\tt tprof.dat} & profiles of observed temperature in $^{\circ}$C \\
-{\tt velprof.dat} & profiles of observed velocity components in m\,s$^{-1}$ \\
-{\tt vertvel.dat} & profiles of diagnosed vertical velocity at thermocline 
-                    depth in m\,s$^{-1}$ \\
-\end{tabular}
-\\
-
-So far, these data have not yet been published. 
-
-\subsection{Open ocean scenarios}
-
-The two open ocean scenarios introduced here are two classical
-test cases from the Northern Pacific Ocean. For an overview, see
-\cite{Martin85}.
-
-\subsubsection{Ocean Weather Ship Papa}\label{ows_papa}
+\subsubsection{Ocean Weather Ship Papa ({\tt ows\_papa})}\label{ows_papa}
 
 This scenario is a classical scenario 
 for the Northern Pacific, for which
@@ -837,6 +856,7 @@ initial conditions and \\ & relaxation \\
 {\tt heatflux.dat} & surface heat fluxes calculated according to
 \cite{Kondo75} \\
 {\tt momentumflux.dat} & surface momentum fluxes calculated according to \cite{Kondo75} \\
+{\tt swr.dat} & short wave radiation data \\
 \end{tabular}
 \\
 
@@ -844,63 +864,63 @@ This scenario has been discussed in detail by \cite{Burchardetal99}.
 We are grateful to Paul Martin for providing the meteorological data
 and the temperature profiles, see also \cite{Martin85}.
 
-\subsection{Lake scenarios}
-
-So far, the Lago Maggiore scenario discussed in section \ref{lago_maggiore}
-is the only lake scenario. 
-
-\subsubsection{Lago Maggiore}\label{lago_maggiore}
-
-The measurements for this Lago Maggiore
-scenario were made during three days in winter 1995
-(December 18-21) at the shore of Ispra 
-(45$^{\circ}$ 49,244'N, 8$^{\circ}$ 36,377'E). 
-The measurements were carried out with an
-uprising profiler located 150 m from the shore at a water depth of 42 m. 
-Such the sampled depth interval ranged from 30 m up to the surface.
-On the profiler, an MST shear 
-probe, a fast temperature sensor
-and temperature and conductivity probes were mounted such that
-profiles of turbulent dissipation rate $\epsilon$, temperature variance
-$\epsilon_\theta$, mean temperature $\theta$ and mean salinity $S$
-could be derived. For a detailed description of the data analysis, see
-\cite{Stipsetal2002}.  
-
-Wind speed was measured from a small buoy about 30 m away from the 
-probe location with an anemometer at a height of 95 cm above the water 
-surface. The accuracy is $\pm 0.1$ m\,s$^{-1}$. 
-Air temperature and relative humidity were recorded at the measurement 
-location on shore at a height of 10 m above lake surface.
-The cloud cover has been estimated every hour. 
-Incident solar radiation was measured at the meteorological station in 
-Pallanza, in a distance of about 10 km from the 
-measuring site.
-An analysis of heat fluxes obtained by various bulk 
-formulae showed
-however a significant deviation between the heat content of the water column
-and accumulation of these heat fluxes. This could be due to the fact that these
-bulk formulae are designed for oceanic conditions such that they are not
-valid for a lake with weak wind conditions. Thus, instead of using the
-calculated surface heat fluxes from bulk 
-formulae, they were
-calculated from the heat gain of the water column under consideration
-of the solar radiation.
-\\
-
-{\bf Data files:}
-
-\begin{tabular}{ll}
-{\tt salz\_lmd95.dat} &  profiles of measured salinity in ppt for initial 
-conditions and relaxation \\
-{\tt temp\_lmd95.dat} & profiles of measured potential temperature for 
-initial conditions and \\ & relaxation \\    
-{\tt eps\_lmd95.dat} & profiles of measured dissipation rate for validation \\
-{\tt hflu2\_05lt.dat} & surface heat fluxes calculated according to \cite{Kondo75} \\
-{\tt momentumflux.dat} & surface momentum fluxes calculated according to \cite{Kondo75} \\
-\end{tabular}
-\\
-
-For a discussion of the simulation, see \cite{Stipsetal2002}. 
+%\subsection{Lake scenarios}
+%
+%So far, the Lago Maggiore scenario discussed in section \ref{lago_maggiore}
+%is the only lake scenario. 
+%
+%\subsubsection{Lago Maggiore}\label{lago_maggiore}
+%
+%The measurements for this Lago Maggiore
+%scenario were made during three days in winter 1995
+%(December 18-21) at the shore of Ispra 
+%(45$^{\circ}$ 49,244'N, 8$^{\circ}$ 36,377'E). 
+%The measurements were carried out with an
+%uprising profiler located 150 m from the shore at a water depth of 42 m. 
+%Such the sampled depth interval ranged from 30 m up to the surface.
+%On the profiler, an MST shear 
+%probe, a fast temperature sensor
+%and temperature and conductivity probes were mounted such that
+%profiles of turbulent dissipation rate $\epsilon$, temperature variance
+%$\epsilon_\theta$, mean temperature $\theta$ and mean salinity $S$
+%could be derived. For a detailed description of the data analysis, see
+%\cite{Stipsetal2002}.  
+%
+%Wind speed was measured from a small buoy about 30 m away from the 
+%probe location with an anemometer at a height of 95 cm above the water 
+%surface. The accuracy is $\pm 0.1$ m\,s$^{-1}$. 
+%Air temperature and relative humidity were recorded at the measurement 
+%location on shore at a height of 10 m above lake surface.
+%The cloud cover has been estimated every hour. 
+%Incident solar radiation was measured at the meteorological station in 
+%Pallanza, in a distance of about 10 km from the 
+%measuring site.
+%An analysis of heat fluxes obtained by various bulk 
+%formulae showed
+%however a significant deviation between the heat content of the water column
+%and accumulation of these heat fluxes. This could be due to the fact that these
+%bulk formulae are designed for oceanic conditions such that they are not
+%valid for a lake with weak wind conditions. Thus, instead of using the
+%calculated surface heat fluxes from bulk 
+%formulae, they were
+%calculated from the heat gain of the water column under consideration
+%of the solar radiation.
+%\\
+%
+%{\bf Data files:}
+%
+%\begin{tabular}{ll}
+%{\tt salz\_lmd95.dat} &  profiles of measured salinity in ppt for initial 
+%conditions and relaxation \\
+%{\tt temp\_lmd95.dat} & profiles of measured potential temperature for 
+%initial conditions and \\ & relaxation \\    
+%{\tt eps\_lmd95.dat} & profiles of measured dissipation rate for validation \\
+%{\tt hflu2\_05lt.dat} & surface heat fluxes calculated according to \cite{Kondo75} \\
+%{\tt momentumflux.dat} & surface momentum fluxes calculated according to \cite{Kondo75} \\
+%\end{tabular}
+%\\
+%
+%For a discussion of the simulation, see \cite{Stipsetal2002}. 
 
 \subsection{Biogeochemical scenarios}
 

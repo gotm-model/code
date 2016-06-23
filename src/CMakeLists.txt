@@ -12,6 +12,7 @@ set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
 
 set(GIT_COMMIT_ID ${gotm_VERSION})
+set(GIT_BRANCH_NAME unknown)
 configure_file("${PROJECT_SOURCE_DIR}/util/compilation.F90.in" compilation.F90)
 configure_file("${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in" gotm_version.F90)
 option(GOTM_EMBED_VERSION "Embed GOTM version information" OFF)

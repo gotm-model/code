@@ -9,7 +9,7 @@ module field_manager
 
    ! Public data types and variables
    public type_node, type_field, type_field_node, type_category_node, type_dimension
-   public type_attribute, type_real_attribute
+   public type_attribute, type_real_attribute, type_integer_attribute, type_string_attribute
 
    ! Public parameters
    public string_length,default_fill_value,default_minimum,default_maximum
@@ -64,6 +64,14 @@ module field_manager
       real(rk) :: value = 0.0_rk
    end type
 
+   type,extends(type_attribute) :: type_integer_attribute
+      integer :: value = 0
+   end type
+
+   type,extends(type_attribute) :: type_string_attribute
+      character(len=string_length) :: value = ''
+   end type
+
    type type_field
       integer                      :: id             = 0
       character(len=string_length) :: name           = ''
@@ -85,15 +93,20 @@ module field_manager
       real(rk),pointer             :: data_3d(:,:,:) => null()
       type (type_field),pointer    :: next           => null()
    contains
-      procedure :: has_dimension      => field_has_dimension
-      procedure :: set_real_attribute => field_set_real_attribute
-      procedure :: delete_attribute   => field_delete_attribute
-      generic :: set_attribute        => set_real_attribute
+      procedure :: has_dimension         => field_has_dimension
+      procedure :: set_real_attribute    => field_set_real_attribute
+      procedure :: set_integer_attribute => field_set_integer_attribute
+      procedure :: set_string_attribute  => field_set_string_attribute
+      procedure :: delete_attribute      => field_delete_attribute
+      generic :: set_attribute           => set_real_attribute, set_integer_attribute, set_string_attribute
+      procedure :: finalize              => field_finalize
    end type type_field
 
    type,abstract :: type_node
       class (type_node),pointer :: first_child  => null()
       class (type_node),pointer :: next_sibling => null()
+   contains
+      procedure :: finalize => node_finalize
    end type
 
    type,extends(type_node) :: type_field_node
@@ -263,13 +276,31 @@ contains
       class (type_field_manager), intent(inout) :: self
 
       type (type_field), pointer :: field, next_field
+      type (type_dimension), pointer :: dim, next_dim
 
       field => self%first_field
       do while (associated(field))
          next_field => field%next
+         call field%finalize()
          deallocate(field)
          field => next_field
       end do
+      self%first_field => null()
+
+      dim => self%first_dimension
+      do while (associated(dim))
+         next_dim => dim%next
+         deallocate(dim)
+         dim => next_dim
+      end do
+      self%first_dimension => null()
+
+      call self%root%finalize()
+
+      deallocate(self%prepend_dimensions)
+      deallocate(self%append_dimensions)
+
+      self%nregistered = 0
    end subroutine finalize
 
    function find_dimension(self,dimid) result(dim)
@@ -525,6 +556,17 @@ contains
       end do
    end subroutine field_delete_attribute
 
+   subroutine field_set_attribute(self,name,attribute)
+      class (type_field),    intent(inout)        :: self
+      character(len=*),      intent(in)           :: name
+      class (type_attribute),intent(inout),target :: attribute
+
+      call self%delete_attribute(name)
+      attribute%name = name
+      attribute%next => self%first_attribute
+      self%first_attribute => attribute
+   end subroutine field_set_attribute
+
    subroutine field_set_real_attribute(self,name,value)
       class (type_field),intent(inout) :: self
       character(len=*),  intent(in)    :: name
@@ -532,13 +574,51 @@ contains
 
       class (type_real_attribute),pointer :: attribute
 
-      call self%delete_attribute(name)
       allocate(attribute)
-      attribute%name = name
       attribute%value = value
-      attribute%next => self%first_attribute
-      self%first_attribute => attribute
+      call field_set_attribute(self,name,attribute)
    end subroutine field_set_real_attribute
+
+   subroutine field_set_integer_attribute(self,name,value)
+      class (type_field),intent(inout) :: self
+      character(len=*),  intent(in)    :: name
+      integer,           intent(in)    :: value
+
+      class (type_integer_attribute),pointer :: attribute
+
+      allocate(attribute)
+      attribute%value = value
+      call field_set_attribute(self,name,attribute)
+   end subroutine field_set_integer_attribute
+
+   subroutine field_set_string_attribute(self,name,value)
+      class (type_field),intent(inout) :: self
+      character(len=*),  intent(in)    :: name
+      character(len=*),  intent(in)    :: value
+
+      class (type_string_attribute),pointer :: attribute
+
+      allocate(attribute)
+      attribute%value = value
+      call field_set_attribute(self,name,attribute)
+   end subroutine field_set_string_attribute
+
+   subroutine field_finalize(self)
+      class (type_field),intent(inout) :: self
+
+      class (type_attribute),pointer :: attribute, next_attribute
+
+      deallocate(self%dimensions)
+      deallocate(self%extents)
+
+      attribute => self%first_attribute
+      do while (associated(attribute))
+         next_attribute => attribute%next
+         deallocate(attribute)
+         attribute => next_attribute
+      end do
+      self%first_attribute => null()
+   end subroutine field_finalize
 
    subroutine add_field_to_tree(self,field,category)
       class (type_field_manager),intent(inout),target :: self
@@ -749,5 +829,20 @@ contains
       FATAL trim(location)//': '//trim(error)
       stop 'field_manager::fatal_error'
    end subroutine
+
+   recursive subroutine node_finalize(self)
+      class (type_node), intent(inout) :: self
+
+      class (type_node), pointer :: child, next_child
+
+      child => self%first_child
+      do while (associated(child))
+         next_child => child%next_sibling
+         call child%finalize()
+         deallocate(child)
+         child => next_child
+      end do
+      self%first_child => null()
+   end subroutine node_finalize
 
 end module field_manager

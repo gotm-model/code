@@ -478,10 +478,6 @@
    if (rc /= 0) stop 'init_observations: Error allocating (vprof)'
    vprof = _ZERO_
 
-   allocate(epsprof(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_observations: Error allocating (epsprof)'
-   epsprof = _ZERO_
-
    db=_ZERO_
    ds=depth
    SRelaxTau(0)=SRelaxTauB
@@ -785,8 +781,10 @@
    select case (e_prof_method)
       case (NOTHING)
          LEVEL3 "none"
-         epsprof = _ZERO_
       case (FROMFILE)
+         allocate(epsprof(0:nlev),stat=rc)
+         if (rc /= 0) stop 'init_observations: Error allocating (epsprof)'
+         epsprof = _ZERO_
          call register_input_1d(e_prof_file,1,epsprof,'observed turbulence dissipation')
          LEVEL2 'Reading dissipation profiles from:'
          LEVEL3 trim(e_prof_file)

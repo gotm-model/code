@@ -7,12 +7,9 @@ module netcdf_output
 
    implicit none
 
-   public type_netcdf_file
+   public type_netcdf_file, NF90_FLOAT, NF90_DOUBLE
 
    private
-
-   REAL_4B,parameter :: dummy = 0.
-   integer,parameter :: ncrk = kind(dummy)
 
    type,extends(type_file) :: type_netcdf_file
       integer :: itime         = 0  ! Next time index in NetCDF file
@@ -21,6 +18,7 @@ module netcdf_output
       integer :: reference_julian  = -1
       integer :: reference_seconds = -1
       integer :: sync_interval = 1  ! Number of output time step between calls to nf90_sync (-1 to disable syncing)
+      integer :: default_xtype = NF90_FLOAT ! Floating point type (either NF90_FLOAT or NF90_DOUBLE)
    contains
       procedure :: configure
       procedure :: initialize
@@ -34,6 +32,7 @@ module netcdf_output
       integer,allocatable :: start(:)
       integer,allocatable :: edges(:)
       integer :: itimedim = -1
+      integer :: xtype = NF90_FLOAT
    end type
 
 contains
@@ -75,8 +74,6 @@ contains
          type (type_dimension_ids), pointer :: next => null()
       end type
       type (type_dimension_ids), pointer :: first_dim_id, dim_id
-
-      call host%log_message('Using NetCDF version: '//trim(NF90_INQ_LIBVERS()))
 
       if (.not.associated(self%first_field)) then
          call host%log_message('NOTE: "'//trim(self%path)//trim(self%postfix)//'.nc" will not be created because it would contain no data.')
@@ -126,7 +123,7 @@ contains
       ! Create time coordinate
       dim => self%field_manager%find_dimension(id_dim_time)
       if (self%is_dimension_used(dim)) then
-         iret = nf90_def_var(self%ncid,'time',NF90_REAL,(/get_dim_id(dim)/),self%time_id); call check_err(iret)
+         iret = nf90_def_var(self%ncid,'time',NF90_DOUBLE,(/get_dim_id(dim)/),self%time_id); call check_err(iret)
          call write_time_string(self%reference_julian,self%reference_seconds,time_string)
          iret = nf90_put_att(self%ncid,self%time_id,'long_name','time'); call check_err(iret)
          iret = nf90_put_att(self%ncid,self%time_id,'units','seconds since '//trim(time_string)); call check_err(iret)
@@ -143,20 +140,24 @@ contains
             do i=1,size(output_field%source%dimensions)
                current_dim_ids(i) = get_dim_id(output_field%source%dimensions(i)%p)
             end do
-            iret = nf90_def_var(self%ncid,output_field%output_name, NF90_REAL, current_dim_ids, output_field%varid); call check_err(iret)
+            iret = nf90_def_var(self%ncid,output_field%output_name, output_field%xtype, current_dim_ids, output_field%varid); call check_err(iret)
             deallocate(current_dim_ids)
 
             iret = nf90_put_att(self%ncid,output_field%varid,'units',trim(output_field%source%units)); call check_err(iret)
             iret = nf90_put_att(self%ncid,output_field%varid,'long_name',trim(output_field%source%long_name)); call check_err(iret)
             if (output_field%source%standard_name/='') iret = nf90_put_att(self%ncid,output_field%varid,'standard_name',trim(output_field%source%standard_name)); call check_err(iret)
-            if (output_field%source%minimum/=default_minimum) iret = nf90_put_att(self%ncid,output_field%varid,'valid_min',real(output_field%source%minimum,ncrk)); call check_err(iret)
-            if (output_field%source%maximum/=default_maximum) iret = nf90_put_att(self%ncid,output_field%varid,'valid_max',real(output_field%source%maximum,ncrk)); call check_err(iret)
-            if (output_field%source%fill_value/=default_fill_value) iret = nf90_put_att(self%ncid,output_field%varid,'_FillValue',real(output_field%source%fill_value,ncrk)); call check_err(iret)
+            if (output_field%source%minimum/=default_minimum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_min',output_field%source%minimum,output_field%xtype); call check_err(iret)
+            if (output_field%source%maximum/=default_maximum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_max',output_field%source%maximum,output_field%xtype); call check_err(iret)
+            if (output_field%source%fill_value/=default_fill_value) iret = put_att_typed_real(self%ncid,output_field%varid,'_FillValue',output_field%source%fill_value,output_field%xtype); call check_err(iret)
             attribute => output_field%source%first_attribute
             do while (associated(attribute))
                select type (attribute)
                class is (type_real_attribute)
                   iret = nf90_put_att(self%ncid,output_field%varid,trim(attribute%name),attribute%value); call check_err(iret)
+               class is (type_integer_attribute)
+                  iret = nf90_put_att(self%ncid,output_field%varid,trim(attribute%name),attribute%value); call check_err(iret)
+               class is (type_string_attribute)
+                  iret = nf90_put_att(self%ncid,output_field%varid,trim(attribute%name),trim(attribute%value)); call check_err(iret)
                end select
                attribute => attribute%next
             end do
@@ -211,10 +212,31 @@ contains
       end function
    end subroutine initialize
 
+   function put_att_typed_real(ncid,varid,name,value,data_type) result(iret)
+      integer,         intent(in) :: ncid,varid,data_type
+      character(len=*),intent(in) :: name
+      real(rk),        intent(in) :: value
+      integer :: iret
+
+      select case (data_type)
+      case (NF90_FLOAT)
+         iret = nf90_put_att(ncid,varid,name,real(value,kind(NF90_FILL_FLOAT)))
+      case (NF90_DOUBLE)
+         iret = nf90_put_att(ncid,varid,name,real(value,kind(NF90_FILL_DOUBLE)))
+      case default
+         call host%fatal_error('put_real_att','invalid value for data_type')
+      end select
+   end function put_att_typed_real
+
    function create_field(self) result(field)
       class (type_netcdf_file),intent(inout) :: self
       class (type_output_field), pointer :: field
+
       allocate(type_netcdf_field::field)
+      select type (field)
+      class is (type_netcdf_field)
+         field%xtype = self%default_xtype
+      end select
    end function create_field
 
    subroutine save(self,julianday,secondsofday)
@@ -223,7 +245,7 @@ contains
 
       class (type_output_field), pointer :: output_field
       integer                            :: iret
-      real(ncrk)                         :: temp_time
+      real(rk)                           :: time_value
 
       if (self%ncid==-1) return
 
@@ -232,8 +254,8 @@ contains
 
       ! Store time coordinate
       if (self%time_id/=-1) then
-         temp_time = (julianday-self%reference_julian)*real(86400,ncrk) + secondsofday-self%reference_seconds
-         iret = nf90_put_var(self%ncid,self%time_id,temp_time,(/self%itime/))
+         time_value = (julianday-self%reference_julian)*real(86400,rk) + secondsofday-self%reference_seconds
+         iret = nf90_put_var(self%ncid,self%time_id,time_value,(/self%itime/))
          if (iret/=NF90_NOERR) call host%fatal_error('netcdf_output:save','error saving variable "time" to '//trim(self%path)//trim(self%postfix)//'.nc: '//nf90_strerror(iret))
       end if
 
