@@ -213,6 +213,7 @@ if(GOTM_USE_FLEXIBLE_OUTPUT)
   if(NOT GOTM_USE_FABM)
     add_subdirectory(yaml)
     set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
+    set_property(TARGET yaml PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
     set(YAML_SOURCES $<TARGET_OBJECTS:yaml>)
   endif()
   add_library(output_manager
