@@ -3,7 +3,7 @@
 module output_manager_core
 
    use field_manager
-   use fabm_config_types,only: type_dictionary
+   use yaml_types,only: type_dictionary
 
    implicit none
 

@@ -5,6 +5,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 # Create main project.
 project(gotm Fortran)
 
+# Use solution folders in IDEs
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 # Set version information.
 set(gotm_VERSION_MAJOR 4)
 set(gotm_VERSION_MINOR 1)
@@ -61,12 +64,9 @@ endif()
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 if(GOTM_USE_FABM)
   add_definitions(-D_FABM_)
-  set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
 endif()
 
-#option(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON)
-include(CMakeDependentOption)
-CMAKE_DEPENDENT_OPTION(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON "GOTM_USE_FABM" OFF)
+option(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON)
 if(GOTM_USE_FLEXIBLE_OUTPUT)
   add_definitions(-D_FLEXIBLE_OUTPUT_)
 endif()
@@ -182,18 +182,20 @@ set_property(TARGET util turbulence PROPERTY FOLDER gotm)
 
 if(GOTM_USE_FABM)
   find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
+  mark_as_advanced(CLEAR FABM_BASE)
   if(FABM_BASE)
-    # Include FABM source files
-    mark_as_advanced(CLEAR FABM_BASE)
+    # Build FABM from source by including its CMakeLists.txt directory.
+    set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
     set(FABM_FORCED_HOST gotm)
     add_subdirectory(${FABM_BASE}/src fabm_src)
     set(FABM_LIBRARIES fabm)
     set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
+    mark_as_advanced(FORCE FABM_PREFIX FABM_EMBED_VERSION)
   else()
-    # Use FABM_PREFIX to locate include and lib directories
+    # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
     find_package(FABM REQUIRED)
+    mark_as_advanced(CLEAR FABM_PREFIX)
   endif()
-  mark_as_advanced(FORCE FABM_PREFIX)
   add_library(gotm_fabm
               fabm/gotm_fabm.F90
              )
@@ -203,22 +205,31 @@ if(GOTM_USE_FABM)
   set_property(TARGET gotm_fabm PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
   set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
   target_link_libraries(gotm_fabm ${FABM_LIBRARIES})
-
-  if(GOTM_USE_FLEXIBLE_OUTPUT)
-    add_library(output_manager
-                output/output_manager.F90
-                output/output_manager_core.F90
-                output/netcdf_output.F90
-                output/text_output.F90
-               )
-    target_link_libraries(output_manager util ${FABM_LIBRARIES})
-    set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-    set_property(TARGET output_manager PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
-    set_property(TARGET output_manager PROPERTY FOLDER gotm)
-  endif(GOTM_USE_FLEXIBLE_OUTPUT)
 else()
   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
 endif(GOTM_USE_FABM)
+
+if(GOTM_USE_FLEXIBLE_OUTPUT)
+  if(NOT GOTM_USE_FABM)
+    add_subdirectory(yaml)
+    set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
+    set_property(TARGET yaml PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+    set(YAML_SOURCES $<TARGET_OBJECTS:yaml>)
+  endif()
+  add_library(output_manager
+              ${YAML_SOURCES}
+              output/output_manager.F90
+              output/output_manager_core.F90
+              output/netcdf_output.F90
+              output/text_output.F90
+             )
+  set_property(TARGET output_manager PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+  set_property(TARGET output_manager PROPERTY FOLDER gotm)
+  if(GOTM_USE_FABM)
+    target_link_libraries(output_manager util ${FABM_LIBRARIES})
+    set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  endif()
+endif(GOTM_USE_FLEXIBLE_OUTPUT)
 
 if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
