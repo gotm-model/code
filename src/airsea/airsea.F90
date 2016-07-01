@@ -640,7 +640,7 @@
 !  {\tt back\_radiation} and {\tt airsea\_fluxes}, see sections
 !  \sect{sec:humidity}, \sect{sec:back-rad}, and \sect{sec:airsea-fluxes},
 !  a wrapper routine for using the bulk fomulae from either \cite{Kondo75}
-!  or \cite{Fairalletal96}. Afterwards, the airsea fluxes
+!  or \cite{Fairalletal96a}. Afterwards, the airsea fluxes
 !  are interpolated to the actual time step of GOTM. Finally, the
 !  incoming short-wave radiation is calculated by using the interpolated
 !  cloud cover and the actual UTC time of GOTM, see the routine

@@ -22,7 +22,7 @@
 ! which are composed of contributions
 ! $d_{i,j}(\vec{c})$, which represent reactive fluxes from
 ! $c_i$ to $c_j$, and in turn, $p_{i,j}(\vec{c})$ are reactive fluxes from
-! $c_j$ received by $c_i$, see equation (\ref{eq:am:a}).
+! $c_j$ received by $c_i$, see \cite{Burchardetal2003b}.
 !
 ! These methods are:
 !
