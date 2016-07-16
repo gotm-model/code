@@ -751,7 +751,7 @@ contains
       integer,           intent(in)    :: extents(:)
 
       integer                          :: i
-      character(len=2)                 :: str1,str2,str3
+      character(len=8)                 :: str1,str2,str3
 
       ! Check array rank
       if (size(extents)/=size(field%extents)) then
@@ -766,7 +766,7 @@ contains
             write (str1,'(i0)') i
             write (str2,'(i0)') extents(i)
             write (str3,'(i0)') field%extents(i)
-            call fatal_error('check_sent_data', 'Field '//trim(field%name)//', dimension  '//trim(str1)//': &
+            call fatal_error('check_sent_data', 'Field '//trim(field%name)//', dimension '//trim(str1)//': &
                &extents of provided data ('//trim(str2)//') does not match expected value '//trim(str3)//'.')
          end if
       end do
