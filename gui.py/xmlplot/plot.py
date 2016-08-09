@@ -107,7 +107,16 @@ def getColorMaps():
                     colormaps[prefix+strchild] = member
 
         fromModule(matplotlib.cm)
-        
+
+        # Try adding additional colormaps from cmocean
+        # matplotlib.org/cmocean
+        cmocean_cm = None
+        try:
+            from cmocean import cm as cmocean_cm
+        except:
+            pass
+        if cmocean_cm is not None: fromModule(cmocean_cm,prefix='cmocean.') 
+
         # Try adding additional colormaps from basemap
         basemapcm = None
         try:
