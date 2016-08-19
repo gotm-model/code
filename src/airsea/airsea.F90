@@ -669,6 +669,7 @@
    REALTYPE, save            :: alpha(5)
    REALTYPE, save            :: h1,tx1,ty1,cloud1
    REALTYPE, save            :: h2,tx2,ty2,cloud2
+   integer, save             :: line
    integer                   :: rc
 #endif
    REALTYPE                  :: ta_k,tw,tw_k
@@ -683,13 +684,21 @@
       tx2    = _ZERO_
       ty2    = _ZERO_
       cloud2 = _ZERO_
+      line = 0
    end if
 !  This part initialises and reads in new values if necessary.
    if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .lt. 0) then
       do
          meteo_jul1 = meteo_jul2
          meteo_secs1 = meteo_secs2
-         call read_obs(meteo_unit,yy,mm,dd,hh,min,ss,6,obs,rc)
+         call read_obs(meteo_unit,yy,mm,dd,hh,min,ss,6,obs,rc,line=line)
+         if (rc>0) then
+            FATAL 'Error reading time series from '//trim(meteo_file)//' at line ',line
+            stop 'flux_from_meteo'
+         elseif (rc<0) then
+            FATAL 'End of file reached while attempting to read new data from '//trim(meteo_file)//'. Does this file span the entire simulated period?'
+            stop 'flux_from_meteo'
+         end if
          call julian_day(yy,mm,dd,meteo_jul2)
          meteo_secs2 = hh*3600 + min*60 + ss
          if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .gt. 0) EXIT
