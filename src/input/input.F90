@@ -576,7 +576,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                      :: rc
-   integer                      :: yy,mm,dd,hh,min,ss
+   integer                      :: yy,mm,dd,hh,mins,ss
    REALTYPE                     :: t,dt
    type (type_0d_variable),pointer :: curvar
 !
@@ -590,7 +590,7 @@
          info%jul1 = info%jul2
          info%secs1 = info%secs2
          info%obs1 = info%obs2
-         call read_obs(info%unit,yy,mm,dd,hh,min,ss,size(info%obs2),info%obs2,rc,line=info%lines)
+         call read_obs(info%unit,yy,mm,dd,hh,mins,ss,size(info%obs2),info%obs2,rc,line=info%lines)
          if (rc>0) then
             FATAL 'Error reading time series from '//trim(info%path)//' at line ',info%lines
             stop 'input:get_observed_scalars'
@@ -599,7 +599,7 @@
             stop 'input:get_observed_scalars'
          end if
          call julian_day(yy,mm,dd,info%jul2)
-         info%secs2 = hh*3600 + min*60 + ss
+         info%secs2 = hh*3600 + mins*60 + ss
          if(time_diff(info%jul2,info%secs2,jul,secs)>0) exit
       end do
       dt = time_diff(info%jul2,info%secs2,info%jul1,info%secs1)
@@ -610,7 +610,7 @@
    t  = time_diff(jul,secs,info%jul1,info%secs1)
    curvar => info%first_variable
    do while (associated(curvar))
-      curvar%data = curvar%scale_factor*(info%obs1(curvar%index) + t*info%alpha(curvar%index))
+      curvar%data = curvar%scale_factor*min(max(info%obs1(curvar%index),info%obs2(curvar%index)),max(min(info%obs1(curvar%index),info%obs2(curvar%index)),info%obs1(curvar%index) + t*info%alpha(curvar%index)))
       curvar => curvar%next
    end do
 
