@@ -1,15 +1,14 @@
 <?xml version="1.0" ?>
 <converter source="gotm-4.0.0" target="gotm-4.1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlstore/converter-1.0.xsd">
-	<links>
-		<link source="/airsea/airsea/wet_mode"      target="/airsea/airsea/hum_method"/>
-		<link source="/airsea/airsea/p_e_method"    target="/airsea/airsea/precip_method"/>
-		<link source="/airsea/airsea/const_p_e"     target="/airsea/airsea/const_precip"/>
-		<link source="/airsea/airsea/p_e_flux_file" target="/airsea/airsea/precip_file"/>
-		<link source="/bio/bio_nml/bio_npar"        target="/bio/bio_nml/npar"/>
-	</links>
-	<custom>
-		<forward>
-<![CDATA[
+   <links>
+      <link source="/airsea/airsea/wet_mode"      target="/airsea/airsea/hum_method"/>
+      <link source="/airsea/airsea/p_e_method"    target="/airsea/airsea/precip_method"/>
+      <link source="/airsea/airsea/const_p_e"     target="/airsea/airsea/const_precip"/>
+      <link source="/airsea/airsea/p_e_flux_file" target="/airsea/airsea/precip_file"/>
+   </links>
+   <custom>
+      <forward>
+         <![CDATA[
 if source['airsea/airsea/calc_fluxes'].getValue():
     target['airsea/airsea/swr_method'].setValue(3)
 else:
@@ -60,9 +59,9 @@ else:
                 target['airsea/airsea/heatflux_file'].setValue(heatnew)
                 heatnew.release()
 ]]>
-		</forward>
-		<backward>
-<![CDATA[
+      </forward>
+      <backward>
+         <![CDATA[
 if not source['airsea/airsea/calc_fluxes'].getValue():
     swr_method = source['airsea/airsea/swr_method'].getValue()
     heat_method = source['airsea/airsea/heat_method'].getValue()
@@ -118,6 +117,6 @@ if not source['airsea/airsea/calc_fluxes'].getValue():
         if swrdata  is not None: swrdata.release()
         if heatdata is not None: heatdata.release()
 ]]>
-		</backward>
-	</custom>
+      </backward>
+   </custom>
 </converter>
