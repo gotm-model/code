@@ -3,7 +3,7 @@ module netcdf_output
    use field_manager
    use output_manager_core
    use netcdf
-   use fabm_config_types, only: type_dictionary, type_error
+   use yaml_types, only: type_dictionary, type_error
 
    implicit none
 

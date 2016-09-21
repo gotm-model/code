@@ -5,8 +5,8 @@ module output_manager
    use netcdf_output
    use text_output
 
-   use fabm_config_types
-   use fabm_yaml,yaml_parse=>parse,yaml_error_length=>error_length
+   use yaml_types
+   use yaml,yaml_parse=>parse,yaml_error_length=>error_length
 
    implicit none
 
