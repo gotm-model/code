@@ -133,6 +133,7 @@
    REALTYPE                  :: wind_factor
    REALTYPE                  :: const_swr
    REALTYPE                  :: swr_factor
+   REALTYPE                  :: shf_factor
    REALTYPE                  :: const_heat
    REALTYPE                  :: const_tx,const_ty
    REALTYPE                  :: const_precip
@@ -252,7 +253,7 @@
                      rain_impact, &
                      calc_evaporation, &
                      swr_method,albedo_method,const_albedo,const_swr,swr_file,swr_factor, &
-                     const_heat, &
+                     shf_factor,const_heat, &
                      heatflux_file, &
                      momentum_method, &
                      const_tx,const_ty, &
@@ -354,6 +355,7 @@
    const_swr=_ZERO_
    swr_file = ''
    swr_factor=_ONE_
+   shf_factor=_ONE_
    const_heat = _ZERO_
    heatflux_file = ''
    momentum_method = 0
@@ -582,6 +584,9 @@
       I_0 = I_0*(_ONE_-albedo-bio_albedo)
    end if
 
+   if (shf_factor .ne. _ONE_) then
+      heat = shf_factor*heat
+   end if
 
 !  If reading SST from file, overwrite current (model) SST with observed value,
 !  to be used in output.
@@ -955,6 +960,7 @@
 
    LEVEL2 'const_swr',const_swr
    LEVEL2 'swr_factor',swr_factor
+   LEVEL2 'shf_factor',shf_factor
    LEVEL2 'const_heat',const_heat
    LEVEL2 'const_tx,const_ty',const_tx,const_ty
    LEVEL2 'const_precip',const_precip
