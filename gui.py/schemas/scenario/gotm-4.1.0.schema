@@ -303,7 +303,8 @@
          <element name="swr_factor"  type="float" label="scale factor for short wave solar radiation" description="Scale factor for short wave solar radiation. If set to one, the original values are used. A value different from one might be applied to convert from non-GOTM units, or to test model sensitivity.">
             <condition type="eq" variable="./swr_method" value="2"/>
          </element>
-
+         <element name="shf_factor"  type="float" label="scale factor on surface heat fluxes" description="Scale factor on surface heat fluxes. Adds a scaling to the sum of latent, sensible and net long-wave radiation.">
+         </element>
          <element name="momentum_method" type="int" label="type of momentum flux">
             <condition type="eq" variable="./calc_fluxes" value="False" />
             <options>

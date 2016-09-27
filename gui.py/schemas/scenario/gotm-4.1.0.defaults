@@ -83,6 +83,7 @@
          <const_albedo>0.</const_albedo>
          <const_swr>0.0</const_swr>
          <swr_file>swr_file.dat</swr_file>
+         <shf_factor>1.0</shf_factor>
          <swr_factor>1.0</swr_factor>
          <momentum_method>0</momentum_method>
          <const_tx>0.0</const_tx>
