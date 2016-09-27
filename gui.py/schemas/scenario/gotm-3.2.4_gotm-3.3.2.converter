@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <converter source="gotm-3.2.4" target="gotm-3.3.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlstore/converter-1.0.xsd">
-	<links>
-		<link source="/gotmmean/meanflow/charnok"     target="/gotmmean/meanflow/charnock"/>
-		<link source="/gotmmean/meanflow/charnok_val" target="/gotmmean/meanflow/charnock_val"/>
-	</links>
+   <links>
+      <link source="/gotmmean/meanflow/charnok"     target="/gotmmean/meanflow/charnock"/>
+      <link source="/gotmmean/meanflow/charnok_val" target="/gotmmean/meanflow/charnock_val"/>
+   </links>
 </converter>

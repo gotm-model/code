@@ -49,7 +49,7 @@ else()
   set(flibs "-lnetcdf")
 endif()
 if(DEFINED ENV{NETCDFLIBDIR})
-  set(flibs "${flibs} -L$ENV{NETCDFLIBDIR}")
+  set(flibs "-L$ENV{NETCDFLIBDIR} ${flibs}")
 endif()
 set(NetCDF_LIBRARIES ${flibs} CACHE STRING "NetCDF linking flags")
 find_path(NetCDF_INCLUDE_DIRS netcdf.mod

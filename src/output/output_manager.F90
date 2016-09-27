@@ -5,8 +5,8 @@ module output_manager
    use netcdf_output
    use text_output
 
-   use fabm_config_types
-   use fabm_yaml,yaml_parse=>parse,yaml_error_length=>error_length
+   use yaml_types
+   use yaml,yaml_parse=>parse,yaml_error_length=>error_length
 
    implicit none
 
@@ -73,8 +73,6 @@ contains
          end do
          output_category => output_category%next
       end do
-      write (*,*)
-      write (*,*)
    end subroutine collect_from_categories
 
    subroutine filter_variables(file)
@@ -514,7 +512,7 @@ contains
             output_dim => file%get_dimension(dim)
             output_dim%global_start = mapping%get_integer(trim(dim%iterator)//'_start',default=1,error=config_error)
             if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-            if (output_dim%global_start<1.or.output_dim%global_start>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 1 and '//trim(strmax))
+            if (output_dim%global_start<0.or.output_dim%global_start>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 0 and '//trim(strmax))
             output_dim%global_stop = mapping%get_integer(trim(dim%iterator)//'_stop',default=dim%global_length,error=config_error)
             if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
             if (output_dim%global_stop<1.or.output_dim%global_stop>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))

@@ -946,9 +946,9 @@
 !-----------------------------------------------------------------------
 !
 !     Compute double-diffusive density ratio, Rrho.
-      drhoT = NNT(i)
-      drhoS = NNS(i)
-      Rrho= - drhoT/drhoS
+      drhoT =  NNT(i)
+      drhoS = -NNS(i)
+      Rrho  = drhoT/drhoS
 !
 !
 !     Salt fingering case.
@@ -966,7 +966,7 @@
 !
 !
 !     Diffusive convection case.
-      elseif ((_ZERO_.lt.Rrho).and.(Rrho.lt._ONE_).and.(drhoS.lt._ZERO_)) then
+      elseif ((Rrho.gt._ZERO_).and.(Rrho.lt._ONE_).and.(drhoS.lt._ZERO_)) then
 !
 !        Compute interior diffusivity for double diffusive mixing of
 !        temperature (Marmorino and Caldwell, 1976); (nu=1.5e-6,
@@ -975,7 +975,6 @@
 
 !        Compute interior diffusivity for double diffusive mixing
 !        of salinity (sdd1=0.15, sdd2=1.85, sdd3=0.85).
-!
          if (Rrho.lt.0.5) then
             nu_dds=nu_ddt*sdd1*Rrho
          else

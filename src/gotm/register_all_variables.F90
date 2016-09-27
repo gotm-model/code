@@ -142,8 +142,8 @@
    call fm%register('qh', 'W/m2', 'latent heat', standard_name='', data0d=qh)
    call fm%register('qb', 'W/m2', 'long-wave back radiation', standard_name='', data0d=qb)
    call fm%register('heat', 'W/m2', 'surface heat fluxes', standard_name='', data0d=heat)
-   call fm%register('tx', 'Pa', 'wind stress (x)', standard_name='', data0d=tx)
-   call fm%register('ty', 'Pa', 'wind stress (y)', standard_name='', data0d=ty)
+   call fm%register('tx', 'm2/s2', 'wind stress (x)', standard_name='', data0d=tx)
+   call fm%register('ty', 'm2/s2', 'wind stress (y)', standard_name='', data0d=ty)
    call fm%register('precip', 'm/s', 'precipitation', standard_name='', data0d=precip)
    call fm%register('evap', 'm/s', 'evaporation', standard_name='', data0d=evap)
    call fm%register('sst', 'Celsius', 'sea surface temperature', standard_name='sea_surface_temperature', data0d=sst)
@@ -167,7 +167,6 @@
    call fm%register('airp', 'Pa', 'air pressure', standard_name='', data0d=airp)
    call fm%register('int_precip', 'm', 'integrated precipitation', standard_name='', data0d=int_precip)
    call fm%register('int_evap','m', 'integrated evaporation', standard_name='', data0d=int_evap)
-!KB   call fm%register('int_fwf','m', 'integrated fresh water fluxes', standard_name='', data0d=int_fwf)
    call fm%register('int_swr','J/m2', 'integrated short wave radiation', standard_name='', data0d=int_swr)
    call fm%register('int_heat','J/m2', 'integrated surface heat fluxes', standard_name='', data0d=int_heat)
    call fm%register('int_total','J/m2', 'integrated total surface heat exchange', standard_name='', data0d=int_total)
@@ -199,7 +198,12 @@
    LEVEL2 'register_observation_variables()'
    call fm%register('tprof', 'Celsius', 'observed temperature', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof(1:nlev),category='observations')
    call fm%register('sprof', 'PSU', 'observed salinity', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof(1:nlev),category='observations')
+   call fm%register('u_obs', 'm/s', 'obs. x-velocity', dimensions=(/id_dim_z/), data1d=uprof(1:nlev), category='observations')
+   call fm%register('v_obs', 'm/s', 'obs. y-velocity', dimensions=(/id_dim_z/), data1d=vprof(1:nlev), category='observations')
    call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta,category='observations')
+   if (allocated(epsprof)) then
+      call fm%register('eps_obs', 'm2/s3', 'obs. dissipation', dimensions=(/id_dim_z/), data1d=epsprof(1:nlev), category='observations')
+   end if
 
    return
    end subroutine register_observation_variables
@@ -287,6 +291,7 @@
    call fm%register('v', 'm/s', 'y-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=v(1:nlev), category='meanflow/velocities')
    call fm%register('vo', 'm/s', 'y-velocity - old time step', standard_name='??', dimensions=(/id_dim_z/), data1d=vo(1:nlev), category='meanflow/velocities', output_level=output_level_debug)
    call fm%register('water_balance', 'm^3/s', 'water_balance', standard_name='??', data0d=net_water_balance, category='meanflow')
+   call fm%register('int_fwf','m', 'integrated fresh water fluxes', standard_name='', data0d=int_fwf, category='meanflow')
 !KB   call fm%register('w', 'm/s', 'z-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=w(1:nlev), category='meanflow/velocities,')
    call fm%register('fric', '', 'extra friction coefficient in water column', standard_name='??', dimensions=(/id_dim_z/), data1d=fric(1:nlev),category='meanflow')
    call fm%register('drag', '', 'drag coefficient in water column', standard_name='??', dimensions=(/id_dim_z/), data1d=drag(1:nlev),category='meanflow')

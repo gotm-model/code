@@ -55,7 +55,7 @@
 !  (see \cite{PaulsonSimpson77}) or by reading in a file through the namelist
 !  {\tt extinct} in {\tt obs.nml}. The damping term due to bioturbidity,
 !  $B(z)$ is calculated in the biogeochemical routines, see section
-!  \ref{sec:bio}.
+!  \ref{sec:bio-intro}.
 
 !  Diffusion is numerically treated implicitly, see equations (\ref{sigmafirst})-
 !  (\ref{sigmalast}).
