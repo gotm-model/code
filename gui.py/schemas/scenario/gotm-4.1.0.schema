@@ -314,7 +314,8 @@
          <element name="swr_factor"  type="float" label="scale factor for short wave solar radiation" description="Scale factor for short wave solar radiation. If set to one, the original values are used. A value different from one might be applied to convert from non-GOTM units, or to test model sensitivity.">
             <condition type="eq" variable="./swr_method" value="2"/>
          </element>
-
+         <element name="shf_factor"  type="float" label="scale factor on surface heat fluxes" description="Scale factor on surface heat fluxes. Adds a scaling to the sum of latent, sensible and net long-wave radiation.">
+         </element>
          <element name="momentum_method" type="int" label="type of momentum flux">
             <condition type="eq" variable="./calc_fluxes" value="False" />
             <options>
@@ -1173,7 +1174,6 @@
          </element>
       </element>
    </element>
-
    <element name="seagrass" label="seagrass model" optional="True">
       <element name="canopy">
          <element name="seagrass_calc" type="bool" label="use seagrass model" />
@@ -1195,7 +1195,10 @@
       </element>
    </element>
    <element name="streams" label="basic settings for streams" optional="True">
-      <element name="stream" label="observed stream profiles" minOccurs="0" maxOccurs="unbounded">
+      <!--
+      <element name="stream" label="observed stream profiles" minOccurs="0" maxOccurs="unbounded" >
+      -->
+      <element name="stream" label="observed stream profiles" >
          <element name="name" type="string" label="name of stream" />
          <element name="method" type="int" label="inflow/outflow method" >
             <options>
@@ -1296,47 +1299,23 @@
          </element>
       </element>
    </element>
+   <!--   
    <element name="fabm_input" label="Input specifications" optional="True">
       <condition type="eq" variable="/gotm_fabm/gotm_fabm_nml/fabm_calc" value="True" />
-<!--      <element name="observations" label="scalar or profile data" minOccurs="0" maxOccurs="unbounded">-->
+            <element name="observations" label="scalar or profile data" minOccurs="0" maxOccurs="unbounded">
       <element name="observations" label="scalar or profile data">
          <element name="variable" type="string" label="name of variable - instance_varname[_streamname]" />
          <element name="file" type="string" label="file name" />
          <element name="index" type="int" label="column # in file" optional="True" >
-<!--
             <condition type="ne" variable="./file" value="" />
--->
          </element>
          <element name="relax_tau" type="float" label="relaxation time" unit="s" optional="True" >
-<!--
             <condition type="ne" variable="./file" value="" />
--->
          </element>
          <element name="constant_value" type="float" label="constant variable value" >
-<!--
             <condition type="eq" variable="./file" value="" />
--->
          </element>
       </element>
    </element>
+   -->
 </element>
-
-<!--
-      <element name="fabm_input" label="Input specifications" optional="True">
-         <condition type="eq" variable="/gotm_fabm/gotm_fabm_nml/fabm_calc" value="True" />
-         <element name="observations" label="scalar or profile data" minOccurs="0" maxOccurs="unbounded">
-            <element name="variable" type="string" label="name of variable - instance_varname[_streamname]" />
-            <element name="file" type="string" label="file name" />
-            <element name="index" type="int" label="column # in file" optional="True" >
-               <condition type="ne" variable="./file" value="" />
-            </element>
-            <element name="relax_tau" type="float" label="relaxation time" unit="s" optional="True" >
-               <condition type="ne" variable="./file" value="" />
-            </element>
-            <element name="constant_value" type="float" label="constant variable value" >
-               <condition type="eq" variable="./file" value="" />
-            </element>
-         </element>
-      </element>
-   </element>
--->
