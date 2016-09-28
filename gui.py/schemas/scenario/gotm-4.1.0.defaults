@@ -86,6 +86,7 @@
          <const_swr>0.0</const_swr>
          <swr_file>swr_file.dat</swr_file>
          <swr_factor>1.0</swr_factor>
+         <shf_factor>1.0</shf_factor>
          <momentum_method>0</momentum_method>
          <const_tx>0.0</const_tx>
          <const_ty>0.0</const_ty>
