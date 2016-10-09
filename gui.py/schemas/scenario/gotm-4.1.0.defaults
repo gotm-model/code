@@ -264,6 +264,9 @@
       <extinct>
          <extinct_method>1</extinct_method>
          <extinct_file>extinct_file.dat</extinct_file>
+         <A>0.7</A>
+         <g1>0.4</g1>
+         <g2>8.0</g2>
       </extinct>
       <w_advspec>
          <w_adv_method>0</w_adv_method>

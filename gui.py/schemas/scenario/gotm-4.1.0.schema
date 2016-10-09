@@ -972,7 +972,7 @@
                <option value="4" label="Jerlov type IB" />
                <option value="5" label="Jerlov type II" />
                <option value="6" label="Jerlov type III" />
-               <option value="7" label="Adolf Stips, Lago Maggiore" />
+               <option value="7" label="User defined values (default from Lago Maggiore, A. Stips)" />
             </options>
          </element>
          <element name="extinct_file" type="gotmdatafile" label="name of file">
@@ -984,6 +984,15 @@
                   <filevariable name="g2" label="g2" unit="m" />
                </filevariables>
             </fileinfo>
+         </element>
+         <element name="A" type="float" label="non-visible fraction" minInclusive="0." maxInclusive="1.0" description="extinction - non-visible fraction">
+            <condition type="eq" variable="./extinct_method" value="7" />
+         </element>
+         <element name="g1" type="float" label="e-folding non-visible fraction" unit="m" minInclusive="0." description="e-folding depth - non-visible fraction">
+            <condition type="eq" variable="./extinct_method" value="7" />
+         </element>
+         <element name="g2" type="float" label="e-folding visible fraction" unit="m" minInclusive="0." description="e-folding depth - visible fraction">
+            <condition type="eq" variable="./extinct_method" value="7" />
          </element>
       </element>
       <element name="w_advspec" label="vertical advection">
