@@ -207,6 +207,7 @@
 !                          & (always positive)                                                      \\
 ! {\tt swr\_file}        & file with short wave radiation in W\,m$^{-2}$                          \\
 ! {\tt swr\_factor}      & scales data read from file to  W\,m$^{-2}$ - defaults to 1             \\
+! {\tt shf\_factor}      & scales surface heat fluxes - defaults to 1                             \\
 ! {\tt const\_heat }     & constant value for surface heat flux in  W\,m$^{-2}$                   \\
 !                          & (negative for heat loss)                                               \\
 ! {\tt heatflux\_file}   & file with date and {\tt heat} in W\,m$^{-2}$                           \\

@@ -85,6 +85,7 @@
          <const_albedo>0.</const_albedo>
          <const_swr>0.0</const_swr>
          <swr_file>swr_file.dat</swr_file>
+         <shf_factor>1.0</shf_factor>
          <swr_factor>1.0</swr_factor>
          <shf_factor>1.0</shf_factor>
          <momentum_method>0</momentum_method>
@@ -266,6 +267,9 @@
       <extinct>
          <extinct_method>1</extinct_method>
          <extinct_file>extinct_file.dat</extinct_file>
+         <A>0.7</A>
+         <g1>0.4</g1>
+         <g2>8.0</g2>
       </extinct>
       <w_advspec>
          <w_adv_method>0</w_adv_method>

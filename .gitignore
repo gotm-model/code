@@ -6,3 +6,4 @@ VERSION
 include/version.h
 *.o
 *.so
+*.swp

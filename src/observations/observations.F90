@@ -278,7 +278,7 @@
             const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
             s_adv,t_adv
 
-   namelist /extinct/ extinct_method,extinct_file
+   namelist /extinct/ extinct_method,extinct_file,A,g1,g2
 
    namelist /w_advspec/                                         &
             w_adv_method,w_adv_file,w_adv_height0,w_adv0,w_adv_discr
@@ -373,6 +373,11 @@
 !  Light extinction - the 'extinct' namelist
    extinct_method=1
    extinct_file='extinction.dat'
+   ! extinct_method=7 - user defined
+   ! default values are from Lago Maggiore, Stips
+   A=0.7
+   g1=0.40
+   g2=8.0
 
 !  Vertical advection velocity - 'w_advspec' namelist
    w_adv_method=0
@@ -688,7 +693,6 @@
          A=0.78;g1=1.40;g2=7.9
       case (7)
          LEVEL3 "7"
-         A=0.7;g1=0.40;g2=8.0 ! Adolf Stips - Lago Maggiore
       case default
          LEVEL1 'A non-valid extinct_method has been given ',extinct_method
          stop 'init_observations()'
