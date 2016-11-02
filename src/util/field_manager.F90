@@ -313,8 +313,8 @@ contains
 
       call self%root%finalize()
 
-      deallocate(self%prepend_dimensions)
-      deallocate(self%append_dimensions)
+      if (allocated(self%prepend_dimensions)) deallocate(self%prepend_dimensions)
+      if (allocated(self%append_dimensions )) deallocate(self%append_dimensions)
 
       self%nregistered = 0
    end subroutine finalize

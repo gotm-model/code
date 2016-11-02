@@ -165,12 +165,11 @@
    tauy = tmp*v10
 
 !  Compute momentum flux (N/m2) due to rainfall (kg/m2/s).
+!  according to Caldwell and Elliott (1971, JPO)
    if ( rain_impact ) then
-      tmp  = 0.85 * rainfall * w
-      x=u10
-      taux  = taux + tmp * sign(_ONE_,x)
-      x=v10
-      tauy  = tauy + tmp * sign(_ONE_,x)
+      tmp  = 0.85d0 * rainfall
+      taux  = taux + tmp * u10
+      tauy  = tauy + tmp * v10
    end if
 
    return
