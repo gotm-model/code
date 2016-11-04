@@ -465,20 +465,23 @@ class LinkedMatrix(LinkedFileVariableStore):
         times = []
         values = []
         iline = 0
+        ipos = 0
         while True:
             # Read a line (stop if end-of-file was reached)
             line = f.readline()
             if line=='': break
 
+            # Increment current line number
+            iline += 1
+
+            # Skip lines that start with comment
+            if line.startswith('#') or line.startswith('!'): continue
+
             # Calculate position in current memory slab, create new slab if needed.
-            ipos = iline%buffersize
             if ipos==0:
                 times.append(numpy.empty((buffersize,),         self.mpldatatypes[dimdatatype]))
                 values.append(numpy.empty((buffersize,varcount),self.mpldatatypes[self.datatype]))
 
-            # Increment current line number
-            iline += 1
-            
             # Read the date + time
             try:
                 refvals = map(int,(line[:4],line[5:7],line[8:10],line[11:13],line[14:16],line[17:19]))
@@ -486,13 +489,16 @@ class LinkedMatrix(LinkedFileVariableStore):
                 raise Exception('Line %i does not start with date and time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             curdate = xmlstore.util.dateTimeFromTuple(refvals)
             times[-1][ipos] = xmlplot.common.date2num(curdate)
-            
+
             # Read values.
             data = line[19:].split()
             if len(data)<varcount:
                 raise Exception('Line %i contains only %i observations, where %i are expected (%s).' % (iline,len(data),varcount,', '.join([d[1] for d in self.vardata])))
             values[-1][ipos,:] = map(float,data[:varcount])
-            
+
+            # Increment index in current memory slab
+            ipos = (ipos+1) % buffersize
+
             # Inform caller about progress
             if callback is not None and iline%1000==0:
                 progress = None
@@ -505,9 +511,10 @@ class LinkedMatrix(LinkedFileVariableStore):
 
         if len(times)>0:
             # Delete unused rows in last memory slab.
-            times [-1] = times [-1][0:iline%buffersize]
-            values[-1] = values[-1][0:iline%buffersize,:]
-        
+            if ipos>0:
+                times [-1] = times [-1][:ipos]
+                values[-1] = values[-1][:ipos,:]
+
             # Concatenate memory slab.
             times = numpy.concatenate(times,axis=0)
             values = numpy.concatenate(values,axis=0)
@@ -515,7 +522,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             # No data read: create empty time and value arrays
             times = numpy.zeros((0,),self.mpldatatypes[dimdatatype])
             values = numpy.zeros((0,varcount),self.mpldatatypes[self.datatype])
-            
+
         # Close data file
         f.close()
 
@@ -699,7 +706,8 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             line = f.readline()
             if line=='': break
             iline += 1
-            
+            if line.startswith('#') or line.startswith('!'): continue
+
             # Read date & time
             try:
                 refvals = map(int,(line[:4],line[5:7],line[8:10],line[11:13],line[14:16],line[17:19]))
@@ -715,26 +723,28 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             depthdatatype = self.dimensions[self.dimensionorder[1]]['datatype']
             curdepths = numpy.empty((depthcount,),self.mpldatatypes[depthdatatype])
             curvalues = numpy.empty((depthcount,varcount),self.mpldatatypes[self.datatype])
-            
+
             # Depths can be increasing (updown==1) or decreasing (updown!=1)
             if updown==1:
                 depthindices = range(0,depthcount,1)
             else:
                 depthindices = range(depthcount-1,-1,-1)
-            
+
             # Now parse the specified number of observations to create the profiles.
             prevdepth = None
             for idepthline in depthindices:
-                if callback is not None and iline%1000==0:
-                    pos = f.tell()
-                    callback(pos/filesize,'processed %i lines.' % iline)
-                    
-                # Read line
-                line = f.readline()
+                # Read next line (skip lines starting with comment character)
+                while 1:
+                    if callback is not None and iline%1000==0:
+                        pos = f.tell()
+                        callback(pos/filesize,'processed %i lines.' % iline)
+                    line = f.readline()
+                    iline += 1
+                    if not (line.startswith('#') or line.startswith('!')): break
+
                 if line=='':
                     raise Exception('Premature end-of-file after line %i; expected %i more observations.' % (iline,depthcount-depthindices.index(idepthline)))
-                iline += 1
-                
+
                 # Read values (depth followed by data) and check.
                 try:
                     linedata = map(float,line.split())
