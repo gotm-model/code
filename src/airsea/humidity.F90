@@ -31,6 +31,7 @@
 !  Original author(s): Adolf Stips, Hans Burchard & Karsten Bolding
 !
 ! !DEFINED PARAMETERS:
+!  Note shift of indices for coefficients compared to Lowe (1977, J. Appl. Met.)
    REALTYPE, parameter       :: a1=6.107799961
    REALTYPE, parameter       :: a2=4.436518521e-1
    REALTYPE, parameter       :: a3=1.428945805e-2

@@ -1,51 +1,38 @@
 <?xml version="1.0" ?>
 <converter source="gotm-4.1.0" target="gotmgui-0.5.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlstore/converter-1.0.xsd">
-	<links>
-		<link source="/gotmrun/model_setup/title"         target="/title"/>
-		<link source="/gotmrun/model_setup/cnpar"         target="/timeintegration/cnpar"/>
-		<link source="/gotmrun/station"                   target="/station"/>
-		<link source="/gotmrun/time"                      target="/time"/>
-		<link source="/gotmrun/output"                    target="/output"/>
-		<link source="/gotmrun/model_setup/buoy_method"   target="/meanflow/buoy_method"/>
-		<link source="/gotmrun/model_setup/nlev"          target="/grid/nlev"/>
-		<link source="/gotmrun/eqstate"                   target="/meanflow"/>
-		<link source="/gotmrun/eqstate"                   target="/meanflow/eq_state_method"/>
-		<link source="/gotmmean/meanflow"                 target="/grid"/>
-		<link source="/gotmmean/meanflow"                 target="/meanflow"/>
-		<link source="/airsea/airsea"                     target="/airsea"/>
-		<link source="/gotmturb/turbulence"               target="/gotmturb"/>
-		<link source="/gotmturb/scnd"                     target="/gotmturb/scnd/scnd_coeff"/>
-		<link source="/kpp/kpp"                           target="/gotmturb/kpp"/>
-		<link source="/obs/sprofile/s_prof_method"        target="/obs/sprofile"/>
-		<link source="/obs/sprofile"                      target="/obs/sprofile/SRelax"/>
-		<link source="/obs/tprofile/t_prof_method"        target="/obs/tprofile"/>
-		<link source="/obs/tprofile"                      target="/obs/tprofile/TRelax"/>
-		<link source="/obs/ext_pressure/ext_press_method" target="/obs/ext_pressure"/>
-		<link source="/obs/int_pressure/int_press_method" target="/obs/int_pressure"/>
-		<link source="/obs/extinct/extinct_method"        target="/obs/extinct"/>
-		<link source="/obs/w_advspec/w_adv_method"        target="/obs/w_advspec"/>
-		<link source="/obs/zetaspec/zeta_method"          target="/obs/zetaspec"/>
-		<link source="/obs/wave_nml/wave_method"          target="/obs/wave_nml"/>
-		<link source="/obs/velprofile/vel_prof_method"    target="/obs/velprofile"/>
-		<link source="/obs/eprofile/e_prof_method"        target="/obs/eprofile"/>
-		<link source="/obs/o2_profile/o2_prof_method"     target="/obs/o2_profile"/>
-		<!--
-      <link source="/obs/bioprofiles/bio_prof_method"   target="/obs/bioprofiles"/>
-		<link source="/bio/bio_nml"                       target="/bio"/>
-		<link source="/bio_npzd"                          target="/bio/bio_model/bio_npzd"/>
-		<link source="/bio_iow"                           target="/bio/bio_model/bio_iow"/>
-		<link source="/bio_sed"                           target="/bio/bio_model/bio_sed"/>
-		<link source="/bio_fasham"                        target="/bio/bio_model/bio_fasham"/>
-		<link source="/bio_npzd_fe"                       target="/bio/bio_model/bio_npzd_fe"/>
-		<link source="/bio_photo"                         target="/bio/bio_model/bio_photo"/>
-		<link source="/bio_cl"                            target="/bio/bio_model/bio_cl"/>
-		<link source="/bio_mangan"                        target="/bio/bio_model/bio_mangan"/>
-      -->
-      <!--<link source="/bio_BFM"                           target="/bio/bio_model/bio_BFM"/>-->
-	</links>
-	<custom>
-		<forward>
-<![CDATA[
+   <links>
+      <link source="/gotmrun/model_setup/title"         target="/title"/>
+      <link source="/gotmrun/model_setup/cnpar"         target="/timeintegration/cnpar"/>
+      <link source="/gotmrun/station"                   target="/station"/>
+      <link source="/gotmrun/time"                      target="/time"/>
+      <link source="/gotmrun/output"                    target="/output"/>
+      <link source="/gotmrun/model_setup/buoy_method"   target="/meanflow/buoy_method"/>
+      <link source="/gotmrun/model_setup/nlev"          target="/grid/nlev"/>
+      <link source="/gotmrun/eqstate"                   target="/meanflow"/>
+      <link source="/gotmrun/eqstate"                   target="/meanflow/eq_state_method"/>
+      <link source="/gotmmean/meanflow"                 target="/grid"/>
+      <link source="/gotmmean/meanflow"                 target="/meanflow"/>
+      <link source="/airsea/airsea"                     target="/airsea"/>
+      <link source="/gotmturb/turbulence"               target="/gotmturb"/>
+      <link source="/gotmturb/scnd"                     target="/gotmturb/scnd/scnd_coeff"/>
+      <link source="/kpp/kpp"                           target="/gotmturb/kpp"/>
+      <link source="/obs/sprofile/s_prof_method"        target="/obs/sprofile"/>
+      <link source="/obs/sprofile"                      target="/obs/sprofile/SRelax"/>
+      <link source="/obs/tprofile/t_prof_method"        target="/obs/tprofile"/>
+      <link source="/obs/tprofile"                      target="/obs/tprofile/TRelax"/>
+      <link source="/obs/ext_pressure/ext_press_method" target="/obs/ext_pressure"/>
+      <link source="/obs/int_pressure/int_press_method" target="/obs/int_pressure"/>
+      <link source="/obs/extinct/extinct_method"        target="/obs/extinct"/>
+      <link source="/obs/w_advspec/w_adv_method"        target="/obs/w_advspec"/>
+      <link source="/obs/zetaspec/zeta_method"          target="/obs/zetaspec"/>
+      <link source="/obs/wave_nml/wave_method"          target="/obs/wave_nml"/>
+      <link source="/obs/velprofile/vel_prof_method"    target="/obs/velprofile"/>
+      <link source="/obs/eprofile/e_prof_method"        target="/obs/eprofile"/>
+      <link source="/obs/o2_profile/o2_prof_method"     target="/obs/o2_profile"/>
+   </links>
+   <custom>
+      <forward>
+         <![CDATA[
 # ===============================================
 #  gotmrun
 # ===============================================
@@ -134,18 +121,12 @@ ref = source['obs/zetaspec/zeta_0'].getValue()
 target['obs/zetaspec/zeta_const' ].setValue(ref)
 target['obs/zetaspec/zeta_offset'].setValue(ref)
 
-# ===============================================
-#  bio
-# ===============================================
-#if not source['bio/bio_nml/bio_calc'].getValue():
-#    target['bio/bio_model'].setValue(0)
-
 # Note: we implicitly lose output settings out_fmt, out_dir and out_fn; the GUI scenario
 # does not support (or need) these.
 ]]>
-		</forward>
-		<backward>
-<![CDATA[
+      </forward>
+      <backward>
+         <![CDATA[
 # ===============================================
 #  gotmrun
 # ===============================================
@@ -257,14 +238,7 @@ if source['obs/zetaspec'].getValue()==1:
     target['obs/zetaspec/zeta_0'].setValue(source['obs/zetaspec/zeta_offset'].getValue())
 else:
     target['obs/zetaspec/zeta_0'].setValue(source['obs/zetaspec/zeta_const' ].getValue())
-
-# ===============================================
-#  bio
-# ===============================================
-#usebio = source['bio/bio_model'].getValue()!=0
-#target['bio/bio_nml/bio_calc'].setValue(usebio)
-#if not usebio: target['bio/bio_nml/bio_model'].setValue(1)
 ]]>
-		</backward>
-	</custom>
+      </backward>
+   </custom>
 </converter>

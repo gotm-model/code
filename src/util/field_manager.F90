@@ -8,7 +8,10 @@ module field_manager
    public type_field_manager
 
    ! Public data types and variables
-   public type_node, type_field, type_field_node, type_category_node, type_dimension
+   public type_node
+   public type_field, type_field_node
+   public type_category_node
+   public type_dimension
    public type_attribute, type_real_attribute, type_integer_attribute, type_string_attribute
 
    ! Public parameters
@@ -297,8 +300,8 @@ contains
 
       call self%root%finalize()
 
-      deallocate(self%prepend_dimensions)
-      deallocate(self%append_dimensions)
+      if (allocated(self%prepend_dimensions)) deallocate(self%prepend_dimensions)
+      if (allocated(self%append_dimensions )) deallocate(self%append_dimensions)
 
       self%nregistered = 0
    end subroutine finalize
@@ -748,7 +751,7 @@ contains
       integer,           intent(in)    :: extents(:)
 
       integer                          :: i
-      character(len=2)                 :: str1,str2,str3
+      character(len=8)                 :: str1,str2,str3
 
       ! Check array rank
       if (size(extents)/=size(field%extents)) then
@@ -763,7 +766,7 @@ contains
             write (str1,'(i0)') i
             write (str2,'(i0)') extents(i)
             write (str3,'(i0)') field%extents(i)
-            call fatal_error('check_sent_data', 'Field '//trim(field%name)//', dimension  '//trim(str1)//': &
+            call fatal_error('check_sent_data', 'Field '//trim(field%name)//', dimension '//trim(str1)//': &
                &extents of provided data ('//trim(str2)//') does not match expected value '//trim(str3)//'.')
          end if
       end do

@@ -133,6 +133,7 @@
    REALTYPE                  :: wind_factor
    REALTYPE                  :: const_swr
    REALTYPE                  :: swr_factor
+   REALTYPE                  :: shf_factor
    REALTYPE                  :: const_heat
    REALTYPE                  :: const_tx,const_ty
    REALTYPE                  :: const_precip
@@ -206,6 +207,7 @@
 !                          & (always positive)                                                      \\
 ! {\tt swr\_file}        & file with short wave radiation in W\,m$^{-2}$                          \\
 ! {\tt swr\_factor}      & scales data read from file to  W\,m$^{-2}$ - defaults to 1             \\
+! {\tt shf\_factor}      & scales surface heat fluxes - defaults to 1                             \\
 ! {\tt const\_heat }     & constant value for surface heat flux in  W\,m$^{-2}$                   \\
 !                          & (negative for heat loss)                                               \\
 ! {\tt heatflux\_file}   & file with date and {\tt heat} in W\,m$^{-2}$                           \\
@@ -252,7 +254,7 @@
                      rain_impact, &
                      calc_evaporation, &
                      swr_method,albedo_method,const_albedo,const_swr,swr_file,swr_factor, &
-                     const_heat, &
+                     shf_factor,const_heat, &
                      heatflux_file, &
                      momentum_method, &
                      const_tx,const_ty, &
@@ -354,6 +356,7 @@
    const_swr=_ZERO_
    swr_file = ''
    swr_factor=_ONE_
+   shf_factor=_ONE_
    const_heat = _ZERO_
    heatflux_file = ''
    momentum_method = 0
@@ -582,6 +585,9 @@
       I_0 = I_0*(_ONE_-albedo-bio_albedo)
    end if
 
+   if (shf_factor .ne. _ONE_) then
+      heat = shf_factor*heat
+   end if
 
 !  If reading SST from file, overwrite current (model) SST with observed value,
 !  to be used in output.
@@ -640,7 +646,7 @@
 !  {\tt back\_radiation} and {\tt airsea\_fluxes}, see sections
 !  \sect{sec:humidity}, \sect{sec:back-rad}, and \sect{sec:airsea-fluxes},
 !  a wrapper routine for using the bulk fomulae from either \cite{Kondo75}
-!  or \cite{Fairalletal96}. Afterwards, the airsea fluxes
+!  or \cite{Fairalletal96a}. Afterwards, the airsea fluxes
 !  are interpolated to the actual time step of GOTM. Finally, the
 !  incoming short-wave radiation is calculated by using the interpolated
 !  cloud cover and the actual UTC time of GOTM, see the routine
@@ -669,6 +675,7 @@
    REALTYPE, save            :: alpha(5)
    REALTYPE, save            :: h1,tx1,ty1,cloud1
    REALTYPE, save            :: h2,tx2,ty2,cloud2
+   integer, save             :: line
    integer                   :: rc
 #endif
    REALTYPE                  :: ta_k,tw,tw_k
@@ -683,13 +690,21 @@
       tx2    = _ZERO_
       ty2    = _ZERO_
       cloud2 = _ZERO_
+      line = 0
    end if
 !  This part initialises and reads in new values if necessary.
    if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .lt. 0) then
       do
          meteo_jul1 = meteo_jul2
          meteo_secs1 = meteo_secs2
-         call read_obs(meteo_unit,yy,mm,dd,hh,min,ss,6,obs,rc)
+         call read_obs(meteo_unit,yy,mm,dd,hh,min,ss,6,obs,rc,line=line)
+         if (rc>0) then
+            FATAL 'Error reading time series from '//trim(meteo_file)//' at line ',line
+            stop 'flux_from_meteo'
+         elseif (rc<0) then
+            FATAL 'End of file reached while attempting to read new data from '//trim(meteo_file)//'. Does this file span the entire simulated period?'
+            stop 'flux_from_meteo'
+         end if
          call julian_day(yy,mm,dd,meteo_jul2)
          meteo_secs2 = hh*3600 + min*60 + ss
          if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .gt. 0) EXIT
@@ -946,6 +961,7 @@
 
    LEVEL2 'const_swr',const_swr
    LEVEL2 'swr_factor',swr_factor
+   LEVEL2 'shf_factor',shf_factor
    LEVEL2 'const_heat',const_heat
    LEVEL2 'const_tx,const_ty',const_tx,const_ty
    LEVEL2 'const_precip',const_precip

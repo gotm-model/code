@@ -76,8 +76,8 @@ d_t\left(\sum_{i=1}^I c_i    \right) =
 = \sum_{i=1}^I\left(p_{i,i}(\vec{c}) - d_{i,i}(\vec{c})\right)=0.
 \end{array}
 \end{equation}
-The NPZD model (see section \ref{sec:bio-npzd}) and the
-\cite{Fashametal1990} model discussed in section \ref{sec:bio-fasham}
+The NPZD model (see \cite{Burchardetal2005b}) and the
+\cite{Fashametal1990} model as discussed by \cite{Burchardetal05}
 are such fully conservative models.
 
 In many biogeochemical models most state variables are known to be positive
@@ -113,8 +113,8 @@ which also includes oxygen demand units,
 all sink and source
 terms are added up in the production terms
 $p_{i,j}$, with a negative sign for the sink terms.
-For the \cite{Neumannetal2002} model discussed in sections
-\ref{sec:bio-iow},
+For the \cite{Neumannetal2002} model as discussed 
+\cite{Burchardetal05},
 further deviations from the conservation formulation are introduced since
 biogeochemical reactions include substances which are not budgeted by the
 model (mostly because they are assumed to be not limiting).
@@ -203,9 +203,9 @@ This equal numerical treatment of sources and sinks
 results in implicit linear systems of equations.
 Since only ordinary differential equations are to be solved in each
 grid point, these systems have small dimensions, for example $I=7$ for
-the \cite{Fashametal1990} model (see section \ref{sec:bio-fasham}) and
+the \cite{Fashametal1990} model (see \cite{Burchardetal05}) and
 $I=10$ for the \cite{Neumannetal2002} model 
-(see section \ref{sec:bio-iow}).
+(see \cite{Burchardetal05}).
 Thus, these linear systems may be directly solved
 by Gaussian elimination schemes.
 Nevertheless, one can also employ iterative methods.
@@ -239,8 +239,7 @@ The major objectives are:
   \item to allow for easy extensions of the system with new 
      biogeochemical models without changing 
   the over-all structure, such as the \cite{Fashametal1990} model
-  (see section \ref{sec:bio-fasham}) and the \cite{Neumannetal2002} model, 
-  see section \ref{sec:bio-iow}),
+  and the \cite{Neumannetal2002} model
   \item to provide a number of solution methods for the 'process part' of the
   biogeochemical model, i.e.\ solvers for ordinary differential equations
   as discussed in section \ref{sec:bio-num} and section \ref{sec:ode-solver},
@@ -342,8 +341,7 @@ not need any surface fluxes or short-wave radiation.
 For the diffusion/advection part a general subroutine is called
 which is also used by 
 the physical model. 
-After having calculated $I_{PAR}$ and $B$ (see eqs.\ (\ref{Iz}) and
-(\ref{B}),
+After having calculated $I_{PAR}$ (see eq.\ (\ref{Iz})),
 the next step is the step at which the production and destruction terms
 ($p_{i,j,k}$ and $d_{i,j,k}$)
 of the biogeochemical models are calculated. This is done via a call to 

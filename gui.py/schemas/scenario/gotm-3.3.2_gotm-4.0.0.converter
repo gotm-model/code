@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <converter source="gotm-3.3.2" target="gotm-4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlstore/converter-1.0.xsd">
-	<links>
-		<link source="/obs/ext_pressure/PressMethod" target="/obs/ext_pressure/ext_press_mode"/>
-	</links>
+   <links>
+      <link source="/obs/ext_pressure/PressMethod" target="/obs/ext_pressure/ext_press_mode"/>
+   </links>
 </converter>
