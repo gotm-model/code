@@ -709,8 +709,8 @@ class DataFile(DataType,util.referencedobject):
         container = context['container']
         if container is None: return DataFile()
         name = util.getNodeText(node)
-        if name not in container.listFiles(): return DataFile()
         df = container.getItem(name)
+        if df is None: return DataFile()
         cache[uniquename] = df.addref()
         return df
 
@@ -1190,7 +1190,7 @@ class DataContainerDirectory(DataContainer):
                     searchDirectory(path,prefix+fn+'/')
         searchDirectory(self.path)
         return res
-
+        
 class DataContainerZip(DataContainer):
     """A DataContainer implementation for zip archives.
     """
