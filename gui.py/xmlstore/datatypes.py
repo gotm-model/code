@@ -709,8 +709,8 @@ class DataFile(DataType,util.referencedobject):
         container = context['container']
         if container is None: return DataFile()
         name = util.getNodeText(node)
-        if name not in container.listFiles(): return DataFile()
         df = container.getItem(name)
+        if df is None: return DataFile()
         cache[uniquename] = df.addref()
         return df
 
@@ -1181,10 +1181,16 @@ class DataContainerDirectory(DataContainer):
         """Returns a list of all files in the directory.
         """
         res = []
-        for fn in os.listdir(self.path):
-            if os.path.isfile(os.path.join(self.path,fn)): res.append(fn)
+        def searchDirectory(dirpath,prefix=''):
+            for fn in os.listdir(dirpath):
+                path = os.path.join(self.path,fn)
+                if os.path.isfile(path):
+                    res.append(prefix+fn)
+                elif os.path.isdir(path):
+                    searchDirectory(path,prefix+fn+'/')
+        searchDirectory(self.path)
         return res
-
+        
 class DataContainerZip(DataContainer):
     """A DataContainer implementation for zip archives.
     """
