@@ -450,7 +450,7 @@
       call integrated_fluxes(dt)
       int_fwf = int_net_precip
 
-      call update_streams(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Qs,Qt,Ls,Lt,Q)
+      call update_streams(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Qs,Qt,Ls,Lt,Qlayer)
 
 !     meanflow integration starts
       if (lake) then

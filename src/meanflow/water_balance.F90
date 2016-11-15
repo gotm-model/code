@@ -17,7 +17,7 @@
    use meanflow,      only: lake,Af,Vc
    use streams,       only: int_inflow,int_outflow
    use airsea,        only: evap,precip
-   use observations,  only: Q,Qres,zeta_method,zeta
+   use observations,  only: Qlayer,Qres,zeta_method,zeta
    use hypsograph,    only: Vc2zi,zi2Vc
 !
    IMPLICIT NONE
@@ -50,7 +50,7 @@
       int_fwf = int_fwf + int_flows
 
       sumVc = sum(Vc(1:nlev))
-      net_water_balance = sum(Q(1:nlev)) + Af(nlev)*(evap + precip)
+      net_water_balance = sum(Qlayer(1:nlev)) + Af(nlev)*(evap + precip)
       if (zeta_method.eq.1 .or. zeta_method.eq.2) then
 !        zeta is already updated by observations
          zi1(1) = zeta

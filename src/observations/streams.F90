@@ -353,7 +353,7 @@
 
       end if
 
-      Q = Q + current_stream%Q
+      Q(1:nlev) = Q(1:nlev) + current_stream%Q
 
       current_stream => current_stream%next
    end do

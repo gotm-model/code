@@ -219,7 +219,7 @@
 ! !DESCRIPTION:
 !
 ! !USES:
-   use observations, only: Q, Qs, Qt, wq, FQ, Qres
+   use observations, only: Qlayer, Qs, Qt, wq, FQ, Qres
    use streams
    IMPLICIT NONE
 !
@@ -234,7 +234,7 @@
 !BOC
    LEVEL2 'register_stream_variables()'
    if (nstreams>0) then
-      call fm%register('Q', 'm^3/s', 'inflows over water column', standard_name='??', dimensions=(/id_dim_z/), data1d=Q(1:nlev), category='streams')
+      call fm%register('Qlayer', 'm^3/s', 'inflows over water column', standard_name='??', dimensions=(/id_dim_z/), data1d=Qlayer(1:nlev), category='streams')
       call fm%register('Qs', '1/s', 'salt inflow', standard_name='??', dimensions=(/id_dim_z/), data1d=Qs(1:nlev), category='streams')
       call fm%register('Qt', 'celsius/s', 'temperature inflow', standard_name='??', dimensions=(/id_dim_z/), data1d=Qt(1:nlev), category='streams')
       call fm%register('wq', 'm/s', 'vertical water balance advection velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=wq(1:nlev), category='streams')

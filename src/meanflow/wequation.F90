@@ -19,7 +19,7 @@
 !
 ! !USES:
    use meanflow    , only: zi,w,lake,Vc,Vco,Af
-   use observations, only: w_adv_method,w_adv,w_height,Q,Qres,FQ,wq
+   use observations, only: w_adv_method,w_adv,w_height,Qlayer,Qres,FQ,wq
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -43,7 +43,7 @@
       dtm1 = _ONE_ / dt
       ! calculate the vertical flux terms
       do i=1,nlev-1
-         FQ(i) = FQ(i-1) + Q(i) + Qres(i) - ( Vc(i) - Vco(i) )*dtm1
+         FQ(i) = FQ(i-1) + Qlayer(i) + Qres(i) - ( Vc(i) - Vco(i) )*dtm1
          wq(i) = FQ(i) / Af(i)
       end do
    end if
