@@ -146,11 +146,11 @@
          current_stream%has_S = .true.
       end if
 
-      allocate(current_stream%weights(0:nlev),stat=rc)
+      allocate(current_stream%weights(1:nlev),stat=rc)
       if (rc /= 0) STOP 'init_observations: Error allocating (weights)'
       current_stream%weights = _ZERO_
 
-      allocate(current_stream%Q(0:nlev),stat=rc)
+      allocate(current_stream%Q(1:nlev),stat=rc)
       if (rc /= 0) STOP 'init_observations: Error allocating (Q)'
       current_stream%Q = _ZERO_
 
