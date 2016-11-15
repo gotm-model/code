@@ -1205,9 +1205,9 @@
    </element>
    <element name="streams" label="basic settings for streams" optional="True">
       <!--
-      <element name="stream" label="observed stream profiles" minOccurs="0" maxOccurs="unbounded" >
-      -->
       <element name="stream" label="observed stream profiles" >
+      -->
+      <element name="stream" label="observed stream profiles" minOccurs="0" maxOccurs="unbounded" >
          <element name="name" type="string" label="name of stream" />
          <element name="method" type="int" label="inflow/outflow method" >
             <options>
