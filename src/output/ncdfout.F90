@@ -659,7 +659,7 @@
    use airsea,       only: hum_method
    use airsea,       only: u10,v10
    use airsea,       only: airp,airt
-   use airsea,       only: rh,twet,tdew,cloud
+   use airsea,       only: hum,cloud
    use airsea_variables, only: rhoa
    use airsea,       only: tx,ty,I_0,albedo,qb,qe,qh,heat,precip,evap,sst,sss
    use airsea,       only: int_precip,int_evap,int_net_precip
@@ -742,13 +742,13 @@
    iret = store_data(ncid,airt_id,XYT_SHAPE,1,scalar=airt)
    select case (hum_method)
       case (1) ! relative humidity in % given
-         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=rh)
+         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=hum)
       case (2)  ! Specific humidity from wet bulb temperature
-         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=twet)
+         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=hum)
       case (3)  ! Specific humidity from dew point temperature
-         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=tdew)
+         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=hum)
       case (4)  ! Specific humidity in kg/kg given
-         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=rh)
+         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=hum)
    end select
    iret = store_data(ncid,cloud_id,XYT_SHAPE,1,scalar=cloud)
    iret = store_data(ncid,rhoa_id,XYT_SHAPE,1,scalar=rhoa)
