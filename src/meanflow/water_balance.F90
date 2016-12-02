@@ -54,7 +54,6 @@
 
       sumVc = sum(Vc(1:nlev))
       net_water_balance = sum(Qlayer(1:nlev)) + Af(nlev)*(evap + precip)
-STDERR evap,precip,sum(Qlayer(1:nlev))
       if (zeta_method.eq.1 .or. zeta_method.eq.2) then
 !        zeta is already updated by observations
          zi1(1) = zeta
