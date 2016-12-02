@@ -158,6 +158,8 @@
 !  Sea surface elevations - 'zetaspec' namelist
    integer,public            :: zeta_method
    character(LEN=PATH_MAX)   :: zeta_file
+   REALTYPE, public          :: zeta_scale
+   REALTYPE, public          :: zeta_offset
    REALTYPE, public          :: zeta_0
    REALTYPE, public          :: period_1
    REALTYPE, public          :: amp_1
@@ -284,7 +286,7 @@
             w_adv_method,w_adv_file,w_adv_height0,w_adv0,w_adv_discr
 
    namelist /zetaspec/                                          &
-            zeta_method,zeta_file,zeta_0,                       &
+            zeta_method,zeta_file,zeta_scale,zeta_offset,zeta_0,&
             period_1,amp_1,phase_1,period_2,amp_2,phase_2
 
    namelist /wave_nml/                                          &
@@ -389,6 +391,8 @@
 !  Sea surface elevations - 'zetaspec' namelist
    zeta_method=0
    zeta_file='zeta.dat'
+   zeta_scale=_ONE_
+   zeta_offset=_ZERO_
    zeta_0=_ZERO_
    period_1=44714.
    amp_1=_ZERO_
@@ -730,7 +734,7 @@
 !        The analytical prescription of surface elevation is time-dependent
 !        and is therefore handled in get_all_obs.
       case (FROMFILE)
-         call register_input_0d(zeta_file,1,zeta,'observed sea surface elevation')
+         call register_input_0d(zeta_file,1,zeta,'observed sea surface elevation',scale_factor=zeta_scale,add_offset=zeta_offset)
          LEVEL2 'Reading sea surface elevations from:'
          LEVEL3 trim(zeta_file)
       case (FREE_SURFACE)
