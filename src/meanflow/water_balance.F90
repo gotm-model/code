@@ -14,6 +14,7 @@
    use meanflow,      only: WATER_BALANCE_SURFACE,WATER_BALANCE_ALLLAYERS
    use meanflow,      only: WATER_BALANCE_ZETA
    use meanflow,      only: int_flows,net_water_balance,int_fwf
+   use meanflow,      only: int_water_balance
    use meanflow,      only: lake,Af,Vc
    use streams,       only: int_inflow,int_outflow
    use airsea,        only: evap,precip
@@ -47,10 +48,13 @@
 #else
       int_flows = (int_inflow + int_outflow)/Af(size(Af)-1)
 #endif
+!STDERR Af
+!STDERR size(Af),nlev
       int_fwf = int_fwf + int_flows
 
       sumVc = sum(Vc(1:nlev))
       net_water_balance = sum(Qlayer(1:nlev)) + Af(nlev)*(evap + precip)
+STDERR evap,precip,sum(Qlayer(1:nlev))
       if (zeta_method.eq.1 .or. zeta_method.eq.2) then
 !        zeta is already updated by observations
          zi1(1) = zeta
@@ -70,7 +74,12 @@
             call Vc2zi(1,Vc1,zi1)
             zeta = zi1(1)
       end select
+      int_water_balance = int_water_balance + dt*net_water_balance
+   else
+      net_water_balance = evap + precip
+      int_water_balance = int_water_balance + dt*net_water_balance
    end if
+
 
    return
    end subroutine water_balance

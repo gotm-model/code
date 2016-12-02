@@ -124,7 +124,7 @@
    integer,  public, parameter                   :: WATER_BALANCE_ALLLAYERS=2
    integer,  public, parameter                   :: WATER_BALANCE_ZETA=3
    integer,  public                              :: water_balance_method=WATER_BALANCE_SURFACE
-   REALTYPE, public                              :: net_water_balance
+   REALTYPE, public                              :: net_water_balance, int_water_balance=_ZERO_
    REALTYPE, public                              :: int_flows
    REALTYPE, public                              :: int_fwf
 !

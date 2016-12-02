@@ -250,8 +250,8 @@
       current_stream => current_stream%next
    end do
 
-   call fm%register('int_inflow', 'm^3/s', 'integrated inflow', data0d=int_inflow, category='streams')
-   call fm%register('int_outflow', 'm^3/s', 'integrated outflow', data0d=int_outflow, category='streams')
+   call fm%register('int_inflow', 'm^3', 'integrated inflow', data0d=int_inflow, category='streams')
+   call fm%register('int_outflow', 'm^3', 'integrated outflow', data0d=int_outflow, category='streams')
 
    return
    end subroutine register_stream_variables
@@ -290,6 +290,11 @@
    call fm%register('v', 'm/s', 'y-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=v(1:nlev), category='meanflow/velocities')
    call fm%register('vo', 'm/s', 'y-velocity - old time step', standard_name='??', dimensions=(/id_dim_z/), data1d=vo(1:nlev), category='meanflow/velocities', output_level=output_level_debug)
    call fm%register('water_balance', 'm^3/s', 'water_balance', standard_name='??', data0d=net_water_balance, category='meanflow')
+   if (lake) then
+      call fm%register('int_water_balance', 'm^3', 'integrated total water balance', data0d=int_water_balance, category='meanflow')
+   else
+      call fm%register('int_water_balance', 'm', 'integrated total water balance', data0d=int_water_balance, category='meanflow')
+   end if
    call fm%register('int_fwf','m', 'integrated fresh water fluxes', standard_name='', data0d=int_fwf, category='meanflow')
 !KB   call fm%register('w', 'm/s', 'z-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=w(1:nlev), category='meanflow/velocities,')
    call fm%register('fric', '', 'extra friction coefficient in water column', standard_name='??', dimensions=(/id_dim_z/), data1d=fric(1:nlev),category='meanflow')
