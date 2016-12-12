@@ -1,6 +1,6 @@
 module output_manager
 
-   use field_manager
+   use field_manager,type_base_node=>type_node
    use output_manager_core
    use netcdf_output
    use text_output
@@ -46,27 +46,30 @@ contains
       class (type_file), intent(inout) :: file
       class (type_output_category), pointer :: output_category
       class (type_output_field),pointer  :: output_field
-      type (type_field_set) :: set
-      class (type_field_set_member), pointer :: member, next_member
+      type (type_category_node) :: list
+      class (type_base_node), pointer :: field_node, next_field_node
 
       output_category => file%first_category
       do while (associated(output_category))
          call host%log_message('Processing output category /'//trim(output_category%name)//':')
          if (.not.output_category%source%has_fields()) call host%fatal_error('collect_from_categories','No variables have been registered under output category "'//trim(output_category%name)//'".')
-         call output_category%source%get_all_fields(set,output_category%output_level)
-         member => set%first
-         if (.not.associated(member)) call host%log_message('WARNING: output category "'//trim(output_category%name)//'" does not contain any variables with requested output level.')
-         do while (associated(member))
-            call host%log_message('  - '//trim(member%field%name))
-            output_field => file%create_field()
-            output_field%time_method = output_category%time_method
-            output_field%source => member%field
-            output_field%output_name = trim(output_category%prefix)//trim(member%field%name)//trim(output_category%postfix)
-            call file%append(output_field)
-
-            next_member => member%next
-            deallocate(member)
-            member => next_member
+         list%first_child => null()
+         call output_category%source%get_all_fields(list,output_category%output_level)
+         field_node => list%first_child
+         if (.not.associated(field_node)) call host%log_message('WARNING: output category "'//trim(output_category%name)//'" does not contain any variables with requested output level.')
+         do while (associated(field_node))
+            select type (field_node)
+            class is (type_field_node)
+               call host%log_message('  - '//trim(field_node%field%name))
+               output_field => file%create_field()
+               output_field%time_method = output_category%time_method
+               output_field%source => field_node%field
+               output_field%output_name = trim(output_category%prefix)//trim(field_node%field%name)//trim(output_category%postfix)
+               call file%append(output_field)
+            end select
+            next_field_node => field_node%next_sibling
+            deallocate(field_node)
+            field_node => next_field_node
          end do
          output_category => output_category%next
       end do
@@ -466,9 +469,11 @@ contains
       end select
 
       ! Create file object and prepend to list.
+      file%field_manager => field_manager
       file%path = path
       if (present(postfix)) file%postfix = postfix
-      call output_manager_add_file(field_manager,file)
+      file%next => first_file
+      first_file => file
 
       ! Can be used for CF global attributes
       file%title = mapping%get_string('title',default=title,error=config_error)
@@ -679,7 +684,11 @@ contains
          output_item%output_level = mapping%get_integer('output_level',default=output_level_default,error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
-         call file%append_category(output_item)
+         ! Select this category for output in the field manager.
+         output_item%source => file%field_manager%select_category_for_output(output_item%name,output_item%output_level)
+
+         output_item%next => file%first_category
+         file%first_category => output_item
       end select
 
       ! Raise error if any keys are left unused.

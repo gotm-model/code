@@ -8,10 +8,11 @@ module field_manager
    public type_field_manager
 
    ! Public data types and variables
-   public type_field, type_category_node, type_dimension
-   public type_attribute, type_real_attribute
-   public type_integer_attribute, type_string_attribute
-   public type_field_set, type_field_set_member
+   public type_node
+   public type_field, type_field_node
+   public type_category_node
+   public type_dimension
+   public type_attribute, type_real_attribute, type_integer_attribute, type_string_attribute
 
    ! Public parameters
    public string_length,default_fill_value,default_minimum,default_maximum
@@ -123,16 +124,9 @@ module field_manager
       procedure :: has_fields
    end type
 
-   type type_field_set_member
-      type (type_field),            pointer :: field => null()
-      type (type_field_set_member), pointer :: next  => null()
-   end type
-
-   type type_field_set
-      type (type_field_set_member), pointer :: first => null()
-   contains
-      procedure :: add      => field_set_add
-      procedure :: finalize => field_set_finalize
+   integer, parameter :: hash_table_size = 256
+   type type_dictionary_bin
+      type (type_field), pointer :: first_field => null()
    end type
 
    type type_field_manager
@@ -141,7 +135,7 @@ module field_manager
       type (type_dimension_pointer),allocatable :: prepend_dimensions(:)
       type (type_dimension_pointer),allocatable :: append_dimensions(:)
 
-      type (type_field),pointer :: first_field => null()
+      type (type_dictionary_bin) :: field_table(hash_table_size)
       type (type_category_node) :: root
       integer                   :: nregistered = 0
    contains
@@ -160,8 +154,6 @@ module field_manager
       procedure :: select_category_for_output
       procedure :: register_dimension
       procedure :: find_dimension
-      procedure :: find_category
-      procedure :: get_state
       generic :: send_data => send_data_0d,send_data_1d,send_data_2d,send_data_3d,send_data_by_name_0d,send_data_by_name_1d
    end type type_field_manager
 
@@ -247,22 +239,23 @@ contains
    subroutine list(self)
       class (type_field_manager), intent(in) :: self
 
-      type (type_field), pointer :: field, next_field
+      character(256)             :: line
+      integer                    :: ibin
+      type (type_field), pointer :: field
 
-      character(256) :: line
-      field => self%first_field
       write(line,'(A8,4x,A12,4x,A40)') 'name','unit',adjustl('long_name')
       write(*,*) trim(line)
       write(line,'(A68)') '----------------------------------------------------------------'
       write(*,*) trim(line)
-      do while (associated(field))
-         write(line,'(I2,2x,A15,2x,A15,2x,A45)') field%id,adjustl(field%name),adjustl(field%units),adjustl(field%long_name)
-         write(*,*) trim(line)
+      do ibin=1,hash_table_size
+         field => self%field_table(ibin)%first_field
+         do while (associated(field))
+            write(line,'(I2,2x,A15,2x,A15,2x,A45)') field%id,adjustl(field%name),adjustl(field%units),adjustl(field%long_name)
+            write(*,*) trim(line)
 !KB         write(*,*) field%dimensions
-         next_field => field%next
-         field => next_field
+            field => field%next
+         end do
       end do
-
       write (*,*) 'field tree:'
       call list_node(self%root,1)
 
@@ -291,17 +284,20 @@ contains
    subroutine finalize(self)
       class (type_field_manager), intent(inout) :: self
 
-      type (type_field), pointer :: field, next_field
+      integer                        :: ibin
+      type (type_field),     pointer :: field, next_field
       type (type_dimension), pointer :: dim, next_dim
 
-      field => self%first_field
-      do while (associated(field))
-         next_field => field%next
-         call field%finalize()
-         deallocate(field)
-         field => next_field
+      do ibin=1,hash_table_size
+         field => self%field_table(ibin)%first_field
+         do while (associated(field))
+            next_field => field%next
+            call field%finalize()
+            deallocate(field)
+            field => next_field
+         end do
+         self%field_table(ibin)%first_field => null()
       end do
-      self%first_field => null()
 
       dim => self%first_dimension
       do while (associated(dim))
@@ -346,7 +342,7 @@ contains
       integer,                   intent(in)    :: output_level
       class (type_category_node), pointer       :: category
 
-      category => self%find_category(name,create=.true.)
+      category => find_category(self,name,create=.true.)
       call activate(category)
    contains
       recursive subroutine activate(category)
@@ -364,50 +360,26 @@ contains
       end subroutine activate
    end function select_category_for_output
 
-   subroutine field_set_add(self,field)
-      class (type_field_set), intent(inout) :: self
-      type (type_field), target             :: field
-
-      type (type_field_set_member),pointer :: member
-
-      member => self%first
-      do while (associated(member))
-         if (associated(member%field,field)) return
-         member => member%next
-      end do
-      allocate(member)
-      member%field => field
-      member%next => self%first
-      self%first => member
-   end subroutine field_set_add
-
-   subroutine field_set_finalize(self)
-      class (type_field_set), intent(inout) :: self
-
-      type (type_field_set_member),pointer :: member,next_member
-
-      member => self%first
-      do while (associated(member))
-         next_member => member%next
-         deallocate(member)
-         member => next_member
-      end do
-      self%first => null()
-   end subroutine field_set_finalize
-
-   recursive subroutine get_all_fields(self,set,output_level)
+   recursive subroutine get_all_fields(self,list,output_level)
       class (type_category_node), intent(inout) :: self
-      type (type_field_set),      intent(inout) :: set
+      type (type_category_node),  intent(inout) :: list
       integer,                    intent(in)    :: output_level
-      class (type_node), pointer :: child
+      class (type_node), pointer :: child, newnode
 
       child => self%first_child
       do while (associated(child))
          select type (child)
          class is (type_category_node)
-            call get_all_fields(child,set,output_level)
+            call get_all_fields(child,list,output_level)
          class is (type_field_node)
-            if (child%field%output_level<=output_level) call set%add(child%field)
+            if (child%field%output_level<=output_level) then
+               allocate(type_field_node::newnode)
+               select type (newnode)
+               class is (type_field_node)
+                  newnode%field => child%field
+               end select
+               call add_to_category(list,newnode)
+            end if
          end select
          child => child%next_sibling
       end do
@@ -438,9 +410,11 @@ contains
       logical,optional,intent(in) :: create
       type (type_field), pointer :: field
 
+      integer :: ibin
       logical :: create_eff
 
-      field => self%first_field
+      ibin = mod(hash(trim(name)),hash_table_size)+1
+      field => self%field_table(ibin)%first_field
       do while (associated(field))
          if (field%name==name) return
          field => field%next
@@ -451,8 +425,8 @@ contains
       if (create_eff) then
          allocate(field)
          field%name = name
-         field%next => self%first_field
-         self%first_field => field
+         field%next => self%field_table(ibin)%first_field
+         self%field_table(ibin)%first_field => field
       end if
    end function find
 
@@ -674,7 +648,7 @@ contains
 
       ! Find parent node
       parent => self%root
-      if (present(category)) parent => self%find_category(category,create=.true.)
+      if (present(category)) parent => find_category(self,category,create=.true.)
 
       ! If field has not been selected for output yet, do so if its output_level does not exceed that the parent category.
       if (.not.field%in_output) field%in_output = field%output_level<=parent%output_level
@@ -889,13 +863,17 @@ contains
       self%first_child => null()
    end subroutine node_finalize
 
-   function get_state(self) result(field_set)
-      class (type_field_manager),intent(inout) :: self
-      type (type_field_set)                    :: field_set
+   integer function hash(str)
+      character(len=*), intent(in) :: str
 
-      class (type_category_node),   pointer :: category
-      category => self%find_category('state')
-      if (associated(category)) call category%get_all_fields(field_set,huge(output_level_debug))
-   end function get_state
+      integer :: i
+      character, dimension(len(str)) :: tmp
+
+      do i=1,len(str)
+       tmp(i) = str(i:i)
+      end do
+      hash = sum(ichar(tmp))
+write(*,*) str,'A',tmp,'B',hash
+   end function
 
 end module field_manager

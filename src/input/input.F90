@@ -42,6 +42,7 @@
       REALTYPE,pointer                   :: data => null() ! Pointer to scalar data (depth-independent variable)
       type (type_0d_variable),pointer    :: next => null() ! Next variable in current input file
       REALTYPE                           :: scale_factor = _ONE_
+      REALTYPE                           :: add_offset = _ZERO_
    end type
 
 !  Information on file with observed profiles
@@ -216,7 +217,7 @@
 ! !IROUTINE: Register a 0d input variable.
 !
 ! !INTERFACE:
-   subroutine register_input_0d(path,icolumn,data,name,scale_factor)
+   subroutine register_input_0d(path,icolumn,data,name,scale_factor,add_offset)
 !
 ! !DESCRIPTION:
 !
@@ -224,7 +225,7 @@
    character(len=*), intent(in) :: path,name
    integer,          intent(in) :: icolumn
    REALTYPE,target              :: data
-   REALTYPE,optional,intent(in) :: scale_factor
+   REALTYPE,optional,intent(in) :: scale_factor,add_offset
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -282,6 +283,7 @@
    variable%data => data
    variable%data = _ZERO_
    if (present(scale_factor)) variable%scale_factor = scale_factor
+   if (present(add_offset)) variable%add_offset = add_offset
 
    end subroutine register_input_0d
 !EOC
@@ -610,7 +612,7 @@
    t  = time_diff(jul,secs,info%jul1,info%secs1)
    curvar => info%first_variable
    do while (associated(curvar))
-      curvar%data = curvar%scale_factor*min(max(info%obs1(curvar%index),info%obs2(curvar%index)),max(min(info%obs1(curvar%index),info%obs2(curvar%index)),info%obs1(curvar%index) + t*info%alpha(curvar%index)))
+      curvar%data = curvar%scale_factor*min(max(info%obs1(curvar%index),info%obs2(curvar%index)),max(min(info%obs1(curvar%index),info%obs2(curvar%index)),info%obs1(curvar%index) + t*info%alpha(curvar%index))) + curvar%add_offset
       curvar => curvar%next
    end do
 

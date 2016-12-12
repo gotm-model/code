@@ -49,8 +49,7 @@
    integer,  public                    :: hum_method
    REALTYPE, public, target            :: u10,v10
    REALTYPE, public, target            :: airp,airt
-   REALTYPE, public, target            :: rh
-   REALTYPE, public                    :: twet,tdew
+   REALTYPE, public, target            :: hum
    REALTYPE, public, target            :: cloud
 !
 !  wind speed (m/s)
@@ -301,10 +300,8 @@
 !  cloud cover
    cloud = _ZERO_
 
-!  relative humidity (various measures)
-   twet = _ZERO_
-   tdew = _ZERO_
-   rh   = _ZERO_
+!  humidity (various options - select through hum_method)
+   hum  = _ZERO_
 
 !  air temperature
    airt = _ZERO_
@@ -409,7 +406,7 @@
       call register_input_0d(meteo_file,2,v10,'wind speed: y-direction',scale_factor=wind_factor)
       call register_input_0d(meteo_file,3,airp,'air pressure',scale_factor=100.d0)
       call register_input_0d(meteo_file,4,airt,'air temperature')
-      call register_input_0d(meteo_file,5,rh,'relative humidity')
+      call register_input_0d(meteo_file,5,hum,'relative humidity')
       call register_input_0d(meteo_file,6,cloud,'cloud cover')
 #endif
       LEVEL2 'Air-sea exchanges will be calculated'
@@ -713,7 +710,7 @@
       v10   = obs(2)*wind_factor
       airp  = obs(3)*100. !kbk mbar/hPa --> Pa
       airt  = obs(4)
-      rh    = obs(5)
+      hum   = obs(5)
       cloud = obs(6)
 
       if (sst .lt. 100.) then
@@ -737,7 +734,7 @@
       ty1    = ty2
       cloud1 = cloud2
 
-      call humidity(hum_method,rh,airp,tw,ta)
+      call humidity(hum_method,hum,airp,tw,ta)
       call back_radiation(back_radiation_method, &
                           dlat,tw_k,ta_k,cloud,qb)
 #if 0
@@ -787,7 +784,7 @@
       ta_k = airt
    end if
 
-   call humidity(hum_method,rh,airp,tw,ta)
+   call humidity(hum_method,hum,airp,tw,ta)
    call back_radiation(back_radiation_method, &
                        dlat,tw_k,ta_k,cloud,qb)
    call airsea_fluxes(fluxes_method, &
@@ -956,8 +953,8 @@
 
    LEVEL2 'u10,v10',u10,v10
    LEVEL2 'airp',airp
-   LEVEL2 'airt,twet,tdew',airt,twet,tdew
-   LEVEL2 'rh',rh
+   LEVEL2 'airt',airt
+   LEVEL2 'hum',hum
 
    LEVEL2 'const_swr',const_swr
    LEVEL2 'swr_factor',swr_factor

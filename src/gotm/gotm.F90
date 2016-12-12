@@ -276,6 +276,9 @@
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
 
+   !  Update the grid based on true initial zeta (possibly read from file by do_input).
+   call updategrid(nlev,dt,zeta)
+
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
 !  initialise mean fields
@@ -764,6 +767,10 @@
       call file%append_category(category)
    end subroutine setup_restart
 
+#if 1
+   subroutine read_restart()
+   end subroutine read_restart
+#else
    subroutine read_restart()
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
@@ -787,6 +794,7 @@
       end do
       call field_set%finalize()
    end subroutine read_restart
+#endif
 !-----------------------------------------------------------------------
 
    end module gotm
