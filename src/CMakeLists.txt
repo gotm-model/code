@@ -262,6 +262,11 @@ add_library(observations OBJECT
            )
 add_dependencies(observations util input)
 
+add_library(particles OBJECT
+            particles/particles.F90
+           )
+add_dependencies(particles util)
+
 add_library(meanflow OBJECT
             meanflow/buoyancy.F90
             meanflow/convectiveadjustment.F90
@@ -304,7 +309,7 @@ else()
   set(EXTRA_SRCS ${EXTRA_SRCS} $<TARGET_OBJECTS:output>)
 endif()
 
-set_property(TARGET input airsea observations meanflow gotm PROPERTY FOLDER gotm)
+set_property(TARGET input airsea observations meanflow particles gotm PROPERTY FOLDER gotm)
 
 #option(GOTM_USE_ICE "Include ICE support" OFF)
 #if(GOTM_USE_ICE)
@@ -351,6 +356,7 @@ add_executable(gotm_exe
                $<TARGET_OBJECTS:meanflow>
                $<TARGET_OBJECTS:observations>
                $<TARGET_OBJECTS:input>
+               $<TARGET_OBJECTS:particles>
                ${EXTRA_SRCS}
               )
 set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")

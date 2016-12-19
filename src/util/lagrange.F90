@@ -38,7 +38,7 @@
    REALTYPE, intent(in)                :: dt
    REALTYPE, intent(in)                :: zlev(0:nlev)
    REALTYPE, intent(in)                :: nuh(0:nlev)
-   REALTYPE, intent(in)                :: w
+   REALTYPE, intent(in)                :: w(npar)
    integer, intent(in)                 :: npar
    logical, intent(in)                 :: active(npar)
 !
@@ -75,7 +75,7 @@
    do n=1,npar
 !     local viscosity calculation
       if (visc_corr) then ! correction suggested by Visser [1997]
-         zloc=zp(n)+0.5*(dzn(zi(n))+w)*dt
+         zloc=zp(n)+0.5*(dzn(zi(n))+w(n))*dt
          do while (zloc .lt. -depth .or. zloc .gt. _ZERO_)
             if (zloc .lt. -depth) then
                zloc=-depth+(-depth-zloc)
@@ -101,7 +101,7 @@
       visc=rat*nuh(i)+(1.-rat)*nuh(i-1)
       if (visc.lt.visc_back) visc=visc_back
       zp_old=zp(n)
-      step=dt*(sqrt(2.*rnd_var_inv*dt_inv*visc)*rnd(n)+w+dzn(i))
+      step=dt*(sqrt(2.*rnd_var_inv*dt_inv*visc)*rnd(n)+w(n)+dzn(i))
       zp(n)=zp(n)+step
       do while (zp(n) .lt. -depth .or. zp(n) .gt. _ZERO_)
          if (zp(n) .lt. -depth) then

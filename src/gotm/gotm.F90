@@ -84,6 +84,8 @@
 #endif
 #endif
 
+   use particles
+
    IMPLICIT NONE
    private
 !
@@ -325,6 +327,15 @@
 
 #endif
 
+   ! Initialize particle manager and register associated fields.
+   call particles_initialize(fm,nlev)
+
+   ! Offer all fields registered with the field manager to the particle manager.
+   ! At this points, all fields must have been registered with the field manager.
+   ! Also, the layer heights and elevation must have been initialized as these are
+   ! used to set the sartig position for all particles.
+   call particles_start(fm,-depth0,Zeta,nlev,h(1:nlev))
+
    if (list_fields) call fm%list()
 
    LEVEL2 'done.'
@@ -485,6 +496,8 @@
       call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
 #endif
 
+      call particles_advance(nlev,dt,-depth0,h(1:nlev),nuh)
+
 !    compute turbulent mixing
       select case (turb_method)
       case (0)
@@ -522,6 +535,7 @@
       end if
 #else
       call do_diagnostics(nlev)
+      call particles_prepare_output(nlev,h(1:nlev))
       call output_manager_save(julianday,secondsofday,int(n))
 #endif
 
@@ -628,6 +642,8 @@
    call clean_gotm_fabm_output()
 #endif
 #endif
+
+   call particles_clean()
 
    call close_input()
 
