@@ -53,7 +53,7 @@ module particles
       integer :: ibin
       type (type_field), pointer :: field
       type (type_interpolated_variable), pointer :: interpolated_variable
-      real(rk) :: z_if(0:nlev)
+      real(rk) :: z_top(1:nlev)
       integer :: ipar
       integer :: k
 
@@ -81,13 +81,13 @@ module particles
       call particle_class%start(zmin, zmax)
 
       ! Find depth index for each particle
-      z_if(0) = zmin
-      do k=1,nlev
-         z_if(k) = z_if(k-1) + h(k)
+      z_top(1) = zmin + h(1)
+      do k=2,nlev
+         z_top(k) = z_top(k-1) + h(k)
       end do
       do ipar=1,particle_class%npar
-         do k=1,nlev
-            if (particle_class%z(ipar)>z_if(k-1) .and. particle_class%z(ipar)<z_if(k)) exit
+         do k=1,nlev-1
+            if (particle_class%z(ipar) < z_top(k)) exit
          end do
          particle_class%k(ipar) = k
       end do
