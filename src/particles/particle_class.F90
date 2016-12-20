@@ -23,7 +23,6 @@ module particle_class
       integer :: npar
       integer,  allocatable :: k(:)
       real(rk), allocatable :: z(:)
-      real(rk), allocatable :: w(:)
       real(rk), allocatable :: state_eul(:,:)
       integer :: count_index = -1
       logical, allocatable :: active(:)
@@ -32,7 +31,7 @@ module particle_class
       procedure :: initialize
       procedure :: link_eulerian_data
       procedure :: start
-      procedure :: get_rates
+      procedure :: advance
       procedure :: interpolate_state_to_grid
       procedure :: finalize
    end type
@@ -50,10 +49,8 @@ module particle_class
       self%npar = npar
       allocate(self%k(self%npar))
       allocate(self%z(self%npar))
-      allocate(self%w(self%npar))
       allocate(self%active(self%npar))
       self%active = .true.
-      self%w = 0.0_rk
 
       nstate_eul = 0
       if (self%count_index == -1) nstate_eul = nstate_eul + 1
@@ -101,12 +98,17 @@ module particle_class
       end do
    end subroutine start
 
-   subroutine get_rates(self)
+   subroutine advance(self, nlev, dt, z_if, nuh)
       class (type_particle_class), intent(inout) :: self
+      integer,                     intent(in) :: nlev
+      real(rk),                    intent(in) :: dt
+      real(rk),                    intent(in) :: z_if(0:nlev)
+      real(rk),                    intent(in) :: nuh(0:nlev)
 
       type (type_interpolated_variable), pointer :: interpolated_variable
       integer                                    :: ipar
-      
+      real(rk)                                   :: w(self%npar)
+
       ! Interpolate Eulerian fields to particle positions.
       interpolated_variable => self%first_interpolated_variable
       do while (associated(interpolated_variable))
@@ -115,7 +117,13 @@ module particle_class
          end do
          interpolated_variable => interpolated_variable%next
       end do
-   end subroutine get_rates
+
+      ! Get particle source terms and vertical velocities
+      w = 0.0_rk
+
+      ! Transport particles
+      call lagrange(nlev, dt, z_if, nuh, w, self%npar, self%active, self%k, self%z)
+   end subroutine advance
 
    subroutine interpolate_state_to_grid(self, nlev, h)
       class (type_particle_class), intent(inout) :: self

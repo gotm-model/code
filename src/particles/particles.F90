@@ -22,9 +22,9 @@ module particles
 
    subroutine particles_start(field_manager, zmin, nlev, h)
       class (type_field_manager), intent(in) :: field_manager
-      real(rk),                   intent(in)    :: zmin
-      integer,                    intent(in)    :: nlev
-      real(rk),                   intent(in)    :: h(1:nlev)
+      real(rk),                   intent(in) :: zmin
+      integer,                    intent(in) :: nlev
+      real(rk),                   intent(in) :: h(1:nlev)
 
       integer                    :: ibin
       type (type_field), pointer :: field
@@ -59,17 +59,18 @@ module particles
       real(rk), intent(in) :: nuh(0:nlev)
 
       real(rk) :: z_if(0:nlev)
-      integer :: k
+      integer  :: k
 
-      call particle%get_rates()
-
+      ! Compute depth coordinates of interfaces (needed for transport)
       z_if(0) = zmin
       do k=1,nlev
          z_if(k) = z_if(k-1) + h(k)
       end do
 
-      call lagrange(nlev, dt, z_if, nuh, particle%w, particle%npar, particle%active, particle%k, particle%z)
+      ! Get particle source terms and vertical velocities
+      call particle%advance(nlev, dt, z_if, nuh)
 
+      ! Compute the gridded particle fields (concentration per layer) that are sent to output.
       call particle%interpolate_state_to_grid(nlev, h)
    end subroutine particles_advance
 
