@@ -1,8 +1,14 @@
 #include"cppdefs.h"
 
+!#define _FABM_PARTICLES_
+
 module particle_class
 
    use field_manager, only: type_field, type_field_manager, id_dim_z
+
+#ifdef _FABM_PARTICLES_
+   use fabm_particle_manager
+#endif
 
    implicit none
 
@@ -20,12 +26,18 @@ module particle_class
    end type
 
    type type_particle_class
-      integer :: npar
+      integer               :: npar
       integer,  allocatable :: k(:)
       real(rk), allocatable :: z(:)
+      logical,  allocatable :: active(:)
+
+#ifdef _FABM_PARTICLES_
+      integer                         :: nstate
+      type (type_fabm_particle_state) :: state
+#endif
+
       real(rk), allocatable :: state_eul(:,:)
       integer :: count_index = -1
-      logical, allocatable :: active(:)
       type (type_interpolated_variable), pointer :: first_interpolated_variable => null()
    contains
       procedure :: initialize
@@ -55,17 +67,17 @@ module particle_class
       nstate_eul = 0
       if (self%count_index == -1) nstate_eul = nstate_eul + 1
       allocate(self%state_eul(nlev, nstate_eul))
-      if (self%count_index == -1) call field_manager%register('particle_concentration', '# m-3', 'concentration of particles', dimensions=(/id_dim_z/), data1d=self%state_eul(:,1))
+      if (self%count_index == -1) call field_manager%register('particle_concentration', '# m-3', 'particle concentration', dimensions=(/id_dim_z/), data1d=self%state_eul(:,1))
    end subroutine initialize
-   
+
    subroutine link_eulerian_data(self, name, dat)
       class (type_particle_class), intent(inout) :: self
       character(len=*),            intent(in)    :: name
-      real(rk),target,             intent(in)    :: dat(:)
+      real(rk), target,            intent(in)    :: dat(:)
 
       type (type_interpolated_variable), pointer :: interpolated_variable
-      
-      ! TODO: check whether this variable is needed b FABM-particle
+
+      ! TODO: check whether this variable is needed by FABM-particle. Return only if not.
       return
 
       allocate(interpolated_variable)
@@ -100,16 +112,19 @@ module particle_class
 
    subroutine advance(self, nlev, dt, z_if, nuh)
       class (type_particle_class), intent(inout) :: self
-      integer,                     intent(in) :: nlev
-      real(rk),                    intent(in) :: dt
-      real(rk),                    intent(in) :: z_if(0:nlev)
-      real(rk),                    intent(in) :: nuh(0:nlev)
+      integer,                     intent(in)    :: nlev
+      real(rk),                    intent(in)    :: dt
+      real(rk),                    intent(in)    :: z_if(0:nlev)
+      real(rk),                    intent(in)    :: nuh(0:nlev)
 
       type (type_interpolated_variable), pointer :: interpolated_variable
       integer                                    :: ipar
       real(rk)                                   :: w(self%npar)
+#ifdef _FABM_PARTICLES_
+      real(rk)                                   :: dy(self%npar,self%nstate)
+#endif
 
-      ! Interpolate Eulerian fields to particle positions.
+      ! Interpolate Eulerian fields to particle positions (center values from associated layers).
       interpolated_variable => self%first_interpolated_variable
       do while (associated(interpolated_variable))
          do ipar=1,self%npar
@@ -118,8 +133,16 @@ module particle_class
          interpolated_variable => interpolated_variable%next
       end do
 
-      ! Get particle source terms and vertical velocities
+#ifdef _FABM_PARTICLES_
+      ! TODO: call FABM particle driver to get actual sources and velocities
+      dy = 0.0
       w = 0.0_rk
+
+      ! Time-integrate source terms (Forward Euler)
+      self%state%y = self%state%y + dy*dt
+#else
+      w = 0.0_rk
+#endif
 
       ! Transport particles
       call lagrange(nlev, dt, z_if, nuh, w, self%npar, self%active, self%k, self%z)
