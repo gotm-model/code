@@ -43,18 +43,16 @@ module particles
       call particle_class%initialize(1000, nlev, field_manager)
    end subroutine particles_initialize
 
-   subroutine particles_start(field_manager, zmin, zmax, nlev, h)
+   subroutine particles_start(field_manager, zmin, nlev, h)
       class (type_field_manager), intent(in) :: field_manager
       real(rk),                   intent(in)    :: zmin
-      real(rk),                   intent(in)    :: zmax
       integer,                    intent(in)    :: nlev
       real(rk),                   intent(in)    :: h(1:nlev)
 
       integer :: ibin
       type (type_field), pointer :: field
       type (type_interpolated_variable), pointer :: interpolated_variable
-      real(rk) :: z_top(1:nlev)
-      integer :: ipar
+      real(rk) :: z_if(0:nlev)
       integer :: k
 
       do ibin=1,size(field_manager%field_table)
@@ -77,20 +75,14 @@ module particles
          end do
       end do
 
-      ! Initialize particle positions
-      call particle_class%start(zmin, zmax)
+      ! Compute depth coordinate of interfaces
+      z_if(0) = zmin
+      do k=1,nlev
+         z_if(k) = z_if(k-1) + h(k)
+      end do
 
-      ! Find depth index for each particle
-      z_top(1) = zmin + h(1)
-      do k=2,nlev
-         z_top(k) = z_top(k-1) + h(k)
-      end do
-      do ipar=1,particle_class%npar
-         do k=1,nlev-1
-            if (particle_class%z(ipar) < z_top(k)) exit
-         end do
-         particle_class%k(ipar) = k
-      end do
+      ! Initialize particle positions
+      call particle_class%start(nlev, z_if)
 
       call particles_prepare_output(nlev,h)
    end subroutine particles_start
@@ -127,14 +119,14 @@ module particles
    subroutine particles_prepare_output(nlev, h)
       integer,  intent(in) :: nlev
       real(rk), intent(in) :: h(1:nlev)
-   
+
       integer :: istate
 
       real(rk) :: particle_count(particle_class%npar)
 
       ! Create Eulerian particle fields.
       if (particle_class%count_index == -1) then
-         particle_count(:) = 1
+         particle_count(:) = 1.0_rk
       else
          ! Obtain particle counts from FABM driver
       end if
@@ -171,13 +163,24 @@ module particles
       call particle_class%finalize()
    end subroutine particles_clean
 
-   subroutine particle_class_start(self, zmin, zmax)
+   subroutine particle_class_start(self, nlev, z_if)
       class (type_particle_class), intent(inout) :: self
-      real(rk),                    intent(in)    :: zmin
-      real(rk),                    intent(in)    :: zmax
+      integer,                     intent(in)    :: nlev
+      real(rk),                    intent(in)    :: z_if(0:nlev)
+
+      integer :: ipar
+      integer :: k
 
       call random_number(self%z)
-      self%z = zmin + self%z*(zmax-zmin)
+      self%z = z_if(0) + self%z*(z_if(nlev)-z_if(0))
+
+      ! Find depth index for each particle
+      do ipar=1,self%npar
+         do k=1,nlev-1
+            if (self%z(ipar) < z_if(k)) exit
+         end do
+         self%k(ipar) = k
+      end do
    end subroutine particle_class_start
 
    subroutine particle_class_initialize(self, npar, nlev, field_manager)

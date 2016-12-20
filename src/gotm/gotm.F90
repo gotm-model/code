@@ -334,7 +334,7 @@
    ! At this points, all fields must have been registered with the field manager.
    ! Also, the layer heights and elevation must have been initialized as these are
    ! used to set the sartig position for all particles.
-   call particles_start(fm,-depth0,Zeta,nlev,h(1:nlev))
+   call particles_start(fm,-depth0,nlev,h(1:nlev))
 
    if (list_fields) call fm%list()
 
