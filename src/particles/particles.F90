@@ -34,7 +34,10 @@ module particles
       do ibin=1,size(field_manager%field_table)
          field => field_manager%field_table(ibin)%first_field
          do while (associated(field))
-            if (associated(field%data_1d)) call particle%link_eulerian_data(trim(field%name), field%data_1d)
+            if (associated(field%data_1d)) then
+               call particle%link_eulerian_data(trim(field%name), field%data_1d)
+               if (field%standard_name /= '') call particle%link_eulerian_data(trim(field%standard_name), field%data_1d)
+            end if
             field => field%next
          end do
       end do
