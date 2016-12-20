@@ -264,6 +264,7 @@ add_dependencies(observations util input)
 
 add_library(particles OBJECT
             particles/particles.F90
+            particles/particle_class.F90
            )
 add_dependencies(particles util)
 

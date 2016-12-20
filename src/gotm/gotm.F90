@@ -535,7 +535,6 @@
       end if
 #else
       call do_diagnostics(nlev)
-      call particles_prepare_output(nlev,h(1:nlev))
       call output_manager_save(julianday,secondsofday,int(n))
 #endif
 
