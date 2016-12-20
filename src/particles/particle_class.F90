@@ -1,13 +1,15 @@
 #include"cppdefs.h"
 
-!#define _FABM_PARTICLES_
+#ifdef _FABM_
+#  define _FABM_PARTICLES_
+#endif
 
 module particle_class
 
    use field_manager, only: type_field, type_field_manager, id_dim_z
 
 #ifdef _FABM_PARTICLES_
-   use fabm_particle_manager
+   use fabm_particle_driver
 #endif
 
    implicit none
@@ -29,11 +31,12 @@ module particle_class
       integer               :: npar
       integer,  allocatable :: k(:)
       real(rk), allocatable :: z(:)
-      logical,  allocatable :: active(:)
 
 #ifdef _FABM_PARTICLES_
       integer                         :: nstate
       type (type_fabm_particle_state) :: state
+#else
+      logical,  allocatable :: active(:)
 #endif
 
       real(rk), allocatable :: state_eul(:,:)
@@ -54,20 +57,37 @@ module particle_class
       class (type_particle_class), intent(inout) :: self
       integer,                     intent(in)    :: npar
       integer,                     intent(in)    :: nlev
-      class (type_field_manager), intent(inout)  :: field_manager
+      class (type_field_manager),  intent(inout) :: field_manager
 
+      integer :: ivar
       integer :: nstate_eul
 
       self%npar = npar
       allocate(self%k(self%npar))
       allocate(self%z(self%npar))
+
+#ifdef _FABM_PARTICLES_
+      call self%state%initialize(npar, 'fabm_particles.yaml')
+      self%nstate = self%state%nstate
+      self%count_index = 1
+      nstate_eul = self%nstate
+#else
       allocate(self%active(self%npar))
       self%active = .true.
-
       nstate_eul = 0
+#endif
+
       if (self%count_index == -1) nstate_eul = nstate_eul + 1
       allocate(self%state_eul(nlev, nstate_eul))
       if (self%count_index == -1) call field_manager%register('particle_concentration', '# m-3', 'particle concentration', dimensions=(/id_dim_z/), data1d=self%state_eul(:,1))
+
+#ifdef _FABM_PARTICLES_
+      do ivar=1,self%nstate
+         call field_manager%register('particle_'//trim(self%state%model%state_variables(ivar)%name), &
+            trim(self%state%model%state_variables(ivar)%units), &
+            'particle '//trim(self%state%model%state_variables(ivar)%long_name), dimensions=(/id_dim_z/), data1d=self%state_eul(:,ivar))
+      end do
+#endif
    end subroutine initialize
 
    subroutine link_eulerian_data(self, name, dat)
@@ -75,18 +95,20 @@ module particle_class
       character(len=*),            intent(in)    :: name
       real(rk), target,            intent(in)    :: dat(:)
 
+#ifdef _FABM_PARTICLES_
       type (type_interpolated_variable), pointer :: interpolated_variable
 
-      ! TODO: check whether this variable is needed by FABM-particle. Return only if not.
-      return
+      if (.not.self%state%is_variable_used(name)) return
 
       allocate(interpolated_variable)
       interpolated_variable%source => dat
       allocate(interpolated_variable%target(self%npar))
+      call self%state%send_data(name, interpolated_variable%target)
 
       ! Prepend to list
       interpolated_variable%next => self%first_interpolated_variable
       self%first_interpolated_variable => interpolated_variable
+#endif
    end subroutine link_eulerian_data
 
    subroutine start(self, nlev, z_if)
@@ -108,6 +130,10 @@ module particle_class
          end do
          self%k(ipar) = k
       end do
+
+#ifdef _FABM_PARTICLES_
+      call self%state%start()
+#endif
    end subroutine start
 
    subroutine advance(self, nlev, dt, z_if, nuh)
@@ -134,18 +160,19 @@ module particle_class
       end do
 
 #ifdef _FABM_PARTICLES_
-      ! TODO: call FABM particle driver to get actual sources and velocities
-      dy = 0.0
-      w = 0.0_rk
+#  define _ACTIVE_ self%state%active
+      call self%state%get_vertical_movement(w)
+      call self%state%get_sources(dy)
 
       ! Time-integrate source terms (Forward Euler)
       self%state%y = self%state%y + dy*dt
 #else
+#  define _ACTIVE_ self%active
       w = 0.0_rk
 #endif
 
       ! Transport particles
-      call lagrange(nlev, dt, z_if, nuh, w, self%npar, self%active, self%k, self%z)
+      call lagrange(nlev, dt, z_if, nuh, w, self%npar, _ACTIVE_, self%k, self%z)
    end subroutine advance
 
    subroutine interpolate_state_to_grid(self, nlev, h)
@@ -157,12 +184,17 @@ module particle_class
 
       real(rk) :: particle_count(self%npar)
 
+#ifdef _FABM_PARTICLES_
       ! Create Eulerian particle fields.
       if (self%count_index == -1) then
          particle_count(:) = 1.0_rk
       else
          ! Obtain particle counts from FABM driver
+         particle_count(:) = self%state%y(:,self%count_index)
       end if
+#else
+      particle_count(:) = 1.0_rk
+#endif
 
       ! Interpolate particle counts to Eulerian grid
       call to_eul(particle_count, self%state_eul(:,1))

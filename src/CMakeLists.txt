@@ -347,6 +347,10 @@ if(GOTM_USE_FABM)
   add_dependencies(gotm gotm_fabm gotm_fabm_io)
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
+
+  set(FABM_FORCED_PREFIX fabm_particles)
+  add_subdirectory(${FABM_BASE}/src/drivers/particles fabm_particles)
+  add_dependencies(particles fabm_particle_driver)
 endif(GOTM_USE_FABM)
 
 # Build GOTM executable.
@@ -375,6 +379,7 @@ endif(GOTM_USE_NetCDF)
 
 if(GOTM_USE_FABM)
   target_link_libraries(gotm_exe gotm_fabm gotm_fabm_io ${FABM_LIBRARIES})
+  target_link_libraries(gotm_exe fabm_particle_driver)
 endif(GOTM_USE_FABM)
 
 # Set default installation prefix.
