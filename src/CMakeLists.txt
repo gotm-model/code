@@ -351,6 +351,7 @@ if(GOTM_USE_FABM)
   set(FABM_FORCED_PREFIX fabm_particles)
   add_subdirectory(${FABM_BASE}/src/drivers/particles fabm_particles)
   add_dependencies(particles fabm_particle_driver)
+  set_property(TARGET particles APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/fabm_particles/modules)
 endif(GOTM_USE_FABM)
 
 # Build GOTM executable.
