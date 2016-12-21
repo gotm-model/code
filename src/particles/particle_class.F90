@@ -22,8 +22,9 @@ module particle_class
    integer, parameter :: rk = kind(_ZERO_)
 
    type type_interpolated_variable
+      character(len=256)                         :: name      = ''
       real(rk), pointer                          :: source(:) => null()
-      real(rk), allocatable                      :: target(:)
+      integer                                    :: itarget   = -1
       type (type_interpolated_variable), pointer :: next      => null()
    end type
 
@@ -39,17 +40,20 @@ module particle_class
       logical,  allocatable :: active(:)
 #endif
 
-      real(rk), allocatable :: state_eul(:,:)
+      real(rk), allocatable :: interpolated_eul(:,:)
+      real(rk), allocatable :: interpolated_par(:,:)
+
       integer :: count_index = -1
-      type (type_interpolated_variable), pointer :: first_interpolated_variable => null()
+      type (type_interpolated_variable), pointer :: first_eulerian_variable => null()
+      type (type_interpolated_variable), pointer :: first_particle_variable => null()
 
       type (type_particle_class), pointer :: next => null()
    contains
       procedure :: initialize
       procedure :: link_eulerian_data
+      procedure :: interpolate_to_grid
       procedure :: start
       procedure :: advance
-      procedure :: interpolate_state_to_grid
       procedure :: finalize
    end type
 
@@ -61,35 +65,57 @@ module particle_class
       integer,                     intent(in)    :: nlev
       class (type_field_manager),  intent(inout) :: field_manager
 
-      integer :: ivar
-      integer :: nstate_eul
+      integer                                    :: n
+      type (type_output),                pointer :: output
+      type (type_interpolated_variable), pointer :: particle_variable
 
       self%npar = npar
       allocate(self%k(self%npar))
       allocate(self%z(self%npar))
 
+      n = 0
 #ifdef _FABM_PARTICLES_
-      call self%state%initialize(npar, 'fabm_particles.yaml')
+      call self%state%configure(npar, 'fabm_particles.yaml')
       self%nstate = self%state%nstate
       self%count_index = 1
-      nstate_eul = self%nstate
+      output => self%state%first_output
+      do while (associated(output))
+         call field_manager%register('particle_'//trim(output%name), trim(output%units), &
+            'particle '//trim(output%long_name), dimensions=(/id_dim_z/), used=output%save)
+         if (output%save) n = n + 1
+         output => output%next
+      end do
 #else
       allocate(self%active(self%npar))
       self%active = .true.
-      nstate_eul = 0
 #endif
 
-      if (self%count_index == -1) nstate_eul = nstate_eul + 1
-      allocate(self%state_eul(nlev, nstate_eul))
-      if (self%count_index == -1) call field_manager%register('particle_concentration', '# m-3', 'particle concentration', dimensions=(/id_dim_z/), data1d=self%state_eul(:,1))
+      if (self%count_index == -1) n = n + 1
+      allocate(self%interpolated_par(nlev, n))
 
+      n = 1
 #ifdef _FABM_PARTICLES_
-      do ivar=1,self%nstate
-         call field_manager%register('particle_'//trim(self%state%model%state_variables(ivar)%name), &
-            trim(self%state%model%state_variables(ivar)%units), &
-            'particle '//trim(self%state%model%state_variables(ivar)%long_name), dimensions=(/id_dim_z/), data1d=self%state_eul(:,ivar))
+      ! Complete initialization (must happen after setting the "save" attribute on outputs)
+      ! After this is done, additional data fields may be sent to the FABM particle manager
+      ! by calling link_eulerian_data.
+      call self%state%initialize()
+
+      output => self%state%first_output
+      do while (associated(output))
+         if (output%save) then
+            allocate(particle_variable)
+            particle_variable%name = trim(output%name)
+            particle_variable%source => output%data
+            particle_variable%itarget = n
+            particle_variable%next => self%first_particle_variable
+            self%first_particle_variable => particle_variable
+            call field_manager%send_data('particle_'//trim(particle_variable%name), self%interpolated_par(:,particle_variable%itarget))
+            n = n + 1
+         end if
+         output => output%next
       end do
 #endif
+      if (self%count_index == -1) call field_manager%register('particle_concentration', '# m-3', 'particle concentration', dimensions=(/id_dim_z/), data1d=self%interpolated_par(:,n))
    end subroutine initialize
 
    subroutine link_eulerian_data(self, name, dat)
@@ -98,18 +124,17 @@ module particle_class
       real(rk), target,            intent(in)    :: dat(:)
 
 #ifdef _FABM_PARTICLES_
-      type (type_interpolated_variable), pointer :: interpolated_variable
+      type (type_interpolated_variable), pointer :: eulerian_variable
 
       if (.not.self%state%is_variable_used(name)) return
 
-      allocate(interpolated_variable)
-      interpolated_variable%source => dat
-      allocate(interpolated_variable%target(self%npar))
-      call self%state%send_data(name, interpolated_variable%target)
+      allocate(eulerian_variable)
+      eulerian_variable%source => dat
+      eulerian_variable%name = name
 
       ! Prepend to list
-      interpolated_variable%next => self%first_interpolated_variable
-      self%first_interpolated_variable => interpolated_variable
+      eulerian_variable%next => self%first_eulerian_variable
+      self%first_eulerian_variable => eulerian_variable
 #endif
    end subroutine link_eulerian_data
 
@@ -120,6 +145,8 @@ module particle_class
 
       integer :: ipar
       integer :: k
+      integer :: n
+      type (type_interpolated_variable), pointer :: eulerian_variable
 
       ! Random initialization of vertical position.
       call random_number(self%z)
@@ -131,6 +158,20 @@ module particle_class
             if (self%z(ipar) < z_if(k)) exit
          end do
          self%k(ipar) = k
+      end do
+
+      n = 0
+      eulerian_variable => self%first_eulerian_variable
+      do while (associated(eulerian_variable))
+         n = n + 1
+         eulerian_variable%itarget = n
+         eulerian_variable => eulerian_variable%next
+      end do
+      allocate(self%interpolated_eul(self%npar,n))
+      eulerian_variable => self%first_eulerian_variable
+      do while (associated(eulerian_variable))
+         call self%state%send_data(trim(eulerian_variable%name), self%interpolated_eul(:,eulerian_variable%itarget))
+         eulerian_variable => eulerian_variable%next
       end do
 
 #ifdef _FABM_PARTICLES_
@@ -145,7 +186,7 @@ module particle_class
       real(rk),                    intent(in)    :: z_if(0:nlev)
       real(rk),                    intent(in)    :: nuh(0:nlev)
 
-      type (type_interpolated_variable), pointer :: interpolated_variable
+      type (type_interpolated_variable), pointer :: eulerian_variable
       integer                                    :: ipar
       real(rk)                                   :: w(self%npar)
 #ifdef _FABM_PARTICLES_
@@ -153,12 +194,12 @@ module particle_class
 #endif
 
       ! Interpolate Eulerian fields to particle positions (center values from associated layers).
-      interpolated_variable => self%first_interpolated_variable
-      do while (associated(interpolated_variable))
+      eulerian_variable => self%first_eulerian_variable
+      do while (associated(eulerian_variable))
          do ipar=1,self%npar
-            interpolated_variable%target(ipar) = interpolated_variable%source(self%k(ipar))
+            self%interpolated_eul(ipar,eulerian_variable%itarget) = eulerian_variable%source(self%k(ipar))
          end do
-         interpolated_variable => interpolated_variable%next
+         eulerian_variable => eulerian_variable%next
       end do
 
 #ifdef _FABM_PARTICLES_
@@ -177,66 +218,49 @@ module particle_class
       call lagrange(nlev, dt, z_if, nuh, w, self%npar, _ACTIVE_, self%k, self%z)
    end subroutine advance
 
-   subroutine interpolate_state_to_grid(self, nlev, h)
+   subroutine interpolate_to_grid(self, nlev, h)
       class (type_particle_class), intent(inout) :: self
       integer,                     intent(in)    :: nlev
       real(rk),                    intent(in)    :: h(1:nlev)
 
-      integer :: istate
-
-      real(rk) :: particle_count(self%npar)
-
-#ifdef _FABM_PARTICLES_
-      ! Create Eulerian particle fields.
-      if (self%count_index == -1) then
-         particle_count(:) = 1.0_rk
-      else
-         ! Obtain particle counts from FABM driver
-         particle_count(:) = self%state%y(:,self%count_index)
-      end if
-#else
-      particle_count(:) = 1.0_rk
-#endif
-
-      ! Interpolate particle counts to Eulerian grid
-      call to_eul(particle_count, self%state_eul(:,1))
+      type (type_interpolated_variable), pointer :: particle_variable
+      integer                                    :: ipar
 
       ! Interpolate auxiliary particles states and normalize by number of particles
-      do istate=2,size(self%state_eul,2)
-         !call to_eul(state, particle_count*self%state_eul(:,istate))
-         self%state_eul(:,istate) = self%state_eul(:,istate)/self%state_eul(:,1)
+      particle_variable => self%first_particle_variable
+      do while (associated(particle_variable))
+         self%interpolated_par(:,particle_variable%itarget) = 0.0_rk
+         do ipar=1,self%npar
+            self%interpolated_par(self%k(ipar),particle_variable%itarget) = self%interpolated_par(self%k(ipar),particle_variable%itarget) + particle_variable%source(ipar)
+         end do
+         particle_variable => particle_variable%next
       end do
 
-      ! Divide particle counts (# m-2) by layer heights to get concentration (# m-3)
-      self%state_eul(:,1) = self%state_eul(:,1)/h(:)
-
-   contains
-
-      subroutine to_eul(par_in, eul_out)
-         real(rk), intent(in)  :: par_in(self%npar)
-         real(rk), intent(out) :: eul_out(nlev)
-
-         integer :: ipar
-
-         eul_out = 0.0_rk
-         do ipar=1,self%npar
-            eul_out(self%k(ipar)) = eul_out(self%k(ipar)) + par_in(ipar)
-         end do
-      end subroutine
-
-   end subroutine interpolate_state_to_grid
+   end subroutine interpolate_to_grid
 
    subroutine finalize(self)
       class (type_particle_class), intent(inout) :: self
       type (type_interpolated_variable), pointer :: interpolated_variable, next_interpolated_variable
 
-      interpolated_variable => self%first_interpolated_variable
+      interpolated_variable => self%first_eulerian_variable
       do while (associated(interpolated_variable))
          next_interpolated_variable => interpolated_variable%next
          deallocate(interpolated_variable)
          interpolated_variable => next_interpolated_variable
       end do
-      self%first_interpolated_variable => null()
+      self%first_eulerian_variable => null()
+
+      interpolated_variable => self%first_particle_variable
+      do while (associated(interpolated_variable))
+         next_interpolated_variable => interpolated_variable%next
+         deallocate(interpolated_variable)
+         interpolated_variable => next_interpolated_variable
+      end do
+      self%first_particle_variable => null()
+
+      deallocate(self%interpolated_eul)
+      deallocate(self%interpolated_par)
+
       self%next => null()
    end subroutine finalize
 
