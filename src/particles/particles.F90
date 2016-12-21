@@ -7,9 +7,11 @@ module particles
 
    implicit none
 
+   private
+
    public particles_initialize, particles_start, particles_advance, particles_clean
 
-   type (type_particle_class) :: particle
+   type (type_particle_class), pointer, save :: first_particle => null()
    
    contains
 
@@ -17,7 +19,9 @@ module particles
       class (type_field_manager), intent(inout) :: field_manager
       integer,                    intent(in)    :: nlev
 
-      call particle%initialize(1000, nlev, field_manager)
+      ! Currently set up a single particle class
+      allocate(first_particle)
+      call first_particle%initialize(1000, nlev, field_manager)
    end subroutine particles_initialize
 
    subroutine particles_start(field_manager, zmin, nlev, h)
@@ -26,32 +30,44 @@ module particles
       integer,                    intent(in) :: nlev
       real(rk),                   intent(in) :: h(1:nlev)
 
-      integer                    :: ibin
-      type (type_field), pointer :: field
-      real(rk)                   :: z_if(0:nlev)
-      integer                    :: k
+      integer                             :: ibin
+      type (type_field), pointer          :: field
+      type (type_particle_class), pointer :: particle
+      real(rk)                            :: z_if(0:nlev)
+      integer                             :: k
 
+      ! Offer all fields registered with the field manager to the active particle classes.
       do ibin=1,size(field_manager%field_table)
          field => field_manager%field_table(ibin)%first_field
          do while (associated(field))
             if (associated(field%data_1d)) then
-               call particle%link_eulerian_data(trim(field%name), field%data_1d)
-               if (field%standard_name /= '') call particle%link_eulerian_data(trim(field%standard_name), field%data_1d)
+               particle => first_particle
+               do while (associated(particle))
+                  call particle%link_eulerian_data(trim(field%name), field%data_1d)
+                  if (field%standard_name /= '') call particle%link_eulerian_data(trim(field%standard_name), field%data_1d)
+                  particle => particle%next
+               end do
             end if
             field => field%next
          end do
       end do
 
-      ! Compute depth coordinate of interfaces
+      ! Compute depth coordinate of interfaces (needed for initialization of particle positions)
       z_if(0) = zmin
       do k=1,nlev
          z_if(k) = z_if(k-1) + h(k)
       end do
 
-      ! Initialize particle positions
-      call particle%start(nlev, z_if)
+      particle => first_particle
+      do while (associated(particle))
+         ! Initialize particle positions
+         call particle%start(nlev, z_if)
 
-      call particle%interpolate_state_to_grid(nlev, h)
+         ! Compute the gridded particle fields (concentration per layer) that are sent to output.
+         call particle%interpolate_state_to_grid(nlev, h)
+
+         particle => particle%next
+      end do
    end subroutine particles_start
 
    subroutine particles_advance(nlev, dt, zmin, h, nuh)
@@ -61,8 +77,9 @@ module particles
       real(rk), intent(in) :: zmin
       real(rk), intent(in) :: nuh(0:nlev)
 
-      real(rk) :: z_if(0:nlev)
-      integer  :: k
+      real(rk)                            :: z_if(0:nlev)
+      integer                             :: k
+      type (type_particle_class), pointer :: particle
 
       ! Compute depth coordinates of interfaces (needed for transport)
       z_if(0) = zmin
@@ -70,15 +87,27 @@ module particles
          z_if(k) = z_if(k-1) + h(k)
       end do
 
-      ! Get particle source terms and vertical velocities
-      call particle%advance(nlev, dt, z_if, nuh)
+      particle => first_particle
+      do while (associated(particle))
+         ! Integrate over one time step (include sources and transport)
+         call particle%advance(nlev, dt, z_if, nuh)
 
-      ! Compute the gridded particle fields (concentration per layer) that are sent to output.
-      call particle%interpolate_state_to_grid(nlev, h)
+         ! Compute the gridded particle fields (concentration per layer) that are sent to output.
+         call particle%interpolate_state_to_grid(nlev, h)
+
+         particle => particle%next
+      end do
    end subroutine particles_advance
 
    subroutine particles_clean()
-      call particle%finalize()
+      type (type_particle_class), pointer :: particle, particle_next
+
+      particle => first_particle
+      do while (associated(particle))
+         particle_next => particle%next
+         call particle%finalize()
+         particle => particle_next
+      end do
    end subroutine particles_clean
 
 end module

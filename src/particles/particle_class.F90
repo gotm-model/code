@@ -42,6 +42,8 @@ module particle_class
       real(rk), allocatable :: state_eul(:,:)
       integer :: count_index = -1
       type (type_interpolated_variable), pointer :: first_interpolated_variable => null()
+
+      type (type_particle_class), pointer :: next => null()
    contains
       procedure :: initialize
       procedure :: link_eulerian_data
@@ -235,6 +237,7 @@ module particle_class
          interpolated_variable => next_interpolated_variable
       end do
       self%first_interpolated_variable => null()
+      self%next => null()
    end subroutine finalize
 
 end module
