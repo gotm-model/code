@@ -64,7 +64,7 @@ module particles
          call particle%start(nlev, z_if)
 
          ! Compute the gridded particle fields (concentration per layer) that are sent to output.
-         call particle%interpolate_to_grid(nlev, h)
+         call particle%interpolate_to_grid()
 
          particle => particle%next
       end do
@@ -93,7 +93,7 @@ module particles
          call particle%advance(nlev, dt, z_if, nuh)
 
          ! Compute the gridded particle fields (concentration per layer) that are sent to output.
-         call particle%interpolate_to_grid(nlev, h)
+         call particle%interpolate_to_grid()
 
          particle => particle%next
       end do

@@ -28,6 +28,13 @@ module particle_class
       type (type_interpolated_variable), pointer :: next      => null()
    end type
 
+   type type_interpolated_variable_set
+      type (type_interpolated_variable), pointer :: first => null()
+   contains
+      procedure :: add      => interpolated_variable_set_add
+      procedure :: finalize => interpolated_variable_set_finalize
+   end type
+
    type type_particle_class
       integer               :: npar
       integer,  allocatable :: k(:)
@@ -44,8 +51,8 @@ module particle_class
       real(rk), allocatable :: interpolated_par(:,:)
 
       integer :: count_index = -1
-      type (type_interpolated_variable), pointer :: first_eulerian_variable => null()
-      type (type_interpolated_variable), pointer :: first_particle_variable => null()
+      type (type_interpolated_variable_set) :: eulerian_variables
+      type (type_interpolated_variable_set) :: particle_variables
 
       type (type_particle_class), pointer :: next => null()
    contains
@@ -103,12 +110,7 @@ module particle_class
       output => self%state%first_output
       do while (associated(output))
          if (output%save) then
-            allocate(particle_variable)
-            particle_variable%name = trim(output%name)
-            particle_variable%source => output%data
-            particle_variable%itarget = n
-            particle_variable%next => self%first_particle_variable
-            self%first_particle_variable => particle_variable
+            call self%particle_variables%add(trim(output%name), output%data, n)
             call field_manager%send_data('particle_'//trim(particle_variable%name), self%interpolated_par(:,particle_variable%itarget))
             n = n + 1
          end if
@@ -124,17 +126,7 @@ module particle_class
       real(rk), target,            intent(in)    :: dat(:)
 
 #ifdef _FABM_PARTICLES_
-      type (type_interpolated_variable), pointer :: eulerian_variable
-
-      if (.not.self%state%is_variable_used(name)) return
-
-      allocate(eulerian_variable)
-      eulerian_variable%source => dat
-      eulerian_variable%name = name
-
-      ! Prepend to list
-      eulerian_variable%next => self%first_eulerian_variable
-      self%first_eulerian_variable => eulerian_variable
+      if (self%state%is_variable_used(name)) call self%eulerian_variables%add(name, dat)
 #endif
    end subroutine link_eulerian_data
 
@@ -161,14 +153,14 @@ module particle_class
       end do
 
       n = 0
-      eulerian_variable => self%first_eulerian_variable
+      eulerian_variable => self%eulerian_variables%first
       do while (associated(eulerian_variable))
          n = n + 1
          eulerian_variable%itarget = n
          eulerian_variable => eulerian_variable%next
       end do
       allocate(self%interpolated_eul(self%npar,n))
-      eulerian_variable => self%first_eulerian_variable
+      eulerian_variable => self%eulerian_variables%first
       do while (associated(eulerian_variable))
          call self%state%send_data(trim(eulerian_variable%name), self%interpolated_eul(:,eulerian_variable%itarget))
          eulerian_variable => eulerian_variable%next
@@ -194,7 +186,7 @@ module particle_class
 #endif
 
       ! Interpolate Eulerian fields to particle positions (center values from associated layers).
-      eulerian_variable => self%first_eulerian_variable
+      eulerian_variable => self%eulerian_variables%first
       do while (associated(eulerian_variable))
          do ipar=1,self%npar
             self%interpolated_eul(ipar,eulerian_variable%itarget) = eulerian_variable%source(self%k(ipar))
@@ -218,16 +210,14 @@ module particle_class
       call lagrange(nlev, dt, z_if, nuh, w, self%npar, _ACTIVE_, self%k, self%z)
    end subroutine advance
 
-   subroutine interpolate_to_grid(self, nlev, h)
+   subroutine interpolate_to_grid(self)
       class (type_particle_class), intent(inout) :: self
-      integer,                     intent(in)    :: nlev
-      real(rk),                    intent(in)    :: h(1:nlev)
 
       type (type_interpolated_variable), pointer :: particle_variable
       integer                                    :: ipar
 
       ! Interpolate auxiliary particles states and normalize by number of particles
-      particle_variable => self%first_particle_variable
+      particle_variable => self%particle_variables%first
       do while (associated(particle_variable))
          self%interpolated_par(:,particle_variable%itarget) = 0.0_rk
          do ipar=1,self%npar
@@ -240,28 +230,44 @@ module particle_class
 
    subroutine finalize(self)
       class (type_particle_class), intent(inout) :: self
-      type (type_interpolated_variable), pointer :: interpolated_variable, next_interpolated_variable
 
-      interpolated_variable => self%first_eulerian_variable
-      do while (associated(interpolated_variable))
-         next_interpolated_variable => interpolated_variable%next
-         deallocate(interpolated_variable)
-         interpolated_variable => next_interpolated_variable
-      end do
-      self%first_eulerian_variable => null()
-
-      interpolated_variable => self%first_particle_variable
-      do while (associated(interpolated_variable))
-         next_interpolated_variable => interpolated_variable%next
-         deallocate(interpolated_variable)
-         interpolated_variable => next_interpolated_variable
-      end do
-      self%first_particle_variable => null()
+      call self%eulerian_variables%finalize()
+      call self%particle_variables%finalize()
 
       deallocate(self%interpolated_eul)
       deallocate(self%interpolated_par)
 
       self%next => null()
    end subroutine finalize
+
+   subroutine interpolated_variable_set_add(self, name, source, itarget)
+      class (type_interpolated_variable_set), intent(inout) :: self
+      character(len=*),                       intent(in)    :: name
+      real(rk), target,                       intent(in)    :: source(:)
+      integer, optional,                      intent(in)    :: itarget
+
+      type (type_interpolated_variable), pointer :: variable
+
+      allocate(variable)
+      variable%name = trim(name)
+      variable%source => source
+      if (present(itarget)) variable%itarget = itarget
+      variable%next => self%first
+      self%first => variable
+   end subroutine interpolated_variable_set_add
+
+   subroutine interpolated_variable_set_finalize(self)
+      class (type_interpolated_variable_set), intent(inout) :: self
+
+      type (type_interpolated_variable), pointer :: variable, variable_next
+
+      variable => self%first
+      do while (associated(variable))
+         variable_next => variable%next
+         deallocate(variable)
+         variable => variable_next
+      end do
+      self%first => null()
+   end subroutine interpolated_variable_set_finalize
 
 end module
