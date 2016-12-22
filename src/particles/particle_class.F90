@@ -25,6 +25,7 @@ module particle_class
       character(len=256)                         :: name      = ''
       real(rk), pointer                          :: source(:) => null()
       integer                                    :: itarget   = -1
+      type (type_interpolated_variable), pointer :: linked    => null()
       type (type_interpolated_variable), pointer :: next      => null()
    end type
 
@@ -32,6 +33,7 @@ module particle_class
       type (type_interpolated_variable), pointer :: first => null()
    contains
       procedure :: add      => interpolated_variable_set_add
+      procedure :: find     => interpolated_variable_set_find
       procedure :: finalize => interpolated_variable_set_finalize
    end type
 
@@ -39,6 +41,7 @@ module particle_class
       integer               :: npar
       integer,  allocatable :: k(:)
       real(rk), allocatable :: z(:)
+      real(rk), allocatable :: depth(:)
 
 #ifdef _FABM_PARTICLES_
       integer                         :: nstate
@@ -74,6 +77,7 @@ module particle_class
 
       integer                    :: n
       type (type_output),pointer :: output
+      type (type_interpolated_variable), pointer :: particle_variable
 
       self%npar = npar
       allocate(self%k(self%npar))
@@ -109,9 +113,18 @@ module particle_class
       output => self%state%first_output
       do while (associated(output))
          if (output%save) then
-            call self%particle_variables%add(trim(output%name), output%data, n)
+            particle_variable => self%particle_variables%add(trim(output%name), output%data, n)
             call field_manager%send_data('particle_'//trim(output%name), self%interpolated_par(:,n))
             n = n + 1
+         end if
+         output => output%next
+      end do
+      output => self%state%first_output
+      do while (associated(output))
+         if (associated(output%specific_to)) then
+            particle_variable => self%particle_variables%find(output%name)
+            particle_variable%linked => self%particle_variables%find(output%specific_to%name)
+            if (.not.associated(particle_variable%linked)) stop 'particle_variable%linked'
          end if
          output => output%next
       end do
@@ -124,8 +137,11 @@ module particle_class
       character(len=*),            intent(in)    :: name
       real(rk), target,            intent(in)    :: dat(:)
 
+      type (type_interpolated_variable), pointer :: eulerian_variable
+
+      if (name == 'cell_thickness' .or. name == 'depth') return
 #ifdef _FABM_PARTICLES_
-      if (self%state%is_variable_used(name)) call self%eulerian_variables%add(name, dat)
+      if (self%state%is_variable_used(name)) eulerian_variable => self%eulerian_variables%add(name, dat)
 #endif
    end subroutine link_eulerian_data
 
@@ -167,6 +183,12 @@ module particle_class
          eulerian_variable => eulerian_variable%next
       end do
 
+      if (self%state%is_variable_used('depth')) then
+         allocate(self%depth(self%npar))
+         self%depth = -self%z
+         call self%state%send_data('depth', self%depth)
+      end if
+
 #ifdef _FABM_PARTICLES_
       call self%state%start()
 #endif
@@ -182,6 +204,7 @@ module particle_class
       type (type_interpolated_variable), pointer :: eulerian_variable
       integer                                    :: ipar
       real(rk)                                   :: w(self%npar)
+      logical                                    :: valid
 #ifdef _FABM_PARTICLES_
       real(rk)                                   :: dy(self%npar,self%nstate)
 #endif
@@ -209,6 +232,11 @@ module particle_class
 
       ! Transport particles
       call lagrange(nlev, dt, z_if, nuh, w, self%npar, _ACTIVE_, self%k, self%z)
+
+      if (allocated(self%depth)) self%depth = -self%z
+
+      valid = self%state%check_state(.false.)
+      if (.not.valid) stop 'particle_class::advance'
    end subroutine advance
 
    subroutine interpolate_to_grid(self, nlev, h)
@@ -218,21 +246,43 @@ module particle_class
 
       type (type_interpolated_variable), pointer :: particle_variable
       integer                                    :: ipar
+      integer                                    :: k
 
       ! Accumulate particle states per layer
       particle_variable => self%particle_variables%first
       do while (associated(particle_variable))
          self%interpolated_par(:,particle_variable%itarget) = 0.0_rk
-         do ipar=1,self%npar
-            self%interpolated_par(self%k(ipar),particle_variable%itarget) = self%interpolated_par(self%k(ipar),particle_variable%itarget) + particle_variable%source(ipar)
-         end do
+         if (.not.associated(particle_variable%linked)) then
+            ! Concentration variable: accumulate value
+            do ipar=1,self%npar
+               self%interpolated_par(self%k(ipar),particle_variable%itarget) = self%interpolated_par(self%k(ipar),particle_variable%itarget) + particle_variable%source(ipar)
+            end do
+         else
+            ! Property variable (e.g., age): accumulate property*concentration
+            do ipar=1,self%npar
+               self%interpolated_par(self%k(ipar),particle_variable%itarget) = self%interpolated_par(self%k(ipar),particle_variable%itarget) + particle_variable%source(ipar)*particle_variable%linked%source(ipar)
+            end do
+         end if
          particle_variable => particle_variable%next
       end do
 
-      ! Divide by layer heights to obtain concentration
+      ! Property variable (e.g., age): divide by linked field (concentration) to obtain mean
       particle_variable => self%particle_variables%first
       do while (associated(particle_variable))
-         self%interpolated_par(:,particle_variable%itarget) = self%interpolated_par(:,particle_variable%itarget)/h(:)
+         if (associated(particle_variable%linked)) then
+            do k=1,nlev
+               if (self%interpolated_par(k,particle_variable%linked%itarget)>0) &
+                  self%interpolated_par(k,particle_variable%itarget) = self%interpolated_par(k,particle_variable%itarget)/self%interpolated_par(k,particle_variable%linked%itarget)
+            end do
+         end if
+         particle_variable => particle_variable%next
+      end do
+
+      ! Concentration variable: divide by layer heights to obtain concentration
+      particle_variable => self%particle_variables%first
+      do while (associated(particle_variable))
+         if (.not.associated(particle_variable%linked)) &
+            self%interpolated_par(:,particle_variable%itarget) = self%interpolated_par(:,particle_variable%itarget)/h(:)
          particle_variable => particle_variable%next
       end do
    end subroutine interpolate_to_grid
@@ -249,7 +299,7 @@ module particle_class
       self%next => null()
    end subroutine finalize
 
-   subroutine interpolated_variable_set_add(self, name, source, itarget)
+   function interpolated_variable_set_add(self, name, source, itarget) result(variable)
       class (type_interpolated_variable_set), intent(inout) :: self
       character(len=*),                       intent(in)    :: name
       real(rk), target,                       intent(in)    :: source(:)
@@ -263,7 +313,20 @@ module particle_class
       if (present(itarget)) variable%itarget = itarget
       variable%next => self%first
       self%first => variable
-   end subroutine interpolated_variable_set_add
+   end function interpolated_variable_set_add
+
+   function interpolated_variable_set_find(self, name) result(variable)
+      class (type_interpolated_variable_set), intent(inout) :: self
+      character(len=*),                       intent(in)    :: name
+
+      type (type_interpolated_variable), pointer :: variable
+
+      variable => self%first
+      do while (associated(variable))
+         if (variable%name==name) return
+         variable => variable%next
+      end do
+   end function interpolated_variable_set_find
 
    subroutine interpolated_variable_set_finalize(self)
       class (type_interpolated_variable_set), intent(inout) :: self
