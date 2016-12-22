@@ -58,6 +58,7 @@ module particle_class
    contains
       procedure :: initialize
       procedure :: link_eulerian_data
+      procedure :: link_horizontal_data
       procedure :: interpolate_to_grid
       procedure :: start
       procedure :: advance
@@ -141,6 +142,16 @@ module particle_class
       if (self%state%is_variable_used(name)) eulerian_variable => self%eulerian_variables%add(name, dat)
 #endif
    end subroutine link_eulerian_data
+
+   subroutine link_horizontal_data(self, name, dat)
+      class (type_particle_class), intent(inout) :: self
+      character(len=*),            intent(in)    :: name
+      real(rk), target,            intent(in)    :: dat
+
+#ifdef _FABM_PARTICLES_
+      call self%state%send_horizontal_data(name, dat)
+#endif
+   end subroutine link_horizontal_data
 
    subroutine start(self, nlev, z_if)
       class (type_particle_class), intent(inout) :: self

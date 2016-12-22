@@ -48,6 +48,14 @@ module particles
                   particle => particle%next
                end do
             end if
+            if (associated(field%data_0d)) then
+               particle => first_particle
+               do while (associated(particle))
+                  call particle%link_horizontal_data(trim(field%name), field%data_0d)
+                  if (field%standard_name /= '') call particle%link_horizontal_data(trim(field%standard_name), field%data_0d)
+                  particle => particle%next
+               end do
+            end if
             field => field%next
          end do
       end do
