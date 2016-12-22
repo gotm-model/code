@@ -72,9 +72,8 @@ module particle_class
       integer,                     intent(in)    :: nlev
       class (type_field_manager),  intent(inout) :: field_manager
 
-      integer                                    :: n
-      type (type_output),                pointer :: output
-      type (type_interpolated_variable), pointer :: particle_variable
+      integer                    :: n
+      type (type_output),pointer :: output
 
       self%npar = npar
       allocate(self%k(self%npar))
@@ -111,7 +110,7 @@ module particle_class
       do while (associated(output))
          if (output%save) then
             call self%particle_variables%add(trim(output%name), output%data, n)
-            call field_manager%send_data('particle_'//trim(particle_variable%name), self%interpolated_par(:,particle_variable%itarget))
+            call field_manager%send_data('particle_'//trim(output%name), self%interpolated_par(:,n))
             n = n + 1
          end if
          output => output%next
@@ -152,6 +151,8 @@ module particle_class
          self%k(ipar) = k
       end do
 
+      ! Determine how many Eulerian variables need to be mapped to the particles,
+      ! and then allocate the memory for these interploted fields.
       n = 0
       eulerian_variable => self%eulerian_variables%first
       do while (associated(eulerian_variable))
@@ -210,13 +211,15 @@ module particle_class
       call lagrange(nlev, dt, z_if, nuh, w, self%npar, _ACTIVE_, self%k, self%z)
    end subroutine advance
 
-   subroutine interpolate_to_grid(self)
+   subroutine interpolate_to_grid(self, nlev, h)
       class (type_particle_class), intent(inout) :: self
+      integer,                     intent(in)    :: nlev
+      real(rk),                    intent(in)    :: h(1:nlev)
 
       type (type_interpolated_variable), pointer :: particle_variable
       integer                                    :: ipar
 
-      ! Interpolate auxiliary particles states and normalize by number of particles
+      ! Accumulate particle states per layer
       particle_variable => self%particle_variables%first
       do while (associated(particle_variable))
          self%interpolated_par(:,particle_variable%itarget) = 0.0_rk
@@ -226,6 +229,12 @@ module particle_class
          particle_variable => particle_variable%next
       end do
 
+      ! Divide by layer heights to obtain concentration
+      particle_variable => self%particle_variables%first
+      do while (associated(particle_variable))
+         self%interpolated_par(:,particle_variable%itarget) = self%interpolated_par(:,particle_variable%itarget)/h(:)
+         particle_variable => particle_variable%next
+      end do
    end subroutine interpolate_to_grid
 
    subroutine finalize(self)
