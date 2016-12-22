@@ -46,14 +46,11 @@ module particle_class
 #ifdef _FABM_PARTICLES_
       integer                         :: nstate
       type (type_fabm_particle_state) :: state
-#else
-      logical,  allocatable :: active(:)
 #endif
 
       real(rk), allocatable :: interpolated_eul(:,:)
       real(rk), allocatable :: interpolated_par(:,:)
 
-      integer :: count_index = -1
       type (type_interpolated_variable_set) :: eulerian_variables
       type (type_interpolated_variable_set) :: particle_variables
 
@@ -83,11 +80,11 @@ module particle_class
       allocate(self%k(self%npar))
       allocate(self%z(self%npar))
 
-      n = 0
 #ifdef _FABM_PARTICLES_
       call self%state%configure(npar, 'fabm_particles.yaml')
       self%nstate = self%state%nstate
-      self%count_index = 1
+
+      n = 0
       output => self%state%first_output
       do while (associated(output))
          call field_manager%register('particle_'//trim(output%name), trim(output%units), &
@@ -96,29 +93,28 @@ module particle_class
          output => output%next
       end do
 #else
-      allocate(self%active(self%npar))
-      self%active = .true.
+      n = 1
 #endif
 
-      if (self%count_index == -1) n = n + 1
       allocate(self%interpolated_par(nlev, n))
 
-      n = 1
 #ifdef _FABM_PARTICLES_
       ! Complete initialization (must happen after setting the "save" attribute on outputs)
       ! After this is done, additional data fields may be sent to the FABM particle manager
       ! by calling link_eulerian_data.
       call self%state%initialize()
 
+      n = 0
       output => self%state%first_output
       do while (associated(output))
          if (output%save) then
+            n = n + 1
             particle_variable => self%particle_variables%add(trim(output%name), output%data, n)
             call field_manager%send_data('particle_'//trim(output%name), self%interpolated_par(:,n))
-            n = n + 1
          end if
          output => output%next
       end do
+
       output => self%state%first_output
       do while (associated(output))
          if (associated(output%specific_to)) then
@@ -128,8 +124,9 @@ module particle_class
          end if
          output => output%next
       end do
+#else
+      call field_manager%register('particle_concentration', '# m-3', 'particle concentration', dimensions=(/id_dim_z/), data1d=self%interpolated_par(:,1))
 #endif
-      if (self%count_index == -1) call field_manager%register('particle_concentration', '# m-3', 'particle concentration', dimensions=(/id_dim_z/), data1d=self%interpolated_par(:,n))
    end subroutine initialize
 
    subroutine link_eulerian_data(self, name, dat)
@@ -207,6 +204,8 @@ module particle_class
       logical                                    :: valid
 #ifdef _FABM_PARTICLES_
       real(rk)                                   :: dy(self%npar,self%nstate)
+#else
+      logical                                    :: active(self%npar)
 #endif
 
       ! Interpolate Eulerian fields to particle positions (center values from associated layers).
@@ -227,6 +226,7 @@ module particle_class
       self%state%y = self%state%y + dy*dt
 #else
 #  define _ACTIVE_ self%active
+      active = .true.
       w = 0.0_rk
 #endif
 
@@ -246,7 +246,6 @@ module particle_class
 
       type (type_interpolated_variable), pointer :: particle_variable
       integer                                    :: ipar
-      integer                                    :: k
 
       ! Accumulate particle states per layer
       particle_variable => self%particle_variables%first
@@ -266,19 +265,16 @@ module particle_class
          particle_variable => particle_variable%next
       end do
 
-      ! Property variable (e.g., age): divide by linked field (concentration) to obtain mean
+      ! For all property variables (e.g., age): divide by linked field (concentration) to obtain mean.
+      ! Note: take care to avoid division by zero for layers without particles!
       particle_variable => self%particle_variables%first
       do while (associated(particle_variable))
-         if (associated(particle_variable%linked)) then
-            do k=1,nlev
-               if (self%interpolated_par(k,particle_variable%linked%itarget)>0) &
-                  self%interpolated_par(k,particle_variable%itarget) = self%interpolated_par(k,particle_variable%itarget)/self%interpolated_par(k,particle_variable%linked%itarget)
-            end do
-         end if
+         if (associated(particle_variable%linked)) &
+            self%interpolated_par(:,particle_variable%itarget) = self%interpolated_par(:,particle_variable%itarget)/max(1.0_rk,self%interpolated_par(:,particle_variable%linked%itarget))
          particle_variable => particle_variable%next
       end do
 
-      ! Concentration variable: divide by layer heights to obtain concentration
+      ! For all concentration variables: divide by layer heights to obtain concentration
       particle_variable => self%particle_variables%first
       do while (associated(particle_variable))
          if (.not.associated(particle_variable%linked)) &
@@ -293,8 +289,11 @@ module particle_class
       call self%eulerian_variables%finalize()
       call self%particle_variables%finalize()
 
-      deallocate(self%interpolated_eul)
-      deallocate(self%interpolated_par)
+      if (allocated(self%k)) deallocate(self%k)
+      if (allocated(self%z)) deallocate(self%z)
+      if (allocated(self%depth)) deallocate(self%depth)
+      if (allocated(self%interpolated_eul)) deallocate(self%interpolated_eul)
+      if (allocated(self%interpolated_par)) deallocate(self%interpolated_par)
 
       self%next => null()
    end subroutine finalize
