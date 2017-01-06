@@ -129,6 +129,11 @@ module field_manager
       type (type_field), pointer :: first_field => null()
    end type
 
+   type type_field_set_member
+      type (type_field),            pointer :: field => null()
+      type (type_field_set_member), pointer :: next  => null()
+   end type
+   
    type type_field_set
       type (type_field_set_member), pointer :: first => null()
    contains
