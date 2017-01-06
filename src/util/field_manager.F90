@@ -133,7 +133,7 @@ module field_manager
       type (type_field),            pointer :: field => null()
       type (type_field_set_member), pointer :: next  => null()
    end type
-   
+
    type type_field_set
       type (type_field_set_member), pointer :: first => null()
    contains
@@ -920,7 +920,6 @@ contains
        tmp(i) = str(i:i)
       end do
       hash = sum(ichar(tmp))
-write(*,*) str,'A',tmp,'B',hash
    end function
 
 end module field_manager
