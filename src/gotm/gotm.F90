@@ -767,10 +767,6 @@
       call file%append_category(category)
    end subroutine setup_restart
 
-#if 1
-   subroutine read_restart()
-   end subroutine read_restart
-#else
    subroutine read_restart()
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
@@ -794,7 +790,6 @@
       end do
       call field_set%finalize()
    end subroutine read_restart
-#endif
 !-----------------------------------------------------------------------
 
    end module gotm
