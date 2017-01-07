@@ -413,7 +413,7 @@
          call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i))
       end do
       do i=1,size(model%surface_state_variables)
-         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i))
+         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i))
       end do
 
       check_conservation = .false.
