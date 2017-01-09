@@ -278,6 +278,8 @@
       <zetaspec>
          <zeta_method>0</zeta_method>
          <zeta_file>zeta_file.dat</zeta_file>
+         <zeta_scale>1.0</zeta_scale>
+         <zeta_offset>0.0</zeta_offset>
          <zeta_0>0.0</zeta_0>
          <period_1>44714.0</period_1>
          <amp_1>0.0</amp_1>
