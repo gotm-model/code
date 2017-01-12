@@ -257,6 +257,7 @@ module particle_class
 
       type (type_interpolated_variable), pointer :: particle_variable
       integer                                    :: ipar
+      integer                                    :: k
 
       ! Accumulate particle states per layer
       particle_variable => self%particle_variables%first
@@ -280,8 +281,12 @@ module particle_class
       ! Note: take care to avoid division by zero for layers without particles!
       particle_variable => self%particle_variables%first
       do while (associated(particle_variable))
-         if (associated(particle_variable%linked)) &
-            self%interpolated_par(:,particle_variable%itarget) = self%interpolated_par(:,particle_variable%itarget)/max(1.0_rk,self%interpolated_par(:,particle_variable%linked%itarget))
+         if (associated(particle_variable%linked)) then
+            do k=1,nlev
+               if (self%interpolated_par(k,particle_variable%linked%itarget) > 0) &
+                  self%interpolated_par(k,particle_variable%itarget) = self%interpolated_par(k,particle_variable%itarget)/self%interpolated_par(k,particle_variable%linked%itarget)
+            end do
+         end if
          particle_variable => particle_variable%next
       end do
 
