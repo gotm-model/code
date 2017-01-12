@@ -61,9 +61,14 @@ if(GOTM_EXTRA_OUTPUT)
   add_definitions(-DEXTRA_OUTPUT)
 endif()
 
-option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
+option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" OFF)
 if(GOTM_USE_FABM)
   add_definitions(-D_FABM_)
+endif()
+
+option(GOTM_USE_FABM_PARTICLES "Include support for Lagrangian particle models" ON)
+if(GOTM_USE_FABM_PARTICLES)
+  add_definitions(-D_FABM_PARTICLES_)
 endif()
 
 option(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON)
@@ -268,6 +273,16 @@ add_library(particles OBJECT
            )
 add_dependencies(particles util)
 
+if(GOTM_USE_FABM_PARTICLES)
+  find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
+  mark_as_advanced(CLEAR FABM_BASE)
+
+  set(FABM_FORCED_PREFIX fabm_particles)
+  add_subdirectory(${FABM_BASE}/src/drivers/particles fabm_particles)
+  add_dependencies(particles fabm_particle_driver)
+  set_property(TARGET particles APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/fabm_particles/modules)
+endif(GOTM_USE_FABM_PARTICLES)
+
 add_library(meanflow OBJECT
             meanflow/buoyancy.F90
             meanflow/convectiveadjustment.F90
@@ -347,11 +362,6 @@ if(GOTM_USE_FABM)
   add_dependencies(gotm gotm_fabm gotm_fabm_io)
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
-
-  set(FABM_FORCED_PREFIX fabm_particles)
-  add_subdirectory(${FABM_BASE}/src/drivers/particles fabm_particles)
-  add_dependencies(particles fabm_particle_driver)
-  set_property(TARGET particles APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/fabm_particles/modules)
 endif(GOTM_USE_FABM)
 
 # Build GOTM executable.
@@ -380,8 +390,11 @@ endif(GOTM_USE_NetCDF)
 
 if(GOTM_USE_FABM)
   target_link_libraries(gotm_exe gotm_fabm gotm_fabm_io ${FABM_LIBRARIES})
-  target_link_libraries(gotm_exe fabm_particle_driver)
 endif(GOTM_USE_FABM)
+
+if(GOTM_USE_FABM_PARTICLES)
+  target_link_libraries(gotm_exe fabm_particle_driver)
+endif(GOTM_USE_FABM_PARTICLES)
 
 # Set default installation prefix.
 if(WIN32)
