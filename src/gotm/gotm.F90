@@ -331,9 +331,9 @@
    call particles_initialize(fm,nlev)
 
    ! Offer all fields registered with the field manager to the particle manager.
-   ! At this points, all fields must have been registered with the field manager.
+   ! At this point, all fields must have been registered with the field manager.
    ! Also, the layer heights and elevation must have been initialized as these are
-   ! used to set the sartig position for all particles.
+   ! used to set the starting position for all particles.
    call particles_start(fm,-depth0,nlev,h(1:nlev))
 
    if (list_fields) call fm%list()
