@@ -42,10 +42,12 @@ module particle_class
       integer,  allocatable :: k(:)
       real(rk), allocatable :: z(:)
       real(rk), allocatable :: depth(:)
+      real(rk), allocatable :: w(:)
 
 #ifdef _FABM_PARTICLES_
       integer                         :: nstate
       type (type_fabm_particle_state) :: state
+      real(rk), allocatable           :: dy(:,:)
 #endif
 
       real(rk), allocatable :: interpolated_eul(:,:)
@@ -67,29 +69,31 @@ module particle_class
 
    contains
 
-   subroutine initialize(self, npar, nlev, field_manager)
+   subroutine initialize(self, name, dictionary, nlev, field_manager)
       class (type_particle_class), intent(inout) :: self
-      integer,                     intent(in)    :: npar
+      character(len=*),            intent(in)    :: name
+      class (type_dictionary),     intent(inout) :: dictionary
       integer,                     intent(in)    :: nlev
       class (type_field_manager),  intent(inout) :: field_manager
 
-      integer                    :: n
-      type (type_output),pointer :: output
+      integer                                    :: n
+      type (type_output),                pointer :: output
       type (type_interpolated_variable), pointer :: particle_variable
 
-      self%npar = npar
-      allocate(self%k(self%npar))
-      allocate(self%z(self%npar))
-
 #ifdef _FABM_PARTICLES_
-      call self%state%configure(npar, 'fabm_particles.yaml')
+      call self%state%configure(dictionary)
+      self%npar = self%state%npar
       self%nstate = self%state%nstate
+
+      ! Allocate work arrays (allocatable rather than automatic to avoid excessive consumption of stack memory)
+      allocate(self%w(self%npar))
+      allocate(self%dy(self%npar, self%nstate))
 
       n = 0
       output => self%state%first_output
       do while (associated(output))
-         call field_manager%register('particle_'//trim(output%name), trim(output%units), &
-            'particle '//trim(output%long_name), dimensions=(/id_dim_z/), used=output%save)
+         call field_manager%register(trim(name)//'_'//trim(output%name), trim(output%units), &
+            trim(name)//' '//trim(output%long_name), dimensions=(/id_dim_z/), used=output%save)
          if (output%save) n = n + 1
          output => output%next
       end do
@@ -98,6 +102,8 @@ module particle_class
 #endif
 
       allocate(self%interpolated_par(nlev, n))
+      allocate(self%k(self%npar))
+      allocate(self%z(self%npar))
 
 #ifdef _FABM_PARTICLES_
       ! Complete initialization (must happen after setting the "save" attribute on outputs)
@@ -111,7 +117,7 @@ module particle_class
          if (output%save) then
             n = n + 1
             particle_variable => self%particle_variables%add(trim(output%name), output%data, n)
-            call field_manager%send_data('particle_'//trim(output%name), self%interpolated_par(:,n))
+            call field_manager%send_data(trim(name)//'_'//trim(output%name), self%interpolated_par(:,n))
          end if
          output => output%next
       end do
@@ -126,7 +132,7 @@ module particle_class
          output => output%next
       end do
 #else
-      call field_manager%register('particle_concentration', '# m-3', 'particle concentration', dimensions=(/id_dim_z/), data1d=self%interpolated_par(:,1))
+      call field_manager%register(trim(name)//'_concentration', '# m-3', trim(name)//' concentration', dimensions=(/id_dim_z/), data1d=self%interpolated_par(:,1))
 #endif
    end subroutine initialize
 
@@ -158,9 +164,9 @@ module particle_class
       integer,                     intent(in)    :: nlev
       real(rk),                    intent(in)    :: z_if(0:nlev)
 
-      integer :: ipar
-      integer :: k
-      integer :: n
+      integer                                    :: ipar
+      integer                                    :: k
+      integer                                    :: n
       type (type_interpolated_variable), pointer :: eulerian_variable
 
       ! Random initialization of vertical position.
@@ -198,7 +204,9 @@ module particle_class
       end if
 
 #ifdef _FABM_PARTICLES_
-      call self%state%start()
+      ! Allow biogeochemical state to perform final initialization steps.
+      ! This checks whether all dependencies have been fulfilled, and also initializes the state.
+      call self%state%start((z_if(nlev)-z_if(0))/self%npar)
 #endif
    end subroutine start
 
@@ -211,11 +219,8 @@ module particle_class
 
       type (type_interpolated_variable), pointer :: eulerian_variable
       integer                                    :: ipar
-      real(rk)                                   :: w(self%npar)
       logical                                    :: valid
-#ifdef _FABM_PARTICLES_
-      real(rk)                                   :: dy(self%npar,self%nstate)
-#else
+#ifndef _FABM_PARTICLES_
       logical                                    :: active(self%npar)
 #endif
 
@@ -230,19 +235,19 @@ module particle_class
 
 #ifdef _FABM_PARTICLES_
 #  define _ACTIVE_ self%state%active
-      call self%state%get_vertical_movement(w)
-      call self%state%get_sources(dy)
+      call self%state%get_vertical_movement(self%w)
+      call self%state%get_sources(self%dy)
 
       ! Time-integrate source terms (Forward Euler)
-      self%state%y = self%state%y + dy*dt
+      self%state%y = self%state%y + self%dy*dt
 #else
 #  define _ACTIVE_ self%active
       active = .true.
-      w = 0.0_rk
+      self%w = 0.0_rk
 #endif
 
       ! Transport particles
-      call lagrange(nlev, dt, z_if, nuh, w, self%npar, _ACTIVE_, self%k, self%z)
+      call lagrange(nlev, dt, z_if, nuh, self%w, self%npar, _ACTIVE_, self%k, self%z)
 
       if (allocated(self%depth)) self%depth = -self%z
 
