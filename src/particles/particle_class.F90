@@ -70,6 +70,8 @@ module particle_class
    contains
 
    subroutine initialize(self, name, dictionary, nlev, field_manager)
+      use yaml_types, only: type_dictionary
+
       class (type_particle_class), intent(inout) :: self
       character(len=*),            intent(in)    :: name
       class (type_dictionary),     intent(inout) :: dictionary
