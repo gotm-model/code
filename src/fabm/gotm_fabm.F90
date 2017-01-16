@@ -1053,6 +1053,13 @@
    ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
    rhs(1,1:n) = rhs(1,1:n)/curh(1)
 
+   ! Relax bottom-attached variables to observed values, if specified in fabm_input.nml.
+   do i=1,size(model%bottom_state_variables)
+      if (associated(cc_ben_obs(i)%data)) then
+         if (cc_ben_obs(i)%relax_tau < 1.e15_rk) rhs(1,n+i) = rhs(1,n+i) + (cc_ben_obs(i)%data - cc(1,n+i))/cc_ben_obs(i)%relax_tau
+      end if
+   end do
+
    if (.not.no_surface) then
       ! Calculate temporal derivatives due to surface processes (e.g. gas exchange, ice algae).
       call fabm_do_surface(model,rhs(nlev,1:n),rhs(nlev,n+size(model%bottom_state_variables)+1:))
