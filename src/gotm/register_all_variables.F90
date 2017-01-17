@@ -138,7 +138,7 @@
    call fm%register('qa', 'kg/kg', 'specific humidity', standard_name='', data0d=qa)
    call fm%register('rhoa', 'kg/m3', 'air density', standard_name='', data0d=rhoa)
 
-   call fm%register('I_0', 'W/m2', 'incoming short wave radiation', standard_name='', data0d=I_0)
+   call fm%register('I_0', 'W/m2', 'incoming short wave radiation', standard_name='surface_downwelling_shortwave_flux', data0d=I_0)
    call fm%register('albedo', '', 'albedo', standard_name='', data0d=albedo)
    call fm%register('qe', 'W/m2', 'sensible heat', standard_name='', data0d=qe)
    call fm%register('qh', 'W/m2', 'latent heat', standard_name='', data0d=qh)
