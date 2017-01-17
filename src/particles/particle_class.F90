@@ -6,7 +6,7 @@
 
 module particle_class
 
-   use field_manager, only: type_field, type_field_manager, id_dim_z
+   use field_manager, only: type_field, type_field_manager, id_dim_z, output_level_debug, output_level_default
 
 #ifdef _FABM_PARTICLES_
    use fabm_particle_driver
@@ -80,9 +80,16 @@ module particle_class
 
       integer                                    :: n
       type (type_output),                pointer :: output
+      integer                                    :: output_level
       type (type_interpolated_variable), pointer :: particle_variable
 
 #ifdef _FABM_PARTICLES_
+      ! Configure the (biogeochemical) properties associated with the particles.
+      ! This creates the linked list with properties (head: self%state%first_output),
+      ! with metadata per property. The "save" attribute of these properties can
+      ! be changed to communicate to FABM-particles that the property will be needed.
+      ! After calling self%state%initialize, each property with "save" set will have
+      ! its associated data array available throught its "data" attribute.
       call self%state%configure(dictionary)
       self%npar = self%state%npar
       self%nstate = self%state%nstate
@@ -94,8 +101,10 @@ module particle_class
       n = 0
       output => self%state%first_output
       do while (associated(output))
+         output_level = output_level_debug
+         if (output%save) output_level = output_level_default
          call field_manager%register(trim(name)//'_'//trim(output%name), trim(output%units), &
-            trim(name)//' '//trim(output%long_name), dimensions=(/id_dim_z/), used=output%save)
+            trim(name)//' '//trim(output%long_name), dimensions=(/id_dim_z/), output_level=output_level, used=output%save)
          if (output%save) n = n + 1
          output => output%next
       end do
