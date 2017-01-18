@@ -457,6 +457,9 @@
                   curvar%data = curvar%scale_factor*info%prof1(:,curvar%index)
                   curvar => curvar%next
                end do
+            elseif (rc<0) then
+               FATAL 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?'
+               stop 'input:get_observed_profiles'
             else
                FATAL 'Error reading profiles from '//trim(info%path)//' around line #',info%lines
                stop 'input:get_observed_profiles'
