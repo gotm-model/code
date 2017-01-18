@@ -88,9 +88,6 @@
 
    integer :: nlev
 
-   integer, parameter :: END_OF_FILE=-1
-   integer, parameter :: READ_ERROR=-2
-
    contains
 
 !-----------------------------------------------------------------------
