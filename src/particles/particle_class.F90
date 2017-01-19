@@ -45,9 +45,7 @@ module particle_class
       real(rk), allocatable :: w(:)
 
 #ifdef _FABM_PARTICLES_
-      integer                         :: nstate
-      type (type_fabm_particle_state) :: state
-      real(rk), allocatable           :: dy(:,:)
+      type (type_particle_properties) :: properties
 #endif
 
       real(rk), allocatable :: interpolated_eul(:,:)
@@ -59,7 +57,7 @@ module particle_class
       type (type_particle_class), pointer :: next => null()
    contains
       procedure :: initialize
-      procedure :: link_eulerian_data
+      procedure :: link_interior_data
       procedure :: link_horizontal_data
       procedure :: link_scalar
       procedure :: interpolate_to_grid
@@ -80,34 +78,32 @@ module particle_class
       class (type_field_manager),  intent(inout) :: field_manager
 
       integer                                    :: n
-      type (type_output),                pointer :: output
+      type (type_particle_property),     pointer :: property
       integer                                    :: output_level
       type (type_interpolated_variable), pointer :: particle_variable
 
 #ifdef _FABM_PARTICLES_
       ! Configure the (biogeochemical) properties associated with the particles.
-      ! This creates the linked list with properties (head: self%state%first_output),
+      ! This creates the linked list with properties (head: self%properties%first_output),
       ! with metadata per property. The "save" attribute of these properties can
       ! be changed to communicate to FABM-particles that the property will be needed.
-      ! After calling self%state%initialize, each property with "save" set will have
+      ! After calling self%properties%initialize, each property with "save" set will have
       ! its associated data array available throught its "data" attribute.
-      call self%state%configure(dictionary)
-      self%npar = self%state%npar
-      self%nstate = self%state%nstate
+      call self%properties%configure(dictionary)
+      self%npar = self%properties%npar
 
       ! Allocate work arrays (allocatable rather than automatic to avoid excessive consumption of stack memory)
       allocate(self%w(self%npar))
-      allocate(self%dy(self%npar, self%nstate))
 
       n = 0
-      output => self%state%first_output
-      do while (associated(output))
+      property => self%properties%first
+      do while (associated(property))
          output_level = output_level_debug
-         if (output%save) output_level = output_level_default
-         call field_manager%register(trim(name)//'_'//trim(output%name), trim(output%units), &
-            trim(name)//' '//trim(output%long_name), dimensions=(/id_dim_z/), output_level=output_level, used=output%save)
-         if (output%save) n = n + 1
-         output => output%next
+         if (property%save) output_level = output_level_default
+         call field_manager%register(trim(name)//'_'//trim(property%name), trim(property%units), &
+            trim(name)//' '//trim(property%long_name), dimensions=(/id_dim_z/), output_level=output_level, used=property%save)
+         if (property%save) n = n + 1
+         property => property%next
       end do
 #else
       n = 1
@@ -120,35 +116,35 @@ module particle_class
 #ifdef _FABM_PARTICLES_
       ! Complete initialization (must happen after setting the "save" attribute on outputs)
       ! After this is done, additional data fields may be sent to the FABM particle manager
-      ! by calling link_eulerian_data.
-      call self%state%initialize()
+      ! by calling link_interior_data.
+      call self%properties%initialize()
 
       n = 0
-      output => self%state%first_output
-      do while (associated(output))
-         if (output%save) then
+      property => self%properties%first
+      do while (associated(property))
+         if (property%save) then
             n = n + 1
-            particle_variable => self%particle_variables%add(trim(output%name), output%data, n)
-            call field_manager%send_data(trim(name)//'_'//trim(output%name), self%interpolated_par(:,n))
+            particle_variable => self%particle_variables%add(trim(property%name), property%data, n)
+            call field_manager%send_data(trim(name)//'_'//trim(property%name), self%interpolated_par(:,n))
          end if
-         output => output%next
+         property => property%next
       end do
 
-      output => self%state%first_output
-      do while (associated(output))
-         if (associated(output%specific_to)) then
-            particle_variable => self%particle_variables%find(output%name)
-            particle_variable%linked => self%particle_variables%find(output%specific_to%name)
+      property => self%properties%first
+      do while (associated(property))
+         if (associated(property%specific_to)) then
+            particle_variable => self%particle_variables%find(property%name)
+            particle_variable%linked => self%particle_variables%find(property%specific_to%name)
             if (.not.associated(particle_variable%linked)) stop 'particle_variable%linked'
          end if
-         output => output%next
+         property => property%next
       end do
 #else
       call field_manager%register(trim(name)//'_concentration', '# m-3', trim(name)//' concentration', dimensions=(/id_dim_z/), data1d=self%interpolated_par(:,1))
 #endif
    end subroutine initialize
 
-   subroutine link_eulerian_data(self, name, dat)
+   subroutine link_interior_data(self, name, dat)
       class (type_particle_class), intent(inout) :: self
       character(len=*),            intent(in)    :: name
       real(rk), target,            intent(in)    :: dat(:)
@@ -157,9 +153,9 @@ module particle_class
 
       if (name == 'cell_thickness' .or. name == 'depth') return
 #ifdef _FABM_PARTICLES_
-      if (self%state%is_variable_used(name)) eulerian_variable => self%eulerian_variables%add(name, dat)
+      if (self%properties%is_variable_used(name)) eulerian_variable => self%eulerian_variables%add(name, dat)
 #endif
-   end subroutine link_eulerian_data
+   end subroutine link_interior_data
 
    subroutine link_horizontal_data(self, name, dat)
       class (type_particle_class), intent(inout) :: self
@@ -167,7 +163,7 @@ module particle_class
       real(rk), target,            intent(in)    :: dat
 
 #ifdef _FABM_PARTICLES_
-      call self%state%send_horizontal_data(name, dat)
+      call self%properties%link_horizontal_data(name, dat)
 #endif
    end subroutine link_horizontal_data
 
@@ -177,7 +173,7 @@ module particle_class
       real(rk), target,            intent(in)    :: dat
 
 #ifdef _FABM_PARTICLES_
-      call self%state%send_scalar(name, dat)
+      call self%properties%link_scalar(name, dat)
 #endif
    end subroutine link_scalar
 
@@ -215,20 +211,20 @@ module particle_class
       allocate(self%interpolated_eul(self%npar,n))
       eulerian_variable => self%eulerian_variables%first
       do while (associated(eulerian_variable))
-         call self%state%send_data(trim(eulerian_variable%name), self%interpolated_eul(:,eulerian_variable%itarget))
+         call self%properties%link_interior_data(trim(eulerian_variable%name), self%interpolated_eul(:,eulerian_variable%itarget))
          eulerian_variable => eulerian_variable%next
       end do
 
-      if (self%state%is_variable_used('depth')) then
+      if (self%properties%is_variable_used('depth')) then
          allocate(self%depth(self%npar))
          self%depth = -self%z
-         call self%state%send_data('depth', self%depth)
+         call self%properties%link_interior_data('depth', self%depth)
       end if
 
 #ifdef _FABM_PARTICLES_
       ! Allow biogeochemical state to perform final initialization steps.
       ! This checks whether all dependencies have been fulfilled, and also initializes the state.
-      call self%state%start((z_if(nlev)-z_if(0))/self%npar)
+      call self%properties%start((z_if(nlev)-z_if(0))/self%npar)
 #endif
    end subroutine start
 
@@ -256,12 +252,9 @@ module particle_class
       end do
 
 #ifdef _FABM_PARTICLES_
-#  define _ACTIVE_ self%state%active
-      call self%state%get_vertical_movement(self%w)
-      call self%state%get_sources(self%dy)
-
-      ! Time-integrate source terms (Forward Euler)
-      self%state%y = self%state%y + self%dy*dt
+#  define _ACTIVE_ self%properties%active
+      call self%properties%get_vertical_movement(self%w)
+      call self%properties%advance(dt)
 #else
 #  define _ACTIVE_ self%active
       active = .true.
@@ -273,7 +266,7 @@ module particle_class
 
       if (allocated(self%depth)) self%depth = -self%z
 
-      valid = self%state%check_state(.false.)
+      valid = self%properties%check_state(.false.)
       if (.not.valid) stop 'particle_class::advance'
    end subroutine advance
 

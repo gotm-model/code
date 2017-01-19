@@ -135,8 +135,8 @@ module particles
                ! 1D variable (defined throughout the water column)
                particle_class => first_particle_class
                do while (associated(particle_class))
-                  call particle_class%link_eulerian_data(trim(field%name), field%data_1d)
-                  if (field%standard_name /= '') call particle_class%link_eulerian_data(trim(field%standard_name), field%data_1d)
+                  call particle_class%link_interior_data(trim(field%name), field%data_1d)
+                  if (field%standard_name /= '') call particle_class%link_interior_data(trim(field%standard_name), field%data_1d)
                   particle_class => particle_class%next
                end do
             end if
