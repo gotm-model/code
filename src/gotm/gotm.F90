@@ -334,7 +334,7 @@
    ! At this point, all fields must have been registered with the field manager.
    ! Also, the layer heights and elevation must have been initialized as these are
    ! used to set the starting position for all particles.
-   call particles_start(fm,-depth0,nlev,h(1:nlev))
+   call particles_start(fm,-depth0,nlev,h(1:nlev),yearday,secondsofday)
 
    if (list_fields) call fm%list()
 
@@ -496,7 +496,7 @@
       call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
 #endif
 
-      call particles_advance(nlev,dt,-depth0,h(1:nlev),nuh)
+      call particles_advance(nlev,dt,-depth0,h(1:nlev),nuh,yearday,secondsofday)
 
 !    compute turbulent mixing
       select case (turb_method)

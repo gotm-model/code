@@ -12,6 +12,7 @@ module particles
    public particles_initialize, particles_start, particles_advance, particles_clean
 
    type (type_particle_class), pointer, save :: first_particle_class => null()
+   real(rk), target :: decimal_yearday
 
    contains
 
@@ -111,11 +112,12 @@ module particles
       end do
    end subroutine particles_initialize
 
-   subroutine particles_start(field_manager, zmin, nlev, h)
+   subroutine particles_start(field_manager, zmin, nlev, h, yearday, secondsofday)
       class (type_field_manager), intent(in) :: field_manager
       real(rk),                   intent(in) :: zmin
       integer,                    intent(in) :: nlev
       real(rk),                   intent(in) :: h(1:nlev)
+      integer,                    intent(in) :: yearday, secondsofday
 
       integer                             :: ibin
       type (type_field), pointer          :: field
@@ -156,9 +158,12 @@ module particles
       do k=1,nlev
          z_if(k) = z_if(k-1) + h(k)
       end do
+      decimal_yearday = yearday-1 + secondsofday/86400._rk
 
       particle_class => first_particle_class
       do while (associated(particle_class))
+         call particle_class%link_scalar('number_of_days_since_start_of_the_year',decimal_yearday)
+
          ! Initialize particle positions
          call particle_class%start(nlev, z_if)
 
@@ -170,12 +175,13 @@ module particles
       end do
    end subroutine particles_start
 
-   subroutine particles_advance(nlev, dt, zmin, h, nuh)
+   subroutine particles_advance(nlev, dt, zmin, h, nuh, yearday, secondsofday)
       integer,  intent(in) :: nlev
       real(rk), intent(in) :: dt
       real(rk), intent(in) :: h(1:nlev)
       real(rk), intent(in) :: zmin
       real(rk), intent(in) :: nuh(0:nlev)
+      integer,  intent(in) :: yearday, secondsofday
 
       real(rk)                            :: z_if(0:nlev)
       integer                             :: k
@@ -188,6 +194,7 @@ module particles
       do k=1,nlev
          z_if(k) = z_if(k-1) + h(k)
       end do
+      decimal_yearday = yearday-1 + secondsofday/86400._rk
 
       particle_class => first_particle_class
       do while (associated(particle_class))
