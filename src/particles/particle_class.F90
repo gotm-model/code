@@ -61,6 +61,7 @@ module particle_class
       procedure :: initialize
       procedure :: link_eulerian_data
       procedure :: link_horizontal_data
+      procedure :: link_scalar
       procedure :: interpolate_to_grid
       procedure :: start
       procedure :: advance
@@ -169,6 +170,16 @@ module particle_class
       call self%state%send_horizontal_data(name, dat)
 #endif
    end subroutine link_horizontal_data
+
+   subroutine link_scalar(self, name, dat)
+      class (type_particle_class), intent(inout) :: self
+      character(len=*),            intent(in)    :: name
+      real(rk), target,            intent(in)    :: dat
+
+#ifdef _FABM_PARTICLES_
+      call self%state%send_scalar(name, dat)
+#endif
+   end subroutine link_scalar
 
    subroutine start(self, nlev, z_if)
       class (type_particle_class), intent(inout) :: self
