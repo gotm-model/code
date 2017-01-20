@@ -25,6 +25,7 @@ module particle_class
       character(len=256)                         :: name      = ''
       real(rk), pointer                          :: source(:) => null()
       integer                                    :: itarget   = -1
+      real(rk)                                   :: missing_value = -2e20_rk
       type (type_interpolated_variable), pointer :: linked    => null()
       type (type_interpolated_variable), pointer :: next      => null()
    end type
@@ -101,7 +102,7 @@ module particle_class
          output_level = output_level_debug
          if (property%save) output_level = output_level_default
          call field_manager%register(trim(name)//'_'//trim(property%name), trim(property%units), &
-            trim(name)//' '//trim(property%long_name), dimensions=(/id_dim_z/), output_level=output_level, used=property%save)
+            trim(name)//' '//trim(property%long_name), dimensions=(/id_dim_z/), output_level=output_level, fill_value=property%missing_value, used=property%save)
          property => property%next
       end do
 
@@ -143,6 +144,7 @@ module particle_class
          if (property%save) then
             n = n + 1
             particle_variable => self%particle_variables%add(trim(property%name), property%data, n)
+            particle_variable%missing_value = property%missing_value
             call field_manager%send_data(trim(name)//'_'//trim(property%name), self%interpolated_par(:,n))
          end if
          property => property%next
@@ -323,8 +325,11 @@ module particle_class
       do while (associated(particle_variable))
          if (associated(particle_variable%linked)) then
             do k=1,nlev
-               if (self%interpolated_par(k,particle_variable%linked%itarget) > 0) &
+               if (self%interpolated_par(k,particle_variable%linked%itarget) > 0) then
                   self%interpolated_par(k,particle_variable%itarget) = self%interpolated_par(k,particle_variable%itarget)/self%interpolated_par(k,particle_variable%linked%itarget)
+               else
+                  self%interpolated_par(k,particle_variable%itarget) = particle_variable%missing_value
+               end if
             end do
          end if
          particle_variable => particle_variable%next
