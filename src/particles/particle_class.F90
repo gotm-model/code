@@ -84,7 +84,7 @@ module particle_class
 
 #ifdef _FABM_PARTICLES_
       ! Configure the (biogeochemical) properties associated with the particles.
-      ! This creates the linked list with properties (head: self%properties%first_output),
+      ! This creates the linked list with properties (head: self%properties%first),
       ! with metadata per property. The "save" attribute of these properties can
       ! be changed to communicate to FABM-particles that the property will be needed.
       ! After calling self%properties%initialize, each property with "save" set will have
@@ -92,16 +92,30 @@ module particle_class
       call self%properties%configure(dictionary)
       self%npar = self%properties%npar
 
-      ! Allocate work arrays (allocatable rather than automatic to avoid excessive consumption of stack memory)
+      ! Allocate array to hold vertical velocities (allocatable rather than automatic to avoid excessive consumption of stack memory)
       allocate(self%w(self%npar))
 
-      n = 0
+      ! Register (gridded) particle properties with field manager.
       property => self%properties%first
       do while (associated(property))
          output_level = output_level_debug
          if (property%save) output_level = output_level_default
          call field_manager%register(trim(name)//'_'//trim(property%name), trim(property%units), &
             trim(name)//' '//trim(property%long_name), dimensions=(/id_dim_z/), output_level=output_level, used=property%save)
+         property => property%next
+      end do
+
+      ! Make sure that properties that are needed to compute gridded averages are always saved
+      property => self%properties%first
+      do while (associated(property))
+         if (property%save .and. associated(property%specific_to)) property%specific_to%save = .true.
+         property => property%next
+      end do
+
+      ! Count number of properties for which gridded fields need to be computed.
+      n = 0
+      property => self%properties%first
+      do while (associated(property))
          if (property%save) n = n + 1
          property => property%next
       end do
@@ -109,9 +123,12 @@ module particle_class
       n = 1
 #endif
 
+      ! Allocate array to hold particle properties interpolated to GOTM grid.
       allocate(self%interpolated_par(nlev, n))
-      allocate(self%k(self%npar))
+
+      ! Allocate arrays to store the vertical position and layer index per particle.
       allocate(self%z(self%npar))
+      allocate(self%k(self%npar))
 
 #ifdef _FABM_PARTICLES_
       ! Complete initialization (must happen after setting the "save" attribute on outputs)
@@ -119,6 +136,7 @@ module particle_class
       ! by calling link_interior_data.
       call self%properties%initialize()
 
+      ! Send data for all (gridded) particle properties that will be used for output.
       n = 0
       property => self%properties%first
       do while (associated(property))
@@ -130,9 +148,11 @@ module particle_class
          property => property%next
       end do
 
+      ! For gridded particle properties that are specific to another property,
+      ! look up the associated gridded field. That will be used to compute theproperty average.
       property => self%properties%first
       do while (associated(property))
-         if (associated(property%specific_to)) then
+         if (property%save .and. associated(property%specific_to)) then
             particle_variable => self%particle_variables%find(property%name)
             particle_variable%linked => self%particle_variables%find(property%specific_to%name)
             if (.not.associated(particle_variable%linked)) stop 'particle_variable%linked'
