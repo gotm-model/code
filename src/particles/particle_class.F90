@@ -82,6 +82,8 @@ module particle_class
       type (type_particle_property),     pointer :: property
       integer                                    :: output_level
       type (type_interpolated_variable), pointer :: particle_variable
+      integer                                    :: dimension_id
+      logical                                    :: output_ongrid, output_offgrid
 
 #ifdef _FABM_PARTICLES_
       ! Configure the (biogeochemical) properties associated with the particles.
@@ -96,13 +98,18 @@ module particle_class
       ! Allocate array to hold vertical velocities (allocatable rather than automatic to avoid excessive consumption of stack memory)
       allocate(self%w(self%npar))
 
+      call field_manager%register_dimension(trim(name), self%npar, newid=dimension_id)
+
       ! Register (gridded) particle properties with field manager.
       property => self%properties%first
       do while (associated(property))
          output_level = output_level_debug
          if (property%save) output_level = output_level_default
+         call field_manager%register(trim(name)//'_'//trim(property%name)//'_mean', trim(property%units), &
+            trim(name)//' '//trim(property%long_name), dimensions=(/id_dim_z/), output_level=output_level, fill_value=property%missing_value, used=output_ongrid)
          call field_manager%register(trim(name)//'_'//trim(property%name), trim(property%units), &
-            trim(name)//' '//trim(property%long_name), dimensions=(/id_dim_z/), output_level=output_level, fill_value=property%missing_value, used=property%save)
+            trim(name)//' '//trim(property%long_name), dimensions=(/dimension_id/), output_level=output_level_debug, fill_value=property%missing_value, used=output_offgrid)
+         property%save = output_ongrid .or. output_offgrid
          property => property%next
       end do
 
@@ -131,6 +138,8 @@ module particle_class
       allocate(self%z(self%npar))
       allocate(self%k(self%npar))
 
+      call field_manager%register(trim(name)//'_z', 'm', trim(name)//' depth', dimensions=(/dimension_id/), output_level=output_level_debug, data1d=self%z)
+
 #ifdef _FABM_PARTICLES_
       ! Complete initialization (must happen after setting the "save" attribute on outputs)
       ! After this is done, additional data fields may be sent to the FABM particle manager
@@ -145,13 +154,14 @@ module particle_class
             n = n + 1
             particle_variable => self%particle_variables%add(trim(property%name), property%data, n)
             particle_variable%missing_value = property%missing_value
-            call field_manager%send_data(trim(name)//'_'//trim(property%name), self%interpolated_par(:,n))
+            call field_manager%send_data(trim(name)//'_'//trim(property%name)//'_mean', self%interpolated_par(:,n))
+            call field_manager%send_data(trim(name)//'_'//trim(property%name), property%data)
          end if
          property => property%next
       end do
 
       ! For gridded particle properties that are specific to another property,
-      ! look up the associated gridded field. That will be used to compute theproperty average.
+      ! look up the associated gridded field. That will be used to compute the property average.
       property => self%properties%first
       do while (associated(property))
          if (property%save .and. associated(property%specific_to)) then
@@ -237,13 +247,14 @@ module particle_class
          eulerian_variable => eulerian_variable%next
       end do
 
+#ifdef _FABM_PARTICLES_
+      ! If FABM needs particle depth (> 0) as input, allocate an array for it and provide it to FABM.
       if (self%properties%is_variable_used('depth')) then
          allocate(self%depth(self%npar))
          self%depth = -self%z
          call self%properties%link_interior_data('depth', self%depth)
       end if
 
-#ifdef _FABM_PARTICLES_
       ! Allow biogeochemical state to perform final initialization steps.
       ! This checks whether all dependencies have been fulfilled, and also initializes the state.
       call self%properties%start((z_if(nlev)-z_if(0))/self%npar)
