@@ -88,9 +88,6 @@
 
    integer :: nlev
 
-   integer, parameter :: END_OF_FILE=-1
-   integer, parameter :: READ_ERROR=-2
-
    contains
 
 !-----------------------------------------------------------------------
@@ -457,6 +454,9 @@
                   curvar%data = curvar%scale_factor*info%prof1(:,curvar%index)
                   curvar => curvar%next
                end do
+            elseif (rc<0) then
+               FATAL 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?'
+               stop 'input:get_observed_profiles'
             else
                FATAL 'Error reading profiles from '//trim(info%path)//' around line #',info%lines
                stop 'input:get_observed_profiles'
@@ -746,7 +746,7 @@
 !
 ! !INTERFACE:
    subroutine read_profiles(unit,nlev,cols,yy,mm,dd,hh,min,ss,z, &
-                            profiles,lines,ierr)
+                            profiles,lines,ios)
 !
 ! !DESCRIPTION:
 !  Similar to {\tt read\_obs()} but used for reading profiles instead of
@@ -754,9 +754,6 @@
 !  The data will be interpolated on the grid specified by nlev and z.
 !  The data can be read 'from the top' or 'from the bottom' depending on
 !  a flag in the actual file.
-!
-! !USES:
-   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: unit
@@ -769,7 +766,7 @@
 ! !OUTPUT PARAMETERS:
    integer, intent(out)                :: yy,mm,dd,hh,min,ss
    REALTYPE, intent(out)               :: profiles(:,:)
-   integer, intent(out)                :: ierr
+   integer, intent(out)                :: ios
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -777,8 +774,6 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: ios
-   logical                   :: data_ok
    character                 :: c1,c2,c3,c4
    integer                   :: i,j,rc
    integer                   :: N,up_down
@@ -788,21 +783,21 @@
    integer                   :: idx1,idx2,stride
 !-----------------------------------------------------------------------
 !BOC
-   ios=0
-   data_ok=.false.
-   do while (ios .eq. 0 .and. .not. data_ok)
-      read(unit,'(A128)',iostat=ios,ERR=100,END=110) cbuf
-      if (cbuf(1:1) == '#' .or. cbuf(1:1) == '!' .or. &
-          len(trim(cbuf)) == 0 ) then
-         data_ok=.false.
-      else
-         read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
-         read(cbuf(20:),*,ERR=100,END=110) N,up_down
-         data_ok=.true.
+   do
+      read(unit,'(A128)', iostat=ios) cbuf
+      lines = lines + 1
+      if (ios /= 0) return
+
+      if (len_trim(cbuf) > 0 .and. .not.(cbuf(1:1) == '#' .or. cbuf(1:1) == '!')) then
+         read(cbuf,'(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)',iostat=ios) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
+         if (ios < 0) ios = 1   ! End-of-file (ios<0) means premature end of line, which is a read error (ios>0) to us
+         if (ios /= 0) return
+         read(cbuf(20:),*,iostat=ios) N,up_down
+         if (ios < 0) ios = 1   ! End-of-file (ios<0) means premature end of line, which is a read error (ios>0) to us
+         if (ios /= 0) return
+         exit
       end if
    end do
-
-   lines = lines+1
 
    allocate(tmp_depth(0:N),stat=rc)
    if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_depth)'
@@ -816,17 +811,16 @@
    end if
 
    do i=idx1,idx2,stride
-      ios=0
-      data_ok=.false.
-      do while (ios .eq. 0 .and. .not. data_ok)
-         read(unit,'(A128)',iostat=ios,ERR=100,END=110) cbuf
-         lines = lines+1
-         if (cbuf(1:1) == '#' .or. cbuf(1:1) == '!' .or. &
-             len(trim(cbuf)) == 0 ) then
-            data_ok=.false.
-         else
-            read(cbuf,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,cols)
-            data_ok=.true.
+      do
+         read(unit,'(A128)',iostat=ios) cbuf
+         lines = lines + 1
+         if (ios /= 0) return
+
+         if (len_trim(cbuf) > 0 .and. .not. (cbuf(1:1) == '#' .or. cbuf(1:1) == '!')) then
+            read(cbuf,*,iostat=ios) tmp_depth(i),(tmp_profs(i,j),j=1,cols)
+            if (ios < 0) ios = 1   ! End-of-file (ios<0) means premature end of line, which is a read error (ios>0) to us
+            if (ios /= 0) return
+            exit
          end if
       end do
    end do
@@ -835,14 +829,6 @@
 
    deallocate(tmp_depth)
    deallocate(tmp_profs)
-
-   ierr=ios
-   return
-100 ierr=READ_ERROR
-   return
-110 ierr=END_OF_FILE
-   return
-900 format(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)
 
    end subroutine read_profiles
 !EOC
