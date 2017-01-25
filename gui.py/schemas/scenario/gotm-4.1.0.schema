@@ -1047,6 +1047,12 @@
                </filevariables>
             </fileinfo>
          </element>
+         <element name="zeta_scale" type="float" label="scale factor on read elevations">
+            <condition type="eq" variable="./zeta_method" value="2" />
+         </element>
+         <element name="zeta_offset" type="float" label="offset on read elevations">
+            <condition type="eq" variable="./zeta_method" value="2" />
+         </element>
          <element name="zeta_0" type="float" label="constant value for sea surface elevation" unit="m">
             <condition type="ne" variable="./zeta_method" value="2" />
          </element>

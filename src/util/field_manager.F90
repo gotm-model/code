@@ -124,13 +124,18 @@ module field_manager
       procedure :: has_fields
    end type
 
+   integer, parameter :: hash_table_size = 256
+   type type_dictionary_bin
+      type (type_field), pointer :: first_field => null()
+   end type
+
    type type_field_manager
       type (type_dimension), pointer :: first_dimension => null()
 
       type (type_dimension_pointer),allocatable :: prepend_dimensions(:)
       type (type_dimension_pointer),allocatable :: append_dimensions(:)
 
-      type (type_field),pointer :: first_field => null()
+      type (type_dictionary_bin) :: field_table(hash_table_size)
       type (type_category_node) :: root
       integer                   :: nregistered = 0
    contains
@@ -154,13 +159,14 @@ module field_manager
 
 contains
 
-   subroutine register_dimension(self,name,length,global_length,offset,id)
+   subroutine register_dimension(self,name,length,global_length,offset,id,newid)
       class (type_field_manager), intent(inout) :: self
       character(len=*),           intent(in)    :: name
       integer, optional,          intent(in)    :: length
       integer, optional,          intent(in)    :: global_length
       integer, optional,          intent(in)    :: offset
       integer, optional,          intent(in)    :: id
+      integer, optional,          intent(out)   :: newid
 
       type (type_dimension), pointer :: dim
 
@@ -181,7 +187,12 @@ contains
       dim%name = name
       if (present(length)) dim%length = length
       if (present(offset)) dim%offset = offset
-      if (present(id)) dim%id = id
+      if (present(id)) then
+         dim%id = id
+      elseif (present(newid)) then
+         newid = next_free_dimension_id(self)
+         dim%id = newid
+      end if
       dim%global_length = dim%length
       if (present(global_length)) dim%global_length = global_length
 
@@ -204,6 +215,23 @@ contains
       dim%next => self%first_dimension
       self%first_dimension => dim
    end subroutine register_dimension
+
+   integer function next_free_dimension_id(self)
+      class (type_field_manager), intent(in) :: self
+
+      type (type_dimension), pointer :: dim
+
+      next_free_dimension_id = id_dim_unused
+      do
+         dim => self%first_dimension
+         do while (associated(dim))
+            if (dim%id==next_free_dimension_id) exit
+            dim => dim%next
+         end do
+         if (.not.associated(dim)) return
+         next_free_dimension_id = next_free_dimension_id + 1
+      end do
+   end function next_free_dimension_id
 
    subroutine initialize(self,prepend_by_default,append_by_default)
       class (type_field_manager), intent(inout) :: self
@@ -234,22 +262,23 @@ contains
    subroutine list(self)
       class (type_field_manager), intent(in) :: self
 
-      type (type_field), pointer :: field, next_field
+      character(256)             :: line
+      integer                    :: ibin
+      type (type_field), pointer :: field
 
-      character(256) :: line
-      field => self%first_field
       write(line,'(A8,4x,A12,4x,A40)') 'name','unit',adjustl('long_name')
       write(*,*) trim(line)
       write(line,'(A68)') '----------------------------------------------------------------'
       write(*,*) trim(line)
-      do while (associated(field))
-         write(line,'(I2,2x,A15,2x,A15,2x,A45)') field%id,adjustl(field%name),adjustl(field%units),adjustl(field%long_name)
-         write(*,*) trim(line)
+      do ibin=1,hash_table_size
+         field => self%field_table(ibin)%first_field
+         do while (associated(field))
+            write(line,'(I2,2x,A15,2x,A15,2x,A45)') field%id,adjustl(field%name),adjustl(field%units),adjustl(field%long_name)
+            write(*,*) trim(line)
 !KB         write(*,*) field%dimensions
-         next_field => field%next
-         field => next_field
+            field => field%next
+         end do
       end do
-
       write (*,*) 'field tree:'
       call list_node(self%root,1)
 
@@ -278,17 +307,20 @@ contains
    subroutine finalize(self)
       class (type_field_manager), intent(inout) :: self
 
-      type (type_field), pointer :: field, next_field
+      integer                        :: ibin
+      type (type_field),     pointer :: field, next_field
       type (type_dimension), pointer :: dim, next_dim
 
-      field => self%first_field
-      do while (associated(field))
-         next_field => field%next
-         call field%finalize()
-         deallocate(field)
-         field => next_field
+      do ibin=1,hash_table_size
+         field => self%field_table(ibin)%first_field
+         do while (associated(field))
+            next_field => field%next
+            call field%finalize()
+            deallocate(field)
+            field => next_field
+         end do
+         self%field_table(ibin)%first_field => null()
       end do
-      self%first_field => null()
 
       dim => self%first_dimension
       do while (associated(dim))
@@ -401,9 +433,11 @@ contains
       logical,optional,intent(in) :: create
       type (type_field), pointer :: field
 
+      integer :: ibin
       logical :: create_eff
 
-      field => self%first_field
+      ibin = mod(hash(trim(name)),hash_table_size)+1
+      field => self%field_table(ibin)%first_field
       do while (associated(field))
          if (field%name==name) return
          field => field%next
@@ -414,8 +448,8 @@ contains
       if (create_eff) then
          allocate(field)
          field%name = name
-         field%next => self%first_field
-         self%first_field => field
+         field%next => self%field_table(ibin)%first_field
+         self%field_table(ibin)%first_field => field
       end if
    end function find
 
@@ -847,5 +881,17 @@ contains
       end do
       self%first_child => null()
    end subroutine node_finalize
+
+   integer function hash(str)
+      character(len=*), intent(in) :: str
+
+      integer :: i
+      character, dimension(len(str)) :: tmp
+
+      do i=1,len(str)
+       tmp(i) = str(i:i)
+      end do
+      hash = sum(ichar(tmp))
+   end function
 
 end module field_manager

@@ -154,14 +154,13 @@
    call fm%register('cloud', '', 'cloud cover', standard_name='', data0d=cloud)
    select case (hum_method)
       case (1) ! relative humidity in % given
-         call fm%register('hum', '%', 'relative humidity', standard_name='', data0d=rh)
+         call fm%register('hum', '%', 'relative humidity', standard_name='', data0d=hum)
       case (2)  ! Specific humidity from wet bulb temperature
-         call fm%register('hum', 'Celsius', 'wet bulb temperature', standard_name='', data0d=twet)
+         call fm%register('hum', 'Celsius', 'wet bulb temperature', standard_name='', data0d=hum)
       case (3)  ! Specific humidity from dew point temperature
-         call fm%register('hum', 'Celsius', 'dew point temperature', standard_name='', data0d=tdew)
+         call fm%register('hum', 'Celsius', 'dew point temperature', standard_name='', data0d=hum)
       case (4)  ! Specific humidity given
-!KB - check data source
-         call fm%register('hum', 'kg/kg', 'specific humidity', standard_name='', data0d=rh)
+         call fm%register('hum', 'kg/kg', 'specific humidity', standard_name='', data0d=hum)
    end select
    call fm%register('airt', 'Celsius', '2m air temperature', standard_name='', data0d=airt)
    call fm%register('u10', 'm/s', '10m wind (x)', standard_name='', data0d=u10)
