@@ -14,9 +14,7 @@ set(gotm_VERSION_MINOR 1)
 set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
 
-if(GOTM_BUILD_LIBRARY)
-  set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
-endif()
+set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
 set(GIT_COMMIT_ID ${gotm_VERSION})
 set(GIT_BRANCH_NAME unknown)
@@ -113,10 +111,10 @@ add_library(util
             ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90
             ${CMAKE_CURRENT_BINARY_DIR}/compilation.F90
            )
-set_property(TARGET util PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 if(GOTM_EMBED_VERSION)
   add_dependencies(util version)
 endif()
+set(EXTRA_LIBS ${EXTRA_LIBS} util)
 
 add_library(turbulence
             turbulence/algebraiclength.F90
@@ -180,7 +178,7 @@ add_library(turbulence
             turbulence/variances.F90
            )
 target_link_libraries(turbulence util)
-set_property(TARGET turbulence PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+set(EXTRA_LIBS ${EXTRA_LIBS} turbulence)
 
 set_property(TARGET util turbulence PROPERTY FOLDER gotm)
 
@@ -206,9 +204,9 @@ if(GOTM_USE_FABM)
   target_link_libraries(gotm_fabm util)
   set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  set_property(TARGET gotm_fabm PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
   set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
   target_link_libraries(gotm_fabm ${FABM_LIBRARIES})
+  set(EXTRA_LIBS ${EXTRA_LIBS} gotm_fabm ${FABM_LIBRARIES})
 else()
   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
 endif(GOTM_USE_FABM)
@@ -217,7 +215,6 @@ if(GOTM_USE_FLEXIBLE_OUTPUT)
   if(NOT GOTM_USE_FABM)
     add_subdirectory(yaml)
     set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
-    set_property(TARGET yaml PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
     set(YAML_SOURCES $<TARGET_OBJECTS:yaml>)
   endif()
   add_library(output_manager
@@ -227,23 +224,24 @@ if(GOTM_USE_FLEXIBLE_OUTPUT)
               output/netcdf_output.F90
               output/text_output.F90
              )
-  set_property(TARGET output_manager PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
   set_property(TARGET output_manager PROPERTY FOLDER gotm)
   target_link_libraries(output_manager util)
   if(GOTM_USE_FABM)
     target_link_libraries(output_manager ${FABM_LIBRARIES})
     set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   endif()
+  set(EXTRA_LIBS ${EXTRA_LIBS} output_manager)
 endif(GOTM_USE_FLEXIBLE_OUTPUT)
 
 if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
-add_library(input OBJECT
+add_library(input
             input/input.F90
            )
-add_dependencies(input util)
+target_link_libraries(input util)
+set(EXTRA_LIBS ${EXTRA_LIBS} input)
 
-add_library(airsea OBJECT
+add_library(airsea
             airsea/airsea.F90
             airsea/airsea_fluxes.F90
             airsea/airsea_variables.F90
@@ -256,17 +254,19 @@ add_library(airsea OBJECT
             airsea/albedo_water.F90
            )
 set_property(TARGET airsea APPEND PROPERTY COMPILE_DEFINITIONS GUSTINESS)
-add_dependencies(airsea util input)
+target_link_libraries(airsea util input)
+set(EXTRA_LIBS ${EXTRA_LIBS} airsea)
 
-add_library(observations OBJECT
+add_library(observations
             observations/analytical_profile.F90
             observations/const_NNS.F90
             observations/const_NNT.F90
             observations/observations.F90
            )
-add_dependencies(observations util input)
+target_link_libraries(observations util input)
+set(EXTRA_LIBS ${EXTRA_LIBS} observations)
 
-add_library(meanflow OBJECT
+add_library(meanflow
             meanflow/buoyancy.F90
             meanflow/convectiveadjustment.F90
             meanflow/coriolis.F90
@@ -282,30 +282,32 @@ add_library(meanflow OBJECT
             meanflow/updategrid.F90
             meanflow/vequation.F90
            )
-add_dependencies(meanflow util observations airsea)
+target_link_libraries(meanflow util observations airsea)
+set(EXTRA_LIBS ${EXTRA_LIBS} meanflow)
 
 if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
-  add_library(output OBJECT
+  add_library(output
               output/asciiout.F90
               output/ncdfout.F90
               output/output.F90
              )
-  add_dependencies(output util meanflow turbulence observations airsea)
+  target_link_libraries(output util meanflow turbulence observations airsea)
   set_property(TARGET output PROPERTY FOLDER gotm)
+  set(EXTRA_LIBS ${EXTRA_LIBS} output)
 endif(NOT GOTM_USE_FLEXIBLE_OUTPUT)
 
-add_library(gotm OBJECT
+add_library(gotm
             gotm/gotm.F90
             gotm/diagnostics.F90
             gotm/register_all_variables.F90
             gotm/print_version.F90
            )
-add_dependencies(gotm input util meanflow turbulence observations airsea)
+target_link_libraries(gotm input util meanflow turbulence observations airsea)
+set(EXTRA_LIBS ${EXTRA_LIBS} gotm)
 if(GOTM_USE_FLEXIBLE_OUTPUT)
-  add_dependencies(gotm output_manager)
+  target_link_libraries(gotm output_manager)
 else()
-  add_dependencies(gotm output)
-  set(EXTRA_SRCS ${EXTRA_SRCS} $<TARGET_OBJECTS:output>)
+  target_link_libraries(gotm output)
 endif()
 
 set_property(TARGET input airsea observations meanflow gotm PROPERTY FOLDER gotm)
@@ -319,13 +321,12 @@ set_property(TARGET input airsea observations meanflow gotm PROPERTY FOLDER gotm
 option(GOTM_USE_SEAGRASS "Enable seagrass module" OFF)
 if(GOTM_USE_SEAGRASS)
   add_definitions(-DSEAGRASS)
-  add_library(seagrass OBJECT
+  add_library(seagrass
               extras/seagrass/seagrass.F90
              )
-  set(EXTRA_SRCS ${EXTRA_SRCS} $<TARGET_OBJECTS:seagrass>)
-  add_dependencies(seagrass output meanflow)
-  add_dependencies(gotm seagrass)
+  target_link_libraries(seagrass output meanflow)
   set_property(TARGET seagrass PROPERTY FOLDER gotm)
+  set(EXTRA_LIBS ${EXTRA_LIBS} seagrass)
 endif()
 
 if(GOTM_USE_FABM)
@@ -338,36 +339,21 @@ if(GOTM_USE_FABM)
                 fabm/gotm_fabm_input.F90
                 fabm/gotm_fabm_output.F90
                )
-    add_dependencies(gotm_fabm_io output)
+    target_link_libraries(gotm_fabm_io output)
   endif()
   set_property(TARGET gotm_fabm_io APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  add_dependencies(gotm_fabm_io input gotm_fabm)
-  add_dependencies(gotm gotm_fabm gotm_fabm_io)
+  target_link_libraries(gotm_fabm_io input gotm_fabm)
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
+  set(EXTRA_LIBS ${EXTRA_LIBS} gotm_fabm_io)
 endif(GOTM_USE_FABM)
-
-set(EXTRA_SRCS
-  $<TARGET_OBJECTS:gotm>
-  $<TARGET_OBJECTS:airsea>
-  $<TARGET_OBJECTS:meanflow>
-  $<TARGET_OBJECTS:observations>
-  $<TARGET_OBJECTS:input>
-  ${EXTRA_SRCS}
-)
 
 if(NOT GOTM_BUILD_LIBRARY)
 # Build GOTM executable.
 add_executable(gotm_exe
                gotm/main.F90
-               ${EXTRA_SRCS}
               )
 set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
-endif()
-
-set(EXTRA_LIBS turbulence util)
-if(GOTM_USE_FLEXIBLE_OUTPUT)
-  set(EXTRA_LIBS ${EXTRA_LIBS} output_manager)
 endif()
 
 if(GOTM_USE_NetCDF)
@@ -376,10 +362,6 @@ if(GOTM_USE_NetCDF)
     set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
   endif()
 endif(GOTM_USE_NetCDF)
-
-if(GOTM_USE_FABM)
-  set(EXTRA_LIBS ${EXTRA_LIBS} gotm_fabm gotm_fabm_io ${FABM_LIBRARIES})
-endif(GOTM_USE_FABM)
 
 if(GOTM_BUILD_LIBRARY)
   set(GOTM_SOURCES ${EXTRA_SRCS} PARENT_SCOPE)
