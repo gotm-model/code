@@ -47,6 +47,9 @@ module particle_class
 
 #ifdef _FABM_PARTICLES_
       type (type_particle_properties) :: properties
+#else
+      real(rk), allocatable :: count(:)
+      logical,  allocatable :: active(:)
 #endif
 
       real(rk), allocatable :: interpolated_eul(:,:)
@@ -79,13 +82,14 @@ module particle_class
       class (type_field_manager),  intent(inout) :: field_manager
 
       integer                                    :: n
-      type (type_particle_property),     pointer :: property
       integer                                    :: output_level
       type (type_interpolated_variable), pointer :: particle_variable
       integer                                    :: dimension_id
       logical                                    :: output_ongrid, output_offgrid
 
 #ifdef _FABM_PARTICLES_
+      type (type_particle_property),     pointer :: property
+
       ! Configure the (biogeochemical) properties associated with the particles.
       ! This creates the linked list with properties (head: self%properties%first),
       ! with metadata per property. The "save" attribute of these properties can
@@ -94,13 +98,34 @@ module particle_class
       ! its associated data array available throught its "data" attribute.
       call self%properties%configure(dictionary)
       self%npar = self%properties%npar
+#else
+      self%npar = 1000
+#endif
+
+      ! Allocate arrays to store the vertical position and layer index per particle.
+      allocate(self%z(self%npar))
+      allocate(self%k(self%npar))
 
       ! Allocate array to hold vertical velocities (allocatable rather than automatic to avoid excessive consumption of stack memory)
       allocate(self%w(self%npar))
+      self%w = 0.0_rk
+      
+#ifndef _FABM_PARTICLES_
+      allocate(self%count(self%npar))
+      self%count = 1
 
+      allocate(self%active(self%npar))
+      self%active = .true.
+#endif
+
+      ! Register dimension for particle index
       call field_manager%register_dimension(trim(name), self%npar, newid=dimension_id)
 
-      ! Register (gridded) particle properties with field manager.
+      ! Register particle depth as output
+      call field_manager%register(trim(name)//'_z', 'm', trim(name)//' depth', dimensions=(/dimension_id/), output_level=output_level_debug, data1d=self%z)
+
+#ifdef _FABM_PARTICLES_
+      ! Register particle properties with field manager, both grid cell means and raw per-particle fields.
       property => self%properties%first
       do while (associated(property))
          output_level = output_level_debug
@@ -134,16 +159,11 @@ module particle_class
       ! Allocate array to hold particle properties interpolated to GOTM grid.
       allocate(self%interpolated_par(nlev, n))
 
-      ! Allocate arrays to store the vertical position and layer index per particle.
-      allocate(self%z(self%npar))
-      allocate(self%k(self%npar))
-
-      call field_manager%register(trim(name)//'_z', 'm', trim(name)//' depth', dimensions=(/dimension_id/), output_level=output_level_debug, data1d=self%z)
-
 #ifdef _FABM_PARTICLES_
       ! Complete initialization (must happen after setting the "save" attribute on outputs)
       ! After this is done, additional data fields may be sent to the FABM particle manager
-      ! by calling link_interior_data.
+      ! by calling link_interior_data. Also, all properties for which "save" was set are then
+      ! guaranteed to have their "data" attribute pointing to an allocated array.
       call self%properties%initialize()
 
       ! Send data for all (gridded) particle properties that will be used for output.
@@ -152,8 +172,7 @@ module particle_class
       do while (associated(property))
          if (property%save) then
             n = n + 1
-            particle_variable => self%particle_variables%add(trim(property%name), property%data, n)
-            particle_variable%missing_value = property%missing_value
+            particle_variable => self%particle_variables%add(trim(property%name), property%data, n, missing_value=property%missing_value)
             call field_manager%send_data(trim(name)//'_'//trim(property%name)//'_mean', self%interpolated_par(:,n))
             call field_manager%send_data(trim(name)//'_'//trim(property%name), property%data)
          end if
@@ -172,6 +191,7 @@ module particle_class
          property => property%next
       end do
 #else
+      particle_variable => self%particle_variables%add('count', self%count, 1)
       call field_manager%register(trim(name)//'_concentration', '# m-3', trim(name)//' concentration', dimensions=(/id_dim_z/), data1d=self%interpolated_par(:,1))
 #endif
    end subroutine initialize
@@ -231,6 +251,7 @@ module particle_class
          self%k(ipar) = k
       end do
 
+#ifdef _FABM_PARTICLES_
       ! Determine how many Eulerian variables need to be mapped to the particles,
       ! and then allocate the memory for these interploted fields.
       n = 0
@@ -247,7 +268,6 @@ module particle_class
          eulerian_variable => eulerian_variable%next
       end do
 
-#ifdef _FABM_PARTICLES_
       ! If FABM needs particle depth (> 0) as input, allocate an array for it and provide it to FABM.
       if (self%properties%is_variable_used('depth')) then
          allocate(self%depth(self%npar))
@@ -271,9 +291,6 @@ module particle_class
       type (type_interpolated_variable), pointer :: eulerian_variable
       integer                                    :: ipar
       logical                                    :: valid
-#ifndef _FABM_PARTICLES_
-      logical                                    :: active(self%npar)
-#endif
 
       ! Interpolate Eulerian fields to particle positions (center values from associated layers).
       eulerian_variable => self%eulerian_variables%first
@@ -290,8 +307,6 @@ module particle_class
       call self%properties%advance(dt)
 #else
 #  define _ACTIVE_ self%active
-      active = .true.
-      self%w = 0.0_rk
 #endif
 
       ! Transport particles
@@ -299,8 +314,10 @@ module particle_class
 
       if (allocated(self%depth)) self%depth = -self%z
 
+#ifdef _FABM_PARTICLES_
       valid = self%properties%check_state(.false.)
       if (.not.valid) stop 'particle_class::advance'
+#endif
    end subroutine advance
 
    subroutine interpolate_to_grid(self, nlev, h)
@@ -370,11 +387,12 @@ module particle_class
       self%next => null()
    end subroutine finalize
 
-   function interpolated_variable_set_add(self, name, source, itarget) result(variable)
+   function interpolated_variable_set_add(self, name, source, itarget, missing_value) result(variable)
       class (type_interpolated_variable_set), intent(inout) :: self
       character(len=*),                       intent(in)    :: name
       real(rk), target,                       intent(in)    :: source(:)
-      integer, optional,                      intent(in)    :: itarget
+      integer,  optional,                     intent(in)    :: itarget
+      real(rk), optional,                     intent(in)    :: missing_value
 
       type (type_interpolated_variable), pointer :: variable
 
@@ -382,6 +400,7 @@ module particle_class
       variable%name = trim(name)
       variable%source => source
       if (present(itarget)) variable%itarget = itarget
+      if (present(missing_value)) variable%missing_value = missing_value
       variable%next => self%first
       self%first => variable
    end function interpolated_variable_set_add
