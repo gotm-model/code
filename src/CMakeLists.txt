@@ -383,13 +383,7 @@ endif()
 
 # Install GOTM library and include files, unless the host overruled this.
 install(TARGETS gotm_exe DESTINATION bin)
-install(TARGETS turbulence util DESTINATION lib)
-if(GOTM_USE_FABM)
-  install(TARGETS gotm_fabm DESTINATION lib)
-endif()
-if(GOTM_USE_FLEXIBLE_OUTPUT)
-  install(TARGETS output_manager DESTINATION lib)
-endif()
+install(TARGETS ${GOTM_LIBS} DESTINATION lib)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
 
 # Begin testing section
