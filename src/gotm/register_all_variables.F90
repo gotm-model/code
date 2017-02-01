@@ -367,7 +367,7 @@
    call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_z1/), data1d=gams(1:nlev),category='turbulence')
    call fm%register('cmue1', '', 'stability function for momentum diffusivity', standard_name='??', dimensions=(/id_dim_z1/), data1d=cmue1(1:nlev),category='turbulence')
    call fm%register('cmue2', '', 'stability function for scalar diffusivity', standard_name='??', dimensions=(/id_dim_z1/), data1d=cmue2(1:nlev),category='turbulence')
-   call fm%register('gam', '', 'non-dimensinsional non-local buoyancy flux', standard_name='??', dimensions=(/id_dim_z1/), data1d=gam(1:nlev),category='turbulence')
+   call fm%register('gam', '', 'non-dimensional non-local buoyancy flux', standard_name='??', dimensions=(/id_dim_z1/), data1d=gam(1:nlev),category='turbulence')
    call fm%register('an', '', 'non-dimensional buoyancy time scale', standard_name='??', dimensions=(/id_dim_z1/), data1d=an(1:nlev),category='turbulence')
    call fm%register('as', '', 'non-dimensional shear time scale', standard_name='??', dimensions=(/id_dim_z1/), data1d=as(1:nlev),category='turbulence')
    call fm%register('at', '', 'non-dimensional buoyancy variance', standard_name='??', dimensions=(/id_dim_z1/), data1d=at(1:nlev),category='turbulence')
