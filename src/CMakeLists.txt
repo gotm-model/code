@@ -297,20 +297,6 @@ if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
   set(GOTM_LIBS ${GOTM_LIBS} output)
 endif(NOT GOTM_USE_FLEXIBLE_OUTPUT)
 
-add_library(gotm
-            gotm/gotm.F90
-            gotm/diagnostics.F90
-            gotm/register_all_variables.F90
-            gotm/print_version.F90
-           )
-target_link_libraries(gotm input util meanflow turbulence observations airsea)
-set(GOTM_LIBS ${GOTM_LIBS} gotm)
-if(GOTM_USE_FLEXIBLE_OUTPUT)
-  target_link_libraries(gotm output_manager)
-else()
-  target_link_libraries(gotm output)
-endif()
-
 #option(GOTM_USE_ICE "Include ICE support" OFF)
 #if(GOTM_USE_ICE)
 #  add_library(ice OBJECT
@@ -323,7 +309,10 @@ if(GOTM_USE_SEAGRASS)
   add_library(seagrass
               extras/seagrass/seagrass.F90
              )
-  target_link_libraries(seagrass output meanflow)
+  target_link_libraries(seagrass meanflow)
+  if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
+    target_link_libraries(seagrass output)
+  endif()
   set(GOTM_LIBS ${GOTM_LIBS} seagrass)
 endif()
 
@@ -339,11 +328,18 @@ if(GOTM_USE_FABM)
                )
     target_link_libraries(gotm_fabm_io output)
   endif()
-  set_property(TARGET gotm_fabm_io APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   target_link_libraries(gotm_fabm_io input gotm_fabm)
-  set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm_io)
 endif(GOTM_USE_FABM)
+
+add_library(gotm
+            gotm/gotm.F90
+            gotm/diagnostics.F90
+            gotm/register_all_variables.F90
+            gotm/print_version.F90
+           )
+target_link_libraries(gotm ${GOTM_LIBS})
+set(GOTM_LIBS ${GOTM_LIBS} gotm)
 
 if(GOTM_USE_NetCDF)
   set(EXTERNAL_LIBS ${EXTERNAL_LIBS} "${NetCDF_LIBRARIES}")
@@ -409,7 +405,8 @@ add_executable(test_time EXCLUDE_FROM_ALL
 target_link_libraries(test_time util)
 
 add_custom_target(test_all WORKING_DIRECTORY tests COMMENT "building tests")
-add_dependencies( test_all test_airsea test_eqstate test_time)
+add_dependencies( test_all test_airsea test_albedo test_eqstate test_time)
+set_property(TARGET test_all test_airsea test_albedo test_eqstate test_time PROPERTY FOLDER tests)
 
 # End of testing section
 

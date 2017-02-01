@@ -223,6 +223,14 @@
            latitude,longitude
    LEVEL2 trim(name)
 
+   ! Initialize field manager
+   call fm%register_dimension('lon',1,id=id_dim_lon)
+   call fm%register_dimension('lat',1,id=id_dim_lat)
+   call fm%register_dimension('z',nlev,id=id_dim_z)
+   call fm%register_dimension('z1',nlev,id=id_dim_z1)
+   call fm%register_dimension('time',id=id_dim_time)
+   call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
+
    LEVEL2 'initializing modules....'
    call init_input(nlev)
    call init_time(MinN,MaxN)
@@ -237,7 +245,7 @@
 
 !  initialise each of the extra features/modules
 #ifdef SEAGRASS
-   call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h)
+   call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
 #endif
 #ifdef SPM
    call init_spm(namlst,'spm.nml',unit_spm,nlev)

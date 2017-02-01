@@ -57,7 +57,7 @@
 !-------------------------------------------------------------------------
 !BOC
    LEVEL1 'register_all_variables()'
-   call register_coordinate_variables(lat,lon,nlev)
+   call register_coordinate_variables(lat,lon)
    call register_airsea_variables(nlev)
    call register_observation_variables(nlev)
 #if 0
@@ -76,7 +76,7 @@
 ! !IROUTINE: Coordinate variable registration
 !
 ! !INTERFACE:
-   subroutine register_coordinate_variables(lat,lon,nlev)
+   subroutine register_coordinate_variables(lat,lon)
 !
 ! !DESCRIPTION:
 !
@@ -85,7 +85,6 @@
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in) :: lat,lon
-   integer, intent(in)  :: nlev
 !
 ! !LOCAL VARIABLES:
 !EOP
@@ -94,19 +93,9 @@
    LEVEL2 'register_coordinate_variables()'
 
 !  register - dimension
-   call fm%register_dimension('lon',1,id=id_dim_lon)
-   call fm%register_dimension('lat',1,id=id_dim_lat)
-   call fm%register_dimension('z',nlev,id=id_dim_z)
-   call fm%register_dimension('z1',nlev,id=id_dim_z1)
-   call fm%register_dimension('time',id=id_dim_time)
-   call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
    call fm%register('lon','degrees_east','longitude',dimensions=(/id_dim_lon/),no_default_dimensions=.true.,data0d=lon,coordinate_dimension=id_dim_lon)
    call fm%register('lat','degrees_north','latitude',dimensions=(/id_dim_lat/),no_default_dimensions=.true.,data0d=lat,coordinate_dimension=id_dim_lat)
-!  register - fabm
-!         call fm%register(model%state_variables(i)%name, model%state_variables(i)%units, &
-!         call fm%register(model%bottom_state_variables(i)%name, model%bottom_state_variables(i)%units, &
-!         call fm%register(model%surface_state_variables(i)%name, model%surface_state_variables(i)%units, &
-   return
+
    end subroutine register_coordinate_variables
 !EOC
 
