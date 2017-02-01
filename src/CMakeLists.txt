@@ -390,17 +390,13 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATIO
 
 add_executable(test_airsea EXCLUDE_FROM_ALL
                airsea/test_airsea.F90
-               $<TARGET_OBJECTS:airsea>
-               $<TARGET_OBJECTS:input>
               )
-target_link_libraries(test_airsea util)
+target_link_libraries(test_airsea util airsea input)
 
 add_executable(test_albedo EXCLUDE_FROM_ALL
                airsea/test_albedo.F90
-               $<TARGET_OBJECTS:airsea>
-               $<TARGET_OBJECTS:input>
               )
-target_link_libraries(test_albedo util)
+target_link_libraries(test_albedo util airsea input)
 
 add_executable(test_eqstate EXCLUDE_FROM_ALL
                util/test_eqstate.F90
@@ -422,4 +418,7 @@ endif(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
 set_property(TARGET ${GOTM_LIBS} PROPERTY FOLDER gotm)
 
-set(GOTM_LIBRARIES ${GOTM_LIBS} ${EXTERNAL_LIBS} PARENT_SCOPE)
+get_directory_property(HAS_PARENT PARENT_DIRECTORY)
+if (HAS_PARENT)
+  set(GOTM_LIBRARIES ${GOTM_LIBS} ${EXTERNAL_LIBS} PARENT_SCOPE)
+endif()
