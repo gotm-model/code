@@ -355,7 +355,7 @@ if(NOT GOTM_BUILD_LIBRARY)
 add_executable(gotm_exe
                gotm/main.F90
               )
-set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
+set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 
 if(GOTM_USE_NetCDF AND NetCDF_STATIC_MSVC_BUILD)
   set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
