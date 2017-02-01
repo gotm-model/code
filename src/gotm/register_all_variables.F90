@@ -315,7 +315,7 @@
    call fm%register('buoy', 'm/s**2', 'buoyancy', standard_name='??', dimensions=(/id_dim_z/), data1d=buoy(1:nlev),category='meanflow')
    call fm%register('rad', 'W/m**2', 'short-wave radiation', standard_name='??', dimensions=(/id_dim_z/), data1d=rad(1:nlev),category='meanflow')
    call fm%register('avh', 'm**2/s', 'eddy diffusivity', standard_name='??', dimensions=(/id_dim_z/), data1d=avh(1:nlev),category='meanflow')
-   call fm%register('bioshade', '', 'degree of bio-shading', standard_name='??', dimensions=(/id_dim_z/), data1d=bioshade(1:nlev),category='meanflow')
+   call fm%register('bioshade', '-', 'fraction of visible light that is not shaded by overlying biogeochemistry', dimensions=(/id_dim_z/), data1d=bioshade(1:nlev),category='meanflow')
 #ifdef EXTRA_OUTPUT
    call fm%register('mean1', '??', '1. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean1(1:nlev),category='meanflow',output_level=output_level_debug)
    call fm%register('mean2', '??', '2. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean2(1:nlev),category='meanflow',output_level=output_level_debug)
