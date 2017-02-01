@@ -20,7 +20,6 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/../src gotm)
 # Add Python-FABM library
 add_library(python_gotm SHARED
             python_gotm.F90
-            ${GOTM_SOURCES}
            )
 
 if(WIN32)
@@ -28,7 +27,7 @@ if(WIN32)
 endif()
 
 # Link in FABM itself
-target_link_libraries(python_gotm ${GOTM_LIBS})
+target_link_libraries(python_gotm ${GOTM_LIBRARIES})
 
 # Set include directories with modules (*.mod) - our own and FABM's.
 set_property(TARGET python_gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/gotm/modules")

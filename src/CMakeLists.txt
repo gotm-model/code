@@ -14,12 +14,18 @@ set(gotm_VERSION_MINOR 1)
 set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
 
+# Make sure all module files (*.mod) are written to one single "modules" directory.
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
+# Generate source file with compilation information
+configure_file("${PROJECT_SOURCE_DIR}/util/compilation.F90.in" compilation.F90)
+
+# Create placeholder file with version information, used when GOTM_EMBED_VERSION is off.
 set(GIT_COMMIT_ID ${gotm_VERSION})
 set(GIT_BRANCH_NAME unknown)
-configure_file("${PROJECT_SOURCE_DIR}/util/compilation.F90.in" compilation.F90)
 configure_file("${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in" gotm_version.F90)
+
+# Create a custom target for generating version  information (only if GOTM_EMBED_VERSION is on)
 option(GOTM_EMBED_VERSION "Embed GOTM version information" OFF)
 if(GOTM_EMBED_VERSION)
   add_custom_target(version
@@ -32,7 +38,7 @@ if(GOTM_EMBED_VERSION)
   set_property(TARGET version PROPERTY FOLDER gotm)
 endif()
 
-# Specify default build type for single-type systems (not VS)
+# Specify default build type for single-build-type systems (not VS)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
@@ -88,7 +94,7 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY OR GOTM_USE_FLEXIBLE_OUTPUT)
 endif()
 
 # Global include directories
-include_directories(BEFORE "${CMAKE_BINARY_DIR}"
+include_directories(BEFORE
                     "${PROJECT_SOURCE_DIR}/../include"
                     "${PROJECT_SOURCE_DIR}/util"
                     "${CMAKE_CURRENT_BINARY_DIR}/modules"
@@ -114,7 +120,7 @@ add_library(util
 if(GOTM_EMBED_VERSION)
   add_dependencies(util version)
 endif()
-set(EXTRA_LIBS ${EXTRA_LIBS} util)
+set(GOTM_LIBS ${GOTM_LIBS} util)
 
 add_library(turbulence
             turbulence/algebraiclength.F90
@@ -178,9 +184,7 @@ add_library(turbulence
             turbulence/variances.F90
            )
 target_link_libraries(turbulence util)
-set(EXTRA_LIBS ${EXTRA_LIBS} turbulence)
-
-set_property(TARGET util turbulence PROPERTY FOLDER gotm)
+set(GOTM_LIBS ${GOTM_LIBS} turbulence)
 
 if(GOTM_USE_FABM)
   find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
@@ -204,9 +208,9 @@ if(GOTM_USE_FABM)
   target_link_libraries(gotm_fabm util)
   set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
   target_link_libraries(gotm_fabm ${FABM_LIBRARIES})
-  set(EXTRA_LIBS ${EXTRA_LIBS} gotm_fabm ${FABM_LIBRARIES})
+  set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm)
+  set(EXTERNAL_LIBS ${FABM_LIBRARIES})
 else()
   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
 endif(GOTM_USE_FABM)
@@ -224,13 +228,11 @@ if(GOTM_USE_FLEXIBLE_OUTPUT)
               output/netcdf_output.F90
               output/text_output.F90
              )
-  set_property(TARGET output_manager PROPERTY FOLDER gotm)
   target_link_libraries(output_manager util)
   if(GOTM_USE_FABM)
     target_link_libraries(output_manager ${FABM_LIBRARIES})
-    set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   endif()
-  set(EXTRA_LIBS ${EXTRA_LIBS} output_manager)
+  set(GOTM_LIBS ${GOTM_LIBS} output_manager)
 endif(GOTM_USE_FLEXIBLE_OUTPUT)
 
 if(NOT GOTM_BUILD_LIBRARIES_ONLY)
@@ -239,7 +241,7 @@ add_library(input
             input/input.F90
            )
 target_link_libraries(input util)
-set(EXTRA_LIBS ${EXTRA_LIBS} input)
+set(GOTM_LIBS ${GOTM_LIBS} input)
 
 add_library(airsea
             airsea/airsea.F90
@@ -255,7 +257,7 @@ add_library(airsea
            )
 set_property(TARGET airsea APPEND PROPERTY COMPILE_DEFINITIONS GUSTINESS)
 target_link_libraries(airsea util input)
-set(EXTRA_LIBS ${EXTRA_LIBS} airsea)
+set(GOTM_LIBS ${GOTM_LIBS} airsea)
 
 add_library(observations
             observations/analytical_profile.F90
@@ -264,7 +266,7 @@ add_library(observations
             observations/observations.F90
            )
 target_link_libraries(observations util input)
-set(EXTRA_LIBS ${EXTRA_LIBS} observations)
+set(GOTM_LIBS ${GOTM_LIBS} observations)
 
 add_library(meanflow
             meanflow/buoyancy.F90
@@ -283,7 +285,7 @@ add_library(meanflow
             meanflow/vequation.F90
            )
 target_link_libraries(meanflow util observations airsea)
-set(EXTRA_LIBS ${EXTRA_LIBS} meanflow)
+set(GOTM_LIBS ${GOTM_LIBS} meanflow)
 
 if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
   add_library(output
@@ -292,8 +294,7 @@ if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
               output/output.F90
              )
   target_link_libraries(output util meanflow turbulence observations airsea)
-  set_property(TARGET output PROPERTY FOLDER gotm)
-  set(EXTRA_LIBS ${EXTRA_LIBS} output)
+  set(GOTM_LIBS ${GOTM_LIBS} output)
 endif(NOT GOTM_USE_FLEXIBLE_OUTPUT)
 
 add_library(gotm
@@ -303,14 +304,12 @@ add_library(gotm
             gotm/print_version.F90
            )
 target_link_libraries(gotm input util meanflow turbulence observations airsea)
-set(EXTRA_LIBS ${EXTRA_LIBS} gotm)
+set(GOTM_LIBS ${GOTM_LIBS} gotm)
 if(GOTM_USE_FLEXIBLE_OUTPUT)
   target_link_libraries(gotm output_manager)
 else()
   target_link_libraries(gotm output)
 endif()
-
-set_property(TARGET input airsea observations meanflow gotm PROPERTY FOLDER gotm)
 
 #option(GOTM_USE_ICE "Include ICE support" OFF)
 #if(GOTM_USE_ICE)
@@ -325,8 +324,7 @@ if(GOTM_USE_SEAGRASS)
               extras/seagrass/seagrass.F90
              )
   target_link_libraries(seagrass output meanflow)
-  set_property(TARGET seagrass PROPERTY FOLDER gotm)
-  set(EXTRA_LIBS ${EXTRA_LIBS} seagrass)
+  set(GOTM_LIBS ${GOTM_LIBS} seagrass)
 endif()
 
 if(GOTM_USE_FABM)
@@ -344,30 +342,26 @@ if(GOTM_USE_FABM)
   set_property(TARGET gotm_fabm_io APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   target_link_libraries(gotm_fabm_io input gotm_fabm)
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
-  set(EXTRA_LIBS ${EXTRA_LIBS} gotm_fabm_io)
+  set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm_io)
 endif(GOTM_USE_FABM)
 
+if(GOTM_USE_NetCDF)
+  set(EXTERNAL_LIBS ${EXTERNAL_LIBS} "${NetCDF_LIBRARIES}")
+endif(GOTM_USE_NetCDF)
+
 if(NOT GOTM_BUILD_LIBRARY)
+
 # Build GOTM executable.
 add_executable(gotm_exe
                gotm/main.F90
               )
 set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
+
+if(GOTM_USE_NetCDF AND NetCDF_STATIC_MSVC_BUILD)
+  set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
 endif()
 
-if(GOTM_USE_NetCDF)
-  set(EXTRA_LIBS ${EXTRA_LIBS} "${NetCDF_LIBRARIES}")
-  if (NetCDF_STATIC_MSVC_BUILD AND NOT GOTM_BUILD_LIBRARY)
-    set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
-  endif()
-endif(GOTM_USE_NetCDF)
-
-if(GOTM_BUILD_LIBRARY)
-  set(GOTM_SOURCES ${EXTRA_SRCS} PARENT_SCOPE)
-  set(GOTM_LIBS ${EXTRA_LIBS} PARENT_SCOPE)
-else(GOTM_BUILD_LIBRARY)
-target_link_libraries(gotm_exe ${EXTRA_LIBS})
+target_link_libraries(gotm_exe ${GOTM_LIBS} ${EXTERNAL_LIBS})
 
 # Set default installation prefix.
 if(WIN32)
@@ -429,5 +423,9 @@ add_dependencies( test_all test_airsea test_eqstate test_time)
 
 # End of testing section
 
-endif(GOTM_BUILD_LIBRARY)
+endif(NOT GOTM_BUILD_LIBRARY)
 endif(NOT GOTM_BUILD_LIBRARIES_ONLY)
+
+set_property(TARGET ${GOTM_LIBS} PROPERTY FOLDER gotm)
+
+set(GOTM_LIBRARIES ${GOTM_LIBS} ${EXTERNAL_LIBS} PARENT_SCOPE)
