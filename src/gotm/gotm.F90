@@ -413,7 +413,7 @@
       call do_all_output(MinN-1)
    end if
 #else
-   call output_manager_save(julianday,secondsofday,0)
+   call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
 #endif
    STDERR LINE
    LEVEL1 'time_loop'
@@ -530,7 +530,7 @@
       end if
 #else
       call do_diagnostics(nlev)
-      call output_manager_save(julianday,secondsofday,int(n))
+      call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),int(n))
 #endif
 
    end do

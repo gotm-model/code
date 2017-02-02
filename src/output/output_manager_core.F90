@@ -162,9 +162,9 @@ contains
       allocate(field)
    end function create_field
 
-   subroutine save(self,julianday,secondsofday)
+   subroutine save(self,julianday,secondsofday,microseconds)
       class (type_file),intent(inout) :: self
-      integer,          intent(in)    :: julianday,secondsofday
+      integer,          intent(in)    :: julianday,secondsofday,microseconds
       stop 'output_manager_core:save not implemented'
    end subroutine
 

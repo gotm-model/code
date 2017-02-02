@@ -239,9 +239,9 @@ contains
       end select
    end function create_field
 
-   subroutine save(self,julianday,secondsofday)
+   subroutine save(self,julianday,secondsofday,microseconds)
       class (type_netcdf_file),intent(inout) :: self
-      integer,                 intent(in)    :: julianday,secondsofday
+      integer,                 intent(in)    :: julianday,secondsofday,microseconds
 
       class (type_output_field), pointer :: output_field
       integer                            :: iret
@@ -254,7 +254,7 @@ contains
 
       ! Store time coordinate
       if (self%time_id/=-1) then
-         time_value = (julianday-self%reference_julian)*real(86400,rk) + secondsofday-self%reference_seconds
+         time_value = (julianday-self%reference_julian)*real(86400,rk) + secondsofday-self%reference_seconds + microseconds*1.e-6_rk
          iret = nf90_put_var(self%ncid,self%time_id,time_value,(/self%itime/))
          if (iret/=NF90_NOERR) call host%fatal_error('netcdf_output:save','error saving variable "time" to '//trim(self%path)//trim(self%postfix)//'.nc: '//nf90_strerror(iret))
       end if

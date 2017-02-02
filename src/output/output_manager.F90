@@ -17,6 +17,11 @@ module output_manager
    class (type_file),pointer :: first_file
    logical                   :: files_initialized
 
+   interface output_manager_save
+      procedure :: output_manager_save1
+      procedure :: output_manager_save2
+   end interface
+
 contains
 
    subroutine output_manager_init(field_manager,title,postfix)
@@ -137,8 +142,8 @@ contains
       end do
    end subroutine add_coordinate_variables
 
-   subroutine initialize_files(julianday,secondsofday,n)
-      integer,intent(in) :: julianday,secondsofday,n
+   subroutine initialize_files(julianday,secondsofday,microseconds,n)
+      integer, intent(in) :: julianday,secondsofday,microseconds,n
 
       class (type_file),            pointer :: file
       class (type_output_field),    pointer :: output_field
@@ -254,8 +259,13 @@ contains
       files_initialized = .true.
    end subroutine
 
-   subroutine output_manager_save(julianday,secondsofday,n)
+   subroutine output_manager_save1(julianday,secondsofday,n)
       integer,intent(in) :: julianday,secondsofday,n
+      call output_manager_save2(julianday,secondsofday,0,n)
+   end subroutine
+
+   subroutine output_manager_save2(julianday,secondsofday,microseconds,n)
+      integer,intent(in) :: julianday,secondsofday,microseconds,n
 
       class (type_file),            pointer :: file
       class (type_output_field),    pointer :: output_field
@@ -263,7 +273,7 @@ contains
       logical                               :: in_window
       logical                               :: output_based_on_time, output_based_on_index
 
-      if (.not.files_initialized) call initialize_files(julianday,secondsofday,n)
+      if (.not.files_initialized) call initialize_files(julianday,secondsofday,microseconds,n)
 
       file => first_file
       do while (associated(file))
@@ -329,7 +339,7 @@ contains
             end do
 
             ! Do NetCDF output
-            call file%save(julianday,secondsofday)
+            call file%save(julianday,secondsofday,microseconds)
 
             ! Determine time (julian day, seconds of day) for next output.
             select case (file%time_unit)
@@ -382,7 +392,7 @@ contains
 
          file => file%next
       end do
-   end subroutine output_manager_save
+   end subroutine output_manager_save2
 
    subroutine configure_from_yaml(field_manager,title,postfix)
       type (type_field_manager), target      :: field_manager
