@@ -8,11 +8,11 @@ module field_manager
    public type_field_manager
 
    ! Public data types and variables
-   public type_node
-   public type_field, type_field_node
+   public type_field
    public type_category_node
    public type_dimension
    public type_attribute, type_real_attribute, type_integer_attribute, type_string_attribute
+   public type_field_set, type_field_set_member
 
    ! Public parameters
    public string_length,default_fill_value,default_minimum,default_maximum
@@ -129,6 +129,18 @@ module field_manager
       type (type_field), pointer :: first_field => null()
    end type
 
+   type type_field_set_member
+      type (type_field),            pointer :: field => null()
+      type (type_field_set_member), pointer :: next  => null()
+   end type
+
+   type type_field_set
+      type (type_field_set_member), pointer :: first => null()
+   contains
+      procedure :: add      => field_set_add
+      procedure :: finalize => field_set_finalize
+   end type
+
    type type_field_manager
       type (type_dimension), pointer :: first_dimension => null()
 
@@ -154,6 +166,7 @@ module field_manager
       procedure :: select_category_for_output
       procedure :: register_dimension
       procedure :: find_dimension
+      procedure :: find_category
       generic :: send_data => send_data_0d,send_data_1d,send_data_2d,send_data_3d,send_data_by_name_0d,send_data_by_name_1d
    end type type_field_manager
 
@@ -365,7 +378,7 @@ contains
       integer,                   intent(in)    :: output_level
       class (type_category_node), pointer       :: category
 
-      category => find_category(self,name,create=.true.)
+      category => self%find_category(name,create=.true.)
       call activate(category)
    contains
       recursive subroutine activate(category)
@@ -383,26 +396,50 @@ contains
       end subroutine activate
    end function select_category_for_output
 
-   recursive subroutine get_all_fields(self,list,output_level)
+   subroutine field_set_add(self,field)
+      class (type_field_set), intent(inout) :: self
+      type (type_field), target             :: field
+
+      type (type_field_set_member),pointer :: member
+
+      member => self%first
+      do while (associated(member))
+         if (associated(member%field,field)) return
+         member => member%next
+      end do
+      allocate(member)
+      member%field => field
+      member%next => self%first
+      self%first => member
+   end subroutine field_set_add
+
+   subroutine field_set_finalize(self)
+      class (type_field_set), intent(inout) :: self
+
+      type (type_field_set_member),pointer :: member,next_member
+
+      member => self%first
+      do while (associated(member))
+         next_member => member%next
+         deallocate(member)
+         member => next_member
+      end do
+      self%first => null()
+   end subroutine field_set_finalize
+
+   recursive subroutine get_all_fields(self,set,output_level)
       class (type_category_node), intent(inout) :: self
-      type (type_category_node),  intent(inout) :: list
+      type (type_field_set),      intent(inout) :: set
       integer,                    intent(in)    :: output_level
-      class (type_node), pointer :: child, newnode
+      class (type_node), pointer :: child
 
       child => self%first_child
       do while (associated(child))
          select type (child)
          class is (type_category_node)
-            call get_all_fields(child,list,output_level)
+            call get_all_fields(child,set,output_level)
          class is (type_field_node)
-            if (child%field%output_level<=output_level) then
-               allocate(type_field_node::newnode)
-               select type (newnode)
-               class is (type_field_node)
-                  newnode%field => child%field
-               end select
-               call add_to_category(list,newnode)
-            end if
+            if (child%field%output_level<=output_level) call set%add(child%field)
          end select
          child => child%next_sibling
       end do
@@ -667,7 +704,7 @@ contains
 
       ! Find parent node
       parent => self%root
-      if (present(category)) parent => find_category(self,category,create=.true.)
+      if (present(category)) parent => self%find_category(category,create=.true.)
 
       ! If field has not been selected for output yet, do so if its output_level does not exceed that the parent category.
       if (.not.field%in_output) field%in_output = field%output_level<=parent%output_level
