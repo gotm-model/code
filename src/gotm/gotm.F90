@@ -227,7 +227,7 @@
    call fm%register_dimension('lon',1,id=id_dim_lon)
    call fm%register_dimension('lat',1,id=id_dim_lat)
    call fm%register_dimension('z',nlev,id=id_dim_z)
-   call fm%register_dimension('z1',nlev,id=id_dim_z1)
+   call fm%register_dimension('z1',nlev+1,id=id_dim_z1)
    call fm%register_dimension('time',id=id_dim_time)
    call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
 
