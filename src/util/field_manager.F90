@@ -173,13 +173,14 @@ module field_manager
 
 contains
 
-   subroutine register_dimension(self,name,length,global_length,offset,id)
+   subroutine register_dimension(self,name,length,global_length,offset,id,newid)
       class (type_field_manager), intent(inout) :: self
       character(len=*),           intent(in)    :: name
       integer, optional,          intent(in)    :: length
       integer, optional,          intent(in)    :: global_length
       integer, optional,          intent(in)    :: offset
       integer, optional,          intent(in)    :: id
+      integer, optional,          intent(out)   :: newid
 
       type (type_dimension), pointer :: dim
 
@@ -200,7 +201,12 @@ contains
       dim%name = name
       if (present(length)) dim%length = length
       if (present(offset)) dim%offset = offset
-      if (present(id)) dim%id = id
+      if (present(id)) then
+         dim%id = id
+      elseif (present(newid)) then
+         newid = next_free_dimension_id(self)
+         dim%id = newid
+      end if
       dim%global_length = dim%length
       if (present(global_length)) dim%global_length = global_length
 
@@ -223,6 +229,23 @@ contains
       dim%next => self%first_dimension
       self%first_dimension => dim
    end subroutine register_dimension
+
+   integer function next_free_dimension_id(self)
+      class (type_field_manager), intent(in) :: self
+
+      type (type_dimension), pointer :: dim
+
+      next_free_dimension_id = id_dim_unused
+      do
+         dim => self%first_dimension
+         do while (associated(dim))
+            if (dim%id==next_free_dimension_id) exit
+            dim => dim%next
+         end do
+         if (.not.associated(dim)) return
+         next_free_dimension_id = next_free_dimension_id + 1
+      end do
+   end function next_free_dimension_id
 
    subroutine initialize(self,prepend_by_default,append_by_default)
       class (type_field_manager), intent(inout) :: self

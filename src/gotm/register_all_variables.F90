@@ -132,8 +132,8 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_airsea_variables()'
-   call fm%register('es', 'Pascal', 'saturation water vapor pressure', standard_name='', data0d=es)
-   call fm%register('ea', 'Pascal', 'actual water vapor presure', standard_name='', data0d=ea)
+   call fm%register('es', 'Pa', 'saturation water vapor pressure', standard_name='', data0d=es)
+   call fm%register('ea', 'Pa', 'actual water vapor presure', standard_name='', data0d=ea)
    call fm%register('qs', 'kg/kg', 'saturation specific humidity', standard_name='', data0d=qs)
    call fm%register('qa', 'kg/kg', 'specific humidity', standard_name='', data0d=qa)
    call fm%register('rhoa', 'kg/m3', 'air density', standard_name='', data0d=rhoa)
@@ -200,11 +200,11 @@
    LEVEL2 'register_observation_variables()'
    call fm%register('tprof', 'Celsius', 'observed temperature', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof(1:nlev),category='observations')
    call fm%register('sprof', 'PSU', 'observed salinity', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof(1:nlev),category='observations')
-   call fm%register('u_obs', 'm/s', 'obs. x-velocity', dimensions=(/id_dim_z/), data1d=uprof(1:nlev), category='observations')
-   call fm%register('v_obs', 'm/s', 'obs. y-velocity', dimensions=(/id_dim_z/), data1d=vprof(1:nlev), category='observations')
+   call fm%register('u_obs', 'm/s', 'observed x-velocity', dimensions=(/id_dim_z/), data1d=uprof(1:nlev), category='observations')
+   call fm%register('v_obs', 'm/s', 'observed y-velocity', dimensions=(/id_dim_z/), data1d=vprof(1:nlev), category='observations')
    call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta,category='observations')
    if (allocated(epsprof)) then
-      call fm%register('eps_obs', 'm2/s3', 'obs. dissipation', dimensions=(/id_dim_z/), data1d=epsprof(1:nlev), category='observations')
+      call fm%register('eps_obs', 'm2/s3', 'observed dissipation', dimensions=(/id_dim_z/), data1d=epsprof(1:nlev), category='observations')
    end if
 
    return
@@ -237,25 +237,25 @@
 !BOC
    LEVEL2 'register_stream_variables()'
    if (nstreams>0) then
-      call fm%register('Q', 'm^3/s', 'inflows over water column', standard_name='??', dimensions=(/id_dim_z/), data1d=Q(1:nlev), category='streams')
+      call fm%register('Q', 'm3/s', 'inflows over water column', standard_name='??', dimensions=(/id_dim_z/), data1d=Q(1:nlev), category='streams')
       call fm%register('Qs', '1/s', 'salt inflow', standard_name='??', dimensions=(/id_dim_z/), data1d=Qs(1:nlev), category='streams')
-      call fm%register('Qt', 'celsius/s', 'temperature inflow', standard_name='??', dimensions=(/id_dim_z/), data1d=Qt(1:nlev), category='streams')
+      call fm%register('Qt', 'Celsius/s', 'temperature inflow', standard_name='??', dimensions=(/id_dim_z/), data1d=Qt(1:nlev), category='streams')
       call fm%register('wq', 'm/s', 'vertical water balance advection velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=wq(1:nlev), category='streams')
-      call fm%register('FQ', 'm^3/s', 'vertical water balance flux', standard_name='??', dimensions=(/id_dim_z/), data1d=FQ(1:nlev), category='streams')
-      call fm%register('Qres', 'm^3/s', 'residual water balance inflows', standard_name='??', dimensions=(/id_dim_z/), data1d=Qres(1:nlev), category='streams')
+      call fm%register('FQ', 'm3/s', 'vertical water balance flux', standard_name='??', dimensions=(/id_dim_z/), data1d=FQ(1:nlev), category='streams')
+      call fm%register('Qres', 'm3/s', 'residual water balance inflows', standard_name='??', dimensions=(/id_dim_z/), data1d=Qres(1:nlev), category='streams')
    end if
 
    current_stream => first_stream
    do while (associated(current_stream))
-      call fm%register('Q_'//trim(current_stream%name), 'm^3/s', 'stream (Q): '//trim(current_stream%name), data0d=current_stream%QI, category='streams')
+      call fm%register('Q_'//trim(current_stream%name), 'm3/s', 'stream (Q): '//trim(current_stream%name), data0d=current_stream%QI, category='streams')
       if (current_stream%has_T) then
          call fm%register('T_'//trim(current_stream%name), 'Celsius', 'stream (T): '//trim(current_stream%name), data0d=current_stream%TI, category='streams')
       end if
       current_stream => current_stream%next
    end do
 
-   call fm%register('int_inflow', 'm^3/s', 'integrated inflow', data0d=int_inflow, category='streams')
-   call fm%register('int_outflow', 'm^3/s', 'integrated outflow', data0d=int_outflow, category='streams')
+   call fm%register('int_inflow', 'm3/s', 'integrated inflow', data0d=int_inflow, category='streams')
+   call fm%register('int_outflow', 'm3/s', 'integrated outflow', data0d=int_outflow, category='streams')
 
    return
    end subroutine register_stream_variables
@@ -305,18 +305,18 @@
    call fm%register('temp', 'Celsius', 'potential temperature', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=T(1:nlev),category='meanflow',part_of_state=.true.)
    call fm%register('salt', 'g/kg', 'salinity', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=S(1:nlev),category='meanflow',part_of_state=.true.)
    call fm%register('rho', 'kg/m3', 'potential density', standard_name='??', dimensions=(/id_dim_z/), data1d=rho(1:nlev),category='meanflow')
-   call fm%register('NN', '1/s**2', 'buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NN(1:nlev),category='meanflow')
-   call fm%register('NNT', '1/s**2', 'contribution of T-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNT(1:nlev),category='meanflow')
-   call fm%register('NNS', '1/s**2', 'contribution of S-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNS(1:nlev),category='meanflow')
-   call fm%register('SS', '1/s**2', 'shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SS(1:nlev),category='meanflow')
-   call fm%register('SSU', '1/s**2', 'x-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSU(1:nlev),category='meanflow', output_level=output_level_debug)
-   call fm%register('SSV', '1/s**2', 'y-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSV(1:nlev),category='meanflow', output_level=output_level_debug)
+   call fm%register('NN', '1/s2', 'buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NN(1:nlev),category='meanflow')
+   call fm%register('NNT', '1/s2', 'contribution of T-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNT(1:nlev),category='meanflow')
+   call fm%register('NNS', '1/s2', 'contribution of S-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNS(1:nlev),category='meanflow')
+   call fm%register('SS', '1/s2', 'shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SS(1:nlev),category='meanflow')
+   call fm%register('SSU', '1/s2', 'x-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSU(1:nlev),category='meanflow', output_level=output_level_debug)
+   call fm%register('SSV', '1/s2', 'y-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSV(1:nlev),category='meanflow', output_level=output_level_debug)
 !KB   call fm%register('xP', 'm**2/s**3', 'extra turbulence production', standard_name='??', dimensions=(/id_dim_z/), data1d=xP(1:nlev),category='meanflow',part_of_state=.true.)
-   call fm%register('xP', 'm**2/s**3', 'extra turbulence production', standard_name='??', dimensions=(/id_dim_z/), data1d=xP(1:nlev),category='meanflow')
-   call fm%register('buoy', 'm/s**2', 'buoyancy', standard_name='??', dimensions=(/id_dim_z/), data1d=buoy(1:nlev),category='meanflow')
-   call fm%register('rad', 'W/m**2', 'short-wave radiation', standard_name='??', dimensions=(/id_dim_z/), data1d=rad(1:nlev),category='meanflow')
-   call fm%register('avh', 'm**2/s', 'eddy diffusivity', standard_name='??', dimensions=(/id_dim_z/), data1d=avh(1:nlev),category='meanflow')
-   call fm%register('bioshade', '', 'degree of bio-shading', standard_name='??', dimensions=(/id_dim_z/), data1d=bioshade(1:nlev),category='meanflow')
+   call fm%register('xP', 'm2/s3', 'extra turbulence production', standard_name='??', dimensions=(/id_dim_z/), data1d=xP(1:nlev),category='meanflow')
+   call fm%register('buoy', 'm/s2', 'buoyancy', standard_name='??', dimensions=(/id_dim_z/), data1d=buoy(1:nlev),category='meanflow')
+   call fm%register('rad', 'W/m2', 'short-wave radiation', standard_name='??', dimensions=(/id_dim_z/), data1d=rad(1:nlev),category='meanflow')
+   call fm%register('avh', 'm2/s', 'eddy diffusivity', standard_name='??', dimensions=(/id_dim_z/), data1d=avh(1:nlev),category='meanflow')
+   call fm%register('bioshade', '-', 'fraction of visible light that is not shaded by overlying biogeochemistry', dimensions=(/id_dim_z/), data1d=bioshade(1:nlev),category='meanflow')
 #ifdef EXTRA_OUTPUT
    call fm%register('mean1', '??', '1. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean1(1:nlev),category='meanflow',output_level=output_level_debug)
    call fm%register('mean2', '??', '2. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean2(1:nlev),category='meanflow',output_level=output_level_debug)
@@ -368,7 +368,7 @@
    call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_z1/), data1d=gams(1:nlev),category='turbulence')
    call fm%register('cmue1', '', 'stability function for momentum diffusivity', standard_name='??', dimensions=(/id_dim_z1/), data1d=cmue1(1:nlev),category='turbulence')
    call fm%register('cmue2', '', 'stability function for scalar diffusivity', standard_name='??', dimensions=(/id_dim_z1/), data1d=cmue2(1:nlev),category='turbulence')
-   call fm%register('gam', '', 'non-dimensinsional non-local buoyancy flux', standard_name='??', dimensions=(/id_dim_z1/), data1d=gam(1:nlev),category='turbulence')
+   call fm%register('gam', '', 'non-dimensional non-local buoyancy flux', standard_name='??', dimensions=(/id_dim_z1/), data1d=gam(1:nlev),category='turbulence')
    call fm%register('an', '', 'non-dimensional buoyancy time scale', standard_name='??', dimensions=(/id_dim_z1/), data1d=an(1:nlev),category='turbulence')
    call fm%register('as', '', 'non-dimensional shear time scale', standard_name='??', dimensions=(/id_dim_z1/), data1d=as(1:nlev),category='turbulence')
    call fm%register('at', '', 'non-dimensional buoyancy variance', standard_name='??', dimensions=(/id_dim_z1/), data1d=at(1:nlev),category='turbulence')
@@ -419,9 +419,9 @@
    call fm%register('mld_surf','m', 'mixed layer depth - surface', data0d=mld_surf,category='diagnostics')
    call fm%register('mld_bott','m', 'mixed layer depth - bottom', data0d=mld_bott,category='diagnostics')
 #endif
-   call fm%register('Ekin',  'Joule', 'kinetic energy', data0d=ekin,category='diagnostics')
-   call fm%register('Epot',  'Joule', 'potential energy', data0d=epot,category='diagnostics')
-   call fm%register('Eturb', 'Joule', 'turbulent kinetic energy', data0d=eturb,category='diagnostics')
+   call fm%register('Ekin',  'J', 'kinetic energy', data0d=ekin,category='diagnostics')
+   call fm%register('Epot',  'J', 'potential energy', data0d=epot,category='diagnostics')
+   call fm%register('Eturb', 'J', 'turbulent kinetic energy', data0d=eturb,category='diagnostics')
 
    return
    end subroutine register_diagnostic_variables

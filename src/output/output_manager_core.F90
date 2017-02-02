@@ -206,7 +206,7 @@ contains
       character(len=*),  intent(in) :: location,error
 
       FATAL trim(location)//': '//trim(error)
-      stop 'output_manager::host_fatal_error'
+      stop 1
    end subroutine
 
    subroutine host_log_message(self,message)
