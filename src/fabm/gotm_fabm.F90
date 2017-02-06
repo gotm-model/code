@@ -1397,9 +1397,9 @@
       ! Call fabm_do here to make sure diagnostic variables all have an initial value.
       ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
       rhs = _ZERO_
-      call fabm_do(model,1,nlev,rhs)
-      call fabm_do_surface(model,rhs(nlev,:))
       call fabm_do_bottom(model,rhs(1,:),bottom_flux)
+      call fabm_do_surface(model,rhs(nlev,:))
+      call fabm_do(model,1,nlev,rhs)
 
       ! Obtain current values of diagnostic variables from FABM.
       do i=1,size(model%horizontal_diagnostic_variables)
