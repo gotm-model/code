@@ -86,6 +86,13 @@
    type (type_forced_1d_state),allocatable :: cc_obs(:)
    type (type_forced_0d_state),allocatable :: cc_ben_obs(:)
 
+   type type_bottom_diagnostic
+      real(rk), pointer :: local => null()
+      real(rk), allocatable :: column(:)
+      type (type_bottom_diagnostic), pointer :: next => null()
+   end type
+   type (type_bottom_diagnostic), pointer, save :: first_bottom_diagnostic => null()
+
    interface register_observation
       module procedure register_bulk_observation
       module procedure register_horizontal_observation
@@ -271,7 +278,11 @@
             if (in_output) model%diagnostic_variables(i)%save = .true.
          end do
          do i=1,size(model%horizontal_diagnostic_variables)
-            call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=in_output)
+            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
+            else
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=in_output)
+            end if
             if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
          end do
       end if
@@ -407,6 +418,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: i,rc,output_level
    logical                   :: used
+   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -470,8 +482,19 @@
             call field_manager%send_data(model%diagnostic_variables(i)%name, fabm_get_bulk_diagnostic_data(model,i))
       end do
       do i=1,size(model%horizontal_diagnostic_variables)
-         if (model%horizontal_diagnostic_variables(i)%save) &
-            call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, fabm_get_horizontal_diagnostic_data(model,i))
+         if (model%horizontal_diagnostic_variables(i)%save) then
+            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
+               allocate(bottom_diagnostic_data)
+               allocate(bottom_diagnostic_data%column(nlev))
+               bottom_diagnostic_data%local => fabm_get_horizontal_diagnostic_data(model,i)
+               bottom_diagnostic_data%column(:) = model%horizontal_diagnostic_variables(i)%missing_value
+               bottom_diagnostic_data%next => first_bottom_diagnostic
+               first_bottom_diagnostic => bottom_diagnostic_data
+               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, bottom_diagnostic_data%column)
+            else
+               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, fabm_get_horizontal_diagnostic_data(model,i))
+            end if
+         end if
       end do
    end if
 
@@ -1303,6 +1326,7 @@
 !
 ! !LOCAL VARIABLES:
    integer :: i,k,n
+   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -1338,6 +1362,12 @@
       end do
       call model%set_bottom_index(k)
       call fabm_do_bottom(model,rhs(k,1:n),rhs(k,n+1:n+size(model%bottom_state_variables)))
+
+      bottom_diagnostic_data => first_bottom_diagnostic
+      do while (associated(bottom_diagnostic_data))
+         bottom_diagnostic_data%column(k) = bottom_diagnostic_data%local
+         bottom_diagnostic_data => bottom_diagnostic_data%next
+      end do
 
       ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
       if (k==1) then
