@@ -214,8 +214,10 @@ contains
          dim%iterator = 'i'
       case (id_dim_lat)
          dim%iterator = 'j'
-      case (id_dim_z,id_dim_z1)
+      case (id_dim_z)
          dim%iterator = 'k'
+      case (id_dim_z1)
+         dim%iterator = 'k1'
       end select
 
       ! Basic consistency checks
