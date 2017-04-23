@@ -74,12 +74,12 @@ if(GOTM_USE_FABM)
   add_definitions(-D_FABM_)
 endif()
 
-option(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON)
-if(GOTM_USE_FLEXIBLE_OUTPUT)
+#option(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON)
+#if(GOTM_USE_FLEXIBLE_OUTPUT)
   add_definitions(-D_FLEXIBLE_OUTPUT_)
-endif()
+#endif()
 
-if(NOT GOTM_BUILD_LIBRARIES_ONLY OR GOTM_USE_FLEXIBLE_OUTPUT)
+#if(NOT GOTM_BUILD_LIBRARIES_ONLY OR GOTM_USE_FLEXIBLE_OUTPUT)
   option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
   if(GOTM_USE_NetCDF)
     find_package(NetCDF REQUIRED)
@@ -91,7 +91,7 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY OR GOTM_USE_FLEXIBLE_OUTPUT)
       add_compile_options("/libs:static")
     endif()
   endif(GOTM_USE_NetCDF)
-endif()
+#endif()
 
 # Global include directories
 include_directories(BEFORE
@@ -214,7 +214,7 @@ else()
   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
 endif(GOTM_USE_FABM)
 
-if(GOTM_USE_FLEXIBLE_OUTPUT)
+#if(GOTM_USE_FLEXIBLE_OUTPUT)
   if(NOT GOTM_USE_FABM)
     add_subdirectory(yaml)
     set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
@@ -233,7 +233,7 @@ if(GOTM_USE_FLEXIBLE_OUTPUT)
     set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   endif()
   set(GOTM_LIBS ${GOTM_LIBS} output_manager)
-endif(GOTM_USE_FLEXIBLE_OUTPUT)
+#endif(GOTM_USE_FLEXIBLE_OUTPUT)
 
 if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
@@ -287,15 +287,15 @@ add_library(meanflow
 target_link_libraries(meanflow util observations airsea)
 set(GOTM_LIBS ${GOTM_LIBS} meanflow)
 
-if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
-  add_library(output
-              output/asciiout.F90
-              output/ncdfout.F90
-              output/output.F90
-             )
-  target_link_libraries(output util meanflow turbulence observations airsea)
-  set(GOTM_LIBS ${GOTM_LIBS} output)
-endif(NOT GOTM_USE_FLEXIBLE_OUTPUT)
+#if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
+#  add_library(output
+#              output/asciiout.F90
+#              output/ncdfout.F90
+#              output/output.F90
+#             )
+#  target_link_libraries(output util meanflow turbulence observations airsea)
+#  set(GOTM_LIBS ${GOTM_LIBS} output)
+#endif(NOT GOTM_USE_FLEXIBLE_OUTPUT)
 
 #option(GOTM_USE_ICE "Include ICE support" OFF)
 #if(GOTM_USE_ICE)
@@ -310,24 +310,24 @@ if(GOTM_USE_SEAGRASS)
               extras/seagrass/seagrass.F90
              )
   target_link_libraries(seagrass meanflow)
-  if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
-    target_link_libraries(seagrass output)
-  endif()
+  #if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
+  #  target_link_libraries(seagrass output)
+  #endif()
   set(GOTM_LIBS ${GOTM_LIBS} seagrass)
 endif()
 
 if(GOTM_USE_FABM)
-  if(GOTM_USE_FLEXIBLE_OUTPUT)
+  #if(GOTM_USE_FLEXIBLE_OUTPUT)
     add_library(gotm_fabm_io
                 fabm/gotm_fabm_input.F90
                )
-  else()
-    add_library(gotm_fabm_io
-                fabm/gotm_fabm_input.F90
-                fabm/gotm_fabm_output.F90
-               )
-    target_link_libraries(gotm_fabm_io output)
-  endif()
+  #else()
+  #  add_library(gotm_fabm_io
+  #              fabm/gotm_fabm_input.F90
+  #              fabm/gotm_fabm_output.F90
+  #             )
+  #  target_link_libraries(gotm_fabm_io output)
+  #endif()
   target_link_libraries(gotm_fabm_io input gotm_fabm)
   set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm_io)
 endif(GOTM_USE_FABM)
