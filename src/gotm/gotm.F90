@@ -221,19 +221,28 @@
 
       read(namlst,nml=output,err=94)
 
+#ifndef NETCDF_FMT
+      if (out_fmt == NETCDF) then
+         LEVEL1 'Warning: out_fmt is set to 2 (NetCDF output), but GOTM has been compiled without NetCDF support. Forcing out_fmt=1 (text).'
+         out_fmt = ASCII
+      end if
+#endif
+
       select case (out_fmt)
       case (ASCII)
          allocate(type_text_file::outfile)
       case (NETCDF)
+#ifdef NETCDF_FMT
          allocate(type_netcdf_file::outfile)
-      end select
-      select type (outfile)
-      class is (type_netcdf_file)
-         if (sync_out <= 0) then
-            outfile%sync_interval = -1
-         else
-            outfile%sync_interval = sync_out
-         end if
+         select type (outfile)
+         class is (type_netcdf_file)
+            if (sync_out <= 0) then
+               outfile%sync_interval = -1
+            else
+               outfile%sync_interval = sync_out
+            end if
+         end select
+#endif
       end select
       outfile%path = trim(out_dir)//'/'//trim(out_fn)
       outfile%title = trim(title)

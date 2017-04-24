@@ -1,5 +1,5 @@
 module netcdf_output
-
+#ifdef NETCDF_FMT
    use field_manager
    use output_manager_core
    use netcdf
@@ -296,5 +296,5 @@ contains
       integer,intent(in) :: iret
       if (iret/=NF90_NOERR) call host%fatal_error('check_err',nf90_strerror(iret))
    end subroutine
-
+#endif
 end module netcdf_output

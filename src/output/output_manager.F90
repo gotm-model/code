@@ -463,16 +463,25 @@ contains
       type (type_output_dimension),pointer :: output_dim
       character(len=8)                     :: strmax
       integer                              :: distance
+#ifdef NETCDF_FMT
+      character(len=*), parameter :: default_format = 'netcdf'
+#else
+      character(len=*), parameter :: default_format = 'text'
+#endif      
 
-      string = mapping%get_string('format',default='netcdf',error=config_error)
+      string = mapping%get_string('format',default=default_format,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
       select case (string)
       case ('netcdf')
+#ifdef NETCDF_FMT
          allocate(type_netcdf_file::file)
+#else
+         call host%fatal_error('process_file','Error parsing output.yaml: "netcdf" specified for format of output file "'//trim(path)//'", but GOTM has been compiled without NetCDF support. Valid options are: text.')
+#endif
       case ('text')
          allocate(type_text_file::file)
       case default
-         call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(string)//'" specified for format of output file "'//trim(path)//'". Valid options are netcdf, text.')
+         call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(string)//'" specified for format of output file "'//trim(path)//'". Valid options are: netcdf, text.')
       end select
 
       ! Create file object and prepend to list.
