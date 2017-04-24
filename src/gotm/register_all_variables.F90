@@ -279,6 +279,7 @@
    end if
 #endif
    call fm%register('z', 'm', 'depth', standard_name='??', dimensions=(/id_dim_z/), data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='meanflow')
+   call fm%register('z1', 'm', 'interface depth', standard_name='??', dimensions=(/id_dim_z1/), data1d=z1(0:nlev), coordinate_dimension=id_dim_z1,category='meanflow')
    call fm%register('h', 'm', 'layer thickness', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='meanflow')
    call fm%register('ho', 'm', 'layer thickness - old time step', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='meanflow', output_level=output_level_debug)
    call fm%register('u', 'm/s', 'x-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=u(1:nlev), category='meanflow/velocities')
