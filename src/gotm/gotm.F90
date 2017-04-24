@@ -206,7 +206,7 @@
 
    inquire(file='output.yaml',exist=file_exists)
    if (.not.file_exists) then
-      ! outlook.yaml not found - try to read deprecated output namelist from gotmrun.nml
+      ! output.yaml not found - try to read deprecated output namelist from gotmrun.nml
       out_fmt     = ASCII
       out_dir     = '.'
       out_fn      = 'gotm'
