@@ -91,7 +91,7 @@
    end if
 
 !  Stability
-   s0=(sst-airt)/(w+1.0e-10)**2
+   s0=0.25*(sst-airt)/(w+1.0e-10)**2
    s=s0*abs(s0)/(abs(s0)+0.01)
 
 !  Transfer coefficient for heat and momentum
