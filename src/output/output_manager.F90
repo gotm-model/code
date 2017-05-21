@@ -64,7 +64,7 @@ contains
          do while (associated(member))
             call host%log_message('  - '//trim(member%field%name))
             output_field => file%create_field()
-            output_field%time_method = output_category%time_method
+            output_field%settings => output_category%settings
             output_field%source => member%field
             output_field%output_name = trim(output_category%prefix)//trim(member%field%name)//trim(output_category%postfix)
             call file%append(output_field)
@@ -131,7 +131,8 @@ contains
             coordinate_field => file%find(output_field%source%dimensions(i)%p%coordinate)
             if (.not.associated(coordinate_field)) then
                coordinate_field => file%create_field()
-               coordinate_field%time_method = time_method_instantaneous
+               coordinate_field%settings => file%create_settings()
+               coordinate_field%settings%time_method = time_method_instantaneous
                coordinate_field%source => output_field%source%dimensions(i)%p%coordinate
                coordinate_field%output_name = trim(coordinate_field%source%name)
                call file%append(coordinate_field)
@@ -228,7 +229,7 @@ contains
             output_field%data_2d => output_field%source_2d
             output_field%data_3d => output_field%source_3d
 
-            if (output_field%time_method/=time_method_instantaneous.and.output_field%time_method/=time_method_none) then
+            if (output_field%settings%time_method/=time_method_instantaneous.and.output_field%settings%time_method/=time_method_none) then
                ! We are not storing the instantaneous value. Create a work array that will be stored instead.
                if (associated(output_field%source_3d)) then
                   allocate(output_field%work_3d(size(output_field%source_3d,1),size(output_field%source_3d,2),size(output_field%source_3d,3)))
@@ -286,7 +287,7 @@ contains
          ! Increment time-integrated fields
          output_field => file%first_field
          do while (associated(output_field))
-            if (output_field%time_method==time_method_mean .or. (output_field%time_method==time_method_integrated.and.file%next_julian/=-1)) then
+            if (output_field%settings%time_method==time_method_mean .or. (output_field%settings%time_method==time_method_integrated.and.file%next_julian/=-1)) then
                ! This is a time-integrated field that needs to be incremented.
                if (associated(output_field%source_3d)) then
                   output_field%work_3d(:,:,:) = output_field%work_3d + output_field%source_3d
@@ -323,7 +324,7 @@ contains
             ! Perform temporal averaging where required.
             output_field => file%first_field
             do while (associated(output_field))
-               if (output_field%time_method==time_method_mean) then
+               if (output_field%settings%time_method==time_method_mean) then
                   ! This is a time-integrated field that needs to be incremented.
                   if (associated(output_field%source_3d)) then
                      output_field%work_3d(:,:,:) = output_field%work_3d/file%n
@@ -373,7 +374,7 @@ contains
             ! Zero out time-step averaged fields (start of new time step)
             output_field => file%first_field
             do while (associated(output_field))
-               if (output_field%time_method==time_method_mean) then
+               if (output_field%settings%time_method==time_method_mean) then
                   if (associated(output_field%source_3d)) then
                      output_field%work_3d(:,:,:) = 0.0_rk
                   elseif (associated(output_field%source_2d)) then
@@ -447,12 +448,13 @@ contains
       first_file => file
    end subroutine output_manager_add_file
 
-   subroutine process_file(field_manager,path,mapping,title,postfix)
-      type (type_field_manager), target      :: field_manager
-      character(len=*),           intent(in) :: path
-      class (type_dictionary),    intent(in) :: mapping
-      character(len=*),           intent(in) :: title
-      character(len=*), optional, intent(in) :: postfix
+   subroutine process_file(field_manager,path,mapping,title,postfix,default_settings)
+      type (type_field_manager), target                           :: field_manager
+      character(len=*),                                intent(in) :: path
+      class (type_dictionary),                         intent(in) :: mapping
+      character(len=*),                                intent(in) :: title
+      character(len=*),                      optional, intent(in) :: postfix
+      class (type_output_variable_settings), optional, intent(in) :: default_settings
 
       type (type_error),  pointer :: config_error
       class (type_scalar),pointer :: scalar
@@ -586,22 +588,22 @@ contains
       ! Allow specific file implementation to parse additional settings from yaml file.
       call file%configure(mapping)
 
-      call process_group(file,mapping,time_method_instantaneous)
-
+      call process_group(file,mapping,default_settings)
    end subroutine process_file
 
-   recursive subroutine process_group(file,mapping,parent_time_method)
-      class (type_file),      intent(inout) :: file
-      class (type_dictionary),intent(in)    :: mapping
-      integer,                intent(in)    :: parent_time_method
+   recursive subroutine process_group(file,mapping,default_settings)
+      class (type_file),                               intent(inout) :: file
+      class (type_dictionary),                         intent(in)    :: mapping
+      class (type_output_variable_settings), optional, intent(in)    :: default_settings
 
-      class (type_list),pointer :: list
-      type (type_list_item),pointer :: item
-      type (type_error),  pointer :: config_error
-      integer :: default_time_method
-      type (type_key_value_pair),pointer :: pair
+      class (type_list),                     pointer :: list
+      type (type_list_item),                 pointer :: item
+      type (type_error),                     pointer :: config_error
+      class (type_output_variable_settings), pointer :: settings
+      type (type_key_value_pair),            pointer :: pair
 
-      default_time_method = get_time_method(mapping,parent_time_method,'process_group')
+      settings => file%create_settings()
+      call settings%initialize(mapping, default_settings)
 
       ! Get list with groups [if any]
       list => mapping%get_list('groups',required=.false.,error=config_error)
@@ -611,7 +613,7 @@ contains
          do while (associated(item))
             select type (node=>item%node)
                class is (type_dictionary)
-                  call process_group(file, node, default_time_method)
+                  call process_group(file, node, settings)
                class default
                   call host%fatal_error('process_group','Elements below '//trim(list%path)//' must be dictionaries.')
             end select
@@ -626,7 +628,7 @@ contains
       do while (associated(item))
          select type (node=>item%node)
             class is (type_dictionary)
-               call process_variable(file, node, default_time_method)
+               call process_variable(file, node, settings)
             class default
                call host%fatal_error('process_group','Elements below '//trim(list%path)//' must be dictionaries.')
          end select
@@ -639,16 +641,18 @@ contains
          if (.not.pair%accessed) call host%fatal_error('process_group','key '//trim(pair%key)//' below '//trim(mapping%path)//' not recognized.')
          pair => pair%next
       end do
+
+      deallocate(settings)
    end subroutine process_group
 
-   subroutine process_variable(file,mapping,default_time_method)
-      class (type_file),      intent(inout) :: file
-      class (type_dictionary),intent(in)    :: mapping
-      integer,                intent(in)    :: default_time_method
+   subroutine process_variable(file,mapping,default_settings)
+      class (type_file),                    intent(inout) :: file
+      class (type_dictionary),              intent(in)    :: mapping
+      class (type_output_variable_settings),intent(in)    :: default_settings
 
       character(len=string_length) :: source_name
       type (type_error),        pointer :: config_error
-      class (type_output_item),pointer  :: output_item
+      class (type_output_category),pointer  :: output_category
       class (type_output_field),pointer :: output_field
       integer                           :: n
       type (type_key_value_pair),pointer :: pair
@@ -660,46 +664,43 @@ contains
       ! Determine whether to create an output field or an output category
       n = len_trim(source_name)
       if (source_name(n:n)=='*') then
-         allocate(type_output_category::output_item)
-      else
-         output_item => file%create_field()
-      end if
+         allocate(output_category)
+         output_category%settings => file%create_settings()
+         call output_category%settings%initialize(mapping, default_settings)
 
-      ! Time method
-      output_item%time_method = get_time_method(mapping,default_time_method,'process_variable')
-
-      select type (output_item)
-      class is (type_output_field)
-         ! Select this variable for output in the field manager.
-         output_item%source => file%field_manager%select_for_output(source_name)
-
-         ! Name of output variable (may differ from source name)
-         output_item%output_name = mapping%get_string('name',default=source_name,error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
-
-         output_field => output_item
-         call file%append(output_field)
-      class is (type_output_category)
          if (n==1) then
-            output_item%name = ''
+            output_category%name = ''
          else
-            output_item%name = source_name(:n-2)
+            output_category%name = source_name(:n-2)
          end if
 
          ! Prefix for output name
-         output_item%prefix = mapping%get_string('prefix',default='',error=config_error)
+         output_category%prefix = mapping%get_string('prefix',default='',error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
          ! Postfix for output name
-         output_item%postfix = mapping%get_string('postfix',default='',error=config_error)
+         output_category%postfix = mapping%get_string('postfix',default='',error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
          ! Output level
-         output_item%output_level = mapping%get_integer('output_level',default=output_level_default,error=config_error)
+         output_category%output_level = mapping%get_integer('output_level',default=output_level_default,error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
-         call file%append_category(output_item)
-      end select
+         call file%append_category(output_category)
+      else
+         output_field => file%create_field()
+         output_field%settings => file%create_settings()
+         call output_field%settings%initialize(mapping, default_settings)
+
+         ! Select this variable for output in the field manager.
+         output_field%source => file%field_manager%select_for_output(source_name)
+
+         ! Name of output variable (may differ from source name)
+         output_field%output_name = mapping%get_string('name',default=source_name,error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
+
+         call file%append(output_field)
+      end if
 
       ! Raise error if any keys are left unused.
       pair => mapping%first
@@ -709,33 +710,5 @@ contains
       end do
 
    end subroutine process_variable
-
-   function get_time_method(mapping,default,caller) result(method)
-      class (type_dictionary),intent(in) :: mapping
-      integer,                intent(in) :: default
-      character(len=*),       intent(in) :: caller
-      integer :: method
-
-      type (type_error),  pointer :: config_error
-      class (type_scalar),pointer :: scalar
-      logical                     :: success
-
-      method = default
-      scalar => mapping%get_scalar('time_method',required=.false.,error=config_error)
-      if (associated(config_error)) call host%fatal_error(caller,config_error%message)
-      if (.not.associated(scalar)) return
-      select case (scalar%string)
-      case ('mean')
-         method = time_method_mean
-      case ('point','instantaneous')
-         method = time_method_instantaneous
-      case ('integrated')
-         method = time_method_integrated
-      case default
-         method = scalar%to_integer(default,success)
-         if (.not.success.or.method<0.or.method>3) call host%fatal_error(caller, trim(scalar%path)//' is set to "' &
-            //trim(scalar%string)//'", which is not a supported value. Supported: point (1), mean (2), integrated (3).')
-      end select
-   end function get_time_method
 
 end module

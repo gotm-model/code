@@ -7,7 +7,7 @@ module output_manager_core
 
    implicit none
 
-   public type_output_item,type_output_category,type_output_field, type_file, write_time_string, read_time_string, host, type_host, type_output_dimension
+   public type_output_variable_settings,type_output_category,type_output_field, type_file, write_time_string, read_time_string, host, type_host, type_output_dimension
 
    private
 
@@ -55,11 +55,14 @@ module output_manager_core
       end subroutine
    end interface
 
-   type type_output_item
+   type type_output_variable_settings
       integer :: time_method = time_method_instantaneous
+   contains
+      procedure :: initialize => output_variable_settings_initialize
    end type
 
-   type,extends(type_output_item) ::  type_output_category
+   type type_output_category
+      class (type_output_variable_settings), pointer :: settings => null()
       character(len=string_length)         :: name = ''
       character(len=string_length)         :: prefix = ''
       character(len=string_length)         :: postfix = ''
@@ -72,7 +75,8 @@ module output_manager_core
       class (type_output_field), pointer :: p => null()
    end type
 
-   type,extends(type_output_item) :: type_output_field
+   type type_output_field
+      class (type_output_variable_settings), pointer :: settings => null()
       character(len=string_length) :: output_name = ''
       type (type_field),pointer    :: source => null()
 
@@ -135,6 +139,7 @@ module output_manager_core
       procedure :: save
       procedure :: finalize
       procedure :: create_field
+      procedure :: create_settings
       procedure :: is_dimension_used
       procedure :: find
       procedure :: append
@@ -161,6 +166,12 @@ contains
       class (type_output_field), pointer :: field
       allocate(field)
    end function create_field
+
+   function create_settings(self) result(settings)
+      class (type_file),intent(inout) :: self
+      class (type_output_variable_settings), pointer :: settings
+      allocate(settings)
+   end function create_settings
 
    subroutine save(self,julianday,secondsofday,microseconds)
       class (type_file),intent(inout) :: self
@@ -254,7 +265,7 @@ contains
       current => self%first_field
       do while (associated(current))
          if (current%output_name==output_field%output_name) then
-            if (current%time_method==output_field%time_method .and. associated(current%source,output_field%source)) then
+            if (current%settings%time_method==output_field%settings%time_method .and. associated(current%source,output_field%source)) then
                ! The exact same output field already exists. Deallocate the new field and return a pointer to the old.
                deallocate(output_field)
                output_field => current
@@ -309,5 +320,35 @@ contains
       output_dimension%stop = dim%length
       output_dimension%global_stop = dim%global_length
    end function get_dimension
+
+   subroutine output_variable_settings_initialize(self,mapping,parent)
+      use yaml_types
+
+      class (type_output_variable_settings),intent(inout)       :: self
+      class (type_dictionary), intent(in)          :: mapping
+      class (type_output_variable_settings),intent(in),optional :: parent
+
+      type (type_error),  pointer :: config_error
+      class (type_scalar),pointer :: scalar
+      logical                     :: success
+
+      if (present(parent)) self%time_method = parent%time_method
+
+      scalar => mapping%get_scalar('time_method',required=.false.,error=config_error)
+      if (associated(config_error)) call host%fatal_error('output_item_initialize',config_error%message)
+      if (.not.associated(scalar)) return
+      select case (scalar%string)
+      case ('mean')
+         self%time_method = time_method_mean
+      case ('point','instantaneous')
+         self%time_method = time_method_instantaneous
+      case ('integrated')
+         self%time_method = time_method_integrated
+      case default
+         self%time_method = scalar%to_integer(self%time_method,success)
+         if (.not.success.or.self%time_method<0.or.self%time_method>3) call host%fatal_error('output_item_initialize', trim(scalar%path)//' is set to "' &
+            //trim(scalar%string)//'", which is not a supported value. Supported: point (1), mean (2), integrated (3).')
+      end select
+   end subroutine output_variable_settings_initialize
 
 end module output_manager_core
