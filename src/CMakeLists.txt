@@ -26,7 +26,11 @@ set(GIT_BRANCH_NAME unknown)
 configure_file("${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in" gotm_version.F90)
 
 # Create a custom target for generating version  information (only if GOTM_EMBED_VERSION is on)
-option(GOTM_EMBED_VERSION "Embed GOTM version information" OFF)
+if(MSVC)
+  option(GOTM_EMBED_VERSION "Embed GOTM version information" OFF)
+else(MSVC)
+  option(GOTM_EMBED_VERSION "Embed GOTM version information" ON)
+endif(MSVC)
 if(GOTM_EMBED_VERSION)
   add_custom_target(version
     ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/util/gotm_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
