@@ -162,12 +162,14 @@ module field_manager
       procedure :: send_data_3d
       procedure :: send_data_by_name_0d
       procedure :: send_data_by_name_1d
+      procedure :: send_data_by_name_2d
+      procedure :: send_data_by_name_3d
       procedure :: select_for_output
       procedure :: select_category_for_output
       procedure :: register_dimension
       procedure :: find_dimension
       procedure :: find_category
-      generic :: send_data => send_data_0d,send_data_1d,send_data_2d,send_data_3d,send_data_by_name_0d,send_data_by_name_1d
+      generic :: send_data => send_data_0d,send_data_1d,send_data_2d,send_data_3d,send_data_by_name_0d,send_data_by_name_1d,send_data_by_name_2d,send_data_by_name_3d
    end type type_field_manager
 
 contains
@@ -818,6 +820,30 @@ contains
       if (.not.associated(field)) call fatal_error('send_data_by_name_1d','Field "'//trim(name)//'" has not been registered.')
       call self%send_data_1d(field,data)
    end subroutine send_data_by_name_1d
+
+   subroutine send_data_by_name_2d(self, name, data)
+      class (type_field_manager),intent(inout) :: self
+      character(len=*),          intent(in)    :: name
+      real(rk),target                          :: data(:,:)
+
+      type (type_field), pointer :: field
+
+      field => self%find(name)
+      if (.not.associated(field)) call fatal_error('send_data_by_name_2d','Field "'//trim(name)//'" has not been registered.')
+      call self%send_data_2d(field,data)
+   end subroutine send_data_by_name_2d
+
+   subroutine send_data_by_name_3d(self, name, data)
+      class (type_field_manager),intent(inout) :: self
+      character(len=*),          intent(in)    :: name
+      real(rk),target                          :: data(:,:,:)
+
+      type (type_field), pointer :: field
+
+      field => self%find(name)
+      if (.not.associated(field)) call fatal_error('send_data_by_name_3d','Field "'//trim(name)//'" has not been registered.')
+      call self%send_data_3d(field,data)
+   end subroutine send_data_by_name_3d
 
    subroutine check_sent_data(field,extents)
       type (type_field), intent(inout) :: field
