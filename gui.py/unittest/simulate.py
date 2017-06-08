@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import sys,tempfile,os,hashlib,cPickle
-sys.path.append(os.path.join(__file__,'..'))
+sys.path.append(os.path.join(os.path.dirname(__file__),'..'))
 import xmlstore.datatypes,core.scenario,core.simulator
 
 def run(scenariopath):

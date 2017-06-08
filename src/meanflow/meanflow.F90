@@ -27,7 +27,7 @@
    logical, public                              :: init_buoyancy
 
 !  coordinate z, layer thicknesses
-   REALTYPE, public, dimension(:), allocatable, target  :: ga,z,h,ho
+   REALTYPE, public, dimension(:), allocatable, target  :: ga,z,z1,h,ho
 
 !  the velocity components
    REALTYPE, public, dimension(:), allocatable, target  :: u,v,w
@@ -239,6 +239,10 @@
    allocate(z(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (z)'
    z = _ZERO_
+
+   allocate(z1(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (z1)'
+   z1 = _ZERO_
 
    allocate(h(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (h)'

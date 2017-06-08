@@ -149,9 +149,6 @@
 #ifdef SEDIMENT
       LEVEL1 'SEDIMENT'
 #endif
-#ifdef _FLEXIBLE_OUTPUT_
-      LEVEL1 '_FLEXIBLE_OUTPUT_'
-#endif
       STDERR LINE
    end subroutine compilation_options
 

@@ -1,5 +1,16 @@
 #include "cppdefs.h"
+
+! The preprocessor macro INTERPOLATE_METEO defined below activates temporal interpolation
+! of meteo forcing variables (wind speed, air temperature, etc.) The alternative to this
+! is interpolation of heat/momentum fluxes: if INTERPOLATE_METEO is not defined,
+! GOTM will compute the heat/momentum fluxes for each time in the meteo file, and
+! interpolate those fluxes in time instead. However, the fluxes will in that case be
+! based on a sea state that lags one meteo time step behind the meteo data - GOTM
+! must read one meteo time step ahead to enable interpolation, and will compute fluxes
+! at the time of the read. This lagged sea state can cause problems, particularly if
+! the meteo time step is large. Hence, we recommend interpolation of the meteo data.
 #define INTERPOLATE_METEO 1
+
 !-----------------------------------------------------------------------
 !BOP
 !

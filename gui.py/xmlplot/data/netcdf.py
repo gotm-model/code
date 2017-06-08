@@ -1469,6 +1469,10 @@ class NetCDFStore_GOTM(NetCDFStore):
                     addvar(self.store.hname)
                     addvar(self.store.elevname)
 
+                    centercoord = self.dimname
+                    if self.dimname.endswith('_stag'): centercoord = centercoord[:-5]
+                    if centercoord == 'z1': dim2length[self.store.depthdim] = self.store.getDimensionLength('z1')[0]
+
                     # Order dimensions
                     for v in nc.variables.values():
                         if all([d in v.dimensions for d in dims]): break
@@ -1483,8 +1487,6 @@ class NetCDFStore_GOTM(NetCDFStore):
 
                     # Rename depth dimension
                     self.izdim = self.cacheddims.index(self.store.depthdim)
-                    centercoord = self.dimname
-                    if self.dimname.endswith('_stag'): centercoord = centercoord[:-5]
                     dimname = self.store.depth2coord.get(centercoord,centercoord)
                     if self.dimname.endswith('_stag'): dimname = dimname+'_stag'
                     self.cacheddims[self.izdim] = dimname
@@ -1642,46 +1644,57 @@ class NetCDFStore_GOTM(NetCDFStore):
                             bath = bath.filled(min(bath.min(),-elev.max()))
 
                     return bath,mask
-                    
+
                 # Depth can be reconstructed in three ways:
                 # elevations + layer heights (GOTM)
                 # bathymetry + layer heights (GETM, no sigma coordinates)
                 # bathymetry + elevations + sigma (GETM, sigma coordinates)
-                
+
                 if self.store.bathymetryname is None:
                     # GOTM: reconstruct from elevations + layer heights
 
                     # Get elevations
                     elev,mask = getElevations(mask)
-                    
+
                     # Get layer heights.
                     h,mask = getLayerHeights(mask)
-                    
+
                     # Get depths of interfaces
                     z_stag = numpy.concatenate((numpy.zeros_like(h.take((0,),axis=izdim)),h.cumsum(axis=izdim)),axis=izdim)
                     depth = z_stag.take((-1,),axis=izdim)-elev
                     z_stag -= depth
-                    
+
                     # Get depths of layer centers
                     z = takezrange(z_stag,1)-0.5*h
-                    
-                    # The actual interface coordinate z1 lacks the bottom interface
-                    z1 = takezrange(z_stag,1)
-                    
+
+                    z_len, z1_len = self.store.getDimensionLength('z')[0], self.store.getDimensionLength('z1')[0]
+                    assert z_len == z1_len or z_len+1 == z1_len, 'z1 dimension must be equal in length to z dimension, or be one longer (z1: %i, z: %i).' % (z1_len, z_len)
+                    if z_len == z1_len:
+                        # Interface variables exclude the bottom interface
+                        z1 = takezrange(z_stag,1)
+                    else:
+                        # Interface variables include the bottom interface
+                        z1 = z_stag
+
                     # Store depth coordinates
                     data['z']  = z
                     data['z1'] = z1
-                    
+
                     if bounds is None or self.dimname in ('z_stag','z1_stag'):
                         # Use the actual top and bottom of the column as boundary interfaces for the
                         # grid of the interface coordinate.
-                        z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),axis=izdim),takezrange(z,1),numpy.take(z_stag,(-1,),axis=izdim)),axis=izdim)
-                        
+                        if z_len == z1_len:
+                            # Interface variables exclude the bottom interface
+                            z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),axis=izdim),takezrange(z,1),numpy.take(z_stag,(-1,),axis=izdim)),axis=izdim)
+                        else:
+                            # Interface variables include the bottom interface
+                            z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),axis=izdim),z,numpy.take(z_stag,(-1,),axis=izdim)),axis=izdim)
+
                         # Use normal staggering for the time, longitude and latitude dimension.
                         remdims = [i for i in range(z_stag.ndim) if i!=izdim]
                         data['z_stag']  = xmlplot.common.stagger(z_stag, remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
                         data['z1_stag'] = xmlplot.common.stagger(z1_stag,remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
-                        
+
                 elif self.store.hname is not None:
                     # GETM (no sigma coordinates): reconstruct from bathymetry and layer heights
                 

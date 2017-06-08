@@ -54,7 +54,7 @@
 ! !USES:
    use meanflow,     only: grid_ready
    use meanflow,     only: depth0,depth
-   use meanflow,     only: ga,z,h,ho,ddu,ddl,grid_method
+   use meanflow,     only: ga,z,z1,h,ho,ddu,ddl,grid_method
    use meanflow,     only: grid_file,w
    use observations, only: zeta_method,w_adv_method
    use observations, only: w_adv,w_height
@@ -190,6 +190,10 @@
    z(1)=-depth0+0.5*h(1)
    do i=2,nlev
       z(i)=z(i-1)+0.5*(h(i-1)+h(i))
+   end do
+   z1(0)=-depth0
+   do i=1,nlev
+      z1(i)=z1(i-1)+h(i)
    end do
 
 !  Vertical velocity calculation:

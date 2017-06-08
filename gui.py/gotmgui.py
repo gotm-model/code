@@ -37,8 +37,8 @@ def getVersions():
     if xmlplot.data.netcdf.selectednetcdfmodule is None: xmlplot.data.chooseNetCDFModule()
     yield xmlplot.data.netcdf.netcdfmodules[xmlplot.data.netcdf.selectednetcdfmodule]
 
-    import gotm
-    yield ('gotm',gotm.gui_util.getversion().rstrip())
+    import pygotm
+    yield ('gotm',pygotm.get_version())
 
 class GOTMWizard(commonqt.Wizard):
     """Customized wizard dialog that show the GOTM logo at the top of the wizard window,
@@ -102,7 +102,7 @@ class GOTMWizard(commonqt.Wizard):
         layout = QtGui.QVBoxLayout()
 
         label = QtGui.QLabel( \
-            """<p>GOTM-GUI was developed by <a href="mailto:jorn.bruggeman@xs4all.nl">Jorn Bruggeman</a> from funding by <a href="http://www.bolding-burchard.com">Bolding & Burchard</a>.</p>
+            """<p>GOTM-GUI is developed by <a href="http://www.bolding-bruggeman.com">Bolding & Bruggeman</a> (formerly Bolding & Burchard).</p>
 
 <p>This program is licensed under the <a href="http://www.gnu.org">GNU General Public License</a>.</p>
 
@@ -270,7 +270,7 @@ class PageIntroduction(commonqt.WizardPage):
 
 <p>For any questions, please consult <a href="http://www.gotm.net">www.gotm.net</a> or write an email to <a href="mailto:gotm-users@googlegroups.com">gotm-users@googlegroups.com</a> - subscription required.</p>
 
-<p>GOTM-GUI was developed by <a href="mailto:jorn.bruggeman@xs4all.nl">Jorn Bruggeman</a> from funding by <a href="http://www.bolding-burchard.com">Bolding & Burchard</a>.</p>
+<p>GOTM-GUI is developed by <a href="http://www.bolding-bruggeman.com">Bolding & Bruggeman</a> (formerly Bolding & Burchard).</p>
 
 <p>This program is licensed under the <a href="http://www.gnu.org">GNU General Public License</a>.</p>
 """,self)
