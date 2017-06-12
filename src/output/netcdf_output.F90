@@ -8,6 +8,7 @@ module netcdf_output
    implicit none
 
    public type_netcdf_file, NF90_FLOAT, NF90_DOUBLE
+   public type_netcdf_variable_settings
 
    private
 
