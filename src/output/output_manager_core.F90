@@ -298,6 +298,7 @@ contains
       class (type_output_category), target :: output_category
 
       ! Select this category for output in the field manager.
+      if (.not.associated(output_category%settings)) output_category%settings => self%create_settings()
       output_category%source => self%field_manager%select_category_for_output(output_category%name,output_category%output_level)
 
       ! Prepend to list of output categories.
