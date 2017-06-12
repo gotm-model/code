@@ -199,17 +199,22 @@ contains
                            yy,'-',mm,'-',dd,hh,':',min,':',ss
    end subroutine write_time_string
 
-   subroutine read_time_string(timestr,jul,secs)
+   subroutine read_time_string(timestr,jul,secs,success)
       character(len=19)    :: timestr
       integer, intent(out) :: jul,secs
+      logical, intent(out) :: success
 
+      integer   :: ios
       character :: c1,c2,c3,c4
       integer   :: yy,mm,dd,hh,min,ss
 
-      read(timestr,'(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)')  &
+      read(timestr,'(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)',iostat=ios)  &
                           yy,c1,mm,c2,dd,hh,c3,min,c4,ss
-      call host%julian_day(yy,mm,dd,jul)
-      secs = 3600*hh + 60*min + ss
+      success = ios == 0
+      if (ios==0) then
+         call host%julian_day(yy,mm,dd,jul)
+         secs = 3600*hh + 60*min + ss
+      end if
    end subroutine read_time_string
 
    subroutine host_fatal_error(self,location,error)

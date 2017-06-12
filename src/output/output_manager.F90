@@ -456,10 +456,11 @@ contains
       character(len=*),                      optional, intent(in) :: postfix
       class (type_output_variable_settings), optional, intent(in) :: default_settings
 
-      type (type_error),  pointer :: config_error
-      class (type_scalar),pointer :: scalar
-      class (type_file),pointer :: file
+      type (type_error),   pointer :: config_error
+      class (type_scalar), pointer :: scalar
+      class (type_file),   pointer :: file
       character(len=string_length) :: string
+      logical                      :: success
 
       type (type_dimension),       pointer :: dim
       type (type_output_dimension),pointer :: output_dim
@@ -520,14 +521,20 @@ contains
       if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
 
       ! Determine time of first output (default to start of simulation)
-      string = mapping%get_string('time_start',default='',error=config_error)
+      scalar => mapping%get_scalar('time_start',required=.false.,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-      if (string/='') call read_time_string(trim(string),file%first_julian,file%first_seconds)
+      if (associated(scalar)) then
+         call read_time_string(trim(scalar%string),file%first_julian,file%first_seconds,success)
+         if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
+      end if
 
       ! Determine time of last output (default: save until simulation ends)
-      string = mapping%get_string('time_stop',default='',error=config_error)
+      scalar => mapping%get_scalar('time_stop',required=.false.,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-      if (string/='') call read_time_string(trim(string),file%last_julian,file%last_seconds)
+      if (associated(scalar)) then
+         call read_time_string(trim(scalar%string),file%last_julian,file%last_seconds,success)
+         if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
+      end if
 
       ! Determine dimension ranges
       dim => field_manager%first_dimension
