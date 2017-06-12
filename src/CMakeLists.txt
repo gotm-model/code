@@ -287,6 +287,7 @@ add_library(meanflow
             meanflow/uequation.F90
             meanflow/updategrid.F90
             meanflow/vequation.F90
+            meanflow/wequation.F90
            )
 target_link_libraries(meanflow util observations airsea)
 set(GOTM_LIBS ${GOTM_LIBS} meanflow)

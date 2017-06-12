@@ -49,7 +49,7 @@
    integer, public                     :: ncid
 
 !  dimension ids
-   integer                             :: lon_dim,lat_dim,z_dim,z1_dim
+   integer                             :: lon_dim,lat_dim,z_dim,zi_dim
    integer                             :: time_dim
    integer                             :: dim1d(1)
    integer                             :: dim3d(3)
@@ -69,7 +69,7 @@
    integer                   :: depth_len
    integer, parameter        :: time_len=NF90_UNLIMITED
 !  variable ids
-   integer, private          :: lon_id,lat_id,z_id,z1_id,time_id
+   integer, private          :: lon_id,lat_id,z_id,zi_id,time_id
    integer, private          :: u10_id,v10_id
    integer, private          :: airp_id,airt_id
    integer, private          :: hum_id,cloud_id
@@ -167,7 +167,7 @@
    iret = nf90_def_dim(ncid, 'z', nlev, z_dim)
    call check_err(iret)
    if( .not. GrADS ) then
-      iret = nf90_def_dim(ncid, 'z1', nlev, z1_dim)
+      iret = nf90_def_dim(ncid, 'zi', nlev, zi_dim)
       call check_err(iret)
    end if
    iret = nf90_def_dim(ncid, 'time', time_len, time_dim)
@@ -184,8 +184,8 @@
    iret = nf90_def_var(ncid,'z',NCDF_FLOAT_PRECISION,dim1d,z_id)
    call check_err(iret)
    if( .not. GrADS ) then
-      dim1d = z1_dim
-      iret = nf90_def_var(ncid,'z1',NCDF_FLOAT_PRECISION,dim1d,z1_id)
+      dim1d = zi_dim
+      iret = nf90_def_var(ncid,'zi',NCDF_FLOAT_PRECISION,dim1d,zi_id)
       call check_err(iret)
    end if
    dim1d = time_dim
@@ -306,7 +306,7 @@
    iret = nf90_def_var(ncid,'sigma_t_obs',NCDF_FLOAT_PRECISION,dim4d,sigma_t_obs_id)
    call check_err(iret)
    if( .not. GrADS ) then
-      dim4d(3) = z1_dim
+      dim4d(3) = zi_dim
    end if
    iret = nf90_def_var(ncid,'num',NCDF_FLOAT_PRECISION,dim4d,num_id)
    call check_err(iret)
@@ -385,7 +385,7 @@
    iret = set_attributes(ncid,lon_id,units='degrees_east')
    iret = set_attributes(ncid,lat_id,units='degrees_north')
    iret = set_attributes(ncid,z_id,units='meters')
-   iret = set_attributes(ncid,z1_id,units='meters')
+   iret = set_attributes(ncid,zi_id,units='meters')
 
    select case (ncdf_time_unit)
       case(0)                           ! seconds
@@ -463,7 +463,7 @@
    iret = set_attributes(ncid,NN_obs_id,units='1/s2',long_name='observed buoyancy frequency')
    iret = set_attributes(ncid,sigma_t_obs_id,units='kg/m3',long_name='observed sigma_t')
 
-!  x,y,z1,t
+!  x,y,zi,t
    iret = set_attributes(ncid,num_id,units='m2/s',long_name='viscosity')
    iret = set_attributes(ncid,nuh_id,units='m2/s',long_name='heat diffusivity')
    iret = set_attributes(ncid,nus_id,units='m2/s',long_name='salt diffusivity')
@@ -586,7 +586,7 @@
          do i=2,nlev
             dum(i)=dum(i-1)+h(i)
          end do
-         iret = store_data(ncid,z1_id,Z_SHAPE,nlev,array=dum)
+         iret = store_data(ncid,zi_id,Z_SHAPE,nlev,array=dum)
       end if
       set_no = 0
       first = .false.
@@ -696,7 +696,7 @@
    dum(1:nlev)=-dum(1:nlev)*rho_0/gravity+rho_0-1000.
    iret = store_data(ncid,sigma_t_obs_id,XYZT_SHAPE,nlev,array=dum)
 
-!  Time varying profile data : x,y,z1,t
+!  Time varying profile data : x,y,zi,t
    iret = store_data(ncid,num_id,XYZT_SHAPE,nlev,array=num)
    iret = store_data(ncid,nuh_id,XYZT_SHAPE,nlev,array=nuh)
    iret = store_data(ncid,nus_id,XYZT_SHAPE,nlev,array=nus)
