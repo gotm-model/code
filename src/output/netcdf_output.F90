@@ -3,13 +3,12 @@ module netcdf_output
    use field_manager
    use output_manager_core
    use netcdf
-   use yaml_types, only: type_dictionary, type_error
+   use yaml_types, only: type_dictionary, type_error, type_scalar
 
    implicit none
 
    public type_netcdf_file, NF90_FLOAT, NF90_DOUBLE
    public type_netcdf_variable_settings
-
 
    private
 
@@ -49,12 +48,16 @@ contains
       class (type_dictionary), intent(in)    :: mapping
 
       type (type_error),  pointer :: config_error
-      character(len=string_length) :: string
+      class (type_scalar),pointer :: scalar
+      logical                     :: success
 
       ! Determine time of first output (default to start of simulation)
-      string = mapping%get_string('time_reference',default='',error=config_error)
+      scalar => mapping%get_scalar('time_reference',required=.false.,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-      if (string/='') call read_time_string(trim(string),self%reference_julian,self%reference_seconds)
+      if (associated(scalar)) then
+         call read_time_string(trim(scalar%string),self%reference_julian,self%reference_seconds,success)
+         if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
+      end if
 
       ! Determine interval between calls to nf90_sync (default: after every output)
       self%sync_interval = mapping%get_integer('sync_interval',default=1,error=config_error)

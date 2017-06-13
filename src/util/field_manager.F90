@@ -26,7 +26,7 @@ module field_manager
    integer, parameter, public :: id_dim_lon  = 1
    integer, parameter, public :: id_dim_lat  = 2
    integer, parameter, public :: id_dim_z    = 3
-   integer, parameter, public :: id_dim_z1   = 4
+   integer, parameter, public :: id_dim_zi   = 4
    integer, parameter, public :: id_dim_time = 5
    integer, parameter, public :: id_dim_unused = 20   ! First free id for user-specified dimensions
 
@@ -219,7 +219,7 @@ contains
          dim%iterator = 'j'
       case (id_dim_z)
          dim%iterator = 'k'
-      case (id_dim_z1)
+      case (id_dim_zi)
          dim%iterator = 'k1'
       end select
 
