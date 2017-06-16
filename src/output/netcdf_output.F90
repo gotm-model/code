@@ -1,9 +1,9 @@
 module netcdf_output
-#ifdef NETCDF_FMT
    use field_manager
    use output_manager_core
-   use netcdf
    use yaml_types, only: type_dictionary, type_error, type_scalar
+#ifdef NETCDF_FMT
+   use netcdf
 
    implicit none
 
