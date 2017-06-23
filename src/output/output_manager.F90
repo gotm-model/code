@@ -470,132 +470,136 @@ contains
       character(len=*), parameter :: default_format = 'netcdf'
 #else
       character(len=*), parameter :: default_format = 'text'
-#endif      
-
-      string = mapping%get_string('format',default=default_format,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-      select case (string)
-      case ('netcdf')
-#ifdef NETCDF_FMT
-         allocate(type_netcdf_file::file)
-#else
-         call host%fatal_error('process_file','Error parsing output.yaml: "netcdf" specified for format of output file "'//trim(path)//'", but GOTM has been compiled without NetCDF support. Valid options are: text.')
 #endif
-      case ('text')
-         allocate(type_text_file::file)
-      case default
-         call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(string)//'" specified for format of output file "'//trim(path)//'". Valid options are: netcdf, text.')
-      end select
+      logical                              :: is_active
 
-      ! Create file object and prepend to list.
-      file%path = path
-      if (present(postfix)) file%postfix = postfix
-      call output_manager_add_file(field_manager,file)
-
-      ! Can be used for CF global attributes
-      file%title = mapping%get_string('title',default=title,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-
-      ! Determine time unit
-      scalar => mapping%get_scalar('time_unit',required=.true.,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-      select case (scalar%string)
-         case ('second')
-            file%time_unit = time_unit_second
-         case ('hour')
-            file%time_unit = time_unit_hour
-         case ('day')
-            file%time_unit = time_unit_day
-         case ('month')
-            file%time_unit = time_unit_month
-         case ('year')
-            file%time_unit = time_unit_year
-         case ('dt')
-            file%time_unit = time_unit_dt
+      is_active = mapping%get_logical('is_active',default=.true.,error=config_error)
+      if (is_active) then
+         string = mapping%get_string('format',default=default_format,error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+         select case (string)
+         case ('netcdf')
+#ifdef NETCDF_FMT
+            allocate(type_netcdf_file::file)
+#else
+            call host%fatal_error('process_file','Error parsing output.yaml: "netcdf" specified for format of output file "'//trim(path)//'", but GOTM has been compiled without NetCDF support. Valid options are: text.')
+#endif
+         case ('text')
+            allocate(type_text_file::file)
          case default
-            call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for time_unit of output file "'//trim(path)//'". Valid options are second, day, month, year.')
-      end select
+            call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(string)//'" specified for format of output file "'//trim(path)//'". Valid options are: netcdf, text.')
+         end select
 
-      ! Determine time step
-      file%time_step = mapping%get_integer('time_step',error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+         ! Create file object and prepend to list.
+         file%path = path
+         if (present(postfix)) file%postfix = postfix
+         call output_manager_add_file(field_manager,file)
 
-      ! Determine time of first output (default to start of simulation)
-      scalar => mapping%get_scalar('time_start',required=.false.,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-      if (associated(scalar)) then
-         call read_time_string(trim(scalar%string),file%first_julian,file%first_seconds,success)
-         if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
-      end if
+         ! Can be used for CF global attributes
+         file%title = mapping%get_string('title',default=title,error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
 
-      ! Determine time of last output (default: save until simulation ends)
-      scalar => mapping%get_scalar('time_stop',required=.false.,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-      if (associated(scalar)) then
-         call read_time_string(trim(scalar%string),file%last_julian,file%last_seconds,success)
-         if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
-      end if
+         ! Determine time unit
+         scalar => mapping%get_scalar('time_unit',required=.true.,error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+         select case (scalar%string)
+            case ('second')
+               file%time_unit = time_unit_second
+            case ('hour')
+               file%time_unit = time_unit_hour
+            case ('day')
+               file%time_unit = time_unit_day
+            case ('month')
+               file%time_unit = time_unit_month
+            case ('year')
+               file%time_unit = time_unit_year
+            case ('dt')
+               file%time_unit = time_unit_dt
+            case default
+               call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for time_unit of output file "'//trim(path)//'". Valid options are second, day, month, year.')
+         end select
 
-      ! Determine dimension ranges
-      dim => field_manager%first_dimension
-      do while (associated(dim))
-         if (dim%iterator/='') then
-            write (strmax,'(i0)') dim%global_length
-            output_dim => file%get_dimension(dim)
-            output_dim%global_start = mapping%get_integer(trim(dim%iterator)//'_start',default=1,error=config_error)
-            if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-            if (output_dim%global_start<0.or.output_dim%global_start>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 0 and '//trim(strmax))
-            output_dim%global_stop = mapping%get_integer(trim(dim%iterator)//'_stop',default=dim%global_length,error=config_error)
-            if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-            if (output_dim%global_stop<1.or.output_dim%global_stop>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))
-            if (output_dim%global_start>output_dim%global_stop) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
-            output_dim%stride = mapping%get_integer(trim(dim%iterator)//'_stride',default=1,error=config_error)
-            if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-            if (output_dim%stride<1) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stride must be larger than 0.')
+         ! Determine time step
+         file%time_step = mapping%get_integer('time_step',error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
 
-            ! Reduce stop to last point that is actually included (due to stride>1)
-            output_dim%global_stop = output_dim%global_stop - mod(output_dim%global_stop-output_dim%global_start,output_dim%stride)
+         ! Determine time of first output (default to start of simulation)
+         scalar => mapping%get_scalar('time_start',required=.false.,error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+         if (associated(scalar)) then
+            call read_time_string(trim(scalar%string),file%first_julian,file%first_seconds,success)
+            if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
+         end if
 
-            ! Compute local [i.e., within-subdomain] start and stop positons from global positions and local offset.
-            if (output_dim%global_start>dim%offset+dim%length) then
-               ! Start point lies beyond our subdomain
-               output_dim%start = 1
-               output_dim%stop = output_dim%start - output_dim%stride
-            else
-               if (output_dim%global_start>dim%offset) then
-                  ! Starting point lies within our subdomain
-                  output_dim%start = output_dim%global_start - dim%offset
-               else
-                  ! Starting point lies before our subdomain: we start immediately but have to account for stride
+         ! Determine time of last output (default: save until simulation ends)
+         scalar => mapping%get_scalar('time_stop',required=.false.,error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+         if (associated(scalar)) then
+            call read_time_string(trim(scalar%string),file%last_julian,file%last_seconds,success)
+            if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
+         end if
 
-                  ! Determine distance between subdomain start and nearest included point outside the domain.
-                  distance = mod(dim%offset + 1 - output_dim%global_start, output_dim%stride)
+         ! Determine dimension ranges
+         dim => field_manager%first_dimension
+         do while (associated(dim))
+            if (dim%iterator/='') then
+               write (strmax,'(i0)') dim%global_length
+               output_dim => file%get_dimension(dim)
+               output_dim%global_start = mapping%get_integer(trim(dim%iterator)//'_start',default=1,error=config_error)
+               if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+               if (output_dim%global_start<0.or.output_dim%global_start>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 0 and '//trim(strmax))
+               output_dim%global_stop = mapping%get_integer(trim(dim%iterator)//'_stop',default=dim%global_length,error=config_error)
+               if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+               if (output_dim%global_stop<1.or.output_dim%global_stop>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))
+               if (output_dim%global_start>output_dim%global_stop) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
+               output_dim%stride = mapping%get_integer(trim(dim%iterator)//'_stride',default=1,error=config_error)
+               if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+               if (output_dim%stride<1) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stride must be larger than 0.')
 
-                  ! Convert to distance to next point within the domain
-                  if (distance>0) distance = output_dim%stride - distance
-                  output_dim%start = 1 + distance
-               end if
+               ! Reduce stop to last point that is actually included (due to stride>1)
+               output_dim%global_stop = output_dim%global_stop - mod(output_dim%global_stop-output_dim%global_start,output_dim%stride)
 
-               ! Determine local stop by subtracting subdomain offset [maximum is subdomain length)
-               output_dim%stop = min(output_dim%global_stop - dim%offset, dim%length)
-
-               if (output_dim%stop<output_dim%start) then
-                  ! stop precedes start, so we have 0 length, i.e.,
-                  ! length = (output_dimension%stop-output_dimension%start)/output_dimension%stride + 1 = 0
+               ! Compute local [i.e., within-subdomain] start and stop positons from global positions and local offset.
+               if (output_dim%global_start>dim%offset+dim%length) then
+                  ! Start point lies beyond our subdomain
+                  output_dim%start = 1
                   output_dim%stop = output_dim%start - output_dim%stride
                else
-                  ! Reduce stop to last point that is actually included (due to stride>1)
-                  output_dim%stop = output_dim%stop - mod(output_dim%stop-output_dim%start,output_dim%stride)
+                  if (output_dim%global_start>dim%offset) then
+                     ! Starting point lies within our subdomain
+                     output_dim%start = output_dim%global_start - dim%offset
+                  else
+                     ! Starting point lies before our subdomain: we start immediately but have to account for stride
+
+                     ! Determine distance between subdomain start and nearest included point outside the domain.
+                     distance = mod(dim%offset + 1 - output_dim%global_start, output_dim%stride)
+
+                     ! Convert to distance to next point within the domain
+                     if (distance>0) distance = output_dim%stride - distance
+                     output_dim%start = 1 + distance
+                  end if
+
+                  ! Determine local stop by subtracting subdomain offset [maximum is subdomain length)
+                  output_dim%stop = min(output_dim%global_stop - dim%offset, dim%length)
+
+                  if (output_dim%stop<output_dim%start) then
+                     ! stop precedes start, so we have 0 length, i.e.,
+                     ! length = (output_dimension%stop-output_dimension%start)/output_dimension%stride + 1 = 0
+                     output_dim%stop = output_dim%start - output_dim%stride
+                  else
+                     ! Reduce stop to last point that is actually included (due to stride>1)
+                     output_dim%stop = output_dim%stop - mod(output_dim%stop-output_dim%start,output_dim%stride)
+                  end if
                end if
             end if
-         end if
-         dim => dim%next
-      end do
+            dim => dim%next
+         end do
 
-      ! Allow specific file implementation to parse additional settings from yaml file.
-      call file%configure(mapping)
+         ! Allow specific file implementation to parse additional settings from yaml file.
+         call file%configure(mapping)
 
-      call process_group(file,mapping,default_settings)
+         call process_group(file,mapping,default_settings)
+      end if
    end subroutine process_file
 
    recursive subroutine process_group(file,mapping,default_settings)
