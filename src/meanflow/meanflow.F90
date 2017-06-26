@@ -400,6 +400,7 @@
    LEVEL2 'de-allocation meanflow memory ...'
    if (allocated(ga)) deallocate(ga)
    if (allocated(z)) deallocate(z)
+   if (allocated(zi)) deallocate(zi)
    if (allocated(h)) deallocate(h)
    if (allocated(ho)) deallocate(ho)
    if (allocated(u)) deallocate(u)
