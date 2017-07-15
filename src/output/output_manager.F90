@@ -73,6 +73,7 @@ contains
             deallocate(member)
             member => next_member
          end do
+         nullify(set%first)
          output_category => output_category%next
       end do
    end subroutine collect_from_categories
