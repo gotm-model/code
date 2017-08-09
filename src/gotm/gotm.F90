@@ -35,13 +35,11 @@
 ! !USES:
    use field_manager
    use register_all_variables, only: do_register_all_variables, fm
-#if defined(_FLEXIBLE_OUTPUT_)
-   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host
+   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_category
    use output_manager
+   use netcdf_output
+   use text_output
    use diagnostics
-#else
-   use output
-#endif
 
    use meanflow
    use input
@@ -80,9 +78,6 @@
    use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm_input,only:init_gotm_fabm_input
-#if !defined(_FLEXIBLE_OUTPUT_)
-   use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output,clean_gotm_fabm_output
-#endif
 #endif
 
    use hypsograph, only: lake,init_hypsograph,clean_hypsograph
@@ -119,13 +114,11 @@
    character(len=80)         :: name
    REALTYPE,target           :: latitude,longitude
 
-#if defined(_FLEXIBLE_OUTPUT_)
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
       procedure :: julian_day => gotm_host_julian_day
       procedure :: calendar_date => gotm_host_calendar_date
    end type
-#endif
 !
 !-----------------------------------------------------------------------
 
@@ -161,16 +154,28 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                             :: out_fmt
+   character(len=PATH_MAX)             :: out_dir
+   character(len=PATH_MAX)             :: out_fn
+   integer                             :: nfirst,nsave
+   integer                             :: sync_out
+   logical                             :: diagnostics
+   integer                             :: mld_method
+   REALTYPE                            :: diff_k
+   REALTYPE                            :: Ri_crit
+   logical                             :: rad_corr
+
    namelist /model_setup/ title,nlev,dt,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
-#if !defined(_FLEXIBLE_OUTPUT_)
    namelist /output/      list_fields, &
                           out_fmt,out_dir,out_fn,nfirst,nsave,sync_out, &
                           diagnostics,mld_method,diff_k,Ri_crit,rad_corr
-#endif
    logical          ::    list_fields=.false.
    integer          ::    rc
+   logical          ::    file_exists
+   class (type_output_manager_file), pointer :: outfile
+   class (type_output_category),     pointer :: output_category
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -184,21 +189,6 @@
    zeta = _ZERO_
    w_adv_method = 0
 
-#if !defined(_FLEXIBLE_OUTPUT_)
-!  Initialize namelist parameters to reasonable defaults.
-   out_fmt     = ASCII
-   out_dir     = '.'
-   out_fn      = 'gotm'
-   nfirst      = 0
-   nsave       = 1
-   sync_out    = 1
-   diagnostics = .false.
-   mld_method  = 1
-   diff_k      = 1.e-5
-   Ri_crit     = 0.5
-   rad_corr    = .true.
-#endif
-
 !  open the namelist file.
    LEVEL2 'reading model setup namelists..'
    open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
@@ -206,13 +196,66 @@
    read(namlst,nml=model_setup,err=91)
    read(namlst,nml=station,err=92)
    read(namlst,nml=time,err=93)
-#if !defined(_FLEXIBLE_OUTPUT_)
-   read(namlst,nml=output,err=94)
 
-   if (sync_out .lt. 0) then
-      sync_out = 0
-   end if
+   ! Initialize field manager
+   call fm%register_dimension('lon',1,id=id_dim_lon)
+   call fm%register_dimension('lat',1,id=id_dim_lat)
+   call fm%register_dimension('z',nlev,id=id_dim_z)
+   call fm%register_dimension('zi',nlev+1,id=id_dim_zi)
+   call fm%register_dimension('time',id=id_dim_time)
+   call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
+
+   allocate(type_gotm_host::output_manager_host)
+   call output_manager_init(fm,title)
+
+   inquire(file='output.yaml',exist=file_exists)
+   if (.not.file_exists) then
+      ! output.yaml not found - try to read deprecated output namelist from gotmrun.nml
+      out_fmt     = ASCII
+      out_dir     = '.'
+      out_fn      = 'gotm'
+      nfirst      = 0
+      nsave       = 1
+      sync_out    = 1
+      diagnostics = .false.
+      mld_method  = 1
+      diff_k      = 1.e-5
+      Ri_crit     = 0.5
+      rad_corr    = .true.
+
+      read(namlst,nml=output,err=94)
+
+#ifndef NETCDF_FMT
+      if (out_fmt == NETCDF) then
+         LEVEL1 'Warning: out_fmt is set to 2 (NetCDF output), but GOTM has been compiled without NetCDF support. Forcing out_fmt=1 (text).'
+         out_fmt = ASCII
+      end if
 #endif
+
+      select case (out_fmt)
+      case (ASCII)
+         allocate(type_text_file::outfile)
+      case (NETCDF)
+#ifdef NETCDF_FMT
+         allocate(type_netcdf_file::outfile)
+         select type (outfile)
+         class is (type_netcdf_file)
+            if (sync_out <= 0) then
+               outfile%sync_interval = -1
+            else
+               outfile%sync_interval = sync_out
+            end if
+         end select
+#endif
+      end select
+      outfile%path = trim(out_dir)//'/'//trim(out_fn)
+      outfile%title = trim(title)
+      outfile%time_unit = time_unit_second
+      outfile%time_step = dt*nsave
+      call output_manager_add_file(fm,outfile)
+      allocate(output_category)
+      call outfile%append_category(output_category)
+   end if
 
    LEVEL2 'done.'
 
@@ -242,7 +285,7 @@
 
 !  initialise each of the extra features/modules
 #ifdef SEAGRASS
-   call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h)
+   call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
 #endif
 #ifdef SPM
    call init_spm(namlst,'spm.nml',unit_spm,nlev)
@@ -273,12 +316,7 @@
    call init_air_sea(namlst,latitude,longitude)
 
    call do_register_all_variables(latitude,longitude,nlev)
-#if defined(_FLEXIBLE_OUTPUT_)
-   allocate(type_gotm_host::output_manager_host)
-   call output_manager_init(fm,title)
-#else
-   call init_output(title,nlev,latitude,longitude)
-#endif
+!   call init_output(title,nlev,latitude,longitude)
 
 !  initialize FABM module
 #ifdef _FABM_
@@ -311,7 +349,7 @@
    call do_input(julianday,secondsofday,nlev,z)
 
 !  Call stratification to make sure density has sensible value.
-!  This is needed to ensure the initial density is saved correctly by do_all_output, and also for FABM.
+!  This is needed to ensure the initial density is saved correctly, and also for FABM.
    call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
 
 #ifdef _FABM_
@@ -320,13 +358,6 @@
 !     Initialize FABM initial state (this is done after the first call to do_input,
 !     to allow user-specified observed values to be used as initial state)
       call init_gotm_fabm_state(nlev)
-
-#if !defined(_FLEXIBLE_OUTPUT_)
-!     Initialize FABM output (creates NetCDF variables)
-!     This should be done after init_gotm_fabm_state is called, so the output module can compute
-!     initial conserved quantity integrals.
-      call init_gotm_fabm_output(nlev)
-#endif
    end if
 
 #endif
@@ -404,15 +435,8 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-#if !defined(_FLEXIBLE_OUTPUT_)
    LEVEL1 'saving initial conditions'
-   call prepare_output(0_timestepkind)
-   if (write_results) then
-      call do_all_output(0_timestepkind)
-   end if
-#else
-   call output_manager_save(julianday,secondsofday,0)
-#endif
+   call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
    STDERR LINE
    LEVEL1 'time_loop'
    progress = (MaxN-MinN+1)/10
@@ -431,9 +455,6 @@
 
 !     prepare time and output
       call update_time(n)
-#if !defined(_FLEXIBLE_OUTPUT_)
-      call prepare_output(n)
-#endif
 
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
@@ -524,67 +545,14 @@
 # endif
       end select
 
-#if !defined(_FLEXIBLE_OUTPUT_)
-!     do the output
-      if (write_results) then
-         call do_all_output(n)
-      end if
-!     diagnostic output
-      if(diagnostics) then
-         call do_diagnostics(n,nlev,buoy_method,dt,u_taus,u_taub,I_0,heat)
-      end if
-#else
       call do_diagnostics(nlev)
-      call output_manager_save(julianday,secondsofday,int(n))
-#endif
+      call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),int(n))
 
    end do
    STDERR LINE
 
    return
    end subroutine time_loop
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: A wrapper for doing all output.
-!
-! !INTERFACE:
-   subroutine do_all_output(n)
-!
-! !DESCRIPTION:
-! This function is just a wrapper for all output routines
-!
-! !USES:
-   IMPLICIT NONE
-!
- !INPUT PARAMETERS:
-   integer(kind=timestepkind), intent(in)   :: n
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   if (turb_method .ne. 99) then
-      call variances(nlev,SSU,SSV)
-   endif
-#if !defined(_FLEXIBLE_OUTPUT_)
-   call do_output(n,nlev)
-#ifdef SEAGRASS
-   if (seagrass_calc) call save_seagrass()
-#endif
-#ifdef SPM
-   if (spm_calc) call spm_save(nlev)
-#endif
-#ifdef _FABM_
-   call do_gotm_fabm_output(nlev,initial=n==0_timestepkind)
-#endif
-#endif
-
-   end subroutine do_all_output
 !EOC
 
 !-----------------------------------------------------------------------
@@ -615,10 +583,6 @@
 
    LEVEL1 'clean_up'
 
-#if !defined(_FLEXIBLE_OUTPUT_)
-   call close_output()
-#endif
-
    call clean_air_sea()
 
    call clean_hypsograph()
@@ -639,16 +603,11 @@
 
 #ifdef _FABM_
    call clean_gotm_fabm()
-#if !defined(_FLEXIBLE_OUTPUT_)
-   call clean_gotm_fabm_output()
-#endif
 #endif
 
    call close_input()
 
-#if defined(_FLEXIBLE_OUTPUT_)
    call output_manager_clean()
-#endif
 
    call fm%finalize()
 
@@ -701,7 +660,6 @@
 !EOC
 #endif
 
-#if defined(_FLEXIBLE_OUTPUT_)
    subroutine gotm_host_julian_day(self,yyyy,mm,dd,julian)
       class (type_gotm_host), intent(in) :: self
       integer, intent(in)  :: yyyy,mm,dd
@@ -715,7 +673,6 @@
       integer, intent(out) :: yyyy,mm,dd
       call calendar_date(julian,yyyy,mm,dd)
    end subroutine
-#endif
 
 !-----------------------------------------------------------------------
 

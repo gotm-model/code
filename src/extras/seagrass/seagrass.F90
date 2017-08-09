@@ -21,6 +21,7 @@
 
 !
 ! !USES:
+   IMPLICIT NONE
 !
 !  default: all is private.
    private
@@ -43,6 +44,7 @@
    integer                   :: out_unit
    integer                   :: maxn
 
+   REALTYPE, parameter       :: miss_val = -999.0  
 !EOP
 !-----------------------------------------------------------------------
 
@@ -54,7 +56,7 @@
 ! !IROUTINE: Initialise the sea grass module
 !
 ! !INTERFACE:
-   subroutine init_seagrass(namlst,fname,unit,nlev,h)
+   subroutine init_seagrass(namlst,fname,unit,nlev,h,fm)
 !
 ! !DESCRIPTION:
 ! Here, the seagrass namelist {\tt seagrass.nml} is read
@@ -64,7 +66,7 @@
 ! for the seagrass canopy is then calculated.
 !
 ! !USES:
-   IMPLICIT NONE
+   use field_manager
 !
 ! !INPUT PARAMETERS:
    integer,          intent(in)   :: namlst
@@ -72,6 +74,7 @@
    integer,          intent(in)   :: unit
    integer,          intent(in)   :: nlev
    REALTYPE,         intent(in)   :: h(0:nlev)
+   type (type_field_manager), intent(inout) :: fm
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -136,8 +139,13 @@
          if (grassz(grassn).gt.z) grassind=i
       end do
 
-
       close(unit)
+
+      xx(grassind+1:nlev) = miss_val
+      yy(grassind+1:nlev) = miss_val
+
+      call fm%register('x_excur', 'm', 'seagrass excursion(x)', dimensions=(/id_dim_z/), data1d=xx(1:nlev), fill_value=miss_val, category='seagrass')
+      call fm%register('y_excur', 'm', 'seagrass excursion(y)', dimensions=(/id_dim_z/), data1d=yy(1:nlev), fill_value=miss_val, category='seagrass')
 
       LEVEL2 'seagrass initialised ...'
 
@@ -217,7 +225,6 @@
 !
 ! !USES:
    use meanflow, only:     u,v,h,drag,xP
-   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)     :: nlev
@@ -286,6 +293,7 @@
 !  Here, storing of the seagrass profiles to an ascii or a
 !  netCDF file is managed.
 !
+#ifndef _FLEXIBLE_OUTPUT_
 ! !USES:
    use meanflow, only:     h
    use output, only: out_fmt,ascii_unit
@@ -295,7 +303,6 @@
    use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dim4d
    use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
 #endif
-   IMPLICIT NONE
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -304,7 +311,6 @@
    integer, save             :: x_excur_id,y_excur_id,n
    integer                   :: i,iret
    REALTYPE                  :: zz
-   REALTYPE, parameter       :: miss_val = -999.0
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -337,8 +343,6 @@
             n = ubound(xx,1)
             init_output = .false.
          end if
-         xx(grassind+1:maxn)=miss_val
-         yy(grassind+1:maxn)=miss_val
          iret = store_data(ncid,x_excur_id,XYZT_SHAPE,n,array=xx)
          iret = store_data(ncid,y_excur_id,XYZT_SHAPE,n,array=yy)
 #endif
@@ -349,6 +353,7 @@
 110 format(3(1x,A12))
 111 format(3(1x,E12.3E2))
    return
+#endif
    end subroutine save_seagrass
 !EOC
 
@@ -364,7 +369,6 @@
 !  Nothing done yet --- supplied for completeness.
 !
 ! !USES:
-   IMPLICIT NONE
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard

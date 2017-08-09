@@ -465,7 +465,7 @@
          end if
       end do
       do i=1,size(model%surface_state_variables)
-         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i))
+         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i))
       end do
 
       check_conservation = .false.
@@ -711,9 +711,16 @@
    ! Call fabm_do here to make sure diagnostic variables all have an initial value.
    ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
    rhs = _ZERO_
+#if 0
+! This is how it is called in the master repository - does this matter Jorn?
+      call fabm_do_bottom(model,rhs(1,:),bottom_flux)
+      call fabm_do_surface(model,rhs(nlev,:))
+      call fabm_do(model,1,nlev,rhs)
+#else
    call fabm_do(model,1,nlev,rhs)
    call fabm_do_surface(model,rhs(nlev,:))
    call fabm_do_bottom(model,rhs(1,:),bottom_flux)
+#endif
 
    ! Obtain current values of diagnostic variables from FABM.
    do i=1,size(model%horizontal_diagnostic_variables)
@@ -1377,6 +1384,13 @@
       end if
    end do
 
+   ! Relax bottom-attached variables to observed values, if specified in fabm_input.nml.
+   do i=1,size(model%bottom_state_variables)
+      if (associated(cc_ben_obs(i)%data)) then
+         if (cc_ben_obs(i)%relax_tau < 1.e15_rk) rhs(1,n+i) = rhs(1,n+i) + (cc_ben_obs(i)%data - cc(1,n+i))/cc_ben_obs(i)%relax_tau
+      end if
+   end do
+
    if (.not.no_surface) then
       ! Calculate temporal derivatives due to surface processes (e.g. gas exchange, ice algae).
       call fabm_do_surface(model,rhs(nlev,1:n),rhs(nlev,n+size(model%bottom_state_variables)+1:))
@@ -1869,7 +1883,7 @@
 !BOC
    FATAL trim(location)//': '//trim(message)
    stop 1
-   end subroutine
+   end subroutine gotm_driver_fatal_error
 !EOC
 
 !-----------------------------------------------------------------------

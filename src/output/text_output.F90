@@ -162,9 +162,9 @@ contains
       end do
    end subroutine initialize
 
-   subroutine save(self,julianday,secondsofday)
+   subroutine save(self,julianday,secondsofday,microseconds)
       class (type_text_file),intent(inout) :: self
-      integer,               intent(in)    :: julianday,secondsofday
+      integer,               intent(in)    :: julianday,secondsofday,microseconds
 
       character(len=19)                      :: timestr
       class (type_single_text_file), pointer :: current_file

@@ -32,12 +32,15 @@ find_path(NetCDF_INCLUDE_DIRS netcdf.mod
           HINTS ${GOTMDIR}/extras/netcdf/win32/3.6.3/include ENV NetCDFINC
           DOC "NetCDF include directory")
 
+list(LENGTH NetCDF_LIBRARIES LIBCOUNT)
+if(LIBCOUNT EQUAL 1)
 get_filename_component(NetCDF_LIBRARIES_full ${NetCDF_LIBRARIES} ABSOLUTE)
 get_filename_component(NetCDF_LIBRARIES_default_full "${GOTMDIR}/extras/netcdf/win32/3.6.3/lib/netcdfs.lib" ABSOLUTE)
 if(MSVC AND NetCDF_LIBRARIES_full STREQUAL NetCDF_LIBRARIES_default_full)
   # Win32 NetCDF library provided with GOTM is statically built against release libraries.
   # Dependent projects need to do the same in release mode to prevent linking conflicts.
   set(NetCDF_STATIC_MSVC_BUILD TRUE)
+endif()
 endif()
 
 else()
