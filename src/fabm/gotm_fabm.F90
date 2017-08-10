@@ -153,7 +153,6 @@
 
    logical :: bottom_everywhere
    integer :: kmax_bot
-!BOP
 
 !-----------------------------------------------------------------------
 
@@ -193,7 +192,6 @@
                             repair_state,no_precipitation_dilution,                  &
                             salinity_relaxation_to_freshwater_flux,save_inputs, &
                             no_surface,configuration_method,bottom_everywhere
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -419,7 +417,6 @@
    integer                   :: i,rc,output_level
    logical                   :: used
    type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -632,26 +629,240 @@
    end subroutine init_var_gotm_fabm
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
    subroutine register_field(field_manager,variable,prefix,dimensions,data0d,data1d,used)
-      class (type_field_manager),     intent(inout) :: field_manager
-      class (type_external_variable), intent(in)    :: variable
-      character(len=*),optional,      intent(in)    :: prefix
-      integer,         optional,      intent(in)    :: dimensions(:)
-      real(rk),target, optional                     :: data0d, data1d(:)
-      logical,         optional,      intent(out)   :: used
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT/OUTPUT PARAMETERS:
 
-      integer :: output_level
-      character(len=8) :: prefix_
-
-      output_level = output_level_default
-      prefix_ = ''
-      if (variable%output==output_none) output_level = output_level_debug
-      if (present(prefix)) prefix_ = prefix
-      call field_manager%register(trim(prefix_)//variable%name, variable%units, variable%long_name, &
-         minimum=variable%minimum, maximum=variable%maximum, fill_value=variable%missing_value, &
-         dimensions=dimensions, data0d=data0d, data1d=data1d, category='fabm'//variable%target%owner%get_path(), &
-         output_level=output_level, used=used)
+   class (type_field_manager),     intent(inout) :: field_manager
+   class (type_external_variable), intent(in)    :: variable
+   character(len=*),optional,      intent(in)    :: prefix
+   integer,         optional,      intent(in)    :: dimensions(:)
+   real(rk),target, optional                     :: data0d, data1d(:)
+   logical,         optional,      intent(out)   :: used 
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer :: output_level
+   character(len=8) :: prefix_
+!EOP
+!-----------------------------------------------------------------------
+!EOC
+   output_level = output_level_default
+   prefix_ = '' 
+   if (variable%output==output_none) output_level = output_level_debug
+   if (present(prefix)) prefix_ = prefix
+   call field_manager%register(trim(prefix_)//variable%name, variable%units, variable%long_name, &
+      minimum=variable%minimum, maximum=variable%maximum, fill_value=variable%missing_value, &
+      dimensions=dimensions, data0d=data0d, data1d=data1d, category='fabm'//variable%target%owner%get_path(), &
+      output_level=output_level, used=used)
    end subroutine register_field
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine register_scalar_observation(scalar_id,data)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT/OUTPUT PARAMETERS:
+   type(type_scalar_variable_id),intent(inout) :: scalar_id
+   REALTYPE,target                    :: data
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   call fabm_link_scalar_data(model,scalar_id,data)
+   end subroutine register_scalar_observation
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine register_bulk_observation(id,data,relax_tau)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT/OUTPUT PARAMETERS:
+   type(type_bulk_variable_id),intent(inout) :: id
+   REALTYPE,target,dimension(0:) :: data,relax_tau
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer                         :: i
+   character(len=attribute_length) :: varname
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   varname = fabm_get_variable_name(model,id)
+   do i=1,size(model%state_variables)
+      if (varname==model%state_variables(i)%name) then
+         ! This is a state variable. Register the link between the state variable and the observations.
+         cc_obs(i)%data => data
+         cc_obs(i)%relax_tau => relax_tau
+         return
+      end if
+   end do
+   call fabm_link_bulk_data(model,id,data(1:))
+   end subroutine register_bulk_observation
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine register_horizontal_observation(horizontal_id,data,relax_tau)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT PARAMETERS:
+   REALTYPE, target                 :: data,relax_tau
+!
+! !INPUT/OUTPUT PARAMETERS:
+   type(type_horizontal_variable_id),intent(inout) :: horizontal_id
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer                         :: i
+   character(len=attribute_length) :: varname
+!EOP
+!-----------------------------------------------------------------------!
+!BOC
+   varname = fabm_get_variable_name(model,horizontal_id)
+   do i=1,size(model%bottom_state_variables)
+      if (varname==model%bottom_state_variables(i)%name) then
+         ! This is a state variable. Register the link between the state variable and the observations.
+         cc_ben_obs(i)%data => data
+         cc_ben_obs(i)%relax_tau => relax_tau
+         return
+      end if
+   end do
+   call fabm_link_horizontal_data(model,horizontal_id,data)
+   end subroutine register_horizontal_observation
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine register_stream(name,QI,Q)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT PARAMETERS:
+   character(len=*),intent(in) :: name
+   REALTYPE,target             :: QI,Q(:)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   type (type_stream),pointer :: stream
+   integer :: rc
+!
+!EOP
+!-----------------------------------------------------------------------!
+!BOC
+   ! Start stream list, or append stream if list exists.
+   if (associated(first_stream)) then
+      stream => first_stream
+      do while (associated(stream%next))
+         stream => stream%next
+      end do
+      allocate(stream%next)
+      stream => stream%next
+   else
+      allocate(first_stream)
+      stream => first_stream
+   end if
+
+   stream%name = name
+   stream%QI => QI
+   stream%Q => Q
+   allocate(stream%cc(1:size(model%state_variables)),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (stream%cc)'
+   end subroutine register_stream
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine register_stream_concentration(id,stream_name,data)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT PARAMETERS:
+   type(type_bulk_variable_id),intent(in) :: id
+   character(len=*),intent(in)            :: stream_name
+   REALTYPE,target                        :: data
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer                     :: i
+   character(len=64)           :: varname
+   type (type_stream), pointer :: curstream,stream
+!
+!EOP
+!-----------------------------------------------------------------------!
+!BOC
+   ! Find associated stream (needs to be registered beforehand with register_stream)
+   nullify(stream)
+   curstream => first_stream
+   do while (associated(curstream))
+      if (curstream%name==stream_name) stream => curstream
+      curstream => curstream%next
+   end do
+   if (.not.associated(stream)) stop 'gotm_fabm:register_stream_concentration: stream was not registered with register_stream'
+
+   ! Find associated state variable
+   varname = fabm_get_variable_name(model,id)
+   do i=1,size(model%state_variables)
+      if (varname==model%state_variables(i)%name) then
+         stream%cc(i)%data => data
+         return
+      end if
+   end do
+   stop 'register_stream: state variable not found'
+   end subroutine register_stream_concentration
+!EOC
 
 !-----------------------------------------------------------------------
 !BOP
@@ -673,9 +884,9 @@
 ! !LOCAL VARIABLES:
    integer :: i,k
    REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
-!
 !EOP
-!-----------------------------------------------------------------------!
+
+!-----------------------------------------------------------------------
 !BOC
    call fabm_check_ready(model)
    fabm_ready = .true.
@@ -939,7 +1150,6 @@
    integer(8)                :: clock_start,clock_end
    type (type_stream),pointer :: stream
    REALTYPE                  :: stream_conc
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1215,11 +1425,7 @@
       expression => expression%next
    end do
 
-!-----------------------------------------------------------------------!
-
    contains
-
-!-----------------------------------------------------------------------!
 
    REALTYPE function calculate_vertical_mean(expression)
    class (type_vertical_integral),intent(in) :: expression
@@ -1277,7 +1483,6 @@
 ! !LOCAL VARIABLES:
    logical :: valid,tmpvalid
    integer :: i,k
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1334,7 +1539,6 @@
 ! !LOCAL VARIABLES:
    integer :: i,k,n
    type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1432,7 +1636,6 @@
 !
 ! !LOCAL VARIABLES:
    integer :: i,n
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1499,7 +1702,6 @@
    integer :: i
    REALTYPE :: bioext
    REALTYPE :: localexts(1:nlev)
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1525,200 +1727,6 @@
       if (bioshade_feedback) bioshade(i)=exp(-bioext)
    end do
    end subroutine light
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the FABM driver
-!
-! !INTERFACE:
-   subroutine register_bulk_observation(id,data,relax_tau)
-!
-! !DESCRIPTION:
-! TODO
-!
-! !INPUT/OUTPUT PARAMETERS:
-   type(type_bulk_variable_id),intent(inout) :: id
-   REALTYPE,target,dimension(0:) :: data,relax_tau
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-! !LOCAL VARIABLES:
-   integer                         :: i
-   character(len=attribute_length) :: varname
-!
-!EOP
-!-----------------------------------------------------------------------!
-!BOC
-   varname = fabm_get_variable_name(model,id)
-   do i=1,size(model%state_variables)
-      if (varname==model%state_variables(i)%name) then
-         ! This is a state variable. Register the link between the state variable and the observations.
-         cc_obs(i)%data => data
-         cc_obs(i)%relax_tau => relax_tau
-         return
-      end if
-   end do
-   call fabm_link_bulk_data(model,id,data(1:))
-   end subroutine register_bulk_observation
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the FABM driver
-!
-! !INTERFACE:
-   subroutine register_horizontal_observation(horizontal_id,data,relax_tau)
-!
-! !DESCRIPTION:
-! TODO
-!
-! !INPUT/OUTPUT PARAMETERS:
-   type(type_horizontal_variable_id),intent(inout) :: horizontal_id
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-! !LOCAL VARIABLES:
-   REALTYPE,target                 :: data,relax_tau
-   integer                         :: i
-   character(len=attribute_length) :: varname
-!EOP
-!-----------------------------------------------------------------------!
-!BOC
-   varname = fabm_get_variable_name(model,horizontal_id)
-   do i=1,size(model%bottom_state_variables)
-      if (varname==model%bottom_state_variables(i)%name) then
-         ! This is a state variable. Register the link between the state variable and the observations.
-         cc_ben_obs(i)%data => data
-         cc_ben_obs(i)%relax_tau => relax_tau
-         return
-      end if
-   end do
-   call fabm_link_horizontal_data(model,horizontal_id,data)
-   end subroutine register_horizontal_observation
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the FABM driver
-!
-! !INTERFACE:
-   subroutine register_scalar_observation(scalar_id,data)
-!
-! !DESCRIPTION:
-! TODO
-!
-! !INPUT/OUTPUT PARAMETERS:
-   type(type_scalar_variable_id),intent(inout) :: scalar_id
-   REALTYPE,target                    :: data
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-!EOP
-!-----------------------------------------------------------------------!
-!BOC
-   call fabm_link_scalar_data(model,scalar_id,data)
-   end subroutine register_scalar_observation
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the FABM driver
-!
-! !INTERFACE:
-   subroutine register_stream(name,QI,Q)
-!
-! !DESCRIPTION:
-! TODO
-!
-! !INPUT PARAMETERS:
-   character(len=*),intent(in) :: name
-   REALTYPE,target             :: QI,Q(:)
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-! !LOCAL VARIABLES:
-   type (type_stream),pointer :: stream
-   integer :: rc
-!
-!EOP
-!-----------------------------------------------------------------------!
-!BOC
-   ! Start stream list, or append stream if list exists.
-   if (associated(first_stream)) then
-      stream => first_stream
-      do while (associated(stream%next))
-         stream => stream%next
-      end do
-      allocate(stream%next)
-      stream => stream%next
-   else
-      allocate(first_stream)
-      stream => first_stream
-   end if
-
-   stream%name = name
-   stream%QI => QI
-   stream%Q => Q
-   allocate(stream%cc(1:size(model%state_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (stream%cc)'
-   end subroutine register_stream
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the FABM driver
-!
-! !INTERFACE:
-   subroutine register_stream_concentration(id,stream_name,data)
-!
-! !DESCRIPTION:
-! TODO
-!
-! !INPUT PARAMETERS:
-   type(type_bulk_variable_id),intent(in) :: id
-   character(len=*),intent(in)            :: stream_name
-   REALTYPE,target                        :: data
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-! !LOCAL VARIABLES:
-   integer                     :: i
-   character(len=64)           :: varname
-   type (type_stream), pointer :: curstream,stream
-!
-!EOP
-!-----------------------------------------------------------------------!
-!BOC
-   ! Find associated stream (needs to be registered beforehand with register_stream)
-   nullify(stream)
-   curstream => first_stream
-   do while (associated(curstream))
-      if (curstream%name==stream_name) stream => curstream
-      curstream => curstream%next
-   end do
-   if (.not.associated(stream)) stop 'gotm_fabm:register_stream_concentration: stream was not registered with register_stream'
-
-   ! Find associated state variable
-   varname = fabm_get_variable_name(model,id)
-   do i=1,size(model%state_variables)
-      if (varname==model%state_variables(i)%name) then
-         stream%cc(i)%data => data
-         return
-      end if
-   end do
-   stop 'register_stream: state variable not found'
-   end subroutine register_stream_concentration
 !EOC
 
 !-----------------------------------------------------------------------
@@ -1784,7 +1792,6 @@
 ! !LOCAL VARIABLES:
    integer(8) :: clock,ticks_per_sec
    REALTYPE :: tick_rate
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1912,7 +1919,6 @@
 !EOC
 
 !-----------------------------------------------------------------------
-
    subroutine calculate_conserved_quantities(nlev,total)
       integer, intent(in)  :: nlev
       REALTYPE,intent(out) :: total(:)
@@ -1935,4 +1941,3 @@
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
 !----------------------------------------------------------------------
-
