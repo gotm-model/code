@@ -64,11 +64,7 @@ contains
          do while (associated(member))
             call host%log_message('  - '//trim(member%field%name))
             output_field => file%create_field()
-!KB<<<<<<< HEAD
-!KB            output_field%time_method = output_category%time_method
-!KB=======
             output_field%settings => output_category%settings
-!KB>>>>>>> upstream/master
             output_field%source => member%field
             output_field%output_name = trim(output_category%prefix)//trim(member%field%name)//trim(output_category%postfix)
             call file%append(output_field)
@@ -474,7 +470,7 @@ contains
       character(len=*), parameter :: default_format = 'netcdf'
 #else
       character(len=*), parameter :: default_format = 'text'
-#endif      
+#endif
 
       string = mapping%get_string('format',default=default_format,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
@@ -697,10 +693,6 @@ contains
          output_category%output_level = mapping%get_integer('output_level',default=output_level_default,error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
-!KB<<<<<<< HEAD
-!KB         call file%append_category(output_item)
-!KB      end select
-!KB=======
          call file%append_category(output_category)
       else
          output_field => file%create_field()
@@ -716,7 +708,6 @@ contains
 
          call file%append(output_field)
       end if
-!KB>>>>>>> upstream/master
 
       ! Raise error if any keys are left unused.
       pair => mapping%first
