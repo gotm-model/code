@@ -208,6 +208,7 @@ if(GOTM_USE_FABM)
   endif()
   add_library(gotm_fabm
               fabm/gotm_fabm.F90
+              fabm/gotm_fabm_input.F90
              )
   target_link_libraries(gotm_fabm util ${FABM_LIBRARIES})
   set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
