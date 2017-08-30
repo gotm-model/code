@@ -345,6 +345,7 @@ add_library(gotm
             gotm/gotm.F90
             gotm/diagnostics.F90
             gotm/register_all_variables.F90
+            gotm/deprecated_output.F90
             gotm/print_version.F90
            )
 target_link_libraries(gotm ${GOTM_LIBS})

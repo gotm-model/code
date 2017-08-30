@@ -647,7 +647,7 @@
    character(len=*),optional,      intent(in)    :: prefix
    integer,         optional,      intent(in)    :: dimensions(:)
    real(rk),target, optional                     :: data0d, data1d(:)
-   logical,         optional,      intent(out)   :: used 
+   logical,         optional,      intent(out)   :: used
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -659,7 +659,7 @@
 !-----------------------------------------------------------------------
 !EOC
    output_level = output_level_default
-   prefix_ = '' 
+   prefix_ = ''
    if (variable%output==output_none) output_level = output_level_debug
    if (present(prefix)) prefix_ = prefix
    call field_manager%register(trim(prefix_)//variable%name, variable%units, variable%long_name, &
