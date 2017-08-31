@@ -40,10 +40,15 @@ class statistics(expressions.LazyFunction):
         if weights.ndim==1:
             weights = common.replicateCoordinates(numpy.diff(weights),sourceslice.data,axis)
         else:
-            print weights.shape
             weights = numpy.diff(weights,axis=axis)
-            print weights.shape
-            print sourceslice.data.shape
+            data_ave = []
+            for idim, length in enumerate(weights.shape):
+                if idim != axis and length != 1:
+                    inds = [slice(None)]*weights.ndim
+                    inds[idim] = slice(1, length)
+                    wl = weights[inds]
+                    inds[idim] = slice(0, length-1)
+                    weights = 0.5*(wl+weights[inds])
         
         # Normalize weights so their sum over the dimension to analyze equals one
         summedweights = numpy.ma.array(weights,mask=sourceslice.data.mask,copy=False).sum(axis=axis)
