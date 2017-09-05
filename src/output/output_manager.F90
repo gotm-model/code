@@ -18,8 +18,8 @@ module output_manager
    logical                   :: files_initialized
 
    interface output_manager_save
-      procedure output_manager_save1
-      procedure output_manager_save2
+      module procedure output_manager_save1
+      module procedure output_manager_save2
    end interface
 
 contains
