@@ -94,6 +94,7 @@ module field_manager
       real(rk),pointer             :: data_1d(:)     => null()
       real(rk),pointer             :: data_2d(:,:)   => null()
       real(rk),pointer             :: data_3d(:,:,:) => null()
+      class (type_category_node),pointer :: category => null()
       type (type_field),pointer    :: next           => null()
    contains
       procedure :: has_dimension         => field_has_dimension
@@ -106,6 +107,7 @@ module field_manager
    end type type_field
 
    type,abstract :: type_node
+      class (type_node),pointer :: parent       => null()
       class (type_node),pointer :: first_child  => null()
       class (type_node),pointer :: next_sibling => null()
    contains
@@ -122,6 +124,7 @@ module field_manager
    contains
       procedure :: get_all_fields
       procedure :: has_fields
+      procedure :: get_path => category_get_path
    end type
 
    integer, parameter :: hash_table_size = 256
@@ -405,16 +408,22 @@ contains
       type (type_field), target             :: field
 
       type (type_field_set_member),pointer :: member
+      type (type_field_set_member),pointer :: last
 
+      last => null()
       member => self%first
       do while (associated(member))
          if (associated(member%field,field)) return
+         last => member
          member => member%next
       end do
       allocate(member)
       member%field => field
-      member%next => self%first
-      self%first => member
+      if (associated(last)) then
+         last%next => member
+      else
+         self%first => member
+      end if
    end subroutine field_set_add
 
    subroutine field_set_finalize(self)
@@ -712,6 +721,7 @@ contains
 
       ! If field has not been selected for output yet, do so if its output_level does not exceed that the parent category.
       if (.not.field%in_output) field%in_output = field%output_level<=parent%output_level
+      if (.not.associated(field%category)) field%category => parent
 
       ! Create node with field pointer and add to children of parent.
       allocate(type_field_node::node)
@@ -781,8 +791,8 @@ contains
    end function find_category
 
    subroutine add_to_category(parent,node)
-      type (type_category_node), intent(inout) :: parent
-      class (type_node),         target        :: node
+      type (type_category_node), target, intent(inout) :: parent
+      class (type_node),         target                :: node
 
       class (type_node),         pointer       :: previous_sibling
 
@@ -795,6 +805,7 @@ contains
       else
          parent%first_child => node
       end if
+      node%parent => parent
    end subroutine add_to_category
 
    subroutine send_data_by_name_0d(self, name, data)
@@ -946,6 +957,23 @@ contains
       end do
       self%first_child => null()
    end subroutine node_finalize
+
+   function category_get_path(self) result(path)
+      class (type_category_node), target, intent(in)  :: self
+      character(len=256) :: path
+
+      class (type_node), pointer :: current
+
+      path = trim(self%name)
+      current => self%parent
+      do while (associated(current))
+         select type (current)
+         class is (type_category_node)
+            path = trim(current%name)//'/'//trim(path)
+         end select
+         current => current%parent
+      end do
+   end function category_get_path
 
    integer function hash(str)
       character(len=*), intent(in) :: str
