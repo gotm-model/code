@@ -161,6 +161,7 @@ contains
                if (output_field%source%minimum/=default_minimum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_min',output_field%source%minimum,settings%xtype); call check_err(iret)
                if (output_field%source%maximum/=default_maximum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_max',output_field%source%maximum,settings%xtype); call check_err(iret)
                if (output_field%source%fill_value/=default_fill_value) iret = put_att_typed_real(self%ncid,output_field%varid,'_FillValue',output_field%source%fill_value,settings%xtype); call check_err(iret)
+               if (output_field%source%fill_value/=default_fill_value) iret = put_att_typed_real(self%ncid,output_field%varid,'missing_value',output_field%source%fill_value,settings%xtype); call check_err(iret)
                if (associated(output_field%source%category)) iret = nf90_put_att(self%ncid,output_field%varid,'path',trim(output_field%source%category%get_path())); call check_err(iret)
             end select
             attribute => output_field%source%first_attribute
