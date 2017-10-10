@@ -263,7 +263,15 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+   LEVEL1 'clean_hypsograph'
+
+   LEVEL2 'de-allocation hypsograph memory ...'
+
    if (allocated(Af)) deallocate(Af)
+   if (allocated(sqrt_Af_input)) deallocate(sqrt_Af_input)
+   if (allocated(V_input)) deallocate(V_input)
+
+   LEVEL2 'done'
 
    return
    end subroutine clean_hypsograph

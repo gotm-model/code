@@ -434,6 +434,7 @@
    if (allocated(h)) deallocate(h)
    if (allocated(ho)) deallocate(ho)
    if (allocated(Vc)) deallocate(Vc)
+   if (allocated(Vco)) deallocate(Vco)
    if (allocated(u)) deallocate(u)
    if (allocated(uo)) deallocate(uo)
    if (allocated(v)) deallocate(v)

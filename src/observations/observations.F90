@@ -983,6 +983,14 @@
    if (allocated(vprof)) deallocate(vprof)
    if (allocated(epsprof)) deallocate(epsprof)
    if (allocated(o2_prof)) deallocate(o2_prof)
+   if (allocated(Qs)) deallocate(Qs)
+   if (allocated(Qt)) deallocate(Qt)
+   if (allocated(Ls)) deallocate(Ls)
+   if (allocated(Lt)) deallocate(Lt)
+   if (allocated(Qlayer)) deallocate(Qlayer)
+   if (allocated(Qres)) deallocate(Qres)
+   if (allocated(FQ)) deallocate(FQ)
+   if (allocated(wq)) deallocate(wq)
    LEVEL2 'done.'
 
    end subroutine clean_observations
@@ -1024,6 +1032,7 @@
    if (allocated(epsprof)) LEVEL2 'epsprof',epsprof
    if (allocated(SRelaxTau)) LEVEL2 'SRelaxTau',SRelaxTau
    if (allocated(TRelaxTau)) LEVEL2 'TRelaxTau',TRelaxTau
+
    LEVEL2 'zeta,dpdx,dpdy,h_press',zeta,dpdx,dpdy,h_press
    LEVEL2 'w_adv,w_height',w_adv,w_height
    LEVEL2 'A,g1,g2',A,g1,g2
