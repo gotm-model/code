@@ -27,7 +27,10 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_seagrass, do_seagrass, save_seagrass, end_seagrass
+   public init_seagrass, do_seagrass, end_seagrass
+#ifndef _FLEXIBLE_OUTPUT_
+   public save_seagrass
+#endif
    logical, public                     :: seagrass_calc
 !
 ! !REVISION HISTORY:!
@@ -282,6 +285,7 @@
 !EOC
 
 !-----------------------------------------------------------------------
+#ifndef _FLEXIBLE_OUTPUT_
 !BOP
 !
 ! !IROUTINE: Storing the results
@@ -293,7 +297,6 @@
 !  Here, storing of the seagrass profiles to an ascii or a
 !  netCDF file is managed.
 !
-#ifndef _FLEXIBLE_OUTPUT_
 ! !USES:
    use meanflow, only:     h
    use output, only: out_fmt,ascii_unit
@@ -353,10 +356,10 @@
 110 format(3(1x,A12))
 111 format(3(1x,E12.3E2))
    return
-#endif
+
    end subroutine save_seagrass
 !EOC
-
+#endif
 !-----------------------------------------------------------------------
 !BOP
 !
