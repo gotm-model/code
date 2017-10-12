@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<scenario version="gotm-4.1.0">
+<scenario version="gotm-5.0">
    <gotmrun>
       <model_setup>
          <title></title>
