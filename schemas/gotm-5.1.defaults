@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<scenario version="gotm-4.1.0">
+<scenario version="gotm-5.1">
    <gotmrun>
       <model_setup>
          <title></title>
@@ -63,8 +63,6 @@
          <avmols>1.1e-009</avmols>
          <MaxItz0b>1</MaxItz0b>
          <no_shear>False</no_shear>
-         <hypsograph_file></hypsograph_file>
-         <water_balance_method>1</water_balance_method>
       </meanflow>
    </gotmmean>
    <airsea>
@@ -85,8 +83,8 @@
          <const_albedo>0.</const_albedo>
          <const_swr>0.0</const_swr>
          <swr_file>swr_file.dat</swr_file>
-         <swr_factor>1.0</swr_factor>
          <shf_factor>1.0</shf_factor>
+         <swr_factor>1.0</swr_factor>
          <momentum_method>0</momentum_method>
          <const_tx>0.0</const_tx>
          <const_ty>0.0</const_ty>
@@ -326,43 +324,4 @@
          <XP_rat>1.0</XP_rat>
       </canopy>
    </seagrass>
-   <streams>
-      <stream>
-         <name></name>
-         <method>1</method>
-         <zu>-1.0</zu>
-         <zl>-0.0</zl>
-         <Q_file>Q_file.dat</Q_file>
-         <S_file>S_file.dat</S_file>
-         <T_file>T_file.dat</T_file>
-         <Q_col>1</Q_col>
-         <S_col>1</S_col>
-         <T_col>1</T_col>
-      </stream>
-   </streams>
-   <gotm_fabm>
-      <gotm_fabm_nml>
-         <fabm_calc>False</fabm_calc>
-         <cnpar>1.</cnpar>
-         <w_adv_discr>6</w_adv_discr>
-         <ode_method>1</ode_method>
-         <split_factor>1</split_factor>
-         <bioshade_feedback>False</bioshade_feedback>
-         <bioalbedo_feedback>False</bioalbedo_feedback>
-         <biodrag_feedback>False</biodrag_feedback>
-         <repair_state>False</repair_state>
-         <salinity_relaxation_to_freshwater_flux>False</salinity_relaxation_to_freshwater_flux>
-         <no_precipitation_dilution>False</no_precipitation_dilution>
-         <save_inputs>False</save_inputs>
-         <no_surface>False</no_surface>
-         <configuration_method>-1</configuration_method>
-         <bottom_everywhere>False</bottom_everywhere>
-      </gotm_fabm_nml>
-   </gotm_fabm>
-   <fabm_input>
-      <observations>
-         <index>1</index>
-         <relax_tau>1.e15</relax_tau>
-      </observations>
-   </fabm_input>
 </scenario>
