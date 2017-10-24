@@ -101,7 +101,7 @@
    REALTYPE, public                    :: cori
 
 !  the friction velocities
-   REALTYPE, public                    :: u_taub,u_taus
+   REALTYPE, public                    :: u_taub,u_taubo,u_taus
 
 !  bottom stress
    REALTYPE, public, target            :: taub

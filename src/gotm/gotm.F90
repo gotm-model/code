@@ -279,11 +279,11 @@
    if (hotstart) then
       if (hotstart_offline) then
          call read_restart()
+         call friction(kappa,avmolu,tx,ty)
       end if
       if (hotstart_online) then
       end if
    end if
-   call friction(kappa,avmolu,tx,ty)
 
 !   allocate(type_gotm_host::output_manager_host)
 !   call output_manager_init(fm,title)
