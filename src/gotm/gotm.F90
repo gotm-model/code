@@ -153,14 +153,13 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   namelist /model_setup/ title,nlev,dt,hotstart_offline,hotstart_file, &
+   namelist /model_setup/ title,nlev,dt,hotstart_offline, &
                           cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
    logical          ::    list_fields=.false.
    logical          ::    hotstart_online=.false.
    logical          ::    hotstart_offline = .false.
-   character(LEN=PATH_MAX) :: hotstart_file
    integer          ::    rc
    logical          ::    file_exists
 !-----------------------------------------------------------------------
@@ -226,8 +225,7 @@
    LEVEL2 trim(name)
 
    if (hotstart_offline) then
-      LEVEL2 'Offline hotstart - reading initial data from:'
-      LEVEL3 trim(hotstart_file)
+      LEVEL2 'Offline hotstart - reading initial data from file'
    end if
 
    LEVEL2 'initializing modules....'
