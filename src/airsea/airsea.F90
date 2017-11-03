@@ -134,6 +134,7 @@
 
    character(len=PATH_MAX)   :: meteo_file
    character(len=PATH_MAX)   :: swr_file
+   character(len=PATH_MAX)   :: back_radiation_file
    character(len=PATH_MAX)   :: heatflux_file
    character(len=PATH_MAX)   :: momentumflux_file
    character(len=PATH_MAX)   :: precip_file
@@ -264,6 +265,7 @@
                      rain_impact, &
                      calc_evaporation, &
                      swr_method,albedo_method,const_albedo,const_swr,swr_file,swr_factor, &
+                     back_radiation_file, &
                      shf_factor,const_heat, &
                      heatflux_file, &
                      momentum_method, &
@@ -364,6 +366,7 @@
    const_swr=_ZERO_
    swr_file = ''
    swr_factor=_ONE_
+   back_radiation_file = ''
    shf_factor=_ONE_
    const_heat = _ZERO_
    heatflux_file = ''
@@ -437,6 +440,10 @@
       end select
       LEVEL3 'long-wave back radiation:'
       select case (back_radiation_method)
+         case(0) ! Read from file instead of calculating
+            call register_input_0d(back_radiation_file,1,qb,'long-wave back radiation',scale_factor=_ONE_)
+            LEVEL4 'reading data from:'
+            LEVEL4  trim(back_radiation_file)
          case(1)
             LEVEL4 'using Clark formulation'
          case(2)
@@ -746,8 +753,10 @@
       cloud1 = cloud2
 
       call humidity(hum_method,hum,airp,tw,ta)
-      call back_radiation(back_radiation_method, &
-                          dlat,tw_k,ta_k,cloud,qb)
+      if (back_radiation_method .gt. 0) then
+         call back_radiation(back_radiation_method, &
+                             dlat,tw_k,ta_k,cloud,qb)
+      end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
                          tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
@@ -796,8 +805,10 @@
    end if
 
    call humidity(hum_method,hum,airp,tw,ta)
-   call back_radiation(back_radiation_method, &
-                       dlat,tw_k,ta_k,cloud,qb)
+   if (back_radiation_method .gt. 0) then
+      call back_radiation(back_radiation_method, &
+                          dlat,tw_k,ta_k,cloud,qb)
+   endif
    call airsea_fluxes(fluxes_method, &
                       tw,ta,u10-ssu,v10-ssv,precip,evap,tx,ty,qe,qh)
    heat = (qb+qe+qh)
