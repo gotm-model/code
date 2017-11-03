@@ -70,6 +70,7 @@
          <calc_fluxes>False</calc_fluxes>
          <fluxes_method>1</fluxes_method>
          <back_radiation_method>1</back_radiation_method>
+         <back_radiation_file>qb.dat</back_radiation_file>
          <meteo_file>meteo_file.dat</meteo_file>
          <wind_factor>1.</wind_factor>
          <hum_method>1</hum_method>
