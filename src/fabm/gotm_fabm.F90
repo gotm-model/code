@@ -1821,7 +1821,10 @@
    if (allocated(horizontal_expression_data)) deallocate(horizontal_expression_data)
 
    ! Deallocate work arrays used from do_gotm_fabm.
+   if (allocated(zeros))           deallocate(zeros)
+   if (allocated(ones))            deallocate(ones)
    if (allocated(ws))              deallocate(ws)
+   if (allocated(iweights))        deallocate(iweights)
    if (allocated(sfl))             deallocate(sfl)
    if (allocated(bfl))             deallocate(bfl)
    if (allocated(Qsour))           deallocate(Qsour)
