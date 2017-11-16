@@ -78,24 +78,17 @@ if(GOTM_USE_FABM)
   add_definitions(-D_FABM_)
 endif()
 
-#option(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON)
-#if(GOTM_USE_FLEXIBLE_OUTPUT)
-  add_definitions(-D_FLEXIBLE_OUTPUT_)
-#endif()
-
-#if(NOT GOTM_BUILD_LIBRARIES_ONLY OR GOTM_USE_FLEXIBLE_OUTPUT)
-  option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
-  if(GOTM_USE_NetCDF)
-    find_package(NetCDF REQUIRED)
-    add_definitions(-DNETCDF_FMT -DREAL_4B=real\(4\))
-    include_directories("${NetCDF_INCLUDE_DIRS}")
-    if (NetCDF_STATIC_MSVC_BUILD)
-      # On Windows with a statically-compiled NetCDF library - compile all code against static runtime.
-      # This MUST be done before any targets are added.
-      add_compile_options("/libs:static")
-    endif()
-  endif(GOTM_USE_NetCDF)
-#endif()
+option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
+if(GOTM_USE_NetCDF)
+  find_package(NetCDF REQUIRED)
+  add_definitions(-DNETCDF_FMT -DREAL_4B=real\(4\))
+  include_directories("${NetCDF_INCLUDE_DIRS}")
+  if (NetCDF_STATIC_MSVC_BUILD)
+    # On Windows with a statically-compiled NetCDF library - compile all code against static runtime.
+    # This MUST be done before any targets are added.
+    add_compile_options("/libs:static")
+  endif()
+endif(GOTM_USE_NetCDF)
 
 # Global include directories
 include_directories(BEFORE
@@ -218,26 +211,24 @@ else()
   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
 endif(GOTM_USE_FABM)
 
-#if(GOTM_USE_FLEXIBLE_OUTPUT)
-  if(NOT GOTM_USE_FABM)
-    add_subdirectory(yaml)
-    set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
-    set(YAML_SOURCES $<TARGET_OBJECTS:yaml>)
-  endif()
-  add_library(output_manager
-              ${YAML_SOURCES}
-              output/output_manager.F90
-              output/output_manager_core.F90
-              output/netcdf_output.F90
-              output/text_output.F90
-             )
-  target_link_libraries(output_manager util)
-  if(GOTM_USE_FABM)
-    target_link_libraries(output_manager ${FABM_LIBRARIES})
-    set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  endif()
-  set(GOTM_LIBS ${GOTM_LIBS} output_manager)
-#endif(GOTM_USE_FLEXIBLE_OUTPUT)
+if(NOT GOTM_USE_FABM)
+  add_subdirectory(yaml)
+  set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
+  set(YAML_SOURCES $<TARGET_OBJECTS:yaml>)
+endif()
+add_library(output_manager
+            ${YAML_SOURCES}
+            output/output_manager.F90
+            output/output_manager_core.F90
+            output/netcdf_output.F90
+            output/text_output.F90
+            )
+target_link_libraries(output_manager util)
+if(GOTM_USE_FABM)
+  target_link_libraries(output_manager ${FABM_LIBRARIES})
+  set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+endif()
+set(GOTM_LIBS ${GOTM_LIBS} output_manager)
 
 if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
@@ -293,16 +284,6 @@ add_library(meanflow
 target_link_libraries(meanflow util observations airsea)
 set(GOTM_LIBS ${GOTM_LIBS} meanflow)
 
-#if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
-#  add_library(output
-#              output/asciiout.F90
-#              output/ncdfout.F90
-#              output/output.F90
-#             )
-#  target_link_libraries(output util meanflow turbulence observations airsea)
-#  set(GOTM_LIBS ${GOTM_LIBS} output)
-#endif(NOT GOTM_USE_FLEXIBLE_OUTPUT)
-
 #option(GOTM_USE_ICE "Include ICE support" OFF)
 #if(GOTM_USE_ICE)
 #  add_library(ice OBJECT
@@ -316,24 +297,13 @@ if(GOTM_USE_SEAGRASS)
               extras/seagrass/seagrass.F90
              )
   target_link_libraries(seagrass meanflow)
-  #if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
-  #  target_link_libraries(seagrass output)
-  #endif()
   set(GOTM_LIBS ${GOTM_LIBS} seagrass)
 endif()
 
 if(GOTM_USE_FABM)
-  #if(GOTM_USE_FLEXIBLE_OUTPUT)
-    add_library(gotm_fabm_io
-                fabm/gotm_fabm_input.F90
-               )
-  #else()
-  #  add_library(gotm_fabm_io
-  #              fabm/gotm_fabm_input.F90
-  #              fabm/gotm_fabm_output.F90
-  #             )
-  #  target_link_libraries(gotm_fabm_io output)
-  #endif()
+  add_library(gotm_fabm_io
+              fabm/gotm_fabm_input.F90
+              )
   target_link_libraries(gotm_fabm_io input gotm_fabm)
   set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm_io)
 endif(GOTM_USE_FABM)
