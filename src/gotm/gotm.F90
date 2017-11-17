@@ -73,7 +73,7 @@
    use spm, only: init_spm, set_env_spm, do_spm, end_spm
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
+   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm_input,only:init_gotm_fabm_input
 #endif
@@ -274,21 +274,7 @@
 
    call do_register_all_variables(latitude,longitude,nlev)
 
-   if (hotstart) then
-      if (hotstart_offline) then
-         call read_restart()
-         call friction(kappa,avmolu,tx,ty)
-      end if
-      if (hotstart_online) then
-      end if
-   end if
-
-!   allocate(type_gotm_host::output_manager_host)
-!   call output_manager_init(fm,title)
-   call setup_restart()
-!   call init_output(title,nlev,latitude,longitude)
-
-!  initialize FABM module
+   !  initialize FABM module
 #ifdef _FABM_
 
 !  Initialize the GOTM-FABM coupler from its configuration file.
@@ -315,23 +301,40 @@
    call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
 #endif
 
+   ! Now that all inputs have been registered (FABM added some), update them all by reading from file.
    call do_input(julianday,secondsofday,nlev,z)
+
+#ifdef _FABM_
+!  Initialize FABM initial state (this is done after the first call to do_input,
+!  to allow user-specified observed values to be used as initial state)
+   if (fabm_calc) call init_gotm_fabm_state(nlev)
+#endif
+
+   if (hotstart) then
+      if (hotstart_offline) then
+         call read_restart()
+         call friction(kappa,avmolu,tx,ty)
+      end if
+      if (hotstart_online) then
+      end if
+   end if
+
+!   allocate(type_gotm_host::output_manager_host)
+!   call output_manager_init(fm,title)
+   call setup_restart()
+!   call init_output(title,nlev,latitude,longitude)
+
+#ifdef _FABM_
+!  Accept the current biogeochemical state and used it to compute derived diagnostics.
+   if (fabm_calc) call start_gotm_fabm(nlev)
+#endif
+
    call do_air_sea(julianday,secondsofday)
 
 !  Call stratification to make sure density has sensible value.
 !  This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
    call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
-
-#ifdef _FABM_
-
-   if (fabm_calc) then
-!     Initialize FABM initial state (this is done after the first call to do_input,
-!     to allow user-specified observed values to be used as initial state)
-      call init_gotm_fabm_state(nlev)
-   end if
-
-#endif
 
    if (list_fields) call fm%list()
 
