@@ -398,6 +398,7 @@
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (local)'
    allocate(total0(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (total0)'
+   total0 = huge(_ZERO_)
    allocate(change_in_total(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (change_in_total)'
    change_in_total = 0
@@ -742,6 +743,7 @@
 
    end subroutine init_gotm_fabm_state
    
+!-----------------------------------------------------------------------
 !BOP
 !
 ! !IROUTINE: Accept current biogeochemcal state and compute derived diagnostics
@@ -761,8 +763,11 @@
 ! !LOCAL VARIABLES:
    integer :: i,k
    REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
+   REALTYPE :: total(size(model%conserved_quantities))
 !EOP
 
+!-----------------------------------------------------------------------
+!BOC
    ! Compute pressure, depth, day of the year
    call calculate_derived_input(nlev,_ZERO_)
 
@@ -790,8 +795,13 @@
          cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
    end do
 
-   ! Compute totals of conserved quantities at simulation start (to be used in outputs related to mass conservation checks)
-   call calculate_conserved_quantities(nlev,total0)
+   ! Compute current totals of conserved quantities (to be used in outputs related to mass conservation checks)
+   call calculate_conserved_quantities(nlev, total)
+
+   ! Use updated totals unless values were already provided from the restart.
+   do i=1,size(model%conserved_quantities)
+      if (total0(i) == huge(_ZERO_)) total0(i) = total(i)
+   end do
 
    end subroutine start_gotm_fabm
 !EOC
