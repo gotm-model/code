@@ -404,9 +404,10 @@
    change_in_total = 0
    do i=1,size(model%conserved_quantities)
       call field_manager%register(trim(model%conserved_quantities(i)%name)//'_ini',  model%conserved_quantities(i)%units, &
-          model%conserved_quantities(i)%long_name, minimum=model%conserved_quantities(i)%minimum, &
+          trim(model%conserved_quantities(i)%long_name)//' at simulation start', minimum=model%conserved_quantities(i)%minimum, &
           maximum=model%conserved_quantities(i)%maximum, fill_value= model%conserved_quantities(i)%missing_value, &
-          no_default_dimensions=.true., data0d=total0(i), category='fabm', output_level=output_level_debug, part_of_state=.true.)
+          no_default_dimensions=.true., dimensions=(/id_dim_lon, id_dim_lat/), data0d=total0(i), category='fabm', &
+          output_level=output_level_debug, part_of_state=.true.)
    end do
 
    if (present(field_manager)) then
