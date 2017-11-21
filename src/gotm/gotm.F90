@@ -153,14 +153,14 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   namelist /model_setup/ title,nlev,dt,restart_offline,restart_error, &
+   namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
                           cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
    logical          ::    list_fields=.false.
    logical          ::    restart_online=.false.
    logical          ::    restart_offline = .false.
-   logical          ::    restart_error = .true.
+   logical          ::    restart_allow_missing_variable = .false.
    integer          ::    rc
    logical          ::    file_exists
 !-----------------------------------------------------------------------
@@ -313,7 +313,7 @@
 
    if (restart) then
       if (restart_offline) then
-         call read_restart(restart_error)
+         call read_restart(restart_allow_missing_variable)
          call friction(kappa,avmolu,tx,ty)
       end if
       if (restart_online) then
@@ -667,8 +667,8 @@
       call file%append_category(category)
    end subroutine setup_restart
 
-   subroutine read_restart(restart_error)
-      logical                               :: restart_error
+   subroutine read_restart(restart_allow_missing_variable)
+      logical                               :: restart_allow_missing_variable
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
 
@@ -679,11 +679,11 @@
          if (associated(member%field%data_0d)) then
             ! Depth-independent variable with data pointed to by child%field%data_0d
             ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data_0d.
-            call read_restart_data(trim(member%field%name),restart_error,data_0d=member%field%data_0d)
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data_0d)
          elseif (associated(member%field%data_1d)) then
             ! Depth-dependent variable with data pointed to by child%field%data_1d
             ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data_1d.
-            call read_restart_data(trim(member%field%name),restart_error,data_1d=member%field%data_1d)
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data_1d)
          else
             stop 'no data assigned to state field'
          end if
