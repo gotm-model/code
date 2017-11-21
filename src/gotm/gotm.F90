@@ -108,7 +108,7 @@
 !  station description
    character(len=80)         :: name
    REALTYPE,target           :: latitude,longitude
-   logical                   :: hotstart
+   logical                   :: restart
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -153,13 +153,14 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   namelist /model_setup/ title,nlev,dt,hotstart_offline, &
+   namelist /model_setup/ title,nlev,dt,restart_offline,restart_error, &
                           cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
    logical          ::    list_fields=.false.
-   logical          ::    hotstart_online=.false.
-   logical          ::    hotstart_offline = .false.
+   logical          ::    restart_online=.false.
+   logical          ::    restart_offline = .false.
+   logical          ::    restart_error = .true.
    integer          ::    rc
    logical          ::    file_exists
 !-----------------------------------------------------------------------
@@ -168,7 +169,7 @@
    STDERR LINE
 
    if (present(t1)) then
-      hotstart_online = .true.
+      restart_online = .true.
    end if
 
 !  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
@@ -185,8 +186,8 @@
    read(namlst,nml=model_setup,err=91)
    read(namlst,nml=station,err=92)
    read(namlst,nml=time,err=93)
-   if (hotstart_online) then
-      LEVEL3 'online hotstart - updating values in the time namelist ...'
+   if (restart_online) then
+      LEVEL3 'online restart - updating values in the time namelist ...'
       LEVEL4 'orignal: ',start,' -> ',stop
       start = t1
       stop  = t2
@@ -210,8 +211,8 @@
    end if
 
    LEVEL2 'done.'
-   hotstart = hotstart_online .or. hotstart_offline
-   if (hotstart_online) hotstart_offline = .false.
+   restart = restart_online .or. restart_offline
+   if (restart_online) restart_offline = .false.
 
 !  initialize a few things from  namelists
    timestep   = dt
@@ -224,8 +225,8 @@
            latitude,longitude
    LEVEL2 trim(name)
 
-   if (hotstart_offline) then
-      LEVEL2 'Offline hotstart - reading initial data from file'
+   if (restart_offline) then
+      LEVEL2 'Offline restart - reading initial data from file'
    end if
 
    LEVEL2 'initializing modules....'
@@ -310,12 +311,12 @@
    if (fabm_calc) call init_gotm_fabm_state(nlev)
 #endif
 
-   if (hotstart) then
-      if (hotstart_offline) then
-         call read_restart()
+   if (restart) then
+      if (restart_offline) then
+         call read_restart(restart_error)
          call friction(kappa,avmolu,tx,ty)
       end if
-      if (hotstart_online) then
+      if (restart_online) then
       end if
    end if
 
@@ -407,7 +408,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. hotstart) then
+   if (.not. restart) then
       LEVEL1 'saving initial conditions'
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
    end if
@@ -666,7 +667,8 @@
       call file%append_category(category)
    end subroutine setup_restart
 
-   subroutine read_restart()
+   subroutine read_restart(restart_error)
+      logical                               :: restart_error
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
 
@@ -677,11 +679,11 @@
          if (associated(member%field%data_0d)) then
             ! Depth-independent variable with data pointed to by child%field%data_0d
             ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data_0d.
-            call read_restart_data(trim(member%field%name),data_0d=member%field%data_0d)
+            call read_restart_data(trim(member%field%name),restart_error,data_0d=member%field%data_0d)
          elseif (associated(member%field%data_1d)) then
             ! Depth-dependent variable with data pointed to by child%field%data_1d
             ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data_1d.
-            call read_restart_data(trim(member%field%name),data_1d=member%field%data_1d)
+            call read_restart_data(trim(member%field%name),restart_error,data_1d=member%field%data_1d)
          else
             stop 'no data assigned to state field'
          end if

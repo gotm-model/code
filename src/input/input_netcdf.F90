@@ -73,12 +73,13 @@
 ! !IROUTINE:
 !
 ! !INTERFACE:
-   subroutine read_restart_data(var_name,data_0d,data_1d)
+   subroutine read_restart_data(var_name,error_condition,data_0d,data_1d)
 !
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
    character(len=*), intent(in)        :: var_name
+   logical                             :: error_condition
    REALTYPE, optional                  :: data_0d
    REALTYPE, optional                  :: data_1d(:)
 !
@@ -95,18 +96,18 @@
    if (ncid .eq. -1) then
 !      ierr = nf90_open(trim(path),NF90_NOWRITE,ncid)
       ierr = nf90_open('restart.nc',NF90_NOWRITE,ncid)
-      if (ierr /= NF90_NOERR) call handle_err(ierr)
+      if (ierr /= NF90_NOERR) call handle_err(ierr,.true.)
    end if
 
    ierr = nf90_inq_varid(ncid, trim(var_name), id)
    if (ierr /= NF90_NOERR) then
-      call handle_err(ierr)
+      call handle_err(ierr,error_condition)
    end if
 
    if (present(data_0d)) then
       ierr = nf90_get_var(ncid, id, data_0d)
       if (ierr /= NF90_NOERR) then
-         call handle_err(ierr)
+         call handle_err(ierr,error_condition)
       end if
    end if
 
@@ -114,19 +115,25 @@
       start = 1 ; edges = 1; edges(3) = size(data_1d)
       ierr = nf90_get_var(ncid,id,data_1d,start,edges)
       if (ierr /= NF90_NOERR) then
-         call handle_err(ierr)
+         call handle_err(ierr,error_condition)
       end if
    end if
 
    end subroutine read_restart_data
 !EOC
 
-   subroutine handle_err(ierr)
+   subroutine handle_err(ierr,error_condition)
+   logical, intent(in) :: error_condition
    integer, intent(in) :: ierr
-   LEVEL1 'read_restart_data(): warning'
-   LEVEL2 trim(nf90_strerror(ierr))
-   LEVEL2 'continuing'
-   stop
+   if(error_condition) then
+      LEVEL1 'read_restart_data(): error'
+      LEVEL2 trim(nf90_strerror(ierr))
+      stop
+   else
+      LEVEL1 'read_restart_data(): warning'
+      LEVEL2 trim(nf90_strerror(ierr))
+      LEVEL2 'continuing'
+   end if
    end subroutine handle_err
 
 !-----------------------------------------------------------------------
