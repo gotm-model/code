@@ -28,9 +28,6 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_seagrass, do_seagrass, end_seagrass
-#ifndef _FLEXIBLE_OUTPUT_
-   public save_seagrass
-#endif
    logical, public                     :: seagrass_calc
 !
 ! !REVISION HISTORY:!
@@ -284,82 +281,6 @@
    end subroutine do_seagrass
 !EOC
 
-!-----------------------------------------------------------------------
-#ifndef _FLEXIBLE_OUTPUT_
-!BOP
-!
-! !IROUTINE: Storing the results
-!
-! !INTERFACE:
-   subroutine save_seagrass
-!
-! !DESCRIPTION:
-!  Here, storing of the seagrass profiles to an ascii or a
-!  netCDF file is managed.
-!
-! !USES:
-   use meanflow, only:     h
-   use output, only: out_fmt,ascii_unit
-#ifdef NETCDF_FMT
-   use netcdf
-   use ncdfout, only: ncid
-   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dim4d
-   use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
-#endif
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
-!
-! !LOCAL VARIABLES:
-   integer, save             :: x_excur_id,y_excur_id,n
-   integer                   :: i,iret
-   REALTYPE                  :: zz
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-
-   select case (out_fmt)
-      case (ASCII)
-         write(ascii_unit,*) 'Seagrass ',grassind
-         write(ascii_unit,110) 'height','x-excur','y-excur'
-         zz = _ZERO_
-         do i=1,grassind
-            zz=zz+0.5*h(i)
-            write(ascii_unit,111) zz,xx(i),yy(i)
-            zz=zz+0.5*h(i)
-         end do
-      case (NETCDF)
-#ifdef NETCDF_FMT
-         if (init_output) then
-            dim4d(1) = lon_dim
-            dim4d(2) = lat_dim
-            dim4d(3) = z_dim
-            dim4d(4) = time_dim
-            iret = define_mode(ncid,.true.)
-            iret = new_nc_variable(ncid,'x-excur',NF90_REAL,dim4d,x_excur_id)
-            iret = set_attributes(ncid,x_excur_id,units='m',    &
-                   long_name='seagrass excursion(x)',missing_value=miss_val)
-            iret = new_nc_variable(ncid,'y-excur',NF90_REAL,dim4d,y_excur_id)
-            iret = set_attributes(ncid,y_excur_id,units='m',    &
-                   long_name='seagrass excursion(y)',missing_value=miss_val)
-            iret = define_mode(ncid,.false.)
-            n = ubound(xx,1)
-            init_output = .false.
-         end if
-         iret = store_data(ncid,x_excur_id,XYZT_SHAPE,n,array=xx)
-         iret = store_data(ncid,y_excur_id,XYZT_SHAPE,n,array=yy)
-#endif
-      case default
-         FATAL 'A non valid output format has been chosen'
-         stop 'save_seagrass'
-   end select
-110 format(3(1x,A12))
-111 format(3(1x,E12.3E2))
-   return
-
-   end subroutine save_seagrass
-!EOC
-#endif
 !-----------------------------------------------------------------------
 !BOP
 !
