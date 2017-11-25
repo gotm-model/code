@@ -24,13 +24,26 @@ elseif (WIN32)
 
 set(GOTMDIR "${CMAKE_CURRENT_LIST_DIR}/../../..")
 
-# On Windows: use CMake to locte paths; default to NetCDF static library provided with GOTM.
+# On Windows: use CMake to locate paths; default to NetCDF static library provided with GOTM.
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+message("NetCDF 64 bit")
 find_library(NetCDF_LIBRARIES NAMES netcdfs
-             HINTS ${GOTMDIR}/extras/netcdf/win32/3.6.3/lib
-             DOC "NetCDF library")
+             HINTS ${GOTMDIR}/extras/netcdf/Win64/3.6.3/lib
+             DOC "NetCDF 64bit library")
 find_path(NetCDF_INCLUDE_DIRS netcdf.mod
-          HINTS ${GOTMDIR}/extras/netcdf/win32/3.6.3/include ENV NetCDFINC
-          DOC "NetCDF include directory")
+          HINTS ${GOTMDIR}/extras/netcdf/Win64/3.6.3/include ENV NetCDFINC
+          DOC "NetCDF 64bit include directory")
+
+else()
+message("NetCDF 32bit")
+find_library(NetCDF_LIBRARIES NAMES netcdfs
+             HINTS ${GOTMDIR}/extras/netcdf/Win32/3.6.3/lib
+             DOC "NetCDF 32bit library")
+find_path(NetCDF_INCLUDE_DIRS netcdf.mod
+          HINTS ${GOTMDIR}/extras/netcdf/Win32/3.6.3/include ENV NetCDFINC
+          DOC "NetCDF 32bit include directory")
+
+endif()
 
 list(LENGTH NetCDF_LIBRARIES LIBCOUNT)
 if(LIBCOUNT EQUAL 1)
