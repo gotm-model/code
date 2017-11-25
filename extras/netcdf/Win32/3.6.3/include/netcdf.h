@@ -1,9 +1,9 @@
 /*
  * Copyright 1993-2005 University Corporation for Atmospheric Research/Unidata
- *
- * Portions of this software were developed by the Unidata Program at the
+ * 
+ * Portions of this software were developed by the Unidata Program at the 
  * University Corporation for Atmospheric Research.
- *
+ * 
  * Access and use of this software shall impose the following obligations
  * and understandings on the user. The user is granted the right, without
  * any fee or cost, to use, copy, modify, alter, enhance and distribute
@@ -20,7 +20,7 @@
  * any support, consulting, training or assistance of any kind with regard
  * to the use, operation and performance of this software nor to provide
  * the user with any updates, revisions, new versions or "bug fixes."
- *
+ * 
  * THIS SOFTWARE IS PROVIDED BY UCAR/UNIDATA "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -30,6 +30,7 @@
  * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
  * WITH THE ACCESS, USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+/* "$Id: netcdf.h,v 2.117 2008/03/28 20:50:28 dmh Exp $" */
 
 #ifndef _NETCDF_
 #define _NETCDF_
@@ -101,7 +102,7 @@ typedef enum {
 
 /* The following flag currently is ignored, but use in
  * nc_open() or nc_create() may someday support use of advisory
- * locking to prevent multiple writers from clobbering a file
+ * locking to prevent multiple writers from clobbering a file 
  */
 #define NC_LOCK		0x0400	/* Use locking if available */
 
@@ -205,7 +206,7 @@ typedef enum {
 #define NC_ENOMEM	(-61)	/* Memory allocation (malloc) failure */
 
 #define NC_EVARSIZE     (-62)   /* One or more variable sizes violate
-				   format constraints */
+				   format constraints */ 
 #define NC_EDIMSIZE     (-63)   /* Invalid dimension size */
 #define NC_ETRUNC       (-64)   /* File likely truncated or possibly corrupted */
 
@@ -236,7 +237,7 @@ typedef enum {
 
 /* When netCDF is built as a DLL, this will export ncerr and
  * ncopts. When it is used as a DLL, it will import them. */
-#if defined(DLL_NETCDF)
+#if defined(DLL_NETCDF) 
 MSC_EXTRA int ncerr;
 MSC_EXTRA int ncopts;
 #endif
@@ -255,7 +256,7 @@ EXTERNL int
 nc_create(const char *path, int cmode, int *ncidp);
 
 EXTERNL int
-nc__open(const char *path, int mode,
+nc__open(const char *path, int mode, 
 	size_t *chunksizehintp, int *ncidp);
 
 EXTERNL int
@@ -286,16 +287,16 @@ nc_close(int ncid);
 EXTERNL int
 nc_inq(int ncid, int *ndimsp, int *nvarsp, int *nattsp, int *unlimdimidp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_ndims(int ncid, int *ndimsp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_nvars(int ncid, int *nvarsp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_natts(int ncid, int *nattsp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_unlimdim(int ncid, int *unlimdimidp);
 
 EXTERNL int
@@ -315,10 +316,10 @@ nc_inq_dimid(int ncid, const char *name, int *idp);
 EXTERNL int
 nc_inq_dim(int ncid, int dimid, char *name, size_t *lenp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_dimname(int ncid, int dimid, char *name);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_dimlen(int ncid, int dimid, size_t *lenp);
 
 EXTERNL int
@@ -331,13 +332,13 @@ EXTERNL int
 nc_inq_att(int ncid, int varid, const char *name,
 	   nc_type *xtypep, size_t *lenp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_attid(int ncid, int varid, const char *name, int *idp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_atttype(int ncid, int varid, const char *name, nc_type *xtypep);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_attlen(int ncid, int varid, const char *name, size_t *lenp);
 
 EXTERNL int
@@ -422,29 +423,29 @@ nc_get_att_double(int ncid, int varid, const char *name, double *ip);
 /* Begin _var */
 
 EXTERNL int
-nc_def_var(int ncid, const char *name, nc_type xtype, int ndims,
+nc_def_var(int ncid, const char *name, nc_type xtype, int ndims, 
 	   const int *dimidsp, int *varidp);
 
 EXTERNL int
-nc_inq_var(int ncid, int varid, char *name, nc_type *xtypep,
+nc_inq_var(int ncid, int varid, char *name, nc_type *xtypep, 
 	   int *ndimsp, int *dimidsp, int *nattsp);
 
 EXTERNL int
 nc_inq_varid(int ncid, const char *name, int *varidp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_varname(int ncid, int varid, char *name);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_vartype(int ncid, int varid, nc_type *xtypep);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_varndims(int ncid, int varid, int *ndimsp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_vardimid(int ncid, int varid, int *dimidsp);
 
-EXTERNL int
+EXTERNL int 
 nc_inq_varnatts(int ncid, int varid, int *nattsp);
 
 EXTERNL int
@@ -692,108 +693,108 @@ nc_get_vars_double(int ncid, int varid,
 /* Begin {put,get}_varm */
 
 EXTERNL int
-nc_put_varm(int ncid, int varid, const size_t *start, const size_t *count,
-            const ptrdiff_t *stride, const ptrdiff_t *imapp,
+nc_put_varm(int ncid, int varid, const size_t *start, const size_t *count, 
+            const ptrdiff_t *stride, const ptrdiff_t *imapp, 
 	    const void *value);
 
 EXTERNL int
-nc_get_varm(int ncid, int varid, const size_t *start, const size_t *count,
+nc_get_varm(int ncid, int varid, const size_t *start, const size_t *count, 
 	    const ptrdiff_t *stride, const ptrdiff_t *imapp, void *value);
 
 EXTERNL int
 nc_put_varm_text(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	const char *op);
 
 EXTERNL int
 nc_get_varm_text(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	char *ip);
 
 EXTERNL int
 nc_put_varm_uchar(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	const unsigned char *op);
 
 EXTERNL int
 nc_get_varm_uchar(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	unsigned char *ip);
 
 EXTERNL int
 nc_put_varm_schar(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	const signed char *op);
 
 EXTERNL int
 nc_get_varm_schar(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	signed char *ip);
 
 EXTERNL int
 nc_put_varm_short(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	const short *op);
 
 EXTERNL int
 nc_get_varm_short(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	short *ip);
 
 EXTERNL int
 nc_put_varm_int(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	const int *op);
 
 EXTERNL int
 nc_get_varm_int(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	int *ip);
 
 EXTERNL int
 nc_put_varm_long(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	const long *op);
 
 EXTERNL int
 nc_get_varm_long(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	long *ip);
 
 EXTERNL int
 nc_put_varm_float(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	const float *op);
 
 EXTERNL int
 nc_get_varm_float(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	float *ip);
 
 EXTERNL int
 nc_put_varm_double(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t *imapp,
+	const ptrdiff_t *imapp, 
 	const double *op);
 
 EXTERNL int
 nc_get_varm_double(int ncid, int varid,
 	const size_t *startp, const size_t *countp, const ptrdiff_t *stridep,
-	const ptrdiff_t * imapp,
+	const ptrdiff_t * imapp, 
 	double *ip);
 
 /* End {put,get}_varm */
@@ -933,7 +934,7 @@ nc_inq_base_pe(int ncid, int *pe);
 
 /*
  * If and when 64 integer types become ubiquitous,
- * we would like to use NC_LONG for that.
+ * we would like to use NC_LONG for that. 
  * For now, define for backward compatibility.
  */
 #define NC_LONG NC_INT
@@ -970,7 +971,7 @@ nc_advise(const char *cdf_routine_name, int err, const char *fmt,...);
 /*
  * C data type corresponding to a netCDF NC_LONG argument,
  * a signed 32 bit object.
- *
+ * 
  * This is the only thing in this file which architecture dependent.
  */
 typedef int nclong;
@@ -1062,7 +1063,7 @@ ncvarput(int ncid, int varid, const long *startp, const long *countp,
 	const void *op);
 
 EXTERNL int
-ncvarget(int ncid, int varid, const long *startp, const long *countp,
+ncvarget(int ncid, int varid, const long *startp, const long *countp, 
 	void *ip);
 
 EXTERNL int
