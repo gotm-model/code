@@ -412,6 +412,8 @@
    call fm%register('mld_surf','m', 'surface mixed layer depth', data0d=mld_surf,category='surface')
    call fm%register('mld_bott','m', 'bottom mixed layer depth', data0d=mld_bott,category='bottom')
 #endif
+   call fm%register('taux',  'm2/s2', 'turbulent flux of momentum (x)', dimensions=(/id_dim_zi/), data1d=taux(0:nlev), category='turbulence')
+   call fm%register('tauy',  'm2/s2', 'turbulent flux of momentum (y)', dimensions=(/id_dim_zi/), data1d=tauy(0:nlev), category='turbulence')
    call fm%register('Ekin',  'J', 'kinetic energy', data0d=ekin,category='column_integrals')
    call fm%register('Epot',  'J', 'potential energy', data0d=epot,category='column_integrals')
    call fm%register('Eturb', 'J', 'turbulent kinetic energy', data0d=eturb,category='column_integrals')
