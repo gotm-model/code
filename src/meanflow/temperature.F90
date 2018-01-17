@@ -69,7 +69,7 @@
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: lake
-   use meanflow,     only: h,Vco,Vc,Af
+   use meanflow,     only: h,Vco,Vc,Afo,Af
    use meanflow,     only: u,v,w,T,S,avh
    use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
@@ -167,9 +167,9 @@
    if (lake) then
       net_precip = precip + evap
       if ( net_precip .gt. _ZERO_ ) then
-         Qt(nlev) = Qt(nlev) + net_precip*Af(nlev)*T(nlev)
+         Qt(nlev) = Qt(nlev) + net_precip*Afo(nlev)*T(nlev)
       else
-         Lt(nlev) = Lt(nlev) + net_precip*Af(nlev)
+         Lt(nlev) = Lt(nlev) + net_precip*Afo(nlev)
       end if
       do i=1,nlev
          if ( Qres(i) .gt. _ZERO_ ) then
@@ -178,7 +178,7 @@
             Lt(i) = Lt(i) + Qres(i)
          end if
       end do
-      call adv_center(nlev,dt,h,Vco,Vc,Af,wq,flux,flux,                 &
+      call adv_center(nlev,dt,h,Vco,Vc,Afo,wq,flux,flux,                &
                       _ZERO_,_ZERO_,Lt,Qt,w_adv_discr,1,T)
    end if
 

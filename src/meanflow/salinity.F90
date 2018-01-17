@@ -65,7 +65,7 @@
 ! !USES:
    use meanflow,     only: avmols
    use meanflow,     only: lake
-   use meanflow,     only: h,Vco,Vc,Af
+   use meanflow,     only: h,Vco,Vc,Afo,Af
    use meanflow,     only: u,v,w,S,avh
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
@@ -143,7 +143,7 @@
             Ls(i) = Ls(i) + Qres(i)
          end if
       end do
-      call adv_center(nlev,dt,h,Vco,Vc,Af,wq,flux,flux,                 &
+      call adv_center(nlev,dt,h,Vco,Vc,Afo,wq,flux,flux,                &
                       _ZERO_,_ZERO_,Ls,Qs,w_adv_discr,1,S)
    end if
 

@@ -46,7 +46,7 @@
    use meanflow,     only: depth0,depth
    use meanflow,     only: ga,z,zi,h,ho,ddu,ddl,grid_method
    use meanflow,     only: grid_file
-   use meanflow,     only: lake,Vc,Vco
+   use meanflow,     only: lake,Vc,Vco,Af,Afo
    use observations, only: zeta_method
    use hypsograph,   only: update_hypsograph
    IMPLICIT NONE
@@ -186,7 +186,12 @@
 
    if (lake) then
       Vco = Vc
+      Afo = Af
       call update_hypsograph(nlev,z,h)
+#ifndef _LAKE_AFO_
+FATAL 'ifndef _LAKE_AFO_'
+      Afo = Af
+#endif
    else
       Vco = ho
       Vc  = h

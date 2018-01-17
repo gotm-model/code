@@ -14,7 +14,7 @@
 !  The hypsograph is only used if lake is true.
 !
 ! !USES
-   use meanflow, only: lake,depth0,depth,zi,Vc,Af,hypsograph_file
+   use meanflow, only: lake,depth0,depth,zi,Vc,Af,Afo,hypsograph_file
    IMPLICIT NONE
    public                                :: init_hypsograph,clean_hypsograph
    public                                :: read_hypsograph,update_hypsograph
@@ -65,6 +65,9 @@
    allocate(Af(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_hypsograph: Error allocating (Af)'
    Af = _ONE_
+   allocate(Afo(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_hypsograph: Error allocating (Afo)'
+   Afo = _ONE_
    if (hypsograph_file .ne. '') then
       LEVEL1 'init_hypsograph'
       LEVEL2 'reading hypsograph from:'
@@ -268,6 +271,7 @@
    LEVEL2 'de-allocation hypsograph memory ...'
 
    if (allocated(Af)) deallocate(Af)
+   if (allocated(Afo)) deallocate(Afo)
    if (allocated(sqrt_Af_input)) deallocate(sqrt_Af_input)
    if (allocated(V_input)) deallocate(V_input)
 

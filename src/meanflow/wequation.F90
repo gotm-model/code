@@ -18,7 +18,7 @@
 !  the bottom, where its value is zero.
 !
 ! !USES:
-   use meanflow    , only: zi,w,lake,Vc,Vco,Af
+   use meanflow    , only: zi,w,lake,Vc,Vco,Afo
    use observations, only: w_adv_method,w_adv,w_height,Qlayer,Qres,FQ,wq
    IMPLICIT NONE
 !
@@ -44,7 +44,7 @@
       ! calculate the vertical flux terms
       do i=1,nlev-1
          FQ(i) = FQ(i-1) + Qlayer(i) + Qres(i) - ( Vc(i) - Vco(i) )*dtm1
-         wq(i) = FQ(i) / Af(i)
+         wq(i) = FQ(i) / Afo(i)
       end do
    end if
 

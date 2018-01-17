@@ -133,7 +133,7 @@
 
 !  GOTM-specific quantities
    logical                       :: gotm_lake=.false.
-   REALTYPE,pointer,dimension(:) :: Af,Vc,Vco,wq,Qres
+   REALTYPE,pointer,dimension(:) :: Af,Afo,Vc,Vco,wq,Qres
 
    REALTYPE,pointer :: I_0,A,g1,g2
    integer,pointer  :: yearday,secondsofday
@@ -621,6 +621,7 @@
    ones = _ONE_
 
    Af   => ones
+   Afo  => ones
    Vc   => curh
    Vco  => curh
    wq   => zeros
@@ -959,7 +960,7 @@
    subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
                                 bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
                                 yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_,       &
-                                Af_,Vc_,Vco_,wq_,Qres_)
+                                Af_,Afo_,Vc_,Vco_,wq_,Qres_)
 !
 ! !DESCRIPTION:
 ! This routine is called once from GOTM to provide pointers to the arrays that describe
@@ -975,7 +976,7 @@
    integer,  intent(in),target :: yearday_,secondsofday_
    REALTYPE, intent(in),optional,target,dimension(:) :: SRelaxTau_,sProf_
    REALTYPE, intent(in),optional,target :: bio_albedo_,bio_drag_scale_
-   REALTYPE, intent(in),optional,target,dimension(:) :: Af_,Vc_,Vco_,wq_,Qres_
+   REALTYPE, intent(in),optional,target,dimension(:) :: Af_,Afo_,Vc_,Vco_,wq_,Qres_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -1030,12 +1031,14 @@
       nullify(sProf)
    end if
 
-   if ( present(Af_) .and. present(Vc_) .and. present(Vco_) ) then
+   if ( present(Af_) .and. present(Afo_) .and. present(Vc_) .and. present(Vco_) ) then
       Af (0:) => Af_
+      Afo(0:) => Afo_
       Vc (0:) => Vc_
       Vco(0:) => Vco_
    else
       Af  => ones
+      Afo => ones
       Vc  => curh
       Vco => curh
    end if
@@ -1248,9 +1251,9 @@
 !           KK-TODO: do we need to consider virtual_dilution?
             if (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution) then
                if ( dilution .gt. _ZERO_ ) then
-                  Qsour(nlev) = Qsour(nlev) + dilution*Af(nlev)*cc(nlev,i)
+                  Qsour(nlev) = Qsour(nlev) + dilution*Afo(nlev)*cc(nlev,i)
                else
-                  Lsour(nlev) = Lsour(nlev) + dilution*Af(nlev)
+                  Lsour(nlev) = Lsour(nlev) + dilution*Afo(nlev)
                end if
             end if
             do k=1,nlev
@@ -1260,7 +1263,7 @@
                   Lsour(k) = Lsour(k) + Qres(k)
                end if
             end do
-            call adv_center(nlev,dt,curh,Vco,Vc,Af,wq,flux,flux,        &
+            call adv_center(nlev,dt,curh,Vco,Vc,Afo,wq,flux,flux,       &
                             _ZERO_,_ZERO_,Lsour,Qsour,w_adv_ctr,adv_mode_1,cc(:,i))
          end if
 

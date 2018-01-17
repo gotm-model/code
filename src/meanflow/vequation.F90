@@ -47,7 +47,7 @@
 ! !USES:
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: lake
-   use meanflow,     only: h,Vco,Vc,Af
+   use meanflow,     only: h,Vco,Vc,Afo,Af
    use meanflow,     only: v,vo,u,w,avh
    use meanflow,     only: drag,SS,runtimev
    use observations, only: w_adv_method,w_adv_discr
@@ -150,7 +150,7 @@
       if (call_adv) then
          Lsour = _ZERO_
          Qsour = _ZERO_
-         call adv_center(nlev,dt,h,Vco,Vc,Af,wq,flux,flux,              &
+         call adv_center(nlev,dt,h,Vco,Vc,Afo,wq,flux,flux,             &
                          _ZERO_,_ZERO_,Lsour,Qsour,w_adv_discr,1,V)
       end if
    end if

@@ -118,7 +118,7 @@
    logical, public                               :: lake
    CHARACTER(LEN=PATH_MAX), public               :: hypsograph_file
 !  the hypsograph at the interfaces Af
-   REALTYPE, public, dimension(:), allocatable   :: Af
+   REALTYPE, public, dimension(:), allocatable   :: Af,Afo
    integer,  public, parameter                   :: WATER_BALANCE_NONE=0
    integer,  public, parameter                   :: WATER_BALANCE_SURFACE=1
    integer,  public, parameter                   :: WATER_BALANCE_ALLLAYERS=2
