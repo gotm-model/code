@@ -929,7 +929,7 @@
 ! TODO
 !
 ! !USES:
-   use util,only: flux,Neumann
+   use util
 !
    integer, intent(in)          :: nlev
    REALTYPE,intent(in),optional :: itime

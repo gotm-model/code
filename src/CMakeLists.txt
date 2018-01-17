@@ -98,7 +98,6 @@ include_directories(BEFORE
                    )
 
 add_library(util
-            util/adv_center.F90
             util/convert_fluxes.F90
             util/diff_center.F90
             util/diff_face.F90

@@ -72,8 +72,7 @@
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
    use observations, only: A,g1,g2
-   use util,         only: Dirichlet,Neumann
-   use util,         only: oneSided,zeroDivergence
+   use util
 
    IMPLICIT NONE
 !

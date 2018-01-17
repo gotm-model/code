@@ -48,8 +48,7 @@
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: vprof,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy
-   use util,         only: Dirichlet,Neumann
-   use util,         only: oneSided,zeroDivergence
+   use util
 
    IMPLICIT NONE
 !

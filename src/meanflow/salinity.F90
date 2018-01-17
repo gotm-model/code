@@ -67,8 +67,7 @@
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
    use airsea,       only: precip,evap
-   use util,         only: Dirichlet,Neumann
-   use util,         only: oneSided,zeroDivergence
+   use util
 
    IMPLICIT NONE
 !
