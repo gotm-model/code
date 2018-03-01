@@ -319,6 +319,24 @@
          <o2_prof_file>o2_prof_file.dat</o2_prof_file>
       </o2_profile>
    </obs>
+   <gotm_fabm>
+      <gotm_fabm_nml>
+         <fabm_calc>False</fabm_calc>
+         <cnpar>1.</cnpar>
+         <w_adv_discr>6</w_adv_discr>
+         <ode_method>1</ode_method>
+         <split_factor>1</split_factor>
+         <bioshade_feedback>False</bioshade_feedback>
+         <bioalbedo_feedback>False</bioalbedo_feedback>
+         <biodrag_feedback>False</biodrag_feedback>
+         <repair_state>False</repair_state>
+         <salinity_relaxation_to_freshwater_flux>False</salinity_relaxation_to_freshwater_flux>
+         <no_precipitation_dilution>False</no_precipitation_dilution>
+         <save_inputs>False</save_inputs>
+         <no_surface>False</no_surface>
+         <configuration_method>-1</configuration_method>
+      </gotm_fabm_nml>
+   </gotm_fabm>
    <seagrass>
       <canopy>
          <seagrass_calc>False</seagrass_calc>

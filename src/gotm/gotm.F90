@@ -273,6 +273,8 @@
 
    call init_air_sea(namlst,latitude,longitude)
 
+   call init_diagnostics(nlev)
+
    call do_register_all_variables(latitude,longitude,nlev)
 
    !  initialize FABM module
@@ -575,6 +577,8 @@
    call close_input()
 
    call output_manager_clean()
+
+   call clean_diagnostics()
 
    call fm%finalize()
 
