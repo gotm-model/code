@@ -226,7 +226,7 @@
    LEVEL2 trim(name)
 
    if (restart_offline) then
-      LEVEL2 'Offline restart - reading initial data from file'
+      LEVEL2 'Offline restart ....'
    end if
 
    LEVEL2 'initializing modules....'
@@ -315,6 +315,7 @@
 
    if (restart) then
       if (restart_offline) then
+         LEVEL1 'read_restart'
          call read_restart(restart_allow_missing_variable)
          call friction(kappa,avmolu,tx,ty)
       end if

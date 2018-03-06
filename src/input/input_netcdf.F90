@@ -100,8 +100,13 @@
    end if
 
    ierr = nf90_inq_varid(ncid, trim(var_name), id)
-   if (ierr /= NF90_NOERR .and. .not. allow_missing_variable) then
-      call handle_err(ierr)
+   if (ierr /= NF90_NOERR) then
+      if (.not. allow_missing_variable) then
+         call handle_err(ierr,var_name)
+      else
+         LEVEL2 'variable ',trim(var_name),' not found - continuing'
+         return
+      end if
    end if
 
    if (present(data_0d)) then
@@ -122,10 +127,15 @@
    end subroutine read_restart_data
 !EOC
 
-   subroutine handle_err(ierr)
+   subroutine handle_err(ierr,msg)
    integer, intent(in) :: ierr
-   LEVEL1 'read_restart_data(): error'
-   LEVEL2 trim(nf90_strerror(ierr))
+   character(len=*), optional :: msg
+   LEVEL2 'read_restart_data(): error'
+   if (present(msg)) then
+      LEVEL3 trim(nf90_strerror(ierr)),' - ',trim(msg)
+   else
+      LEVEL3 trim(nf90_strerror(ierr))
+   end if
    stop
    end subroutine handle_err
 
