@@ -41,6 +41,7 @@
 
    use meanflow
    use input
+   use input_netcdf, only: read_restart_data
    use observations
    use time
 
@@ -72,7 +73,7 @@
    use spm, only: init_spm, set_env_spm, do_spm, end_spm
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
+   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm_input,only:init_gotm_fabm_input
 #endif
@@ -107,6 +108,7 @@
 !  station description
    character(len=80)         :: name
    REALTYPE,target           :: latitude,longitude
+   logical                   :: restart
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -124,7 +126,7 @@
 ! !IROUTINE: Initialise the model \label{initGOTM}
 !
 ! !INTERFACE:
-   subroutine init_gotm()
+   subroutine init_gotm(t1,t2)
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
@@ -142,22 +144,33 @@
 ! !USES:
   IMPLICIT NONE
 !
+! !INPUT PARAMETERS:
+   character(len=*), intent(in), optional  :: t1,t2
+!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !EOP
 !
 ! !LOCAL VARIABLES:
-   namelist /model_setup/ title,nlev,dt,cnpar,buoy_method
+   namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
+                          cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
    logical          ::    list_fields=.false.
+   logical          ::    restart_online=.false.
+   logical          ::    restart_offline = .false.
+   logical          ::    restart_allow_missing_variable = .false.
    integer          ::    rc
    logical          ::    file_exists
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_gotm'
    STDERR LINE
+
+   if (present(t1)) then
+      restart_online = .true.
+   end if
 
 !  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
 !  will be set by init_observations.
@@ -173,6 +186,13 @@
    read(namlst,nml=model_setup,err=91)
    read(namlst,nml=station,err=92)
    read(namlst,nml=time,err=93)
+   if (restart_online) then
+      LEVEL3 'online restart - updating values in the time namelist ...'
+      LEVEL4 'orignal: ',start,' -> ',stop
+      start = t1
+      stop  = t2
+      LEVEL4 'updated: ',start,' -> ',stop
+   end if
 
    ! Initialize field manager
    call fm%register_dimension('lon',1,id=id_dim_lon)
@@ -191,6 +211,8 @@
    end if
 
    LEVEL2 'done.'
+   restart = restart_online .or. restart_offline
+   if (restart_online) restart_offline = .false.
 
 !  initialize a few things from  namelists
    timestep   = dt
@@ -202,6 +224,10 @@
    LEVEL2 'The station ',trim(name),' is situated at (lat,long) ',      &
            latitude,longitude
    LEVEL2 trim(name)
+
+   if (restart_offline) then
+      LEVEL2 'Offline restart ....'
+   end if
 
    LEVEL2 'initializing modules....'
    call init_input(nlev)
@@ -250,9 +276,8 @@
    call init_diagnostics(nlev)
 
    call do_register_all_variables(latitude,longitude,nlev)
-!   call init_output(title,nlev,latitude,longitude)
 
-!  initialize FABM module
+   !  initialize FABM module
 #ifdef _FABM_
 
 !  Initialize the GOTM-FABM coupler from its configuration file.
@@ -279,21 +304,41 @@
    call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
 #endif
 
+   ! Now that all inputs have been registered (FABM added some), update them all by reading from file.
    call do_input(julianday,secondsofday,nlev,z)
+
+#ifdef _FABM_
+!  Initialize FABM initial state (this is done after the first call to do_input,
+!  to allow user-specified observed values to be used as initial state)
+   if (fabm_calc) call init_gotm_fabm_state(nlev)
+#endif
+
+   if (restart) then
+      if (restart_offline) then
+         LEVEL1 'read_restart'
+         call read_restart(restart_allow_missing_variable)
+         call friction(kappa,avmolu,tx,ty)
+      end if
+      if (restart_online) then
+      end if
+   end if
+
+!   allocate(type_gotm_host::output_manager_host)
+!   call output_manager_init(fm,title)
+   call setup_restart()
+!   call init_output(title,nlev,latitude,longitude)
+
+#ifdef _FABM_
+!  Accept the current biogeochemical state and used it to compute derived diagnostics.
+   if (fabm_calc) call start_gotm_fabm(nlev)
+#endif
+
+   call do_air_sea(julianday,secondsofday)
 
 !  Call stratification to make sure density has sensible value.
 !  This is needed to ensure the initial density is saved correctly, and also for FABM.
+   call shear(nlev,cnpar)
    call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
-
-#ifdef _FABM_
-
-   if (fabm_calc) then
-!     Initialize FABM initial state (this is done after the first call to do_input,
-!     to allow user-specified observed values to be used as initial state)
-      call init_gotm_fabm_state(nlev)
-   end if
-
-#endif
 
    if (list_fields) call fm%list()
 
@@ -366,8 +411,10 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'saving initial conditions'
-   call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
+   if (.not. restart) then
+      LEVEL1 'saving initial conditions'
+      call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
+   end if
    STDERR LINE
    LEVEL1 'time_loop'
    progress = (MaxN-MinN+1)/10
@@ -579,7 +626,6 @@
    call print_state_observations
    call print_state_airsea
    call print_state_turbulence
-   call print_state_bio
 
    end subroutine print_state
 !EOC
@@ -599,6 +645,57 @@
       call calendar_date(julian,yyyy,mm,dd)
    end subroutine
 
+   subroutine setup_restart()
+      use netcdf_output
+      use output_manager_core
+      use time, only: jul2,secs2
+
+      class (type_netcdf_file),     pointer :: file
+      class (type_output_category), pointer :: category
+
+      allocate(file)
+      file%path = 'restart'
+      file%time_unit = time_unit_day
+      file%time_step = 1
+      file%first_julian = jul2
+      file%first_seconds = secs2
+      call output_manager_add_file(fm,file)
+
+      allocate(category)
+      category%name = 'state'
+      category%output_level = output_level_debug
+      category%settings => file%create_settings()
+      select type (settings=>category%settings)
+         class is (type_netcdf_variable_settings)
+            settings%xtype = NF90_DOUBLE
+      end select
+      call file%append_category(category)
+   end subroutine setup_restart
+
+   subroutine read_restart(restart_allow_missing_variable)
+      logical                               :: restart_allow_missing_variable
+      type (type_field_set)                 :: field_set
+      class (type_field_set_member),pointer :: member
+
+      field_set = fm%get_state()
+      member => field_set%first
+      do while (associated(member))
+         ! This field is part of the model state. Its name is member%field%name.
+         if (associated(member%field%data_0d)) then
+            ! Depth-independent variable with data pointed to by child%field%data_0d
+            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data_0d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data_0d)
+         elseif (associated(member%field%data_1d)) then
+            ! Depth-dependent variable with data pointed to by child%field%data_1d
+            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data_1d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data_1d)
+         else
+            stop 'no data assigned to state field'
+         end if
+         member => member%next
+      end do
+      call field_set%finalize()
+   end subroutine read_restart
 !-----------------------------------------------------------------------
 
    end module gotm

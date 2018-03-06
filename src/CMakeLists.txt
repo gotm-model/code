@@ -234,6 +234,7 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
 add_library(input
             input/input.F90
+            input/input_netcdf.F90
            )
 target_link_libraries(input util)
 set(GOTM_LIBS ${GOTM_LIBS} input)

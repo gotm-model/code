@@ -26,7 +26,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm, init_gotm_fabm_state
+   public init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
@@ -398,19 +398,27 @@
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (local)'
    allocate(total0(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (total0)'
+   total0 = huge(_ZERO_)
    allocate(change_in_total(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (change_in_total)'
    change_in_total = 0
+   do i=1,size(model%conserved_quantities)
+      call field_manager%register(trim(model%conserved_quantities(i)%name)//'_ini',  model%conserved_quantities(i)%units, &
+          trim(model%conserved_quantities(i)%long_name)//' at simulation start', minimum=model%conserved_quantities(i)%minimum, &
+          maximum=model%conserved_quantities(i)%maximum, fill_value= model%conserved_quantities(i)%missing_value, &
+          no_default_dimensions=.true., dimensions=(/id_dim_lon, id_dim_lat/), data0d=total0(i), category='fabm', &
+          output_level=output_level_debug, part_of_state=.true.)
+   end do
 
    if (present(field_manager)) then
       do i=1,size(model%state_variables)
-         call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i))
+         call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i), part_of_state=.true.)
       end do
       do i=1,size(model%bottom_state_variables)
-         call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i))
+         call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i), part_of_state=.true.)
       end do
       do i=1,size(model%surface_state_variables)
-         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i))
+         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i), part_of_state=.true.)
       end do
 
       check_conservation = .false.
@@ -559,7 +567,7 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine register_field(field_manager,variable,prefix,dimensions,data0d,data1d,used)
+   subroutine register_field(field_manager,variable,prefix,dimensions,data0d,data1d,part_of_state,used)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -571,6 +579,7 @@
    character(len=*),optional,      intent(in)    :: prefix
    integer,         optional,      intent(in)    :: dimensions(:)
    real(rk),target, optional                     :: data0d, data1d(:)
+   logical,         optional,      intent(in)    :: part_of_state
    logical,         optional,      intent(out)   :: used
 !
 ! !REVISION HISTORY:
@@ -589,7 +598,7 @@
    call field_manager%register(trim(prefix_)//variable%name, variable%units, variable%long_name, &
       minimum=variable%minimum, maximum=variable%maximum, fill_value=variable%missing_value, &
       dimensions=dimensions, data0d=data0d, data1d=data1d, category='fabm'//variable%target%owner%get_path(), &
-      output_level=output_level, used=used)
+      output_level=output_level, part_of_state=part_of_state, used=used)
    end subroutine register_field
 !EOC
 
@@ -712,8 +721,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer :: i,k
-   REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
+   integer :: i
 !EOP
 
 !-----------------------------------------------------------------------
@@ -734,6 +742,33 @@
       if (associated(cc_ben_obs(i)%data)) cc(1,size(model%state_variables,1)+i) = cc_ben_obs(i)%data
    end do
 
+   end subroutine init_gotm_fabm_state
+   
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Accept current biogeochemcal state and compute derived diagnostics
+!
+! !INTERFACE:
+   subroutine start_gotm_fabm(nlev)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT PARAMETERS:
+   integer,intent(in) :: nlev
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer :: i,k
+   REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
+   REALTYPE :: total(size(model%conserved_quantities))
+!EOP
+
+!-----------------------------------------------------------------------
+!BOC
    ! Compute pressure, depth, day of the year
    call calculate_derived_input(nlev,_ZERO_)
 
@@ -761,10 +796,15 @@
          cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
    end do
 
-   ! Compute totals of conserved quantities at simulation start (to be used in outputs related to mass conservation checks)
-   call calculate_conserved_quantities(nlev,total0)
+   ! Compute current totals of conserved quantities (to be used in outputs related to mass conservation checks)
+   call calculate_conserved_quantities(nlev, total)
 
-   end subroutine init_gotm_fabm_state
+   ! Use updated totals unless values were already provided from the restart.
+   do i=1,size(model%conserved_quantities)
+      if (total0(i) == huge(_ZERO_)) total0(i) = total(i)
+   end do
+
+   end subroutine start_gotm_fabm
 !EOC
 
 !-----------------------------------------------------------------------
