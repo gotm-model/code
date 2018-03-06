@@ -9,8 +9,8 @@ project(gotm Fortran)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Set version information.
-set(gotm_VERSION_MAJOR 4)
-set(gotm_VERSION_MINOR 1)
+set(gotm_VERSION_MAJOR 5)
+set(gotm_VERSION_MINOR 2)
 set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
 
