@@ -38,6 +38,9 @@
    use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_category
    use output_manager
    use diagnostics
+#ifdef _YAML_CONFIGURATION_
+   use settings
+#endif
 
    use meanflow
    use input
@@ -110,6 +113,10 @@
    REALTYPE,target           :: latitude,longitude
    logical                   :: restart
 
+#ifdef _YAML_CONFIGURATION_
+   character(len=1024), public :: save_yaml_path
+#endif
+   
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
       procedure :: julian_day => gotm_host_julian_day
@@ -165,6 +172,30 @@
    logical          ::    file_exists
 !-----------------------------------------------------------------------
 !BOC
+#ifdef _YAML_CONFIGURATION_
+   class (type_settings), pointer :: settings_branch
+   integer, parameter :: rk = kind(_ONE_)
+
+   call settings_store%load('gotm.yaml', namlst)
+
+   ! You can access deeper nested parameters by getting their branch, and then request parameters by name from there
+   settings_branch => settings_store%get_child('location')
+   call settings_branch%get(latitude, 'latitude', 'latitude', 'degrees North', minimum=-90._rk, maximum=90._rk, default=0._rk)
+   call settings_branch%get(longitude, 'longitude', 'longitude', 'degrees East', minimum=-360._rk, maximum=360._rk, default=0._rk)
+   call settings_branch%get(nlev, 'nlev', 'number of vertical layers', minimum=1, default=100)
+
+   ! You can access deeper nested parameters by providing the full path (names separated by slashes)
+   call settings_store%get(start, 'time/start', 'start time', default='2017-01-01 00:00:00')
+   call settings_store%get(stop, 'time/stop', 'stop time', default='2018-01-01 00:00:00')
+   call settings_store%get(cnpar, 'time/cnpar', 'constant for the theta scheme used for time integration of diffusion-reaction components', '-', minimum=0._rk, maximum=1._rk, default=1._rk)
+
+   call settings_store%get(restart_offline, 'restart/restart_offline', 'initialize simulation with state stored in restart.nc', default=.false.)
+   
+   call settings_store%get(buoy_method, 'meanflow/buoy_method', 'method to compute mean buoyancy', &
+      options=(/type_option(1, 'from equation of state (i.e. from potential temperature and salinity)'), &
+      type_option(2, 'from prognostic equation')/), default=1)
+#endif
+
    LEVEL1 'init_gotm'
    STDERR LINE
 
@@ -345,6 +376,10 @@
    LEVEL2 'done.'
    STDERR LINE
 
+#ifdef _YAML_CONFIGURATION_
+   if (save_yaml_path /= '') call settings_store%save(trim(save_yaml_path), namlst)
+#endif
+   
 #ifdef _PRINTSTATE_
    call print_state
 #endif

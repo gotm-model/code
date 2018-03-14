@@ -126,6 +126,11 @@
       case ('-h', '--help')
          call print_help()
          stop
+#ifdef _YAML_CONFIGURATION_
+      case ('--save_yaml')
+         i = i+1
+         call get_command_argument(i, save_yaml_path)
+#endif
       case default
          print '(a,a,/)', 'Unrecognized command-line option: ', arg
          call print_help()

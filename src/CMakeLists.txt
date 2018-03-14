@@ -66,6 +66,7 @@ endif()
 
 # Global preprocessor definitions
 add_definitions(-DFORTRAN95)
+add_definitions(-D_YAML_CONFIGURATION_)
 
 option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
 mark_as_advanced(GOTM_EXTRA_OUTPUT)
@@ -235,8 +236,9 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 add_library(input
             input/input.F90
             input/input_netcdf.F90
+            input/settings.F90
            )
-target_link_libraries(input util)
+target_link_libraries(input util output_manager)
 set(GOTM_LIBS ${GOTM_LIBS} input)
 
 add_library(airsea

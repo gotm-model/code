@@ -5,6 +5,7 @@ project(yaml Fortran)
 
 add_library(yaml OBJECT
             yaml_types.F90
+            yaml_settings.F90
             yaml.F90
            )
 
