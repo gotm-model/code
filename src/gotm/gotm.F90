@@ -114,7 +114,7 @@
    logical                   :: restart
 
 #ifdef _YAML_CONFIGURATION_
-   character(len=1024), public :: save_yaml_path
+   character(len=1024), public :: save_yaml_path = ''
 #endif
    
    type,extends(type_output_manager_host) :: type_gotm_host
