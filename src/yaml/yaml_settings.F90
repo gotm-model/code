@@ -486,7 +486,10 @@ contains
       end if
       child%path = trim(self%path)//'/'//name
       if (present(long_name)) child%long_name = long_name
-      if (associated(self%backing_store)) child%backing_store => self%backing_store%get_dictionary(pair%key, .false., yaml_error)
+      if (associated(self%backing_store)) then
+         child%backing_store => self%backing_store%get_dictionary(pair%key, required=.false., error=yaml_error)
+         if (associated(yaml_error)) call report_error(trim(yaml_error%message))
+      end if
    end function get_child
 
    subroutine finalize(self)
