@@ -41,7 +41,7 @@
 
    use meanflow
    use input
-   use input_netcdf, only: read_restart_data
+   use input_netcdf
    use observations
    use time
 
@@ -678,6 +678,7 @@
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
 
+#ifdef NETCDF_FMT
       field_set = fm%get_state()
       member => field_set%first
       do while (associated(member))
@@ -696,6 +697,10 @@
          member => member%next
       end do
       call field_set%finalize()
+#else
+      FATAL 'GOTM has been compiled without NetCDF support; restart reading is not supported'
+      stop 'read_restart'
+#endif
    end subroutine read_restart
 !-----------------------------------------------------------------------
 
