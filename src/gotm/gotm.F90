@@ -647,6 +647,7 @@
    end subroutine
 
    subroutine setup_restart()
+#ifdef NETCDF_FMT
       use netcdf_output
       use output_manager_core
       use time, only: jul2,secs2
@@ -671,14 +672,15 @@
             settings%xtype = NF90_DOUBLE
       end select
       call file%append_category(category)
+#endif
    end subroutine setup_restart
 
    subroutine read_restart(restart_allow_missing_variable)
       logical                               :: restart_allow_missing_variable
+#ifdef NETCDF_FMT
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
 
-#ifdef NETCDF_FMT
       field_set = fm%get_state()
       member => field_set%first
       do while (associated(member))
