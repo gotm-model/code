@@ -338,7 +338,7 @@
 #ifdef _FABM_
 !  Accept the current biogeochemical state and used it to compute derived diagnostics.
 !  This MUST be preceded with a call to stratification, in order to ensure FABM has a valid density.
-   if (fabm_calc) call start_gotm_fabm(nlev)
+   if (fabm_calc) call start_gotm_fabm(nlev,fm)
 #endif
 
    if (list_fields) call fm%list()
