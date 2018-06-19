@@ -227,7 +227,9 @@
    REALTYPE                             :: x,r,Phi,limit
    REALTYPE                             :: Yu,Yc,Yd
    REALTYPE                             :: c,cmax,dti
+   REALTYPE                             :: Vold,Vnew
    REALTYPE                             :: cu(0:N)
+   REALTYPE                             :: dV(0:N)
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -264,6 +266,7 @@
    end if
 
    dti = dt / it
+   dV  = (Vc - Vco) / it
 
 !  splitting loop
    do i=1,it
@@ -398,8 +401,10 @@
       else                ! conservative
          cu = Af * cu
          do k=1,N
-            Y(k) =   ( Vco(k)*Y(k) - dti*(cu(k)-cu(k-1)-Qsour(k)) ) &
-                   / ( Vc(k) - dti*Lsour(k) )
+            Vold = Vco(k) + ( i-1)*dV(k)
+            Vnew = Vc (k) - (it-i)*dV(k)
+            Y(k) =   ( Vold*Y(k) - dti*(cu(k)-cu(k-1)-Qsour(k)) ) &
+                   / ( Vnew - dti*Lsour(k) )
          enddo
       end if
 
