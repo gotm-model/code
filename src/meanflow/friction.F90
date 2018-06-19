@@ -58,7 +58,11 @@
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
    use meanflow,      only: u,v,rho_0,gravity
+#if 0
    use meanflow,      only: u_taub1=>u_taub,u_taus,drag,taub
+#else
+   use meanflow,      only: u_taub,u_taubo,u_taus,drag,taub
+#endif
    use meanflow,      only: charnock,charnock_val,z0s_min
    use meanflow,      only: lake,Af,Vc
 
@@ -76,8 +80,10 @@
 ! !LOCAL VARIABLES:
    integer                             :: i,j,j_max, rc
    REALTYPE                            :: rr
+#if 0
    REALTYPE,dimension(:),allocatable,save :: u_taub
-   logical,save                        :: first=.true.
+#endif
+   logical, save                       :: first=.true.
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -92,6 +98,12 @@
       z0s=z0s_min
    end if
 
+   if (first) then
+      u_taub = u_taubo
+      first = .false.
+   else
+      u_taubo = u_taub
+   end if
 !  iterate bottom roughness length MaxItz0b times
 !  for lake model the friction has to be calculacted at every depth
 
@@ -130,13 +142,16 @@
       end do
 !     add bottom friction as source term for the momentum equation
       drag(j) = drag(j) +  rr*rr * ( Af(j) - Af(j-1) ) / Vc(j) * h(j)
+      taub(j) = u_taub(j)*u_taub(j)*rho_0
    end do
 
+#if 0
    drag(1) = drag(1) + rr*rr
 
 !  calculate bottom stress, which is used by sediment resuspension models
    u_taub1 = u_taub(1)
    taub = u_taub(1)*u_taub(1)*rho_0
+#endif
 
 !  be careful: tx and ty are the surface shear-stresses
 !  already divided by rho!

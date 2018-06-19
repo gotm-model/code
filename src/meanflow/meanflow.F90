@@ -58,7 +58,12 @@
    REALTYPE, public, dimension(:), allocatable  :: avh
 
 !  extra friction terms due to e.g. seagrass
+#if 0
    REALTYPE, public, dimension(:), allocatable  :: fric,drag
+#else
+   REALTYPE, public, dimension(:), allocatable  :: fric,drag
+   REALTYPE, public, dimension(:), allocatable  :: u_taub,u_taubo,taub
+#endif
 
 !  shading in the water column
    REALTYPE, public, dimension(:), allocatable, target  :: bioshade
@@ -104,10 +109,16 @@
    REALTYPE, public                    :: cori
 
 !  the friction velocities
-   REALTYPE, public                    :: u_taub,u_taus
+#if 0
+   REALTYPE, public                    :: u_taub,u_taubo,u_taus
+#else
+   REALTYPE, public                    :: u_taus
+#endif
 
 !  bottom stress
+#if 0
    REALTYPE, public, target            :: taub
+#endif
 
 !  other stuff
    REALTYPE, public, target            :: depth0
@@ -228,9 +239,11 @@
 
 !  Initialize bottom and surface stress to zero
 !  They will be set in friction, but also used as input in the same routine.
+#if 0
    u_taub = _ZERO_
    u_taus = _ZERO_
    taub = _ZERO_
+#endif
 
 !  Store initial depth (actual depth will e a function of surface elevation)
    depth0=depth
@@ -309,6 +322,18 @@
    allocate(drag(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (drag)'
    drag = _ZERO_
+
+   allocate(u_taub(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (u_taub)'
+   u_taub = _ZERO_
+
+   allocate(u_taubo(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (u_taubo)'
+   u_taubo = _ZERO_
+
+   allocate(taub(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (taub)'
+   taub = _ZERO_
 
    allocate(T(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (T)'

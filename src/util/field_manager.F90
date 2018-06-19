@@ -172,6 +172,7 @@ module field_manager
       procedure :: register_dimension
       procedure :: find_dimension
       procedure :: find_category
+      procedure :: get_state
       generic :: send_data => send_data_0d,send_data_1d,send_data_2d,send_data_3d,send_data_by_name_0d,send_data_by_name_1d,send_data_by_name_2d,send_data_by_name_3d
    end type type_field_manager
 
@@ -503,7 +504,7 @@ contains
       end if
    end function find
 
-   subroutine register(self, name, units, long_name, standard_name, fill_value, minimum, maximum, dimensions, data0d, data1d, data2d, data3d, no_default_dimensions, category, output_level, coordinate_dimension, used, field)
+   subroutine register(self, name, units, long_name, standard_name, fill_value, minimum, maximum, dimensions, data0d, data1d, data2d, data3d, no_default_dimensions, category, output_level, coordinate_dimension, part_of_state, used, field)
       class (type_field_manager),intent(inout) :: self
       character(len=*),          intent(in)    :: name, units, long_name
       character(len=*),optional, intent(in)    :: standard_name
@@ -514,6 +515,7 @@ contains
       character(len=*),optional, intent(in)    :: category
       integer,         optional, intent(in)    :: output_level
       integer,         optional, intent(in)    :: coordinate_dimension
+      logical,         optional, intent(in)    :: part_of_state
       logical,         optional, intent(out)   :: used
       type (type_field),optional,pointer       :: field
 
@@ -594,6 +596,9 @@ contains
       end do
 
       call add_field_to_tree(self,field_,category)
+      if (present(part_of_state)) then
+         if (part_of_state) call add_field_to_tree(self,field_,'state')
+      end if
 
       ! Note: the "in_output" flag can have been set by a call to select_for_output (typically from the output manager),
       ! even before the actual variable is registered with the field_ manager.
@@ -957,6 +962,15 @@ contains
       end do
       self%first_child => null()
    end subroutine node_finalize
+
+   function get_state(self) result(field_set)
+      class (type_field_manager),intent(inout) :: self
+      type (type_field_set)                    :: field_set
+
+      class (type_category_node),   pointer :: category
+      category => self%find_category('state')
+      if (associated(category)) call category%get_all_fields(field_set,huge(output_level_debug))
+   end function get_state
 
    function category_get_path(self) result(path)
       class (type_category_node), target, intent(in)  :: self

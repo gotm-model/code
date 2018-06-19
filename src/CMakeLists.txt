@@ -9,8 +9,8 @@ project(gotm Fortran)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Set version information.
-set(gotm_VERSION_MAJOR 4)
-set(gotm_VERSION_MINOR 1)
+set(gotm_VERSION_MAJOR 5)
+set(gotm_VERSION_MINOR 3)
 set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
 
@@ -234,6 +234,7 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
 add_library(input
             input/input.F90
+            input/input_netcdf.F90
            )
 target_link_libraries(input util)
 set(GOTM_LIBS ${GOTM_LIBS} input)

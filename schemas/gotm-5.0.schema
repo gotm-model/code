@@ -1189,6 +1189,77 @@
          </element>
       </element>
    </element>
+   <element name="gotm_fabm" label="FABM specific settings" optional="True">
+      <element name="gotm_fabm_nml" label="GOTM coupling">
+         <element name="fabm_calc" type="bool" label="apply FABM - or not" />
+         <element name="cnpar" type="float" value = "1." label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)"
+            minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="w_adv_discr" type="int" label="method to discretize the vertical advection due to settling/rising">
+            <condition type="eq" variable="./fabm_calc" value="True" />
+            <options>
+               <option value="1" label="first-order upstream" />
+               <option value="2" label="second-order polynomial (P2)" />
+               <option value="3" label="third-order polynomial (P3)" />
+               <option value="4" label="TVD with Superbee limiter" />
+               <option value="5" label="TVD with MUSCL limiter" />
+               <option value="6" label="TVD with ULTIMATE QUICKEST" />
+            </options>
+         </element>
+         <element name="ode_method" type="int" label="ODE scheme for source and sink dynamics">
+            <condition type="eq" variable="./fabm_calc" value="True" />
+            <options>
+               <option value="1" label="first-order explicit (not positive)" />
+               <option value="2" label="second-order explicit Runge-Kutta (not positive)" />
+               <option value="3" label="fourth-order explicit Runge-Kutta (not positive)" />
+               <option value="4" label="Patankar (first-order, not conservative)" />
+               <option value="5" label="Patankar-RK (second-order, not conservative)" />
+               <option value="6" label="Patankar-RK (does not work, not conservative)" />
+               <option value="7" label="Modified Patankar (1st-order, conservat., posit.)" />
+               <option value="8" label="Modified Patankar-RK (2nd-order, conservat., posit.)" />
+               <option value="9" label="Modified Patankar-RK (does not work, conservat., posit.)" />
+               <option value="10" label="Extended Modified Patankar (1st-order, conservat., posit.)" />
+               <option value="11" label="Extended Modified Patankar-RK (2nd-order, conservat., posit.)" />
+            </options>
+         </element>
+         <element name="split_factor" type="int" label="split_factor: presently not used - must be 1" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="bioshade_feedback" type="bool" label="feedback of bio-turbidity to temperature equation" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="bioalbedo_feedback" type="bool" label="feedback of bio-albedo to albedo calculation" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="biodrag_feedback" type="bool" label="feedback of bio-drag to surface stress calculation" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="repair_state" type="bool" label="allow FABM to keep variables within given limits" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="salinity_relaxation_to_freshwater_flux" type="bool" label="add virtual surface freshwater flux corresponding to relaxation of salinity profile" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="no_precipitation_dilution" type="bool" label="switch off dilution due to surface freshwater fluxes (useful to check mass conservation)" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="save_inputs" type="bool" label="save FABM specific input to output file" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="no_surface" type="bool" label="switch off surface processes, e.g. gas exchange and ice algae (good to check mass conservation)" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="configuration_method" type="int" label="type of fabm specifications file">
+            <condition type="eq" variable="./fabm_calc" value="True" />
+            <options>
+               <option value="-1" label="first try fabm.yaml, then fabm.nml" />
+               <option value="0" label="fabm.nml (containing Fortran namelists)" />
+               <option value="1" label="fabm.yaml (containing YAML trees)" />
+            </options>
+         </element>
+      </element>
+   </element>
    <element name="seagrass" label="seagrass model" optional="True">
       <element name="canopy">
          <element name="seagrass_calc" type="bool" label="use seagrass model" />
