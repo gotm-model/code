@@ -188,10 +188,6 @@
       Vco = Vc
       Afo = Af
       call update_hypsograph(nlev,z,h)
-#ifndef _LAKE_AFO_
-FATAL 'ifndef _LAKE_AFO_'
-      Afo = Af
-#endif
    else
       Vco = ho
       Vc  = h
