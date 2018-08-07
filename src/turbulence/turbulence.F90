@@ -36,12 +36,17 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_turbulence, do_turbulence
+   public init_turbulence,post_init_turbulence,do_turbulence
    public k_bc,q2over2_bc,epsilon_bc,psi_bc,q2l_bc
    public clean_turbulence
 #ifdef _PRINTSTATE_
    public print_state_turbulence
 #endif
+
+   interface init_turbulence
+      module procedure init_turbulence_nml
+      module procedure init_turbulence_yaml
+   end interface
 
 ! !PUBLIC DATA MEMBERS:
 !  TKE, rate of dissipation, turbulent length-scale
@@ -261,6 +266,7 @@
 !  Original author(s): Karsten Bolding, Hans Burchard,
 !                      Manuel Ruiz Villarreal,
 !                      Lars Umlauf
+! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 
@@ -272,7 +278,7 @@
 ! !IROUTINE: Initialise the turbulence module
 !
 ! !INTERFACE:
-   subroutine init_turbulence(namlst,fn,nlev)
+   subroutine init_turbulence_nml(namlst,fn)
 !
 ! !DESCRIPTION:
 ! Initialises all turbulence related stuff. This routine reads a number
@@ -298,18 +304,14 @@
 ! !INPUT PARAMETERS:
    integer,          intent(in)        :: namlst
    character(len=*), intent(in)        :: fn
-   integer,          intent(in)        :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
 !                      Manuel Ruiz Villarreal,
 !                      Lars Umlauf
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
    integer                            :: rc
-   REALTYPE                           :: L_min
 !
    namelist /turbulence/    turb_method,tke_method,            &
                             len_scale_method,stab_method
@@ -341,10 +343,10 @@
 
    namelist /iw/            iw_model,alpha,klimiw,rich_cr,     &
                             numiw,nuhiw,numshear
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_turbulence'
+   LEVEL1 'init_turbulence_nml'
 
    a1 = _ZERO_
    a2 = _ZERO_
@@ -465,34 +467,346 @@
    numshear=5.e-3
 
    ! read the variables from the namelist file
-
-   open(namlst,file=fn,status='old',action='read',err=80)
-
-   LEVEL2 'reading turbulence namelists..'
-
-   read(namlst,nml=turbulence,err=81)
+   open(10,file='gotmturb.nml',status='old',action='read',err=80)
+   read(10,nml=turbulence,err=81)
 
    if (turb_method.eq.99) then
-      close (namlst)
-      LEVEL2 'done.'
-      LEVEL1 'done.'
-      return
+      close (10)
    else
-      read(namlst,nml=bc,err=82)
-      read(namlst,nml=turb_param,err=83)
-      read(namlst,nml=generic,err=84)
-      read(namlst,nml=keps,err=85)
-      read(namlst,nml=my,err=86)
-      read(namlst,nml=scnd,err=87)
-      read(namlst,nml=iw,err=88)
-      close (namlst)
-      LEVEL2 'done.'
+      read(10,nml=bc,err=82)
+      read(10,nml=turb_param,err=83)
+      read(10,nml=generic,err=84)
+      read(10,nml=keps,err=85)
+      read(10,nml=my,err=86)
+      read(10,nml=scnd,err=87)
+      read(10,nml=iw,err=88)
+      close (10)
    endif
+   LEVEL2 'done.'
+   return
 
+80 FATAL 'I could not open "gotmturb.nml"'
+   stop 'init_turbulence'
+81 FATAL 'I could not read "turbulence" namelist'
+   stop 'init_turbulence'
+82 FATAL 'I could not read "bc" namelist'
+   stop 'init_turbulence'
+83 FATAL 'I could not read "turb_param" namelist'
+   stop 'init_turbulence'
+84 FATAL 'I could not read "generic" namelist'
+   stop 'init_turbulence'
+85 FATAL 'I could not read "keps" namelist'
+   stop 'init_turbulence'
+86 FATAL 'I could not read "my" namelist'
+   stop 'init_turbulence'
+87 FATAL 'I could not read "scnd" namelist'
+   stop 'init_turbulence'
+88 FATAL 'I could not read "iw" namelist'
+   stop 'init_turbulence'
+
+ end subroutine init_turbulence_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the turbulence module
+!
+! !INTERFACE:
+   subroutine init_turbulence_yaml()
+!
+! !DESCRIPTION:
+! Initialises all turbulence related stuff. This routine reads a number
+! of namelists and allocates memory for turbulence related vectors.
+! The core consists of calls to the the internal functions
+! {\tt generate\_model()} and {\tt analyse\_model()}, discussed in
+! great detail in \sect{sec:generate} and \sect{sec:analyse}, respectively.
+! The former function computes the model coefficients for the generic two-equation
+! model (see \cite{Umlaufetal2003}) from physically motivated quantities
+! like the von K{\'a}rm{\'a}n constant, $\kappa$, the decay rate in homogeneous
+! turbulence, $d$, the steady-state Richardson number, $Ri_{st}$,
+! and many others. The latter function does the inverse:
+! it computes the physically motivated quantities from the model constants
+! of any model currently available in GOTM.
+! After the call to either function, all relevant model parameters
+! are known to GOTM.
+! Then, the function {\tt report\_model()} is called, which displays all
+! results on the screen.
+!
+! !USES:
+   use settings
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding, Hans Burchard,
+!                      Manuel Ruiz Villarreal,
+!                      Lars Umlauf
+!
+! !LOCAL VARIABLES:
+   class (type_settings), pointer :: branch
+   integer, parameter :: rk = kind(_ONE_)
+   integer                            :: rc
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'init_turbulence_yaml'
+
+   branch => settings_store%get_child('turbulence')
+   call branch%get(turb_method, 'turb_method', '', &
+                   minimum=0,default=3)
+   call branch%get(tke_method, 'tke_method', '', &
+                   minimum=1,maximum=3,default=2)
+   call branch%get(len_scale_method, 'len_scale_method', '', &
+                   minimum=1,maximum=10,default=8)
+   call branch%get(stab_method, 'stab_method', '', &
+                   minimum=1,maximum=4,default=3)
+
+   branch => settings_store%get_child('bc')
+   call branch%get(k_ubc, 'k_ubc', '', &
+                   minimum=0,maximum=1,default=1)
+   call branch%get(k_lbc, 'k_lbc', '', &
+                   minimum=0,maximum=1,default=1)
+   call branch%get(psi_ubc, 'psi_ubc', '', &
+                   minimum=0,maximum=1,default=1)
+   call branch%get(psi_lbc, 'psi_lbc', '', &
+                   minimum=0,maximum=1,default=1)
+   call branch%get(ubc_type, 'ubc_type', '', &
+                   minimum=1,maximum=2,default=1)
+   call branch%get(lbc_type, 'lbc_type', '', &
+                   minimum=1,maximum=2,default=1)
+
+
+   branch => settings_store%get_child('turb_param')
+!   call branch%get(s_analyt_method, 's_analyt_method', '', &
+!                   minimum=1,maximum=3,default=1)
+   call branch%get(cm0_fix, 'cm0_fix', '', '-', &
+                   minimum=0._rk,default=0.5477_rk)
+   call branch%get(Prandtl0_fix, 'Prandtl0_fix', '', '-', &
+                   minimum=0._rk,default=0.74_rk)
+   call branch%get(cw, 'cw', '', '-', &
+                   minimum=0._rk,default=100._rk)
+   call branch%get(compute_kappa, 'compute_kappa', '', &
+                   default=.false.)
+   call branch%get(kappa, 'kappa', '', '-', &
+                   minimum=0._rk,default=0.4_rk)
+   call branch%get(compute_c3, 'compute_c3', '', &
+                   default=.true.)
+   call branch%get(Ri_st, 'Ri_st', '', '-', &
+                   minimum=0._rk,default=0.25_rk)
+   call branch%get(length_lim, 'length_lim', '', &
+                   default=.true.)
+   call branch%get(galp, 'galp', '', '-', &
+                   minimum=0._rk,default=0.53_rk)
+   call branch%get(const_num, 'const_num', '', 'm^2/s', &
+                   minimum=0._rk,default=0.0005_rk)
+   call branch%get(const_nuh, 'const_nuh', '', 'm^2/s', &
+                   minimum=0._rk,default=0.0005_rk)
+   call branch%get(k_min, 'k_min', '', 'm^2/s^2', &
+                   minimum=0._rk,default=1.e-6_rk)
+   call branch%get(eps_min, 'eps_min', '', 'm^2/s^3', &
+                   minimum=0._rk,default=1.e-12_rk)
+   call branch%get(kb_min, 'kb_min', '', 'm^2/s^4', &
+                   minimum=0._rk,default=1.e-10_rk)
+   call branch%get(epsb_min, 'epsb_min', '', 'm^2/s^5', &
+                   minimum=0._rk,default=1.e-14_rk)
+
+   branch => settings_store%get_child('generic')
+   call branch%get(compute_param, 'compute_param', '', &
+                   default=.false.)
+   call branch%get(gen_m, 'gen_m', '', '-', &
+                   default=1._rk)
+   call branch%get(gen_l, 'gen_l', '', '-', &
+                   default=-0.67_rk)
+   call branch%get(gen_p, 'gen_p', '', '-', &
+                   default=3._rk)
+   call branch%get(cpsi1, 'cpsi1', '', '-', &
+                   default=1._rk)
+   call branch%get(cpsi2, 'cpsi2', '', '-', &
+                   default=1.22_rk)
+   call branch%get(cpsi3minus, 'cpsi3minus', '', '-', &
+                   default=0.05_rk)
+   call branch%get(cpsi3plus, 'cpsi3plus', '', '-', &
+                   default=1._rk)
+   call branch%get(sig_kpsi, 'sig_kpsi', '', '-', &
+                   default=0.8_rk)
+   call branch%get(sig_psi, 'sig_psi', '', '-', &
+                   default=1.07_rk)
+   call branch%get(gen_d, 'gen_d', '', '-', &
+                   default=-1.2_rk)
+   call branch%get(gen_alpha, 'gen_alpha', '', '-', &
+                   default=-2._rk)
+   call branch%get(gen_l, 'gen_l', '', '-', &
+                   default=0.2_rk)
+
+   branch => settings_store%get_child('keps')
+   call branch%get(ce1, 'ce1', '', '-', &
+                   default=1.44_rk)
+   call branch%get(ce2, 'ce2', '', '-', &
+                   default=1.92_rk)
+   call branch%get(ce3minus, 'ce3minus', '', '-', &
+                   default=-0.4_rk)
+   call branch%get(ce3plus, 'ce3plus', '', '-', &
+                   default=1.0_rk)
+   call branch%get(sig_k, 'sig_k', '', '-', &
+                   default=1._rk)
+   call branch%get(sig_e, 'sig_e', '', '-', &
+                   default=1.3_rk)
+   call branch%get(sig_peps, 'sig_peps', '', &
+                   default=.false.)
+
+   branch => settings_store%get_child('my')
+   call branch%get(e1, 'e1', '', '-', &
+                   default=1.8_rk)
+   call branch%get(e2, 'e2', '', '-', &
+                   default=1.33_rk)
+   call branch%get(e3, 'e3', '', '-', &
+                   default=1.8_rk)
+   call branch%get(sq, 'sq', '', '-', &
+                   default=0.2_rk)
+   call branch%get(sl, 'sl', '', '-', &
+                   default=0.2_rk)
+   call branch%get(my_length, 'my_length', '', &
+                   minimum=1,maximum=3,default=3)
+   call branch%get(new_constr, 'new_constr', '', &
+                   default=.false.)
+
+   branch => settings_store%get_child('scnd')
+   call branch%get(scnd_method, 'scnd_method', '', &
+                   minimum=1,maximum=3,default=1)
+   call branch%get(kb_method, 'kb_method', '', &
+                   minimum=1,maximum=2,default=1)
+   call branch%get(epsb_method, 'epsb_method', '', &
+                   minimum=1,maximum=2,default=1)
+   call branch%get(scnd_coeff, 'scnd_coeff', '', &
+                   minimum=0,maximum=7,default=7)
+   call branch%get(cc1, 'cc1', '', '-', &
+                   default=3.6_rk)
+   call branch%get(cc2, 'cc2', '', '-', &
+                   default=0.8_rk)
+   call branch%get(cc3, 'cc3', '', '-', &
+                   default=1.2_rk)
+   call branch%get(cc4, 'cc4', '', '-', &
+                   default=1.2_rk)
+   call branch%get(cc5, 'cc5', '', '-', &
+                   default=0.0_rk)
+   call branch%get(cc6, 'cc6', '', '-', &
+                   default=0.3_rk)
+   call branch%get(ct1, 'ct1', '', '-', &
+                   default=3.28_rk)
+   call branch%get(ct2, 'ct2', '', '-', &
+                   default=0.4_rk)
+   call branch%get(ct3, 'ct3', '', '-', &
+                   default=0.4_rk)
+   call branch%get(ct4, 'ct4', '', '-', &
+                   default=0.0_rk)
+   call branch%get(ct5, 'ct5', '', '-', &
+                   default=0.4_rk)
+   call branch%get(ctt, 'ctt', '', '-', &
+                   default=0.8_rk)
+
+   branch => settings_store%get_child('iw')
+   call branch%get(iw_model, 'iw_model', '', &
+                   minimum=0,maximum=2,default=0)
+   call branch%get(alpha, 'alpha', '', '-', &
+                   default=0.7_rk)
+   call branch%get(klimiw, 'klimiw', '', '-', &
+                   default=1.e-6_rk)
+   call branch%get(rich_cr, 'rich_cr', '', '-', &
+                   default=0.7_rk)
+   call branch%get(numshear, 'numshear', '', '-', &
+                   default=5.e-3_rk)
+   call branch%get(numiw, 'numiw', '', '-', &
+                   default=1.e-4_rk)
+   call branch%get(nuhiw, 'nuhiw', '', '-', &
+                   default=1.e-5_rk)
+   LEVEL2 'done.'
+   return
+
+ end subroutine init_turbulence_yaml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the turbulence module
+!
+! !INTERFACE:
+   subroutine post_init_turbulence(nlev)
+!
+! !DESCRIPTION:
+! Initialises all turbulence related stuff. This routine reads a number
+! of namelists and allocates memory for turbulence related vectors.
+! The core consists of calls to the the internal functions
+! {\tt generate\_model()} and {\tt analyse\_model()}, discussed in
+! great detail in \sect{sec:generate} and \sect{sec:analyse}, respectively.
+! The former function computes the model coefficients for the generic two-equation
+! model (see \cite{Umlaufetal2003}) from physically motivated quantities
+! like the von K{\'a}rm{\'a}n constant, $\kappa$, the decay rate in homogeneous
+! turbulence, $d$, the steady-state Richardson number, $Ri_{st}$,
+! and many others. The latter function does the inverse:
+! it computes the physically motivated quantities from the model constants
+! of any model currently available in GOTM.
+! After the call to either function, all relevant model parameters
+! are known to GOTM.
+! Then, the function {\tt report\_model()} is called, which displays all
+! results on the screen.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,          intent(in)        :: nlev
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding, Hans Burchard,
+!                      Manuel Ruiz Villarreal,
+!                      Lars Umlauf
+!
+! !LOCAL VARIABLES:
+   integer                            :: rc
+   REALTYPE                           :: L_min
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'post_init_turbulence'
+
+#if 0
+   a1 = _ZERO_
+   a2 = _ZERO_
+   a3 = _ZERO_
+   a4 = _ZERO_
+   a5 = _ZERO_
+
+   at1 = _ZERO_
+   at2 = _ZERO_
+   at3 = _ZERO_
+   at4 = _ZERO_
+   at5 = _ZERO_
+
+   cm0 = _ZERO_
+   cmsf = _ZERO_
+   cde = _ZERO_
+   rcm = _ZERO_
+   b1 = _ZERO_
+
+!  Prandtl-number in neutrally stratified flow
+   Prandtl0 = _ZERO_
+
+!  parameters for wave-breaking
+   craig_m = _ZERO_
+   sig_e0 = _ZERO_
+
+   ! Initialize all namelist variables to reasonable defaults.
+   turb_method=2
+   tke_method=2
+   len_scale_method=8
+   stab_method=3
+#endif
 
 !  allocate memory
-
-   LEVEL2 'allocation memory..'
+   LEVEL2 'allocation turbulence memory..'
    allocate(tke(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (tke)'
    tke = k_min
@@ -509,12 +823,10 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (L)'
    L = _ZERO_
 
-   LEVEL2 'allocation memory..'
    allocate(kb(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (kb)'
    kb = kb_min
 
-   LEVEL2 'allocation memory..'
    allocate(epsb(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (epsb)'
    epsb = epsb_min
@@ -637,7 +949,6 @@
 
    LEVEL2 'done.'
 
-
 !  initialize the parameters of the second-order closure
    if (turb_method.eq.second_order) then
       call init_scnd(scnd_coeff)
@@ -667,31 +978,9 @@
 
 !  report on parameters and properties of the model
    call report_model
-
    return
-
-80 FATAL 'I could not open "gotmturb.nml"'
-   stop 'init_turbulence'
-81 FATAL 'I could not read "turbulence" namelist'
-   stop 'init_turbulence'
-82 FATAL 'I could not read "bc" namelist'
-   stop 'init_turbulence'
-83 FATAL 'I could not read "turb_param" namelist'
-   stop 'init_turbulence'
-84 FATAL 'I could not read "generic" namelist'
-   stop 'init_turbulence'
-85 FATAL 'I could not read "keps" namelist'
-   stop 'init_turbulence'
-86 FATAL 'I could not read "my" namelist'
-   stop 'init_turbulence'
-87 FATAL 'I could not read "scnd" namelist'
-   stop 'init_turbulence'
-88 FATAL 'I could not read "iw" namelist'
-   stop 'init_turbulence'
-
- end subroutine init_turbulence
+ end subroutine post_init_turbulence
 !EOC
-
 
 !-----------------------------------------------------------------------
 !BOP

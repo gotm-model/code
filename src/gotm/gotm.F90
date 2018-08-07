@@ -38,9 +38,7 @@
    use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_category
    use output_manager
    use diagnostics
-#ifdef _YAML_CONFIGURATION_
    use settings
-#endif
 
    use meanflow
    use input
@@ -48,7 +46,7 @@
    use observations
    use time
 
-   use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
+   use airsea,      only: init_airsea,post_init_airsea,do_airsea,clean_airsea
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
    use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp
@@ -56,7 +54,7 @@
    use airsea_variables, only: qa,ta
 
    use turbulence,  only: turb_method
-   use turbulence,  only: init_turbulence,do_turbulence
+   use turbulence,  only: init_turbulence,post_init_turbulence,do_turbulence
    use turbulence,  only: num,nuh,nus
    use turbulence,  only: const_num,const_nuh
    use turbulence,  only: gamu,gamv,gamh,gams
@@ -76,7 +74,7 @@
    use spm, only: init_spm, set_env_spm, do_spm, end_spm
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
+   use gotm_fabm,only:init_gotm_fabm,post_init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm_input,only:init_gotm_fabm_input
 #endif
@@ -113,9 +111,9 @@
    REALTYPE,target           :: latitude,longitude
    logical                   :: restart
 
-#ifdef _YAML_CONFIGURATION_
    character(len=1024), public :: save_yaml_path = ''
-#endif
+   logical, public             :: read_yaml_file = .true.
+   logical, public             :: read_nml_files = .false.
    
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -157,9 +155,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
+   class (type_settings), pointer :: branch
+   integer, parameter :: rk = kind(_ONE_)
+
    namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
                           cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
@@ -170,37 +169,79 @@
    logical          ::    restart_allow_missing_variable = .false.
    integer          ::    rc
    logical          ::    file_exists
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-#ifdef _YAML_CONFIGURATION_
-   class (type_settings), pointer :: settings_branch
-   integer, parameter :: rk = kind(_ONE_)
-
-   call settings_store%load('gotm.yaml', namlst)
-
-   ! You can access deeper nested parameters by getting their branch, and then request parameters by name from there
-   settings_branch => settings_store%get_child('location')
-   call settings_branch%get(latitude, 'latitude', 'latitude', 'degrees North', minimum=-90._rk, maximum=90._rk, default=0._rk)
-   call settings_branch%get(longitude, 'longitude', 'longitude', 'degrees East', minimum=-360._rk, maximum=360._rk, default=0._rk)
-   call settings_branch%get(nlev, 'nlev', 'number of vertical layers', minimum=1, default=100)
-
-   ! You can access deeper nested parameters by providing the full path (names separated by slashes)
-   call settings_store%get(start, 'time/start', 'start time', default='2017-01-01 00:00:00')
-   call settings_store%get(stop, 'time/stop', 'stop time', default='2018-01-01 00:00:00')
-   call settings_store%get(cnpar, 'time/cnpar', 'constant for the theta scheme used for time integration of diffusion-reaction components', '-', minimum=0._rk, maximum=1._rk, default=1._rk)
-
-   call settings_store%get(restart_offline, 'restart/restart_offline', 'initialize simulation with state stored in restart.nc', default=.false.)
-   
-   call settings_store%get(buoy_method, 'meanflow/buoy_method', 'method to compute mean buoyancy', &
-      options=(/type_option(1, 'from equation of state (i.e. from potential temperature and salinity)'), &
-      type_option(2, 'from prognostic equation')/), default=1)
-#endif
-
    LEVEL1 'init_gotm'
    STDERR LINE
 
    if (present(t1)) then
       restart_online = .true.
+   end if
+
+   if (read_yaml_file) then
+      LEVEL2 'reading yaml configuration'
+      call settings_store%load('gotm.yaml', namlst)
+
+      branch => settings_store%get_child('model_setup')
+      call branch%get(title, 'title', '', &
+                      default='GOTM simulation')
+      call branch%get(nlev, 'nlev', 'number of vertical layers', &
+                      minimum=1, default=100)
+      call branch%get(dt, 'dt', 'time step', 's', &
+                      minimum=0.e-10_rk, default=3600._rk)
+      call branch%get(restart_offline, 'restart/restart_offline', &
+                      'initialize simulation with state stored in restart.nc', &
+                      default=.false.)
+      call branch%get(restart_allow_missing_variable, 'restart/restart_allow_missing_variable', &
+                      'warning or error when variable is missing in restart file', &
+                      default=.false.)
+      call branch%get(cnpar, 'cnpar', &
+                      'constant for the theta scheme used for time integration of diffusion-reaction components', '-', &
+                      minimum=0._rk, maximum=1._rk, default=1._rk)
+      call branch%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
+         options=(/type_option(1, 'from equation of state (i.e. from potential temperature and salinity)'), &
+         type_option(2, 'from prognostic equation')/), default=1)
+
+      branch => settings_store%get_child('station')
+      call branch%get(name, 'name', '', &
+                      default='GOTM site')
+      call branch%get(latitude, 'latitude', 'latitude', 'degrees North', &
+                      minimum=-90._rk, maximum=90._rk, default=0._rk)
+      call branch%get(longitude, 'longitude', 'longitude', 'degrees East', &
+                      minimum=-360._rk, maximum=360._rk, default=0._rk)
+      call branch%get(depth, 'depth', '', '-', &
+                      minimum=0._rk, default=1._rk)
+
+      branch => settings_store%get_child('time')
+      call branch%get(timefmt, 'timefmt', 'time format', &
+                      minimum=1,maximum=3,default=2)
+#if 0
+      call branch%get(MaxN, 'MaxN', 'max number of time steps', &
+                      minimum=1,default=100)
+#endif
+      call branch%get(start, 'start', 'start time', &
+                      default='2017-01-01 00:00:00')
+      call branch%get(stop, 'stop', 'stop time', &
+                      default='2018-01-01 00:00:00')
+   end if
+
+!  open the namelist file.
+   if (read_nml_files) then
+      LEVEL2 'reading model setup namelists..'
+      open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
+
+      read(namlst,nml=model_setup,err=91)
+      read(namlst,nml=station,err=92)
+      read(namlst,nml=time,err=93)
+   end if
+
+   if (restart_online) then
+      LEVEL3 'online restart - updating values in the time namelist ...'
+      LEVEL4 'orignal: ',start,' -> ',stop
+      start = t1
+      stop  = t2
+      LEVEL4 'updated: ',start,' -> ',stop
    end if
 
 !  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
@@ -209,21 +250,6 @@
 !  therefore, we set to to a reasonable default here.
    zeta = _ZERO_
    w_adv_method = 0
-
-!  open the namelist file.
-   LEVEL2 'reading model setup namelists..'
-   open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
-
-   read(namlst,nml=model_setup,err=91)
-   read(namlst,nml=station,err=92)
-   read(namlst,nml=time,err=93)
-   if (restart_online) then
-      LEVEL3 'online restart - updating values in the time namelist ...'
-      LEVEL4 'orignal: ',start,' -> ',stop
-      start = t1
-      stop  = t2
-      LEVEL4 'updated: ',start,' -> ',stop
-   end if
 
    ! Initialize field manager
    call fm%register_dimension('lon',1,id=id_dim_lon)
@@ -241,7 +267,6 @@
       call deprecated_output(namlst,title,dt,list_fields)
    end if
 
-   LEVEL2 'done.'
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.
 
@@ -263,24 +288,46 @@
    LEVEL2 'initializing modules....'
    call init_input(nlev)
    call init_time(MinN,MaxN)
-   call init_eqstate(namlst)
+   if (read_yaml_file) then
+      call init_eqstate()
+   end if
+   if (read_nml_files) then
+      call init_eqstate(namlst)
+   end if
    close (namlst)
 
 !  From here - each init_? is responsible for opening and closing the
 !  namlst - unit.
-   call init_meanflow(namlst,'gotmmean.nml',nlev,latitude)
+   if (read_yaml_file) then
+      branch => settings_store%get_child('meanflow')
+      call init_meanflow(branch)
+   end if
+   if (read_nml_files) then
+      call init_meanflow(namlst,'gotmmean.nml')
+   end if
+   call post_init_meanflow(nlev,latitude)
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta)
 
 !  initialise each of the extra features/modules
 #ifdef SEAGRASS
-   call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
+   if (read_nml_files) then
+      call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
+   end if
 #endif
 #ifdef SPM
-   call init_spm(namlst,'spm.nml',unit_spm,nlev)
+   if (read_nml_files) then
+      call init_spm(namlst,'spm.nml',unit_spm,nlev)
+   end if
 #endif
-   call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
-                          depth,nlev,z,h,gravity,rho_0)
+   if (read_yaml_file) then
+      call init_observations()
+   end if
+   if (read_nml_files) then
+      call init_observations(namlst,'obs.nml')
+   end if
+!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
+   call post_init_observations(depth,nlev,z,h,gravity,rho_0)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
 !  Call do_input to make sure observed profiles are up-to-date.
@@ -289,7 +336,13 @@
    !  Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta)
 
-   call init_turbulence(namlst,'gotmturb.nml',nlev)
+   if (read_yaml_file) then
+      call init_turbulence()
+   end if
+   if (read_nml_files) then
+      call init_turbulence(namlst,'gotmturb.nml')
+   end if
+   call post_init_turbulence(nlev)
 
 !  initialise mean fields
    s = sprof
@@ -299,10 +352,19 @@
 
 !  initialize KPP model
    if (turb_method.eq.99) then
-      call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
+      if (read_nml_files) then
+         call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
+      end if
    endif
 
-   call init_air_sea(namlst,latitude,longitude)
+   if (read_yaml_file) then
+      branch => settings_store%get_child('airsea')
+      call init_airsea(branch)
+   end if
+   if (read_nml_files) then
+      call init_airsea(namlst)
+   end if
+   call post_init_airsea(latitude,longitude)
 
    call init_diagnostics(nlev)
 
@@ -312,7 +374,14 @@
 #ifdef _FABM_
 
 !  Initialize the GOTM-FABM coupler from its configuration file.
-   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml',dt,fm)
+   if (read_yaml_file) then
+      branch => settings_store%get_child('gotm_fabm')
+      call init_gotm_fabm(branch)
+   end if
+   if (read_nml_files) then
+      call init_gotm_fabm(namlst,'gotm_fabm.nml')
+   end if
+   call post_init_gotm_fabm(nlev,namlst,dt,fm)
 
 !  Link relevant GOTM data to FABM.
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
@@ -332,7 +401,9 @@
                           bio_albedo,bio_drag_scale)
 
 !  Initialize FABM input (data files with observations)
-   call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
+   if (read_nml_files) then
+      call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
+   end if
 #endif
 
    ! Now that all inputs have been registered (FABM added some), update them all by reading from file.
@@ -364,7 +435,7 @@
    if (fabm_calc) call start_gotm_fabm(nlev)
 #endif
 
-   call do_air_sea(julianday,secondsofday)
+   call do_airsea(julianday,secondsofday)
 
 !  Call stratification to make sure density has sensible value.
 !  This is needed to ensure the initial density is saved correctly, and also for FABM.
@@ -376,9 +447,10 @@
    LEVEL2 'done.'
    STDERR LINE
 
-#ifdef _YAML_CONFIGURATION_
-   if (save_yaml_path /= '') call settings_store%save(trim(save_yaml_path), namlst)
-#endif
+   if (trim(save_yaml_path) /= '') then
+      call settings_store%save(trim(save_yaml_path), namlst)
+      stop
+   end if
    
 #ifdef _PRINTSTATE_
    call print_state
@@ -478,7 +550,7 @@
          call set_sst(T(nlev))
          call set_ssuv(u(nlev),v(nlev))
       end if
-      call do_air_sea(julianday,secondsofday)
+      call do_airsea(julianday,secondsofday)
 
 !     reset some quantities
       tx = tx/rho_0
@@ -590,7 +662,7 @@
 
    LEVEL1 'clean_up'
 
-   call clean_air_sea()
+   call clean_airsea()
 
    call clean_meanflow()
 

@@ -66,7 +66,6 @@ endif()
 
 # Global preprocessor definitions
 add_definitions(-DFORTRAN95)
-add_definitions(-D_YAML_CONFIGURATION_)
 
 option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
 mark_as_advanced(GOTM_EXTRA_OUTPUT)
@@ -98,6 +97,13 @@ include_directories(BEFORE
                     "${CMAKE_CURRENT_BINARY_DIR}/modules"
                    )
 
+add_library(config
+	    config/yaml_settings.F90
+	    config/settings.F90
+           )
+add_dependencies(config yaml)
+set(GOTM_LIBS ${GOTM_LIBS} config)
+
 add_library(util
             util/adv_center.F90
             util/convert_fluxes.F90
@@ -116,7 +122,7 @@ add_library(util
             ${CMAKE_CURRENT_BINARY_DIR}/compilation.F90
            )
 if(GOTM_EMBED_VERSION)
-  add_dependencies(util version)
+  add_dependencies(util version config)
 endif()
 set(GOTM_LIBS ${GOTM_LIBS} util)
 
@@ -236,7 +242,6 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 add_library(input
             input/input.F90
             input/input_netcdf.F90
-            input/settings.F90
            )
 target_link_libraries(input util output_manager)
 set(GOTM_LIBS ${GOTM_LIBS} input)

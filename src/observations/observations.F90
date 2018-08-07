@@ -25,17 +25,20 @@
 !
 ! !USES:
    use input
-
    IMPLICIT NONE
-
 !  default: all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_observations, get_all_obs, clean_observations
+   public init_observations, post_init_observations, get_all_obs, clean_observations
 #ifdef _PRINTSTATE_
    public print_state_observations
 #endif
+
+   interface init_observations
+      module procedure init_observations_nml
+      module procedure init_observations_yaml
+   end interface
 !
 ! !PUBLIC DATA MEMBERS:
 !
@@ -216,8 +219,7 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
-   subroutine init_observations(namlst,fn,julday,secs,                 &
-                                depth,nlev,z,h,gravity,rho_0)
+   subroutine init_observations_nml(namlst,fn)
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -234,17 +236,10 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: namlst
    character(len=*), intent(in)        :: fn
-   integer, intent(in)                 :: julday,secs
-   REALTYPE, intent(in)                :: depth
-   integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
-   REALTYPE, intent(in)                :: gravity,rho_0
 !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!EOP
 !
 ! !LOCAL VARIABLES:
    namelist /sprofile/                                          &
@@ -291,16 +286,10 @@
    namelist /eprofile/ e_prof_method,e_obs_const,e_prof_file
 
    namelist /bprofile/ b_obs_surf,b_obs_NN,b_obs_sbf
-
-   integer                   :: rc,i
-   REALTYPE                  :: ds,db
-
-   REALTYPE,parameter        :: mmol_o2_per_liter = 44.661
-   REALTYPE,parameter        :: mmol_o2_per_gram  = 31.25
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_observations'
+   LEVEL1 'init_observations_nml'
 
 !  Salinity profile(s)
    s_prof_method=0
@@ -417,21 +406,345 @@
    b_obs_NN=_ZERO_
    b_obs_sbf=_ZERO_
 
-   open(namlst,file=fn,status='old',action='read',err=80)
-   read(namlst,nml=sprofile,err=81)
-   read(namlst,nml=tprofile,err=82)
-   read(namlst,nml=ext_pressure,err=83)
-   read(namlst,nml=int_pressure,err=84)
-   read(namlst,nml=extinct,err=85)
-   read(namlst,nml=w_advspec,err=86)
-   read(namlst,nml=zetaspec,err=87)
-   read(namlst,nml=wave_nml,err=88)
-   read(namlst,nml=velprofile,err=89)
-   read(namlst,nml=eprofile,err=90)
-   read(namlst,nml=bprofile,err=91)
-   read(namlst,nml=o2_profile,err=92)
-   close(namlst)
+   open(10,file='obs.nml',status='old',action='read',err=80)
+   read(10,nml=sprofile,err=81)
+   read(10,nml=tprofile,err=82)
+   read(10,nml=ext_pressure,err=83)
+   read(10,nml=int_pressure,err=84)
+   read(10,nml=extinct,err=85)
+   read(10,nml=w_advspec,err=86)
+   read(10,nml=zetaspec,err=87)
+   read(10,nml=wave_nml,err=88)
+   read(10,nml=velprofile,err=89)
+   read(10,nml=eprofile,err=90)
+   read(10,nml=bprofile,err=91)
+   read(10,nml=o2_profile,err=92)
+   close(10)
+   LEVEL2 'done.'
+   return
 
+80 FATAL 'Unable to open "',trim('obs.nml'),'" for reading'
+   stop 'init_observations'
+81 FATAL 'I could not read "sprofile" namelist'
+   stop 'init_observations'
+82 FATAL 'I could not read "tprofile" namelist'
+   stop 'init_observations'
+83 FATAL 'I could not read "ext_pressure" namelist'
+   stop 'init_observations'
+84 FATAL 'I could not read "int_pressure" namelist'
+   stop 'init_observations'
+85 FATAL 'I could not read "extinct" namelist'
+   stop 'init_observations'
+86 FATAL 'I could not read "w_advspec" namelist'
+   stop 'init_observations'
+87 FATAL 'I could not read "zetaspec" namelist'
+   stop 'init_observations'
+88 FATAL 'I could not read "wave_nml" namelist'
+   stop 'init_observations'
+89 FATAL 'I could not read "velprofile" namelist'
+   stop 'init_observations'
+90 FATAL 'I could not read "eprofile" namelist'
+   stop 'init_observations'
+91 FATAL 'I could not read "bprofile" namelist'
+   stop 'init_observations'
+92 FATAL 'I could not read "o2_profile" namelist'
+   stop 'init_observations'
+
+   end subroutine init_observations_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the observation module
+!
+! !INTERFACE:
+   subroutine init_observations_yaml()
+!
+! !DESCRIPTION:
+!  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
+!  file with a number of different namelists and takes actions according
+!  to the specifications in the different namelists.
+!  In this routine also memory is allocated to hold the 'observations'.
+!  Finally, all variables are initialised to sane values, either by
+!  reading from files, by prescribing constant values, or by using analytical
+!  expressions.
+!
+! !USES:
+   use settings
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+   class (type_settings), pointer :: branch
+   integer, parameter             :: rk = kind(_ONE_)
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'init_observations_yaml'
+
+   branch => settings_store%get_child('sprofile')
+   call branch%get(s_prof_method, 's_prof_method', '', &
+                   minimum=0,maximum=2,default=2)
+   call branch%get(s_analyt_method, 's_analyt_method', '', &
+                   minimum=1,maximum=3,default=1)
+   call branch%get(z_s1, 'z_s1', '', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(s_1, 's_1', '', 'PSU', &
+                   minimum=0._rk,maximum=40._rk,default=0._rk)
+   call branch%get(z_s2, 'z_s2', '', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(s_2, 's_2', '', 'PSU', &
+                   minimum=0._rk,maximum=40._rk,default=0._rk)
+   call branch%get(s_obs_NN, 's_obs_NN', '', 's^-2', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(s_prof_file, 's_prof_file', '', &
+                   default='sprof.dat')
+   call branch%get(SRelaxTauM, 'SRelaxTauM', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(SRelaxTauB, 'SRelaxTauB', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(SRelaxTauS, 'SRelaxTauS', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(SRelaxSurf, 'SRelaxSurf', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(SRelaxBott, 'SRelaxBott', '', 's', &
+                   minimum=0._rk,default=0._rk)
+
+   branch => settings_store%get_child('tprofile')
+   call branch%get(t_prof_method, 't_prof_method', '', &
+                   minimum=0,maximum=2,default=2)
+   call branch%get(t_analyt_method, 't_analyt_method', '', &
+                   minimum=1,maximum=3,default=1)
+   call branch%get(z_t1, 'z_t1', '', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(t_1, 't_1', '', 'C', &
+                   minimum=0._rk,maximum=40._rk,default=0._rk)
+   call branch%get(z_t2, 'z_t2', '', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(t_2, 't_2', '', 'C', &
+                   minimum=0._rk,maximum=40._rk,default=0._rk)
+   call branch%get(t_obs_NN, 't_obs_NN', '', 's^-2', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(t_prof_file, 't_prof_file', '', &
+                   default='sprof.dat')
+   call branch%get(TRelaxTauM, 'TRelaxTauM', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(TRelaxTauB, 'TRelaxTauB', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(TRelaxTauS, 'TRelaxTauS', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(TRelaxSurf, 'TRelaxSurf', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(TRelaxBott, 'TRelaxBott', '', 's', &
+                   minimum=0._rk,default=0._rk)
+
+   branch => settings_store%get_child('ext_pressure')
+   call branch%get(ext_press_method, 'ext_press_method', '', &
+                   minimum=0,maximum=2,default=0)
+   call branch%get(ext_press_mode, 'ext_press_mode', '', &
+                   minimum=0,maximum=2,default=0)
+   call branch%get(ext_press_file, 'ext_press_file', '', &
+                   default='ext_press.dat')
+   call branch%get(PressConstU, 'PressConstU', '', '-', &
+                   default=0._rk)
+   call branch%get(PressConstV, 'PressConstV', '', '-', &
+                   default=0._rk)
+   call branch%get(PressHeight, 'PressHeight', '', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(PeriodM, 'PeriodM', '', 's', &
+                   default=44714._rk)
+   call branch%get(AmpMu, 'AmpMu', '', '-', &
+                   default=0._rk)
+   call branch%get(AmpMv, 'AmpMv', '', '-', &
+                   default=0._rk)
+   call branch%get(PhaseMu, 'PhaseMu', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+   call branch%get(PhaseMv, 'PhaseMv', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+   call branch%get(PeriodS, 'PeriodS', '', 's', &
+                   default=43200._rk)
+   call branch%get(AmpSu, 'AmpSu', '', '-', &
+                   default=0._rk)
+   call branch%get(AmpSv, 'AmpSv', '', '-', &
+                   default=0._rk)
+   call branch%get(PhaseSu, 'PhaseSu', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+   call branch%get(PhaseSv, 'PhaseSv', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+
+   branch => settings_store%get_child('int_press')
+   call branch%get(int_press_method, 'int_press_method', '', &
+                   minimum=0,maximum=2,default=0)
+   call branch%get(ext_press_mode, 'ext_press_mode', '', &
+                   minimum=0,maximum=2,default=0)
+   call branch%get(ext_press_file, 'ext_press_file', '', &
+                   default='ext_press.dat')
+   call branch%get(PressConstU, 'PressConstU', '', '-', &
+                   default=0._rk)
+   call branch%get(PressConstV, 'PressConstV', '', '-', &
+                   default=0._rk)
+   call branch%get(PressHeight, 'PressHeight', '', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(PeriodM, 'PeriodM', '', 's', &
+                   default=44714._rk)
+   call branch%get(AmpMu, 'AmpMu', '', '-', &
+                   default=0._rk)
+   call branch%get(AmpMv, 'AmpMv', '', '-', &
+                   default=0._rk)
+   call branch%get(PhaseMu, 'PhaseMu', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+   call branch%get(PhaseMv, 'PhaseMv', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+   call branch%get(PeriodS, 'PeriodS', '', 's', &
+                   default=43200._rk)
+   call branch%get(AmpSu, 'AmpSu', '', '-', &
+                   default=0._rk)
+   call branch%get(AmpSv, 'AmpSv', '', '-', &
+                   default=0._rk)
+   call branch%get(PhaseSu, 'PhaseSu', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+   call branch%get(PhaseSv, 'PhaseSv', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+
+   branch => settings_store%get_child('extinct')
+   call branch%get(extinct_method, 'extinct_method', '', &
+                   minimum=0,maximum=7,default=0)
+!KB   call branch%get(extinct_file, 'extinct_file', '', &
+!KB                   default='extinct.dat')
+   call branch%get(A, 'A', '', '-', &
+                   minimum=0._rk,maximum=1._rk,default=0.7_rk)
+   call branch%get(g1, 'g1', '', 'm', &
+                   minimum=0._rk,default=0.4_rk)
+   call branch%get(g2, 'g2', '', 'm', &
+                   minimum=0._rk,default=8._rk)
+
+   branch => settings_store%get_child('w_advspec')
+   call branch%get(w_adv_method, 'w_adv_method', '', &
+                   minimum=0,maximum=2,default=0)
+   call branch%get(w_adv_height0, 'w_adv_height0', '', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(w_adv0, 'w_adv0', '', 'm', &
+                   minimum=0._rk,default=0._rk)
+!KB   call branch%get(w_adv_file, 'w_adv_file', '', &
+!KB                   default='w_adv.dat')
+   call branch%get(w_adv_discr, 'w_adv_discr', '', &
+                   minimum=0,maximum=6,default=6)
+
+   branch => settings_store%get_child('zetaspec')
+   call branch%get(zeta_method, 'zeta_method', '', &
+                   minimum=0,maximum=2,default=0)
+   call branch%get(zeta_file, 'zeta_file', '', &
+                   default='zeta.dat')
+   call branch%get(zeta_scale, 'zeta_scale', '', '-', &
+                   default=1._rk)
+   call branch%get(zeta_offset, 'zeta_offset', '', '-', &
+                   default=0._rk)
+   call branch%get(zeta_0, 'zeta_0', '', 'm', &
+                   default=0._rk)
+   call branch%get(period_1, 'period_1', '', 's', &
+                   default=44714._rk)
+   call branch%get(amp_1, 'amp_1', '', 'm', &
+                   default=0._rk)
+   call branch%get(phase_1, 'phase_1', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+   call branch%get(period_2, 'period_2', '', 's', &
+                   default=43200._rk)
+   call branch%get(amp_2, 'amp_2', '', 'm', &
+                   default=0._rk)
+   call branch%get(phase_2, 'phase_2', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+
+   branch => settings_store%get_child('wave_nml')
+   call branch%get(wave_method, 'wave_method', '', &
+                   minimum=0,maximum=2,default=0)
+!KB   call branch%get(wave_file, 'wave_file', '', &
+!KB                   default='wave.dat')
+   call branch%get(Hs, 'Hs', '', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(Tz, 'Tz', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(phiw, 'phiw', '', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+
+   branch => settings_store%get_child('velprofile')
+   call branch%get(vel_prof_method, 'vel_prof_method', '', &
+                   minimum=0,maximum=2,default=0)
+!KB   call branch%get(vel_prof_file, 'vel_prof_file', '', &
+!KB                   default='velocity.dat')
+   call branch%get(vel_relax_tau, 'vel_relax_tau', '', 's', &
+                   minimum=0._rk,default=1.e15_rk)
+   call branch%get(vel_relax_ramp, 'vel_relax_ramp', '', '-', &
+                   minimum=0._rk,default=1.e15_rk)
+
+   branch => settings_store%get_child('eprofile')
+   call branch%get(e_prof_method, 'e_prof_method', '', &
+                   minimum=0,maximum=2,default=0)
+!KB   call branch%get(e_prof_file, 'e_prof_file', '', &
+!KB                   default='e_prof.dat')
+   call branch%get(e_obs_const, 'e_obs_const', '', 'W/kg', &
+                   minimum=0._rk,default=0._rk)
+
+   branch => settings_store%get_child('bprofile')
+   call branch%get(b_obs_surf, 'b_obs_surf', '', '-', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(b_obs_NN, 'b_obs_NN', '', 's^-2', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(b_obs_sbf, 'b_obs_sbf', '', '-', &
+                   minimum=0._rk,default=0._rk)
+   LEVEL2 'done.'
+   return
+
+   end subroutine init_observations_yaml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the observation module
+!
+! !INTERFACE:
+!KB   subroutine post_init_observations(julday,secs,depth,nlev,z,h,gravity,rho_0)
+   subroutine post_init_observations(depth,nlev,z,h,gravity,rho_0)
+!
+! !DESCRIPTION:
+!  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
+!  file with a number of different namelists and takes actions according
+!  to the specifications in the different namelists.
+!  In this routine also memory is allocated to hold the 'observations'.
+!  Finally, all variables are initialised to sane values, either by
+!  reading from files, by prescribing constant values, or by using analytical
+!  expressions.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!KB   integer, intent(in)                 :: julday,secs
+   REALTYPE, intent(in)                :: depth
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
+   REALTYPE, intent(in)                :: gravity,rho_0
+!
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+   integer                   :: rc,i
+   REALTYPE                  :: ds,db
+   REALTYPE,parameter        :: mmol_o2_per_liter = 44.661
+   REALTYPE,parameter        :: mmol_o2_per_gram  = 31.25
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'post_init_observations'
+
+   LEVEL2 'allocation observation memory..'
    allocate(sprof(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (sprof)'
    sprof = _ZERO_
@@ -778,37 +1091,10 @@
          LEVEL1 'A non-valid o2_prof_method has been given ',o2_prof_method
          stop 'init_observations()'
    end select
-
+   LEVEL2 'done.'
    return
 
-80 FATAL 'Unable to open "',trim(fn),'" for reading'
-   stop 'init_observations'
-81 FATAL 'I could not read "sprofile" namelist'
-   stop 'init_observations'
-82 FATAL 'I could not read "tprofile" namelist'
-   stop 'init_observations'
-83 FATAL 'I could not read "ext_pressure" namelist'
-   stop 'init_observations'
-84 FATAL 'I could not read "int_pressure" namelist'
-   stop 'init_observations'
-85 FATAL 'I could not read "extinct" namelist'
-   stop 'init_observations'
-86 FATAL 'I could not read "w_advspec" namelist'
-   stop 'init_observations'
-87 FATAL 'I could not read "zetaspec" namelist'
-   stop 'init_observations'
-88 FATAL 'I could not read "wave_nml" namelist'
-   stop 'init_observations'
-89 FATAL 'I could not read "velprofile" namelist'
-   stop 'init_observations'
-90 FATAL 'I could not read "eprofile" namelist'
-   stop 'init_observations'
-91 FATAL 'I could not read "bprofile" namelist'
-   stop 'init_observations'
-92 FATAL 'I could not read "o2_profile" namelist'
-   stop 'init_observations'
-
-   end subroutine init_observations
+   end subroutine post_init_observations
 !EOC
 
 !-----------------------------------------------------------------------

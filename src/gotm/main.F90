@@ -126,11 +126,13 @@
       case ('-h', '--help')
          call print_help()
          stop
-#ifdef _YAML_CONFIGURATION_
+      case ('--no_read_yaml_file')
+         read_yaml_file = .false.
+      case ('--read_nml_files')
+         read_nml_files = .true.
       case ('--save_yaml')
          i = i+1
          call get_command_argument(i, save_yaml_path)
-#endif
       case default
          print '(a,a,/)', 'Unrecognized command-line option: ', arg
          call print_help()
@@ -162,9 +164,12 @@
       print '(a)', ''
       print '(a)', 'Options:'
       print '(a)', ''
-      print '(a)', '  -h, --help        print usage information and exit'
-      print '(a)', '  -v, --version     print version information'
-      print '(a)', '  -c, --compiler    print compilation options'
+      print '(a)', '  -h, --help         print usage information and exit'
+      print '(a)', '  -v, --version      print version information'
+      print '(a)', '  -c, --compiler     print compilation options'
+      print '(a)', '  --no_read_yaml_file'
+      print '(a)', '  --read_nml_files   update configuration with nml specs'
+      print '(a)', '  --save_yaml <file> save yaml configuration three to file'
       print '(a)', ''
    end subroutine print_help
 

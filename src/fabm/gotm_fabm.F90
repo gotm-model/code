@@ -26,7 +26,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
+   public init_gotm_fabm, post_init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
@@ -42,6 +42,12 @@
 
    ! Variables below must be accessible for getm_fabm
    public cc_transport
+
+   interface init_gotm_fabm
+      module procedure init_gotm_fabm_nml
+      module procedure init_gotm_fabm_yaml
+   end interface
+
 !
 ! !PUBLIC DATA MEMBERS:
 !  The one and only model
@@ -140,23 +146,24 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm(nlev,namlst,fname,dt,field_manager)
+   subroutine init_gotm_fabm_nml(namlst,fname)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
+! !USES:
+   IMPLICIT NONE
+!
 ! !INPUT PARAMETERS:
-   integer,                   intent(in)             :: nlev,namlst
+   integer,                   intent(in)             :: namlst
    character(len=*),          intent(in)             :: fname
-   REALTYPE,optional,         intent(in)             :: dt
-   class (type_field_manager),intent(inout),optional :: field_manager
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
 !  local variables
-   integer :: i, output_level
-   logical :: file_exists, in_output
+!KB   integer :: i, output_level
+!KB   logical :: file_exists, in_output
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
@@ -166,9 +173,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_gotm_fabm'
-
-   nullify(model)
+   LEVEL1 'init_gotm_fabm_nml'
 
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
@@ -192,6 +197,122 @@
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=gotm_fabm_nml,err=99)
    close(namlst)
+   LEVEL2 'done.'
+   return
+
+98 LEVEL2 'I could not open '//trim(fname)
+   LEVEL2 'If thats not what you want you have to supply '//trim(fname)
+   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
+   fabm_calc = .false.
+   return
+
+99 FATAL 'I could not read '//trim(fname)
+   stop 'init_gotm_fabm_nml'
+   return
+
+   end subroutine init_gotm_fabm_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine init_gotm_fabm_yaml(cfg)
+!
+! !DESCRIPTION:
+! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+
+! !USES:
+   use settings
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   type (type_settings), intent(inout) :: cfg
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!  local variables
+!KB   integer :: i, output_level
+!KB   logical :: file_exists, in_output
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'init_gotm_fabm_yaml'
+
+   ! Initialize all namelist variables to reasonable default values.
+   call cfg%get(fabm_calc, 'fabm_calc', '', &
+                default=.false.)
+   call cfg%get(cnpar, 'cnpar', '', '-', &
+                minimum=0._rk,default=1._rk)
+   call cfg%get(w_adv_discr, 'w_adv_discr', '', &
+                minimum=1,maximum=6,default=6)
+   call cfg%get(ode_method, 'ode_method', '', &
+                minimum=1,maximum=11,default=1)
+   call cfg%get(split_factor, 'split_factor', '', &
+                minimum=1,maximum=1,default=1)
+   call cfg%get(bioshade_feedback, 'bioshade_feedback', '', &
+                default=.false.)
+   call cfg%get(bioalbedo_feedback, 'bioalbedo_feedback', '', &
+                default=.false.)
+   call cfg%get(biodrag_feedback, 'biodrag_feedback', '', &
+                default=.false.)
+   call cfg%get(repair_state, 'repair_state', '', &
+                default=.false.)
+#if 0
+   call cfg%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', '', &
+                default=.false.)
+#else
+   salinity_relaxation_to_freshwater_flux = .false.
+#endif
+   call cfg%get(no_precipitation_dilution, 'no_precipitation_dilution', '', &
+                default=.false.) ! useful to check mass conservation
+   call cfg%get(no_surface, 'no_surface', '', &
+                default=.false.) ! disables surface exchange; useful to check mass conservation
+   call cfg%get(save_inputs, 'save_inputs', '', &
+                default=.false.)
+   call cfg%get(configuration_method, 'configuration_method', '', &
+                default=-1)
+!KB                minimum=1,maximum=2,default=1)
+   LEVEL2 'done.'
+   return
+   end subroutine init_gotm_fabm_yaml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine post_init_gotm_fabm(nlev,namlst,dt,field_manager)
+!
+! !DESCRIPTION:
+! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,                   intent(in)             :: nlev,namlst
+!   character(len=*),          intent(in)             :: fname
+   REALTYPE,optional,         intent(in)             :: dt
+   class (type_field_manager),intent(inout),optional :: field_manager
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!  local variables
+   integer :: i
+   logical :: file_exists, in_output
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'post_init_gotm_fabm'
+
+   nullify(model)
 
    if (fabm_calc) then
       ! Provide FABM with an object for communication with host
@@ -330,22 +451,10 @@
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
       call check_fabm_expressions()
-
    end if
-
+   LEVEL2 'done.'
    return
-
-98 LEVEL2 'I could not open '//trim(fname)
-   LEVEL2 'If thats not what you want you have to supply '//trim(fname)
-   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
-   fabm_calc = .false.
-   return
-
-99 FATAL 'I could not read '//trim(fname)
-   stop 'init_gotm_fabm'
-   return
-
-   end subroutine init_gotm_fabm
+   end subroutine post_init_gotm_fabm
 !EOC
 
 !-----------------------------------------------------------------------

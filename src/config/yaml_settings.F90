@@ -138,6 +138,7 @@ contains
          stop 1
       end if
       call settings_write_yaml(self, unit, 0, settings_get_maximum_depth(self, 0) + 5)
+!KB      call settings_write_yaml(self, unit, 0, 20 + 5)
    end subroutine save
 
    function get_node(self, name) result(pair)
@@ -594,7 +595,8 @@ contains
             call settings_write_yaml(node, unit, indent+2, comment_depth)
          class is (type_setting)
             call node%as_string(string)
-            write (unit, '(a,a,": ",a,a,"# ")', advance='no') repeat(' ', indent), pair%name, string, repeat(' ', comment_indent - 1 - len(string))
+!KBwrite(*,*) indent,len(string),comment_indent
+            write (unit, '(a,a,": ",a,a,"# ")', advance='no') repeat(' ', indent), pair%name, trim(string), repeat(' ', comment_indent-240 - 1 - len(trim(string)))
             call write_comment(node)
          end select
          pair => pair%next
