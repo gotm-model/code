@@ -102,6 +102,7 @@ add_library(config
 	    config/settings.F90
            )
 add_dependencies(config yaml)
+#KBset_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 set(GOTM_LIBS ${GOTM_LIBS} config)
 
 add_library(util
@@ -212,6 +213,7 @@ if(GOTM_USE_FABM)
   target_link_libraries(gotm_fabm util ${FABM_LIBRARIES})
   set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  set_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm)
   set(EXTERNAL_LIBS ${FABM_LIBRARIES})
 else()
