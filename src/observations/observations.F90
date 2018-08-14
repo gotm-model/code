@@ -505,15 +505,15 @@
    call branch%get(s_prof_file, 's_prof_file', '', &
                    default='sprof.dat')
    call branch%get(SRelaxTauM, 'SRelaxTauM', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
    call branch%get(SRelaxTauB, 'SRelaxTauB', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
    call branch%get(SRelaxTauS, 'SRelaxTauS', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
    call branch%get(SRelaxSurf, 'SRelaxSurf', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
    call branch%get(SRelaxBott, 'SRelaxBott', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
 
    branch => settings_store%get_child('tprofile')
    call branch%get(t_prof_method, 't_prof_method', '', &
@@ -531,17 +531,17 @@
    call branch%get(t_obs_NN, 't_obs_NN', '', 's^-2', &
                    minimum=0._rk,default=0._rk)
    call branch%get(t_prof_file, 't_prof_file', '', &
-                   default='sprof.dat')
+                   default='tprof.dat')
    call branch%get(TRelaxTauM, 'TRelaxTauM', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
    call branch%get(TRelaxTauB, 'TRelaxTauB', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
    call branch%get(TRelaxTauS, 'TRelaxTauS', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
    call branch%get(TRelaxSurf, 'TRelaxSurf', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
    call branch%get(TRelaxBott, 'TRelaxBott', '', 's', &
-                   minimum=0._rk,default=0._rk)
+                   minimum=0._rk,default=1e+15_rk)
 
    branch => settings_store%get_child('ext_pressure')
    call branch%get(ext_press_method, 'ext_press_method', '', &
@@ -865,6 +865,7 @@
          end select
 
       case (FROMFILE)
+              stop 'egon'
          call register_input_1d(s_prof_file,1,sprof,'observed salinity')
          LEVEL2 'Reading salinity profiles from:'
          LEVEL3 trim(s_prof_file)
