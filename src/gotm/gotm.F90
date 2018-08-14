@@ -169,20 +169,29 @@
    logical          ::    restart_allow_missing_variable = .false.
    integer          ::    rc
    logical          ::    file_exists
+   logical          ::    config_only=.false.
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_gotm'
-   STDERR LINE
 
    if (present(t1)) then
       restart_online = .true.
    end if
 
-   if (read_yaml_file) then
+   inquire(file='gotm.yaml',exist=file_exists)
+   if (file_exists) then
       LEVEL2 'reading yaml configuration'
       call settings_store%load('gotm.yaml', namlst)
+   end if
 
+   if (trim(save_yaml_path) /= '') then
+      config_only = .true.
+      LEVEL2 'only doing configuration'
+   end if
+   STDERR LINE
+
+   if (read_yaml_file) then
       branch => settings_store%get_child('model_setup')
       call branch%get(title, 'title', '', &
                       default='GOTM simulation')
@@ -236,58 +245,64 @@
       read(namlst,nml=time,err=93)
    end if
 
-   if (restart_online) then
-      LEVEL3 'online restart - updating values in the time namelist ...'
-      LEVEL4 'orignal: ',start,' -> ',stop
-      start = t1
-      stop  = t2
-      LEVEL4 'updated: ',start,' -> ',stop
-   end if
+   if (.not. config_only) then
+      if (restart_online) then
+         LEVEL3 'online restart - updating values in the time namelist ...'
+         LEVEL4 'orignal: ',start,' -> ',stop
+         start = t1
+         stop  = t2
+         LEVEL4 'updated: ',start,' -> ',stop
+      end if
 
 !  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
 !  will be set by init_observations.
 !  However, before that happens, it is already used in updategrid.
 !  therefore, we set to to a reasonable default here.
-   zeta = _ZERO_
-   w_adv_method = 0
+      zeta = _ZERO_
+      w_adv_method = 0
 
-   ! Initialize field manager
-   call fm%register_dimension('lon',1,id=id_dim_lon)
-   call fm%register_dimension('lat',1,id=id_dim_lat)
-   call fm%register_dimension('z',nlev,id=id_dim_z)
-   call fm%register_dimension('zi',nlev+1,id=id_dim_zi)
-   call fm%register_dimension('time',id=id_dim_time)
-   call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
+      ! Initialize field manager
+      call fm%register_dimension('lon',1,id=id_dim_lon)
+      call fm%register_dimension('lat',1,id=id_dim_lat)
+      call fm%register_dimension('z',nlev,id=id_dim_z)
+      call fm%register_dimension('zi',nlev+1,id=id_dim_zi)
+      call fm%register_dimension('time',id=id_dim_time)
+      call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
 
-   allocate(type_gotm_host::output_manager_host)
-   call output_manager_init(fm,title)
+      allocate(type_gotm_host::output_manager_host)
+      call output_manager_init(fm,title)
 
-   inquire(file='output.yaml',exist=file_exists)
-   if (.not.file_exists) then
-      call deprecated_output(namlst,title,dt,list_fields)
+      inquire(file='output.yaml',exist=file_exists)
+      if (.not.file_exists) then
+         call deprecated_output(namlst,title,dt,list_fields)
+      end if
+
+      restart = restart_online .or. restart_offline
+      if (restart_online) restart_offline = .false.
+
+      ! initialize a few things from  namelists
+      timestep   = dt
+      depth0     = depth
+
+      ! write information for this run
+      LEVEL2 trim(title)
+      LEVEL2 'Using ',nlev,' layers to resolve a depth of',depth
+      LEVEL2 'The station ',trim(name),' is situated at (lat,long) ',      &
+              latitude,longitude
+      LEVEL2 trim(name)
+
+      if (restart_offline) then
+         LEVEL2 'Offline restart ....'
+      end if
    end if
 
-   restart = restart_online .or. restart_offline
-   if (restart_online) restart_offline = .false.
-
-!  initialize a few things from  namelists
-   timestep   = dt
-   depth0     = depth
-
-!  write information for this run
-   LEVEL2 trim(title)
-   LEVEL2 'Using ',nlev,' layers to resolve a depth of',depth
-   LEVEL2 'The station ',trim(name),' is situated at (lat,long) ',      &
-           latitude,longitude
-   LEVEL2 trim(name)
-
-   if (restart_offline) then
-      LEVEL2 'Offline restart ....'
+   if (config_only) then
+      LEVEL2 'configuring modules ....'
+   else
+      LEVEL2 'initializing modules ....'
+      call init_input(nlev)
+      call init_time(MinN,MaxN)
    end if
-
-   LEVEL2 'initializing modules....'
-   call init_input(nlev)
-   call init_time(MinN,MaxN)
    if (read_yaml_file) then
       call init_eqstate()
    end if
@@ -305,9 +320,11 @@
    if (read_nml_files) then
       call init_meanflow(namlst,'gotmmean.nml')
    end if
-   call post_init_meanflow(nlev,latitude)
-   call init_tridiagonal(nlev)
-   call updategrid(nlev,dt,zeta)
+   if (.not. config_only) then
+      call post_init_meanflow(nlev,latitude)
+      call init_tridiagonal(nlev)
+      call updategrid(nlev,dt,zeta)
+   end if
 
 !  initialise each of the extra features/modules
 #ifdef SEAGRASS
@@ -326,15 +343,18 @@
    if (read_nml_files) then
       call init_observations(namlst,'obs.nml')
    end if
+
+   if (.not. config_only) then
 !KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
-   call post_init_observations(depth,nlev,z,h,gravity,rho_0)
-   call get_all_obs(julianday,secondsofday,nlev,z)
+      call post_init_observations(depth,nlev,z,h,gravity,rho_0)
+      call get_all_obs(julianday,secondsofday,nlev,z)
 
-!  Call do_input to make sure observed profiles are up-to-date.
-   call do_input(julianday,secondsofday,nlev,z)
+      ! Call do_input to make sure observed profiles are up-to-date.
+      call do_input(julianday,secondsofday,nlev,z)
 
-   !  Update the grid based on true initial zeta (possibly read from file by do_input).
-   call updategrid(nlev,dt,zeta)
+      ! Update the grid based on true initial zeta (possibly read from file by do_input).
+      call updategrid(nlev,dt,zeta)
+   end if
 
    if (read_yaml_file) then
       call init_turbulence()
@@ -342,13 +362,16 @@
    if (read_nml_files) then
       call init_turbulence(namlst,'gotmturb.nml')
    end if
-   call post_init_turbulence(nlev)
 
-!  initialise mean fields
-   s = sprof
-   t = tprof
-   u = uprof
-   v = vprof
+   if (.not. config_only) then
+      call post_init_turbulence(nlev)
+
+   ! initialise mean fields
+      s = sprof
+      t = tprof
+      u = uprof
+      v = vprof
+   end if
 
 !  initialize KPP model
    if (turb_method.eq.99) then
@@ -364,11 +387,13 @@
    if (read_nml_files) then
       call init_airsea(namlst)
    end if
-   call post_init_airsea(latitude,longitude)
+   if (.not. config_only) then
+      call post_init_airsea(latitude,longitude)
 
-   call init_diagnostics(nlev)
+      call init_diagnostics(nlev)
 
-   call do_register_all_variables(latitude,longitude,nlev)
+      call do_register_all_variables(latitude,longitude,nlev)
+   end if
 
    !  initialize FABM module
 #ifdef _FABM_
@@ -381,11 +406,13 @@
    if (read_nml_files) then
       call init_gotm_fabm(namlst,'gotm_fabm.nml')
    end if
-   call post_init_gotm_fabm(nlev,namlst,dt,fm)
+   if (fabm_calc .and. .not. config_only) then
+      call post_init_gotm_fabm(nlev,namlst,dt,fm)
+   end if
 
 !  Link relevant GOTM data to FABM.
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
-   if (fabm_calc) then
+   if (fabm_calc .and. .not. config_only) then
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth,depth)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_roughness_length,z0b)
@@ -394,60 +421,67 @@
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
       end if
-   end if
+#if 0
    call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
                           bio_albedo,bio_drag_scale)
+#endif
 
-!  Initialize FABM input (data files with observations)
-   if (read_nml_files) then
+      ! Initialize FABM input (data files with observations)
+!   if (fabm_calc .and. read_nml_files) then
       call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
    end if
 #endif
 
    ! Now that all inputs have been registered (FABM added some), update them all by reading from file.
-   call do_input(julianday,secondsofday,nlev,z)
+   if (.not. config_only) then
+      call do_input(julianday,secondsofday,nlev,z)
+   end if
 
 #ifdef _FABM_
 !  Initialize FABM initial state (this is done after the first call to do_input,
 !  to allow user-specified observed values to be used as initial state)
-   if (fabm_calc) call init_gotm_fabm_state(nlev)
+   if (fabm_calc .and. .not. config_only) call init_gotm_fabm_state(nlev)
 #endif
 
-   if (restart) then
-      if (restart_offline) then
-         LEVEL1 'read_restart'
-         call read_restart(restart_allow_missing_variable)
-         call friction(kappa,avmolu,tx,ty)
+   if (.not. config_only) then
+      if (restart) then
+         if (restart_offline) then
+            LEVEL1 'read_restart'
+            call read_restart(restart_allow_missing_variable)
+            call friction(kappa,avmolu,tx,ty)
+         end if
+         if (restart_online) then
+         end if
       end if
-      if (restart_online) then
-      end if
-   end if
 
 !   allocate(type_gotm_host::output_manager_host)
 !   call output_manager_init(fm,title)
-   call setup_restart()
+      call setup_restart()
+   end if
 !   call init_output(title,nlev,latitude,longitude)
 
 #ifdef _FABM_
 !  Accept the current biogeochemical state and used it to compute derived diagnostics.
-   if (fabm_calc) call start_gotm_fabm(nlev)
+   if (fabm_calc .and. .not. config_only) call start_gotm_fabm(nlev)
 #endif
 
-   call do_airsea(julianday,secondsofday)
+   if (.not. config_only) then
+      call do_airsea(julianday,secondsofday)
 
-!  Call stratification to make sure density has sensible value.
-!  This is needed to ensure the initial density is saved correctly, and also for FABM.
-   call shear(nlev,cnpar)
-   call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+      ! Call stratification to make sure density has sensible value.
+      ! This is needed to ensure the initial density is saved correctly, and also for FABM.
+      call shear(nlev,cnpar)
+      call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
 
-   if (list_fields) call fm%list()
+      if (list_fields) call fm%list()
+   end if
 
    LEVEL2 'done.'
    STDERR LINE
 
-   if (trim(save_yaml_path) /= '') then
+   if (config_only) then
       call settings_store%save(trim(save_yaml_path), namlst)
       stop
    end if

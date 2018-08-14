@@ -121,7 +121,7 @@
    nullify(first_profile_file)
    nullify(first_timeseries_file)
 
-   LEVEL1 'done'
+   LEVEL2 'done'
 
    end subroutine init_input
 !EOC
