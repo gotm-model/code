@@ -56,7 +56,7 @@
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
    use meanflow,      only: u,v,rho_0,gravity
-   use meanflow,      only: u_taub,u_taus,drag,taub
+   use meanflow,      only: u_taub,u_taubo,u_taus,drag,taub
    use meanflow,      only: charnock,charnock_val,z0s_min
 
 !
@@ -73,6 +73,7 @@
 ! !LOCAL VARIABLES:
    integer                             :: i
    REALTYPE                            :: rr
+   logical, save                       :: first=.true.
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -87,6 +88,12 @@
       z0s=z0s_min
    end if
 
+   if (first) then
+      u_taub = u_taubo
+      first = .false.
+   else
+      u_taubo = u_taub
+   end if
 !  iterate bottom roughness length MaxItz0b times
    do i=1,MaxItz0b
 

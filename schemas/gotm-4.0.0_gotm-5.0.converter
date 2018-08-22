@@ -1,0 +1,122 @@
+<?xml version="1.0" ?>
+<converter source="gotm-4.0.0" target="gotm-5.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlstore/converter-1.0.xsd">
+   <links>
+      <link source="/airsea/airsea/wet_mode"      target="/airsea/airsea/hum_method"/>
+      <link source="/airsea/airsea/p_e_method"    target="/airsea/airsea/precip_method"/>
+      <link source="/airsea/airsea/const_p_e"     target="/airsea/airsea/const_precip"/>
+      <link source="/airsea/airsea/p_e_flux_file" target="/airsea/airsea/precip_file"/>
+   </links>
+   <custom>
+      <forward>
+         <![CDATA[
+if source['airsea/airsea/calc_fluxes'].getValue():
+    target['airsea/airsea/swr_method'].setValue(3)
+else:
+    heatmethod = source['airsea/airsea/heat_method'].getValue()
+    if heatmethod==1:
+        # Constant heat flux specified
+        target['airsea/airsea/swr_method'].setValue(1)
+    elif heatmethod==2:
+        # Variable heat flux specified: split heat flux data into times, shortwave radiation values
+        # and actual heat flux values.
+        progslicer = util.ProgressSlicer(callback,3)
+        progslicer.nextStep('parsing %s' % source['airsea/airsea/heatflux_file'].getText(detail=1))
+        oldfile = source['airsea/airsea/heatflux_file'].getValue()
+        datold = oldfile.getData(progslicer.getStepCallback())
+        if datold is not None: 
+            times,swr,heat = datold[0],datold[1].take((0,),1),datold[1].take((1,),1)
+        oldfile.release()
+        if datold is None:
+            target['airsea/airsea/swr_method'].setValue(2)
+        else:
+            # Save shortwave radiation
+            progslicer.nextStep('saving %s' % target['airsea/airsea/swr_file'].getText(detail=1))
+            if (swr==swr[0]).all():
+                # All shortwave radiation values are equal: set shortwave radiation method to constant
+                target['airsea/airsea/swr_method'].setValue(1)
+                target['airsea/airsea/const_swr'].setValue(swr[0])
+            else:
+                # Variable shortwave radiation: set shortwave radiation method to custom (i.e. from file)
+                # and supply the data.
+                target['airsea/airsea/swr_method'].setValue(2)
+                swrnew = target['airsea/airsea/swr_file'].getValue()
+                swrnew.setData([times,swr])
+                target['airsea/airsea/swr_file'].setValue(swrnew)
+                swrnew.release()
+                
+            # Save heat flux
+            progslicer.nextStep('saving %s' % target['airsea/airsea/heatflux_file'].getText(detail=1))
+            if (heat==heat[0]).all():
+                # All heat flux values are equal: set heat flux method to constant
+                target['airsea/airsea/heat_method'].setValue(1)
+                target['airsea/airsea/const_heat'].setValue(heat[0])
+                target['airsea/airsea/heatflux_file'].setValue(None)
+            else:
+                # Variable heat flux: set heat flux method to custom (i.e. from file) and supply the data.
+                target['airsea/airsea/heat_method'].setValue(2)
+                heatnew = target['airsea/airsea/heatflux_file'].getValue()
+                heatnew.setData([times,heat])
+                target['airsea/airsea/heatflux_file'].setValue(heatnew)
+                heatnew.release()
+]]>
+      </forward>
+      <backward>
+         <![CDATA[
+if not source['airsea/airsea/calc_fluxes'].getValue():
+    swr_method = source['airsea/airsea/swr_method'].getValue()
+    heat_method = source['airsea/airsea/heat_method'].getValue()
+    if swr_method==2 or heat_method==2:
+        # Variable shortwave radiation and/or variable heat flux was specified.
+        import numpy
+        
+        # Load all values for shortwave radiation and the heat flux.
+        swrdata,heatdata = None,None
+        nsteps = 2
+        if swr_method==2 and heat_method==2: nsteps += 1
+        progslicer = util.ProgressSlicer(callback,nsteps)
+        if swr_method ==2:
+            progslicer.nextStep('parsing %s' % source['airsea/airsea/swr_file'].getText(detail=1))
+            swrdata  = source['airsea/airsea/swr_file'].getValue()
+            swrdata.getData(callback=progslicer.getStepCallback())
+        if heat_method==2:
+            progslicer.nextStep('parsing %s' % source['airsea/airsea/heatflux_file'].getText(detail=1))
+            heatdata = source['airsea/airsea/heatflux_file'].getValue()
+            heatdata.getData(callback=progslicer.getStepCallback())
+
+        # Create vectors for time, shortwave radiation and the heat flux.
+        if swrdata is None:
+            # No variable shortwave radiation, i.e., we only have a variable heat flux.
+            times = heatdata.data[0]
+            heat = heatdata.data[1]
+            swr = numpy.empty(heat.shape)
+            swr.fill(source['airsea/airsea/const_swr'].getValue())
+        elif heatdata is None:
+            # No variable heat flux, i.e., we only have a variable shortwave radiation.
+            times = swrdata.data[0]
+            swr = swrdata.data[1]
+            heat = numpy.empty(swr.shape)
+            heat.fill(source['airsea/airsea/const_heat'].getValue())
+        else:
+            # We have both a variable shortwave radiation and a variable heat flux.
+            # Combine both, and interpolate where values of either variable are not available.
+            times = numpy.unique(numpy.concatenate((swrdata.data[0],heatdata.data[0]),0))
+            swr  = numpy.interp(times,swrdata.data [0],swrdata.data [1][:,0])
+            heat = numpy.interp(times,heatdata.data[0],heatdata.data[1][:,0])
+            swr.shape = -1,1
+            heat.shape = -1,1
+            
+        # Store merged shortwave radation/heat flux data.
+        progslicer.nextStep('writing %s' % target['airsea/airsea/heatflux_file'].getText(detail=1))
+        mergeddata  = target['airsea/airsea/heatflux_file'].getValue()
+        mergeddata.setData([times,numpy.concatenate((swr,heat),1)])
+        target['airsea/airsea/heat_method'].setValue(2)
+        target['airsea/airsea/heatflux_file'].setValue(mergeddata)
+
+        # Release data files.
+        mergeddata.release()
+        if swrdata  is not None: swrdata.release()
+        if heatdata is not None: heatdata.release()
+]]>
+      </backward>
+   </custom>
+</converter>

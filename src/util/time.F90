@@ -37,12 +37,13 @@
    character(len=19), public           :: start
    character(len=19), public           :: stop
    REALTYPE,          public           :: timestep
-   REALTYPE,          public           :: fsecs,simtime
+   REALTYPE,          public           :: fsecs,simtime,fsecondsofday
    integer,target,    public           :: julianday,secondsofday
    integer,target,    public           :: yearday
    integer,           public           :: timefmt
    integer,parameter, public           :: timestepkind = selected_int_kind(12)
    integer(kind=timestepkind), public  :: MinN,MaxN
+   integer, public                     :: jul2,secs2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -83,7 +84,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                    :: jul1,secs1,jul2,secs2
+   integer                    :: jul1,secs1
    integer(kind=timestepkind) :: nsecs
    integer                    :: ndays
 !
@@ -290,6 +291,7 @@
    fsecs = n*timestep + secs0
    julianday    = jul0 + nsecs/86400
    secondsofday = mod(nsecs,86400_timestepkind)
+   fsecondsofday = mod(fsecs,real(86400,kind(_ONE_)))
 
    call calendar_date(julianday,yyyy,mm,dd)
    call julian_day(yyyy,1,1,jd_firstjan)

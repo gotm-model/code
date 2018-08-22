@@ -54,7 +54,7 @@
 ! !USES:
    use meanflow,     only: grid_ready
    use meanflow,     only: depth0,depth
-   use meanflow,     only: ga,z,h,ho,ddu,ddl,grid_method
+   use meanflow,     only: ga,z,zi,h,ho,ddu,ddl,grid_method
    use meanflow,     only: grid_file,w
    use observations, only: zeta_method,w_adv_method
    use observations, only: w_adv,w_height
@@ -71,7 +71,6 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,j,nlayers
-   REALTYPE                  :: zi(0:nlev),z_crit
    integer, parameter        :: grid_unit = 101
 !-----------------------------------------------------------------------
 !BOC
@@ -187,37 +186,11 @@
          stop "updategrid: No valid grid_method specified"
    end select
 
-   z(1)=-depth0+0.5*h(1)
-   do i=2,nlev
-      z(i)=z(i-1)+0.5*(h(i-1)+h(i))
+   zi(0) = -depth0
+   do i=1,nlev
+      zi(i) = zi(i-1) +     h(i)
+      z (i) = zi(i-1) + 0.5*h(i)
    end do
-
-!  Vertical velocity calculation:
-
-   select case(w_adv_method)
-      case(0)
-         ! no vertical advection
-      case(1,2)
-         ! linearly varying advection velocity with peak at "w_height"
-         zi(0)=-depth0
-         do i=1,nlev
-            zi(i)=zi(i-1)+h(i)
-         end do
-         z_crit=zi(nlev)-0.01*(zi(nlev)-zi(0))
-         if (w_height.gt.z_crit) w_height=z_crit
-         z_crit=zi(0)+0.01*(zi(nlev)-zi(0))
-         if (w_height.lt.z_crit) w_height=z_crit
-         do i=1,nlev-1
-            if (zi(i).gt.w_height) then
-               w(i)=(zi(nlev)-zi(i))/(zi(nlev)-w_height)*w_adv
-            else
-               w(i)=(zi(0)-zi(i))/(zi(0)-w_height)*w_adv
-            end if
-         end do
-         w(0)    =_ZERO_
-         w(nlev) =_ZERO_
-      case default
-    end select
 
    return
 

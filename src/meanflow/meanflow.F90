@@ -27,7 +27,7 @@
    logical, public                              :: init_buoyancy
 
 !  coordinate z, layer thicknesses
-   REALTYPE, public, dimension(:), allocatable, target  :: ga,z,h,ho
+   REALTYPE, public, dimension(:), allocatable, target  :: ga,z,zi,h,ho
 
 !  the velocity components
    REALTYPE, public, dimension(:), allocatable, target  :: u,v,w
@@ -101,7 +101,7 @@
    REALTYPE, public                    :: cori
 
 !  the friction velocities
-   REALTYPE, public                    :: u_taub,u_taus
+   REALTYPE, public                    :: u_taub,u_taubo,u_taus
 
 !  bottom stress
    REALTYPE, public, target            :: taub
@@ -239,6 +239,10 @@
    allocate(z(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (z)'
    z = _ZERO_
+
+   allocate(zi(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (zi)'
+   zi = _ZERO_
 
    allocate(h(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (h)'
@@ -396,6 +400,7 @@
    LEVEL2 'de-allocation meanflow memory ...'
    if (allocated(ga)) deallocate(ga)
    if (allocated(z)) deallocate(z)
+   if (allocated(zi)) deallocate(zi)
    if (allocated(h)) deallocate(h)
    if (allocated(ho)) deallocate(ho)
    if (allocated(u)) deallocate(u)

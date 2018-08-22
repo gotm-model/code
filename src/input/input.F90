@@ -153,16 +153,10 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (nlev==-1) then
-      FATAL 'input module has been initialized without depth information; &
-         &depth-explicit inputs can therefore not be registered.'
-      stop 'input::register_input_1d'
-   end if
+   if (nlev==-1) call fatal_error('input::register_input_1d', 'input module has been initialized without depth information; &
+         &depth-explicit inputs can therefore not be registered.')
 
-   if (path=='') then
-      FATAL 'Empty file path specified to read variable '//trim(name)//' from.'
-      stop 'input::register_input_1d'
-   end if
+   if (path=='') call fatal_error('input::register_input_1d', 'Empty file path specified to read variable '//trim(name)//' from.')
 
 !  Find a file object for the specified file path; create one if it does exist yet.
    if (.not.associated(first_profile_file)) then
@@ -235,10 +229,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (path=='') then
-      FATAL 'Empty file path specified to read variable '//trim(name)//' from.'
-      stop 'input::register_input_0d'
-   end if
+   if (path=='') call fatal_error('input::register_input_0d', 'Empty file path specified to read variable '//trim(name)//' from.')
 
 !  Find a file object for the specified file path; create one if it does exist yet.
    if (.not.associated(first_timeseries_file)) then
@@ -313,10 +304,8 @@
    type (type_timeseries_file),pointer :: timeseries_file
 !-----------------------------------------------------------------------
 !BOC
-   if (associated(first_profile_file) .and. .not. (present(nlev).and.present(z))) then
-      FATAL 'do_input must receive nlev and z since one or more depth-varying inputs have been registered.'
-      stop 'input::do_input'
-   end if
+   if (associated(first_profile_file) .and. .not. (present(nlev).and.present(z))) &
+      call fatal_error('input::do_input', 'do_input must receive nlev and z since one or more depth-varying inputs have been registered.')
 
 !  Loop over files with observed profiles.
    profile_file => first_profile_file
@@ -361,11 +350,13 @@
    type (type_1d_variable),pointer :: curvar
    integer :: nvar
    integer :: rc
+   integer :: ios
 !
 !-----------------------------------------------------------------------
 !BOC
 !  Open the input file.
-   open(next_unit_no,file=info%path,status='old',action='read',err=80)
+   open(next_unit_no,file=info%path,status='old',action='read',iostat=ios)
+   if (ios /= 0) call fatal_error('input::initialize_profile_file', 'Unable to open "'//trim(info%path)//'" for reading')
 
 !  Opening was successful - store the file unit, and increment the next unit with 1.
    info%unit = next_unit_no
@@ -390,11 +381,6 @@
    allocate(info%alpha(0:nlev,nvar),stat=rc)
    if (rc /= 0) stop 'input::initialize_profile_file: Error allocating memory (alpha)'
    info%alpha = _ZERO_
-
-   return
-
-80 FATAL 'Unable to open "',trim(info%path),'" for reading'
-   stop 'input::initialize_profile_file'
 
    end subroutine initialize_profile_file
 !EOC
@@ -433,6 +419,7 @@
    integer                      :: yy,mm,dd,hh,min,ss
    REALTYPE                     :: t,dt
    type (type_1d_variable),pointer :: curvar
+   character(len=8)             :: strline
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -455,11 +442,10 @@
                   curvar => curvar%next
                end do
             elseif (rc<0) then
-               FATAL 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?'
-               stop 'input:get_observed_profiles'
+               call fatal_error('input:get_observed_profiles', 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?')
             else
-               FATAL 'Error reading profiles from '//trim(info%path)//' around line #',info%lines
-               stop 'input:get_observed_profiles'
+               write (strline,'(i0)') info%lines
+               call fatal_error('input:get_observed_profiles', 'Error reading profiles from '//trim(info%path)//' at line '//trim(strline))
             end if
             exit
          else
@@ -511,11 +497,13 @@
    type (type_0d_variable),pointer :: curvar
    integer :: nvar
    integer :: rc
+   integer :: ios
 !
 !-----------------------------------------------------------------------
 !BOC
 !  Open the input file.
-   open(next_unit_no,file=info%path,status='old',action='read',err=80)
+   open(next_unit_no,file=info%path,status='old',action='read',iostat=ios)
+   if (ios /= 0) call fatal_error('input::initialize_timeseries_file', 'Unable to open "'//trim(info%path)//'" for reading')
 
 !  Opening was successful - store the file unit, and increment the next unit with 1.
    info%unit = next_unit_no
@@ -540,11 +528,6 @@
    allocate(info%alpha(nvar),stat=rc)
    if (rc /= 0) stop 'input::initialize_timeseries_file: Error allocating memory (alpha)'
    info%alpha = _ZERO_
-
-   return
-
-80 FATAL 'Unable to open "',trim(info%path),'" for reading'
-   stop 'input::initialize_timeseries_file'
 
    end subroutine initialize_timeseries_file
 !EOC
@@ -581,6 +564,7 @@
    integer                      :: yy,mm,dd,hh,mins,ss
    REALTYPE                     :: t,dt
    type (type_0d_variable),pointer :: curvar
+   character(len=8)             :: strline
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -594,11 +578,10 @@
          info%obs1 = info%obs2
          call read_obs(info%unit,yy,mm,dd,hh,mins,ss,size(info%obs2),info%obs2,rc,line=info%lines)
          if (rc>0) then
-            FATAL 'Error reading time series from '//trim(info%path)//' at line ',info%lines
-            stop 'input:get_observed_scalars'
+            write (strline,'(i0)') info%lines
+            call fatal_error('input:get_observed_scalars', 'Error reading time series from '//trim(info%path)//' at line '//strline)
          elseif (rc<0) then
-            FATAL 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?'
-            stop 'input:get_observed_scalars'
+            call fatal_error('input:get_observed_scalars', 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?')
          end if
          call julian_day(yy,mm,dd,info%jul2)
          info%secs2 = hh*3600 + mins*60 + ss
@@ -832,6 +815,13 @@
 
    end subroutine read_profiles
 !EOC
+
+   subroutine fatal_error(location,error)
+      character(len=*),  intent(in) :: location,error
+
+      FATAL trim(location)//': '//trim(error)
+      stop 1
+   end subroutine fatal_error
 
 !-----------------------------------------------------------------------
 

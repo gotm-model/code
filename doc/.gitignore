@@ -6,13 +6,14 @@
 *.pdf
 *.ps
 *.toc
-../*/*/doc
 airsea.tex
+bio.tex
 gotm.tex
 meanflow.tex
 observations.tex
 output.tex
 seagrass.tex
+sediment.tex
 turbulence.tex
 util.tex
 figures/

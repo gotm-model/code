@@ -22,7 +22,7 @@
 ! using a structured grid in the vertical direction.
 ! To this end, a clear interface separating the mean flow and the turbulence
 ! part of GOTM is required. Vertical columns of the three-dimensional fields have
-! to copied into one-dimensional vectors, which are passed to GOTM. With the help
+! to be copied into one-dimensional vectors, which are passed to GOTM. With the help
 ! of this information, GOTM updates the turbulent fields and returns one-dimensional
 ! vectors of the turbulent diffusivities and/or the turbulent fluxes to the 3-D model.
 ! The `door' between the 3-D model and GOTM is the function {\tt do\_turbulence()},
@@ -1263,7 +1263,7 @@
 ! properties in all flows they considered.
 !
 ! \vspace{10mm}
-! {\bf Mixed layer deepending}
+! {\bf Mixed layer deepening}
 ! \vspace{5mm}
 !
 ! The correct prediction of mixed layer deepening into a stratified
@@ -2697,7 +2697,7 @@
 ! !DESCRIPTION:
 ! Computes prescribed and flux boundary conditions for  the transport
 ! equation \eq{tkeA}. The formal parameter {\tt bc} determines
-! whether {\tt Dirchlet} or {\tt Neumann}-type boundary conditions
+! whether {\tt Dirichlet} or {\tt Neumann}-type boundary conditions
 ! are computed. Depending on the physical properties of the
 ! boundary-layer, the parameter {\tt type} relates either to a {\tt visous},
 ! a {\tt logarithmic}, or an {\tt injection}-type boundary-layer.
@@ -2837,7 +2837,7 @@
 ! !DESCRIPTION:
 ! Computes prescribed and flux boundary conditions for  the transport
 ! equation \eq{tkeB}. The formal parameter {\tt bc} determines
-! whether {\tt Dirchlet} or {\tt Neumann}-type boundary conditions
+! whether {\tt Dirichlet} or {\tt Neumann}-type boundary conditions
 ! are computed. Depending on the physical properties of the
 ! boundary-layer, the parameter {\tt type} relates either to a {\tt visous},
 ! a {\tt logarithmic}, or an {\tt injection}-type boundary-layer.
@@ -2977,7 +2977,7 @@
 !DESCRIPTION:
 ! Computes prescribed and flux boundary conditions for  the transport
 ! equation \eq{dissipation}. The formal parameter {\tt bc} determines
-! whether {\tt Dirchlet} or {\tt Neumann}-type boundary conditions
+! whether {\tt Dirichlet} or {\tt Neumann}-type boundary conditions
 ! are computed. Depending on the physical properties of the
 ! boundary-layer, the parameter {\tt type} relates either to a {\tt visous},
 ! a {\tt logarithmic}, or an {\tt injection}-type boundary-layer.
@@ -3112,7 +3112,7 @@
 !DESCRIPTION:
 ! Computes prescribed and flux boundary conditions for  the transport
 ! equation \eq{generic}. The formal parameter {\tt bc} determines
-! whether {\tt Dirchlet} or {\tt Neumann}-type boundary conditions
+! whether {\tt Dirichlet} or {\tt Neumann}-type boundary conditions
 ! are computed. Depending on the physical properties of the
 ! boundary-layer, the parameter {\tt type} relates either to a {\tt visous},
 ! a {\tt logarithmic}, or an {\tt injection}-type boundary-layer.
@@ -3250,7 +3250,7 @@
 ! !DESCRIPTION:
 ! Computes prescribed and flux boundary conditions for  the transport
 ! equation \eq{MY}. The formal parameter {\tt bc} determines
-! whether {\tt Dirchlet} or {\tt Neumann}-type boundary conditions
+! whether {\tt Dirichlet} or {\tt Neumann}-type boundary conditions
 ! are computed. Depending on the physical properties of the
 ! boundary-layer, the parameter {\tt type} relates either to a {\tt visous},
 ! a {\tt logarithmic}, or an {\tt injection}-type boundary-layer.
@@ -3274,7 +3274,7 @@
 ! {\bf Logarithmic boundary-layers}
 ! \vspace{4mm}
 !
-! The Dirchlet (prescribed) boundary conditions can be written as
+! The Dirichlet (prescribed) boundary conditions can be written as
 ! \begin{equation}
 !   \label{MY_q2l_Dirichlet}
 !   q^2 l = 2 \kappa k (z+z_0)

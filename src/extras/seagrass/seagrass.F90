@@ -21,12 +21,13 @@
 
 !
 ! !USES:
+   IMPLICIT NONE
 !
 !  default: all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_seagrass, do_seagrass, save_seagrass, end_seagrass
+   public init_seagrass, do_seagrass, end_seagrass
    logical, public                     :: seagrass_calc
 !
 ! !REVISION HISTORY:!
@@ -43,6 +44,7 @@
    integer                   :: out_unit
    integer                   :: maxn
 
+   REALTYPE, parameter       :: miss_val = -999.0  
 !EOP
 !-----------------------------------------------------------------------
 
@@ -54,7 +56,7 @@
 ! !IROUTINE: Initialise the sea grass module
 !
 ! !INTERFACE:
-   subroutine init_seagrass(namlst,fname,unit,nlev,h)
+   subroutine init_seagrass(namlst,fname,unit,nlev,h,fm)
 !
 ! !DESCRIPTION:
 ! Here, the seagrass namelist {\tt seagrass.nml} is read
@@ -64,7 +66,7 @@
 ! for the seagrass canopy is then calculated.
 !
 ! !USES:
-   IMPLICIT NONE
+   use field_manager
 !
 ! !INPUT PARAMETERS:
    integer,          intent(in)   :: namlst
@@ -72,6 +74,7 @@
    integer,          intent(in)   :: unit
    integer,          intent(in)   :: nlev
    REALTYPE,         intent(in)   :: h(0:nlev)
+   type (type_field_manager), intent(inout) :: fm
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -136,8 +139,13 @@
          if (grassz(grassn).gt.z) grassind=i
       end do
 
-
       close(unit)
+
+      xx(grassind+1:nlev) = miss_val
+      yy(grassind+1:nlev) = miss_val
+
+      call fm%register('x_excur', 'm', 'seagrass excursion(x)', dimensions=(/id_dim_z/), data1d=xx(1:nlev), fill_value=miss_val, category='seagrass')
+      call fm%register('y_excur', 'm', 'seagrass excursion(y)', dimensions=(/id_dim_z/), data1d=yy(1:nlev), fill_value=miss_val, category='seagrass')
 
       LEVEL2 'seagrass initialised ...'
 
@@ -217,7 +225,6 @@
 !
 ! !USES:
    use meanflow, only:     u,v,h,drag,xP
-   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)     :: nlev
@@ -277,84 +284,6 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Storing the results
-!
-! !INTERFACE:
-   subroutine save_seagrass
-!
-! !DESCRIPTION:
-!  Here, storing of the seagrass profiles to an ascii or a
-!  netCDF file is managed.
-!
-! !USES:
-   use meanflow, only:     h
-   use output, only: out_fmt,ascii_unit
-#ifdef NETCDF_FMT
-   use netcdf
-   use ncdfout, only: ncid
-   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dim4d
-   use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
-#endif
-   IMPLICIT NONE
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
-!
-! !LOCAL VARIABLES:
-   integer, save             :: x_excur_id,y_excur_id,n
-   integer                   :: i,iret
-   REALTYPE                  :: zz
-   REALTYPE, parameter       :: miss_val = -999.0
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-
-   select case (out_fmt)
-      case (ASCII)
-         write(ascii_unit,*) 'Seagrass ',grassind
-         write(ascii_unit,110) 'height','x-excur','y-excur'
-         zz = _ZERO_
-         do i=1,grassind
-            zz=zz+0.5*h(i)
-            write(ascii_unit,111) zz,xx(i),yy(i)
-            zz=zz+0.5*h(i)
-         end do
-      case (NETCDF)
-#ifdef NETCDF_FMT
-         if (init_output) then
-            dim4d(1) = lon_dim
-            dim4d(2) = lat_dim
-            dim4d(3) = z_dim
-            dim4d(4) = time_dim
-            iret = define_mode(ncid,.true.)
-            iret = new_nc_variable(ncid,'x-excur',NF90_REAL,dim4d,x_excur_id)
-            iret = set_attributes(ncid,x_excur_id,units='m',    &
-                   long_name='seagrass excursion(x)',missing_value=miss_val)
-            iret = new_nc_variable(ncid,'y-excur',NF90_REAL,dim4d,y_excur_id)
-            iret = set_attributes(ncid,y_excur_id,units='m',    &
-                   long_name='seagrass excursion(y)',missing_value=miss_val)
-            iret = define_mode(ncid,.false.)
-            n = ubound(xx,1)
-            init_output = .false.
-         end if
-         xx(grassind+1:maxn)=miss_val
-         yy(grassind+1:maxn)=miss_val
-         iret = store_data(ncid,x_excur_id,XYZT_SHAPE,n,array=xx)
-         iret = store_data(ncid,y_excur_id,XYZT_SHAPE,n,array=yy)
-#endif
-      case default
-         FATAL 'A non valid output format has been chosen'
-         stop 'save_seagrass'
-   end select
-110 format(3(1x,A12))
-111 format(3(1x,E12.3E2))
-   return
-   end subroutine save_seagrass
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
 ! !IROUTINE: Finish the sea grass calculations
 !
 ! !INTERFACE:
@@ -364,7 +293,6 @@
 !  Nothing done yet --- supplied for completeness.
 !
 ! !USES:
-   IMPLICIT NONE
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard

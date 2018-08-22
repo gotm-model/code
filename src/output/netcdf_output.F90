@@ -1,13 +1,14 @@
 module netcdf_output
-
    use field_manager
    use output_manager_core
+   use yaml_types, only: type_dictionary, type_error, type_scalar
+#ifdef NETCDF_FMT
    use netcdf
-   use yaml_types, only: type_dictionary, type_error
 
    implicit none
 
    public type_netcdf_file, NF90_FLOAT, NF90_DOUBLE
+   public type_netcdf_variable_settings
 
    private
 
@@ -18,13 +19,13 @@ module netcdf_output
       integer :: reference_julian  = -1
       integer :: reference_seconds = -1
       integer :: sync_interval = 1  ! Number of output time step between calls to nf90_sync (-1 to disable syncing)
-      integer :: default_xtype = NF90_FLOAT ! Floating point type (either NF90_FLOAT or NF90_DOUBLE)
    contains
       procedure :: configure
       procedure :: initialize
       procedure :: save
       procedure :: finalize
       procedure :: create_field
+      procedure :: create_settings
    end type
 
    type,extends(type_output_field) :: type_netcdf_field
@@ -32,7 +33,12 @@ module netcdf_output
       integer,allocatable :: start(:)
       integer,allocatable :: edges(:)
       integer :: itimedim = -1
+   end type
+
+   type,extends(type_output_variable_settings) :: type_netcdf_variable_settings
       integer :: xtype = NF90_FLOAT
+   contains
+      procedure :: initialize => netcdf_variable_settings_initialize
    end type
 
 contains
@@ -42,12 +48,16 @@ contains
       class (type_dictionary), intent(in)    :: mapping
 
       type (type_error),  pointer :: config_error
-      character(len=string_length) :: string
+      class (type_scalar),pointer :: scalar
+      logical                     :: success
 
       ! Determine time of first output (default to start of simulation)
-      string = mapping%get_string('time_reference',default='',error=config_error)
+      scalar => mapping%get_scalar('time_reference',required=.false.,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-      if (string/='') call read_time_string(trim(string),self%reference_julian,self%reference_seconds)
+      if (associated(scalar)) then
+         call read_time_string(trim(scalar%string),self%reference_julian,self%reference_seconds,success)
+         if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
+      end if
 
       ! Determine interval between calls to nf90_sync (default: after every output)
       self%sync_interval = mapping%get_integer('sync_interval',default=1,error=config_error)
@@ -140,15 +150,20 @@ contains
             do i=1,size(output_field%source%dimensions)
                current_dim_ids(i) = get_dim_id(output_field%source%dimensions(i)%p)
             end do
-            iret = nf90_def_var(self%ncid,output_field%output_name, output_field%xtype, current_dim_ids, output_field%varid); call check_err(iret)
-            deallocate(current_dim_ids)
+            select type (settings=>output_field%settings)
+            class is (type_netcdf_variable_settings)
+               iret = nf90_def_var(self%ncid,output_field%output_name, settings%xtype, current_dim_ids, output_field%varid); call check_err(iret)
+               deallocate(current_dim_ids)
 
-            iret = nf90_put_att(self%ncid,output_field%varid,'units',trim(output_field%source%units)); call check_err(iret)
-            iret = nf90_put_att(self%ncid,output_field%varid,'long_name',trim(output_field%source%long_name)); call check_err(iret)
-            if (output_field%source%standard_name/='') iret = nf90_put_att(self%ncid,output_field%varid,'standard_name',trim(output_field%source%standard_name)); call check_err(iret)
-            if (output_field%source%minimum/=default_minimum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_min',output_field%source%minimum,output_field%xtype); call check_err(iret)
-            if (output_field%source%maximum/=default_maximum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_max',output_field%source%maximum,output_field%xtype); call check_err(iret)
-            if (output_field%source%fill_value/=default_fill_value) iret = put_att_typed_real(self%ncid,output_field%varid,'_FillValue',output_field%source%fill_value,output_field%xtype); call check_err(iret)
+               iret = nf90_put_att(self%ncid,output_field%varid,'units',trim(output_field%source%units)); call check_err(iret)
+               iret = nf90_put_att(self%ncid,output_field%varid,'long_name',trim(output_field%source%long_name)); call check_err(iret)
+               if (output_field%source%standard_name/='') iret = nf90_put_att(self%ncid,output_field%varid,'standard_name',trim(output_field%source%standard_name)); call check_err(iret)
+               if (output_field%source%minimum/=default_minimum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_min',output_field%source%minimum,settings%xtype); call check_err(iret)
+               if (output_field%source%maximum/=default_maximum) iret = put_att_typed_real(self%ncid,output_field%varid,'valid_max',output_field%source%maximum,settings%xtype); call check_err(iret)
+               if (output_field%source%fill_value/=default_fill_value) iret = put_att_typed_real(self%ncid,output_field%varid,'_FillValue',output_field%source%fill_value,settings%xtype); call check_err(iret)
+               if (output_field%source%fill_value/=default_fill_value) iret = put_att_typed_real(self%ncid,output_field%varid,'missing_value',output_field%source%fill_value,settings%xtype); call check_err(iret)
+               if (associated(output_field%source%category)) iret = nf90_put_att(self%ncid,output_field%varid,'path',trim(output_field%source%category%get_path())); call check_err(iret)
+            end select
             attribute => output_field%source%first_attribute
             do while (associated(attribute))
                select type (attribute)
@@ -170,7 +185,7 @@ contains
                iret = nf90_put_att(self%ncid,output_field%varid,'coordinates',trim(coordinates(2:))); call check_err(iret)
             end if
 
-            select case (output_field%time_method)
+            select case (output_field%settings%time_method)
                case (time_method_instantaneous)
                   iret = nf90_put_att(self%ncid,output_field%varid,'cell_methods','time: point'); call check_err(iret)
                case (time_method_mean)
@@ -231,17 +246,18 @@ contains
    function create_field(self) result(field)
       class (type_netcdf_file),intent(inout) :: self
       class (type_output_field), pointer :: field
-
       allocate(type_netcdf_field::field)
-      select type (field)
-      class is (type_netcdf_field)
-         field%xtype = self%default_xtype
-      end select
    end function create_field
 
-   subroutine save(self,julianday,secondsofday)
+   function create_settings(self) result(settings)
       class (type_netcdf_file),intent(inout) :: self
-      integer,                 intent(in)    :: julianday,secondsofday
+      class (type_output_variable_settings), pointer :: settings
+      allocate(type_netcdf_variable_settings::settings)
+   end function create_settings
+
+   subroutine save(self,julianday,secondsofday,microseconds)
+      class (type_netcdf_file),intent(inout) :: self
+      integer,                 intent(in)    :: julianday,secondsofday,microseconds
 
       class (type_output_field), pointer :: output_field
       integer                            :: iret
@@ -254,7 +270,7 @@ contains
 
       ! Store time coordinate
       if (self%time_id/=-1) then
-         time_value = (julianday-self%reference_julian)*real(86400,rk) + secondsofday-self%reference_seconds
+         time_value = (julianday-self%reference_julian)*real(86400,rk) + secondsofday-self%reference_seconds + microseconds*1.e-6_rk
          iret = nf90_put_var(self%ncid,self%time_id,time_value,(/self%itime/))
          if (iret/=NF90_NOERR) call host%fatal_error('netcdf_output:save','error saving variable "time" to '//trim(self%path)//trim(self%postfix)//'.nc: '//nf90_strerror(iret))
       end if
@@ -297,4 +313,37 @@ contains
       if (iret/=NF90_NOERR) call host%fatal_error('check_err',nf90_strerror(iret))
    end subroutine
 
+   subroutine netcdf_variable_settings_initialize(self,mapping,parent)
+      use yaml_types
+
+      class (type_netcdf_variable_settings),           intent(inout) :: self
+      class (type_dictionary),                         intent(in)    :: mapping
+      class (type_output_variable_settings), optional, intent(in)    :: parent
+
+      type (type_error),  pointer :: config_error
+      class (type_scalar),pointer :: scalar
+      logical                     :: success
+      character(len=8)            :: strfloat, strdouble
+
+      call self%type_output_variable_settings%initialize(mapping,parent)
+
+      if (present(parent)) then
+         select type (parent)
+         class is (type_netcdf_variable_settings)
+            self%xtype = parent%xtype
+         end select
+      end if
+      scalar => mapping%get_scalar('xtype',required=.false.,error=config_error)
+      if (associated(config_error)) call host%fatal_error('netcdf_output_item_initialize',config_error%message)
+      if (associated(scalar)) then
+         self%xtype = scalar%to_integer(self%xtype,success)
+         if (.not.success.or.(self%xtype /= NF90_DOUBLE .and. self%xtype /= NF90_FLOAT)) then
+            write (strfloat, '(i0)') NF90_FLOAT
+            write (strdouble, '(i0)') NF90_DOUBLE
+            call host%fatal_error('netcdf_output_item_initialize',trim(scalar%path)//' is set to invalid value "'//trim(scalar%string)//'". Supported: '//trim(strfloat)//' for 32 bits float, '//trim(strdouble)//' for 64 bits double.')
+         end if
+      end if
+   end subroutine netcdf_variable_settings_initialize
+
+#endif
 end module netcdf_output

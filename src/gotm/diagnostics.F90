@@ -19,19 +19,16 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public do_diagnostics
+   public init_diagnostics, do_diagnostics, clean_diagnostics
 !
 ! !PUBLIC DATA MEMBERS:
    REALTYPE, public                    :: ekin,epot,eturb
+   REALTYPE                            :: epot0
+   REALTYPE, public, allocatable       :: taux(:),tauy(:)
    integer, public                     :: mld_method=1
    REALTYPE, public                    :: mld_surf,mld_bott
    REALTYPE                            :: diff_k = 1e-05
    REALTYPE                            :: Ri_crit = 0.5
-#if 0
-   logical                             :: diagnostics
-   logical                             :: rad_corr
-#endif
-   logical                             :: init_diagnostics=.true.
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Jorn Bruggeman and Hans Burchard
@@ -41,6 +38,43 @@
 !-----------------------------------------------------------------------
 
    contains
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialize various diagnostic/integrated variables
+!
+! !INTERFACE:
+   subroutine init_diagnostics(nlev)
+!
+! !DESCRIPTION:
+!  This subroutine initializes the following diagnostic/integrated variables.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                    :: nlev
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+   integer                   :: rc
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   epot0=epot
+
+   allocate(taux(0:nlev),stat=rc)
+   if (rc /= 0) stop 'diagnostics: Error allocating (taux)'
+   taux = _ZERO_
+   allocate(tauy(0:nlev),stat=rc)
+   if (rc /= 0) stop 'diagnostics: Error allocating (tauy)'
+   tauy = _ZERO_
+
+   return
+   end subroutine init_diagnostics
+!EOC
 
 !-----------------------------------------------------------------------
 !BOP
@@ -54,10 +88,12 @@
 !  This subroutine calculates the following diagnostic/integrated variables.
 !
 ! !USES:
-   use airsea,       only: sst
-   use meanflow,     only: gravity,rho_0,cp
+   use airsea,       only: sst,tx,ty
+   use meanflow,     only: gravity,rho_0,cp,drag
    use meanflow,     only: h,u,v,s,t,rho,NN,SS,buoy,rad
+   use turbulence,   only: turb_method
    use turbulence,   only: kappa
+   use turbulence,   only: num
    use turbulence,   only: tke
    use observations, only: tprof,b_obs_sbf
    use eqstate,      only: eqstate1
@@ -65,36 +101,21 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                    :: nlev
-#if 0
-   integer(kind=timestepkind), intent(in) :: n
-   integer, intent(in)                    :: nlev,BuoyMeth
-   REALTYPE, intent(in)                   :: dt
-   REALTYPE, intent(in)                   :: u_taus,u_taub
-   REALTYPE, intent(in)                   :: I_0,heat
-#endif
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
-   REALTYPE, save            :: epot0
    REALTYPE                  :: z
    integer                   :: i
    integer                   :: j(1)
    REALTYPE                  :: Ri(0:nlev)
-#if 0
-   integer                   :: i
-   REALTYPE                  :: heat_sim,heat_obs
-   REALTYPE, save            :: heat_sim0,heat_obs0,heat_flux
-   REALTYPE                  :: z,dtt,dtb,x
-   REALTYPE                  :: wstar,tstar
-   REALTYPE                  :: sbf,stf,MOL
-#endif
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
+
+   if (turb_method.eq.99) return
+
    select case(mld_method)
       case(1)          ! MLD according to TKE criterium
          mld_surf = _ZERO_
@@ -122,6 +143,16 @@
          mld_bott = _ZERO_
       case default
    end select
+
+   ! Turbulent momentum fluxes
+   taux(nlev) = -tx
+   tauy(nlev) = -ty
+   do i=nlev-1,1,-1
+      taux(i)=-num(i)*(u(i+1)-u(i))/(0.5*(h(i+1)+h(i)))
+      tauy(i)=-num(i)*(v(i+1)-v(i))/(0.5*(h(i+1)+h(i)))
+   end do
+   taux(0)=-drag(1)*u(1)*sqrt(u(1)**2+v(1)**2)
+   tauy(0)=-drag(1)*v(1)*sqrt(u(1)**2+v(1)**2)
 
 #if 0
 !  Here, the surface buoyancy flux (sbf) and the surface temperature
@@ -198,46 +229,43 @@
       epot=epot+h(i)*buoy(i)*z
       z=z-_HALF_*h(i)
    end do
-   if (init_diagnostics) then
-      epot0=epot
-   end if
    epot=epot-epot0
    ekin=ekin*rho_0
    epot=epot*rho_0
    eturb=eturb*rho_0
 
-#if 0
-!  The output parameters are:
-!  mld_surf:  Surface mixed layer depth
-!  mld_bott:  Bottom mixed layer depth
-!  sbf    :  Surface buoyancy flux
-!  stf    :  Surface temperature flux
-!  MOL    :  Monin-Obukhov length
-!  wstar  :  Deardorff convective velocity scale
-!  tstar  :  Deardorff convective temperature scale
-!  u_taus :  Surface friction velocity
-!  u_taub :  Bottom friction velocity
-!  heat_flux: Accumulated surface heat flux J/m^2
-!  heat_sim: Relative heat content from simulated T-profiles J/m^2
-!  heat_obs: Relative heat content from observed T-profiles J/m^2
-!  ekin   : Kinetic energy of the water column J/m^2
-!  epot   : Potential energy of the water column J/m^2
-!  eturb  : Turbulent energy of the water column J/m^2
-
-   x = N*dt/(86400.)
-   write(temp_unit,111)   x,sst,t(nlev)
-   write(mld_unit,111)    x,mld_surf,mld_bott
-   write(sf_unit,111)     x,sbf,stf,MOL
-   write(fric_unit,111)   x,wstar,tstar,u_taus,u_taub
-   write(heat_unit,111)   x,heat_flux,heat_sim,heat_obs
-   write(energy_unit,111) x,ekin,epot,eturb
-
-111 format(F10.5,1x,4(E12.5,1x))
-#endif
-   init_diagnostics=.false.
-
    return
    end subroutine do_diagnostics
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Clean various diagnostic/integrated variables
+!
+! !INTERFACE:
+   subroutine clean_diagnostics
+!
+! !DESCRIPTION:
+!  This subroutine initializes the following diagnostic/integrated variables.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (allocated(taux)) deallocate(taux)
+   if (allocated(tauy)) deallocate(tauy)
+
+   return
+   end subroutine clean_diagnostics
 !EOC
 
 !-----------------------------------------------------------------------
