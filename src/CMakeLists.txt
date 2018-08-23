@@ -269,25 +269,6 @@ add_library(observations
 target_link_libraries(observations util input)
 set(GOTM_LIBS ${GOTM_LIBS} observations)
 
-<<<<<<< HEAD
-add_library(particles
-            particles/particles.F90
-            particles/particle_class.F90
-           )
-target_link_libraries(particles util)
-#KBadd_dependencies(particles util)
-set(GOTM_LIBS ${GOTM_LIBS} particles)
-
-if(GOTM_USE_FABM_PARTICLES)
-  find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
-  mark_as_advanced(CLEAR FABM_BASE)
-
-  set(FABM_FORCED_PREFIX fabm_particles)
-  add_subdirectory(${FABM_BASE}/src/drivers/particles fabm_particles)
-  add_dependencies(particles fabm_particle_driver)
-  set_property(TARGET particles APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/fabm_particles/modules)
-endif(GOTM_USE_FABM_PARTICLES)
-
 add_library(meanflow
             meanflow/buoyancy.F90
             meanflow/convectiveadjustment.F90
@@ -307,6 +288,24 @@ add_library(meanflow
            )
 target_link_libraries(meanflow util observations airsea)
 set(GOTM_LIBS ${GOTM_LIBS} meanflow)
+
+if(GOTM_USE_FABM_PARTICLES)
+  find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
+  mark_as_advanced(CLEAR FABM_BASE)
+  set(FABM_FORCED_PREFIX fabm_particles)
+  add_subdirectory(${FABM_BASE}/src/drivers/particles fabm_particles)
+endif(GOTM_USE_FABM_PARTICLES)
+
+add_library(particles
+            particles/particles.F90
+            particles/particle_class.F90
+           )
+target_link_libraries(particles util)
+if(GOTM_USE_FABM_PARTICLES)
+  target_link_libraries(particles fabm_particles fabm_particle_driver)
+  set_property(TARGET particles APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/fabm_particles/modules)
+endif(GOTM_USE_FABM_PARTICLES)
+set(GOTM_LIBS ${GOTM_LIBS} particles)
 
 #option(GOTM_USE_ICE "Include ICE support" OFF)
 #if(GOTM_USE_ICE)

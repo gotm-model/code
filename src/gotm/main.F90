@@ -140,6 +140,12 @@
 #ifdef _FABM_
       LEVEL1 '_FABM_'
 #endif
+#ifdef _PARTICLES_
+      LEVEL1 '_PARTICLES_'
+#endif
+#ifdef _FABM_PARTICLES_
+      LEVEL1 '_FABM_PARTICLES_'
+#endif
 #ifdef SEAGRASS
       LEVEL1 'SEAGRASS'
 #endif
