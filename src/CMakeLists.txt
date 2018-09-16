@@ -98,9 +98,10 @@ include_directories(BEFORE
                    )
 
 add_library(config
-	    config/yaml_settings.F90
-	    config/settings.F90
+            config/yaml_settings.F90
+            config/settings.F90
            )
+target_link_libraries(config output_manager)
 add_dependencies(config yaml)
 #KBset_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 set(GOTM_LIBS ${GOTM_LIBS} config)
@@ -122,6 +123,7 @@ add_library(util
             ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90
             ${CMAKE_CURRENT_BINARY_DIR}/compilation.F90
            )
+target_link_libraries(util config)
 if(GOTM_EMBED_VERSION)
   add_dependencies(util version config)
 endif()
@@ -188,7 +190,7 @@ add_library(turbulence
             turbulence/turbulence.F90
             turbulence/variances.F90
            )
-target_link_libraries(turbulence util)
+target_link_libraries(turbulence util config)
 set(GOTM_LIBS ${GOTM_LIBS} turbulence)
 
 if(GOTM_USE_FABM)
@@ -261,7 +263,7 @@ add_library(airsea
             airsea/albedo_water.F90
            )
 set_property(TARGET airsea APPEND PROPERTY COMPILE_DEFINITIONS GUSTINESS)
-target_link_libraries(airsea util input)
+target_link_libraries(airsea util input config)
 set(GOTM_LIBS ${GOTM_LIBS} airsea)
 
 add_library(observations
