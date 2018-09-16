@@ -545,7 +545,7 @@
 !                      Lars Umlauf
 !
 ! !LOCAL VARIABLES:
-   class (type_settings), pointer :: branch
+   class (type_settings), pointer :: branch, twig
    integer, parameter :: rk = kind(_ONE_)
    integer                            :: rc
 !EOP
@@ -563,163 +563,163 @@
    call branch%get(stab_method, 'stab_method', '', &
                    minimum=1,maximum=4,default=3)
 
-   branch => settings_store%get_child('bc')
-   call branch%get(k_ubc, 'k_ubc', '', &
+   twig => branch%get_child('bc')
+   call twig%get(k_ubc, 'k_ubc', '', &
                    minimum=0,maximum=1,default=1)
-   call branch%get(k_lbc, 'k_lbc', '', &
+   call twig%get(k_lbc, 'k_lbc', '', &
                    minimum=0,maximum=1,default=1)
-   call branch%get(psi_ubc, 'psi_ubc', '', &
+   call twig%get(psi_ubc, 'psi_ubc', '', &
                    minimum=0,maximum=1,default=1)
-   call branch%get(psi_lbc, 'psi_lbc', '', &
+   call twig%get(psi_lbc, 'psi_lbc', '', &
                    minimum=0,maximum=1,default=1)
-   call branch%get(ubc_type, 'ubc_type', '', &
+   call twig%get(ubc_type, 'ubc_type', '', &
                    minimum=1,maximum=2,default=1)
-   call branch%get(lbc_type, 'lbc_type', '', &
+   call twig%get(lbc_type, 'lbc_type', '', &
                    minimum=1,maximum=2,default=1)
 
 
-   branch => settings_store%get_child('turb_param')
+   twig => branch%get_child('turb_param')
 !   call branch%get(s_analyt_method, 's_analyt_method', '', &
 !                   minimum=1,maximum=3,default=1)
-   call branch%get(cm0_fix, 'cm0_fix', '', '-', &
+   call twig%get(cm0_fix, 'cm0_fix', '', '-', &
                    minimum=0._rk,default=0.5477_rk)
-   call branch%get(Prandtl0_fix, 'Prandtl0_fix', '', '-', &
+   call twig%get(Prandtl0_fix, 'Prandtl0_fix', '', '-', &
                    minimum=0._rk,default=0.74_rk)
-   call branch%get(cw, 'cw', '', '-', &
+   call twig%get(cw, 'cw', '', '-', &
                    minimum=0._rk,default=100._rk)
-   call branch%get(compute_kappa, 'compute_kappa', '', &
+   call twig%get(compute_kappa, 'compute_kappa', '', &
                    default=.false.)
-   call branch%get(kappa, 'kappa', '', '-', &
+   call twig%get(kappa, 'kappa', '', '-', &
                    minimum=0._rk,default=0.4_rk)
-   call branch%get(compute_c3, 'compute_c3', '', &
+   call twig%get(compute_c3, 'compute_c3', '', &
                    default=.true.)
-   call branch%get(Ri_st, 'Ri_st', '', '-', &
+   call twig%get(Ri_st, 'Ri_st', '', '-', &
                    minimum=0._rk,default=0.25_rk)
-   call branch%get(length_lim, 'length_lim', '', &
+   call twig%get(length_lim, 'length_lim', '', &
                    default=.true.)
-   call branch%get(galp, 'galp', '', '-', &
+   call twig%get(galp, 'galp', '', '-', &
                    minimum=0._rk,default=0.53_rk)
-   call branch%get(const_num, 'const_num', '', 'm^2/s', &
+   call twig%get(const_num, 'const_num', '', 'm^2/s', &
                    minimum=0._rk,default=0.0005_rk)
-   call branch%get(const_nuh, 'const_nuh', '', 'm^2/s', &
+   call twig%get(const_nuh, 'const_nuh', '', 'm^2/s', &
                    minimum=0._rk,default=0.0005_rk)
-   call branch%get(k_min, 'k_min', '', 'm^2/s^2', &
+   call twig%get(k_min, 'k_min', '', 'm^2/s^2', &
                    minimum=0._rk,default=1.e-6_rk)
-   call branch%get(eps_min, 'eps_min', '', 'm^2/s^3', &
+   call twig%get(eps_min, 'eps_min', '', 'm^2/s^3', &
                    minimum=0._rk,default=1.e-12_rk)
-   call branch%get(kb_min, 'kb_min', '', 'm^2/s^4', &
+   call twig%get(kb_min, 'kb_min', '', 'm^2/s^4', &
                    minimum=0._rk,default=1.e-10_rk)
-   call branch%get(epsb_min, 'epsb_min', '', 'm^2/s^5', &
+   call twig%get(epsb_min, 'epsb_min', '', 'm^2/s^5', &
                    minimum=0._rk,default=1.e-14_rk)
 
-   branch => settings_store%get_child('generic')
-   call branch%get(compute_param, 'compute_param', '', &
+   twig => branch%get_child('generic')
+   call twig%get(compute_param, 'compute_param', '', &
                    default=.false.)
-   call branch%get(gen_m, 'gen_m', '', '-', &
+   call twig%get(gen_m, 'gen_m', '', '-', &
                    default=1._rk)
-   call branch%get(gen_l, 'gen_l', '', '-', &
+   call twig%get(gen_l, 'gen_l', '', '-', &
                    default=-0.67_rk)
-   call branch%get(gen_p, 'gen_p', '', '-', &
+   call twig%get(gen_p, 'gen_p', '', '-', &
                    default=3._rk)
-   call branch%get(cpsi1, 'cpsi1', '', '-', &
+   call twig%get(cpsi1, 'cpsi1', '', '-', &
                    default=1._rk)
-   call branch%get(cpsi2, 'cpsi2', '', '-', &
+   call twig%get(cpsi2, 'cpsi2', '', '-', &
                    default=1.22_rk)
-   call branch%get(cpsi3minus, 'cpsi3minus', '', '-', &
+   call twig%get(cpsi3minus, 'cpsi3minus', '', '-', &
                    default=0.05_rk)
-   call branch%get(cpsi3plus, 'cpsi3plus', '', '-', &
+   call twig%get(cpsi3plus, 'cpsi3plus', '', '-', &
                    default=1._rk)
-   call branch%get(sig_kpsi, 'sig_kpsi', '', '-', &
+   call twig%get(sig_kpsi, 'sig_kpsi', '', '-', &
                    default=0.8_rk)
-   call branch%get(sig_psi, 'sig_psi', '', '-', &
+   call twig%get(sig_psi, 'sig_psi', '', '-', &
                    default=1.07_rk)
-   call branch%get(gen_d, 'gen_d', '', '-', &
+   call twig%get(gen_d, 'gen_d', '', '-', &
                    default=-1.2_rk)
-   call branch%get(gen_alpha, 'gen_alpha', '', '-', &
+   call twig%get(gen_alpha, 'gen_alpha', '', '-', &
                    default=-2._rk)
-   call branch%get(gen_l, 'gen_l', '', '-', &
+   call twig%get(gen_l, 'gen_l', '', '-', &
                    default=0.2_rk)
 
-   branch => settings_store%get_child('keps')
-   call branch%get(ce1, 'ce1', '', '-', &
+   twig => branch%get_child('keps')
+   call twig%get(ce1, 'ce1', '', '-', &
                    default=1.44_rk)
-   call branch%get(ce2, 'ce2', '', '-', &
+   call twig%get(ce2, 'ce2', '', '-', &
                    default=1.92_rk)
-   call branch%get(ce3minus, 'ce3minus', '', '-', &
+   call twig%get(ce3minus, 'ce3minus', '', '-', &
                    default=-0.4_rk)
-   call branch%get(ce3plus, 'ce3plus', '', '-', &
+   call twig%get(ce3plus, 'ce3plus', '', '-', &
                    default=1.0_rk)
-   call branch%get(sig_k, 'sig_k', '', '-', &
+   call twig%get(sig_k, 'sig_k', '', '-', &
                    default=1._rk)
-   call branch%get(sig_e, 'sig_e', '', '-', &
+   call twig%get(sig_e, 'sig_e', '', '-', &
                    default=1.3_rk)
-   call branch%get(sig_peps, 'sig_peps', '', &
+   call twig%get(sig_peps, 'sig_peps', '', &
                    default=.false.)
 
-   branch => settings_store%get_child('my')
-   call branch%get(e1, 'e1', '', '-', &
+   twig => branch%get_child('my')
+   call twig%get(e1, 'e1', '', '-', &
                    default=1.8_rk)
-   call branch%get(e2, 'e2', '', '-', &
+   call twig%get(e2, 'e2', '', '-', &
                    default=1.33_rk)
-   call branch%get(e3, 'e3', '', '-', &
+   call twig%get(e3, 'e3', '', '-', &
                    default=1.8_rk)
-   call branch%get(sq, 'sq', '', '-', &
+   call twig%get(sq, 'sq', '', '-', &
                    default=0.2_rk)
-   call branch%get(sl, 'sl', '', '-', &
+   call twig%get(sl, 'sl', '', '-', &
                    default=0.2_rk)
-   call branch%get(my_length, 'my_length', '', &
+   call twig%get(my_length, 'my_length', '', &
                    minimum=1,maximum=3,default=3)
-   call branch%get(new_constr, 'new_constr', '', &
+   call twig%get(new_constr, 'new_constr', '', &
                    default=.false.)
 
-   branch => settings_store%get_child('scnd')
-   call branch%get(scnd_method, 'scnd_method', '', &
+   twig => branch%get_child('scnd')
+   call twig%get(scnd_method, 'scnd_method', '', &
                    minimum=1,maximum=3,default=1)
-   call branch%get(kb_method, 'kb_method', '', &
+   call twig%get(kb_method, 'kb_method', '', &
                    minimum=1,maximum=2,default=1)
-   call branch%get(epsb_method, 'epsb_method', '', &
+   call twig%get(epsb_method, 'epsb_method', '', &
                    minimum=1,maximum=2,default=1)
-   call branch%get(scnd_coeff, 'scnd_coeff', '', &
+   call twig%get(scnd_coeff, 'scnd_coeff', '', &
                    minimum=0,maximum=7,default=7)
-   call branch%get(cc1, 'cc1', '', '-', &
+   call twig%get(cc1, 'cc1', '', '-', &
                    default=3.6_rk)
-   call branch%get(cc2, 'cc2', '', '-', &
+   call twig%get(cc2, 'cc2', '', '-', &
                    default=0.8_rk)
-   call branch%get(cc3, 'cc3', '', '-', &
+   call twig%get(cc3, 'cc3', '', '-', &
                    default=1.2_rk)
-   call branch%get(cc4, 'cc4', '', '-', &
+   call twig%get(cc4, 'cc4', '', '-', &
                    default=1.2_rk)
-   call branch%get(cc5, 'cc5', '', '-', &
+   call twig%get(cc5, 'cc5', '', '-', &
                    default=0.0_rk)
-   call branch%get(cc6, 'cc6', '', '-', &
+   call twig%get(cc6, 'cc6', '', '-', &
                    default=0.3_rk)
-   call branch%get(ct1, 'ct1', '', '-', &
+   call twig%get(ct1, 'ct1', '', '-', &
                    default=3.28_rk)
-   call branch%get(ct2, 'ct2', '', '-', &
+   call twig%get(ct2, 'ct2', '', '-', &
                    default=0.4_rk)
-   call branch%get(ct3, 'ct3', '', '-', &
+   call twig%get(ct3, 'ct3', '', '-', &
                    default=0.4_rk)
-   call branch%get(ct4, 'ct4', '', '-', &
+   call twig%get(ct4, 'ct4', '', '-', &
                    default=0.0_rk)
-   call branch%get(ct5, 'ct5', '', '-', &
+   call twig%get(ct5, 'ct5', '', '-', &
                    default=0.4_rk)
-   call branch%get(ctt, 'ctt', '', '-', &
+   call twig%get(ctt, 'ctt', '', '-', &
                    default=0.8_rk)
 
-   branch => settings_store%get_child('iw')
-   call branch%get(iw_model, 'iw_model', '', &
+   twig => branch%get_child('iw')
+   call twig%get(iw_model, 'iw_model', '', &
                    minimum=0,maximum=2,default=0)
-   call branch%get(alpha, 'alpha', '', '-', &
+   call twig%get(alpha, 'alpha', '', '-', &
                    default=0.7_rk)
-   call branch%get(klimiw, 'klimiw', '', '-', &
+   call twig%get(klimiw, 'klimiw', '', '-', &
                    default=1.e-6_rk)
-   call branch%get(rich_cr, 'rich_cr', '', '-', &
+   call twig%get(rich_cr, 'rich_cr', '', '-', &
                    default=0.7_rk)
-   call branch%get(numshear, 'numshear', '', '-', &
+   call twig%get(numshear, 'numshear', '', '-', &
                    default=5.e-3_rk)
-   call branch%get(numiw, 'numiw', '', '-', &
+   call twig%get(numiw, 'numiw', '', '-', &
                    default=1.e-4_rk)
-   call branch%get(nuhiw, 'nuhiw', '', '-', &
+   call twig%get(nuhiw, 'nuhiw', '', '-', &
                    default=1.e-5_rk)
    LEVEL2 'done.'
    return

@@ -480,221 +480,222 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
-   class (type_settings), pointer :: branch
+   class (type_settings), pointer :: branch, twig
    integer, parameter             :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_observations_yaml'
 
-   branch => settings_store%get_child('sprofile')
-   call branch%get(s_prof_method, 's_prof_method', '', &
+   branch => settings_store%get_child('observations')
+   twig => branch%get_child('sprofile')
+   call twig%get(s_prof_method, 's_prof_method', '', &
                    minimum=0,maximum=2,default=2)
-   call branch%get(s_analyt_method, 's_analyt_method', '', &
+   call twig%get(s_analyt_method, 's_analyt_method', '', &
                    minimum=1,maximum=3,default=1)
-   call branch%get(z_s1, 'z_s1', '', 'm', &
+   call twig%get(z_s1, 'z_s1', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(s_1, 's_1', '', 'PSU', &
+   call twig%get(s_1, 's_1', '', 'PSU', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call branch%get(z_s2, 'z_s2', '', 'm', &
+   call twig%get(z_s2, 'z_s2', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(s_2, 's_2', '', 'PSU', &
+   call twig%get(s_2, 's_2', '', 'PSU', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call branch%get(s_obs_NN, 's_obs_NN', '', 's^-2', &
+   call twig%get(s_obs_NN, 's_obs_NN', '', 's^-2', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(s_prof_file, 's_prof_file', '', &
+   call twig%get(s_prof_file, 's_prof_file', '', &
                    default='sprof.dat')
-   call branch%get(SRelaxTauM, 'SRelaxTauM', '', 's', &
+   call twig%get(SRelaxTauM, 'SRelaxTauM', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call branch%get(SRelaxTauB, 'SRelaxTauB', '', 's', &
+   call twig%get(SRelaxTauB, 'SRelaxTauB', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call branch%get(SRelaxTauS, 'SRelaxTauS', '', 's', &
+   call twig%get(SRelaxTauS, 'SRelaxTauS', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call branch%get(SRelaxSurf, 'SRelaxSurf', '', 's', &
+   call twig%get(SRelaxSurf, 'SRelaxSurf', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call branch%get(SRelaxBott, 'SRelaxBott', '', 's', &
+   call twig%get(SRelaxBott, 'SRelaxBott', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
 
-   branch => settings_store%get_child('tprofile')
-   call branch%get(t_prof_method, 't_prof_method', '', &
+   twig => branch%get_child('tprofile')
+   call twig%get(t_prof_method, 't_prof_method', '', &
                    minimum=0,maximum=2,default=2)
-   call branch%get(t_analyt_method, 't_analyt_method', '', &
+   call twig%get(t_analyt_method, 't_analyt_method', '', &
                    minimum=1,maximum=3,default=1)
-   call branch%get(z_t1, 'z_t1', '', 'm', &
+   call twig%get(z_t1, 'z_t1', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(t_1, 't_1', '', 'C', &
+   call twig%get(t_1, 't_1', '', 'C', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call branch%get(z_t2, 'z_t2', '', 'm', &
+   call twig%get(z_t2, 'z_t2', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(t_2, 't_2', '', 'C', &
+   call twig%get(t_2, 't_2', '', 'C', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call branch%get(t_obs_NN, 't_obs_NN', '', 's^-2', &
+   call twig%get(t_obs_NN, 't_obs_NN', '', 's^-2', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(t_prof_file, 't_prof_file', '', &
+   call twig%get(t_prof_file, 't_prof_file', '', &
                    default='tprof.dat')
-   call branch%get(TRelaxTauM, 'TRelaxTauM', '', 's', &
+   call twig%get(TRelaxTauM, 'TRelaxTauM', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call branch%get(TRelaxTauB, 'TRelaxTauB', '', 's', &
+   call twig%get(TRelaxTauB, 'TRelaxTauB', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call branch%get(TRelaxTauS, 'TRelaxTauS', '', 's', &
+   call twig%get(TRelaxTauS, 'TRelaxTauS', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call branch%get(TRelaxSurf, 'TRelaxSurf', '', 's', &
+   call twig%get(TRelaxSurf, 'TRelaxSurf', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call branch%get(TRelaxBott, 'TRelaxBott', '', 's', &
+   call twig%get(TRelaxBott, 'TRelaxBott', '', 's', &
                    minimum=0._rk,default=1e+15_rk)
 
-   branch => settings_store%get_child('ext_pressure')
-   call branch%get(ext_press_method, 'ext_press_method', '', &
+   twig => branch%get_child('ext_pressure')
+   call twig%get(ext_press_method, 'ext_press_method', '', &
                    minimum=0,maximum=2,default=0)
-   call branch%get(ext_press_mode, 'ext_press_mode', '', &
+   call twig%get(ext_press_mode, 'ext_press_mode', '', &
                    minimum=0,maximum=2,default=0)
-   call branch%get(ext_press_file, 'ext_press_file', '', &
+   call twig%get(ext_press_file, 'ext_press_file', '', &
                    default='ext_press.dat')
-   call branch%get(PressConstU, 'PressConstU', '', '-', &
+   call twig%get(PressConstU, 'PressConstU', '', '-', &
                    default=0._rk)
-   call branch%get(PressConstV, 'PressConstV', '', '-', &
+   call twig%get(PressConstV, 'PressConstV', '', '-', &
                    default=0._rk)
-   call branch%get(PressHeight, 'PressHeight', '', 'm', &
+   call twig%get(PressHeight, 'PressHeight', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(PeriodM, 'PeriodM', '', 's', &
+   call twig%get(PeriodM, 'PeriodM', '', 's', &
                    default=44714._rk)
-   call branch%get(AmpMu, 'AmpMu', '', '-', &
+   call twig%get(AmpMu, 'AmpMu', '', '-', &
                    default=0._rk)
-   call branch%get(AmpMv, 'AmpMv', '', '-', &
+   call twig%get(AmpMv, 'AmpMv', '', '-', &
                    default=0._rk)
-   call branch%get(PhaseMu, 'PhaseMu', '', '-', &
+   call twig%get(PhaseMu, 'PhaseMu', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
-   call branch%get(PhaseMv, 'PhaseMv', '', '-', &
+   call twig%get(PhaseMv, 'PhaseMv', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
-   call branch%get(PeriodS, 'PeriodS', '', 's', &
+   call twig%get(PeriodS, 'PeriodS', '', 's', &
                    default=43200._rk)
-   call branch%get(AmpSu, 'AmpSu', '', '-', &
+   call twig%get(AmpSu, 'AmpSu', '', '-', &
                    default=0._rk)
-   call branch%get(AmpSv, 'AmpSv', '', '-', &
+   call twig%get(AmpSv, 'AmpSv', '', '-', &
                    default=0._rk)
-   call branch%get(PhaseSu, 'PhaseSu', '', '-', &
+   call twig%get(PhaseSu, 'PhaseSu', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
-   call branch%get(PhaseSv, 'PhaseSv', '', '-', &
+   call twig%get(PhaseSv, 'PhaseSv', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
 
-   branch => settings_store%get_child('int_press')
-   call branch%get(int_press_method, 'int_press_method', '', &
+   twig => branch%get_child('int_press')
+   call twig%get(int_press_method, 'int_press_method', '', &
                    minimum=0,maximum=2,default=0)
-   call branch%get(ext_press_mode, 'ext_press_mode', '', &
+   call twig%get(ext_press_mode, 'ext_press_mode', '', &
                    minimum=0,maximum=2,default=0)
-   call branch%get(ext_press_file, 'ext_press_file', '', &
+   call twig%get(ext_press_file, 'ext_press_file', '', &
                    default='ext_press.dat')
-   call branch%get(PressConstU, 'PressConstU', '', '-', &
+   call twig%get(PressConstU, 'PressConstU', '', '-', &
                    default=0._rk)
-   call branch%get(PressConstV, 'PressConstV', '', '-', &
+   call twig%get(PressConstV, 'PressConstV', '', '-', &
                    default=0._rk)
-   call branch%get(PressHeight, 'PressHeight', '', 'm', &
+   call twig%get(PressHeight, 'PressHeight', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(PeriodM, 'PeriodM', '', 's', &
+   call twig%get(PeriodM, 'PeriodM', '', 's', &
                    default=44714._rk)
-   call branch%get(AmpMu, 'AmpMu', '', '-', &
+   call twig%get(AmpMu, 'AmpMu', '', '-', &
                    default=0._rk)
-   call branch%get(AmpMv, 'AmpMv', '', '-', &
+   call twig%get(AmpMv, 'AmpMv', '', '-', &
                    default=0._rk)
-   call branch%get(PhaseMu, 'PhaseMu', '', '-', &
+   call twig%get(PhaseMu, 'PhaseMu', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
-   call branch%get(PhaseMv, 'PhaseMv', '', '-', &
+   call twig%get(PhaseMv, 'PhaseMv', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
-   call branch%get(PeriodS, 'PeriodS', '', 's', &
+   call twig%get(PeriodS, 'PeriodS', '', 's', &
                    default=43200._rk)
-   call branch%get(AmpSu, 'AmpSu', '', '-', &
+   call twig%get(AmpSu, 'AmpSu', '', '-', &
                    default=0._rk)
-   call branch%get(AmpSv, 'AmpSv', '', '-', &
+   call twig%get(AmpSv, 'AmpSv', '', '-', &
                    default=0._rk)
-   call branch%get(PhaseSu, 'PhaseSu', '', '-', &
+   call twig%get(PhaseSu, 'PhaseSu', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
-   call branch%get(PhaseSv, 'PhaseSv', '', '-', &
+   call twig%get(PhaseSv, 'PhaseSv', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
 
-   branch => settings_store%get_child('extinct')
-   call branch%get(extinct_method, 'extinct_method', '', &
+   twig => branch%get_child('extinct')
+   call twig%get(extinct_method, 'extinct_method', '', &
                    minimum=0,maximum=7,default=0)
-!KB   call branch%get(extinct_file, 'extinct_file', '', &
-!KB                   default='extinct.dat')
-   call branch%get(A, 'A', '', '-', &
+   call twig%get(extinct_file, 'extinct_file', '', &
+                   default='extinct.dat')
+   call twig%get(A, 'A', '', '-', &
                    minimum=0._rk,maximum=1._rk,default=0.7_rk)
-   call branch%get(g1, 'g1', '', 'm', &
+   call twig%get(g1, 'g1', '', 'm', &
                    minimum=0._rk,default=0.4_rk)
-   call branch%get(g2, 'g2', '', 'm', &
+   call twig%get(g2, 'g2', '', 'm', &
                    minimum=0._rk,default=8._rk)
 
-   branch => settings_store%get_child('w_advspec')
-   call branch%get(w_adv_method, 'w_adv_method', '', &
+   twig => branch%get_child('w_advspec')
+   call twig%get(w_adv_method, 'w_adv_method', '', &
                    minimum=0,maximum=2,default=0)
-   call branch%get(w_adv_height0, 'w_adv_height0', '', 'm', &
+   call twig%get(w_adv_height0, 'w_adv_height0', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(w_adv0, 'w_adv0', '', 'm', &
+   call twig%get(w_adv0, 'w_adv0', '', 'm', &
                    minimum=0._rk,default=0._rk)
-!KB   call branch%get(w_adv_file, 'w_adv_file', '', &
-!KB                   default='w_adv.dat')
-   call branch%get(w_adv_discr, 'w_adv_discr', '', &
+   call twig%get(w_adv_file, 'w_adv_file', '', &
+                   default='w_adv.dat')
+   call twig%get(w_adv_discr, 'w_adv_discr', '', &
                    minimum=0,maximum=6,default=6)
 
-   branch => settings_store%get_child('zetaspec')
-   call branch%get(zeta_method, 'zeta_method', '', &
+   twig => branch%get_child('zetaspec')
+   call twig%get(zeta_method, 'zeta_method', '', &
                    minimum=0,maximum=2,default=0)
-   call branch%get(zeta_file, 'zeta_file', '', &
+   call twig%get(zeta_file, 'zeta_file', '', &
                    default='zeta.dat')
-   call branch%get(zeta_scale, 'zeta_scale', '', '-', &
+   call twig%get(zeta_scale, 'zeta_scale', '', '-', &
                    default=1._rk)
-   call branch%get(zeta_offset, 'zeta_offset', '', '-', &
+   call twig%get(zeta_offset, 'zeta_offset', '', '-', &
                    default=0._rk)
-   call branch%get(zeta_0, 'zeta_0', '', 'm', &
+   call twig%get(zeta_0, 'zeta_0', '', 'm', &
                    default=0._rk)
-   call branch%get(period_1, 'period_1', '', 's', &
+   call twig%get(period_1, 'period_1', '', 's', &
                    default=44714._rk)
-   call branch%get(amp_1, 'amp_1', '', 'm', &
+   call twig%get(amp_1, 'amp_1', '', 'm', &
                    default=0._rk)
-   call branch%get(phase_1, 'phase_1', '', '-', &
+   call twig%get(phase_1, 'phase_1', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
-   call branch%get(period_2, 'period_2', '', 's', &
+   call twig%get(period_2, 'period_2', '', 's', &
                    default=43200._rk)
-   call branch%get(amp_2, 'amp_2', '', 'm', &
+   call twig%get(amp_2, 'amp_2', '', 'm', &
                    default=0._rk)
-   call branch%get(phase_2, 'phase_2', '', '-', &
+   call twig%get(phase_2, 'phase_2', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
 
-   branch => settings_store%get_child('wave_nml')
-   call branch%get(wave_method, 'wave_method', '', &
+   twig => branch%get_child('wave_nml')
+   call twig%get(wave_method, 'wave_method', '', &
                    minimum=0,maximum=2,default=0)
-!KB   call branch%get(wave_file, 'wave_file', '', &
-!KB                   default='wave.dat')
-   call branch%get(Hs, 'Hs', '', 'm', &
+   call twig%get(wave_file, 'wave_file', '', &
+                   default='wave.dat')
+   call twig%get(Hs, 'Hs', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(Tz, 'Tz', '', 's', &
+   call twig%get(Tz, 'Tz', '', 's', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(phiw, 'phiw', '', '-', &
+   call twig%get(phiw, 'phiw', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
 
-   branch => settings_store%get_child('velprofile')
-   call branch%get(vel_prof_method, 'vel_prof_method', '', &
+   twig => branch%get_child('velprofile')
+   call twig%get(vel_prof_method, 'vel_prof_method', '', &
                    minimum=0,maximum=2,default=0)
-!KB   call branch%get(vel_prof_file, 'vel_prof_file', '', &
-!KB                   default='velocity.dat')
-   call branch%get(vel_relax_tau, 'vel_relax_tau', '', 's', &
+   call twig%get(vel_prof_file, 'vel_prof_file', '', &
+                   default='velocity.dat')
+   call twig%get(vel_relax_tau, 'vel_relax_tau', '', 's', &
                    minimum=0._rk,default=1.e15_rk)
-   call branch%get(vel_relax_ramp, 'vel_relax_ramp', '', '-', &
+   call twig%get(vel_relax_ramp, 'vel_relax_ramp', '', '-', &
                    minimum=0._rk,default=1.e15_rk)
 
-   branch => settings_store%get_child('eprofile')
-   call branch%get(e_prof_method, 'e_prof_method', '', &
+   twig => branch%get_child('eprofile')
+   call twig%get(e_prof_method, 'e_prof_method', '', &
                    minimum=0,maximum=2,default=0)
-!KB   call branch%get(e_prof_file, 'e_prof_file', '', &
-!KB                   default='e_prof.dat')
-   call branch%get(e_obs_const, 'e_obs_const', '', 'W/kg', &
+   call twig%get(e_prof_file, 'e_prof_file', '', &
+                   default='e_prof.dat')
+   call twig%get(e_obs_const, 'e_obs_const', '', 'W/kg', &
                    minimum=0._rk,default=0._rk)
 
-   branch => settings_store%get_child('bprofile')
-   call branch%get(b_obs_surf, 'b_obs_surf', '', '-', &
+   twig => branch%get_child('bprofile')
+   call twig%get(b_obs_surf, 'b_obs_surf', '', '-', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(b_obs_NN, 'b_obs_NN', '', 's^-2', &
+   call twig%get(b_obs_NN, 'b_obs_NN', '', 's^-2', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(b_obs_sbf, 'b_obs_sbf', '', '-', &
+   call twig%get(b_obs_sbf, 'b_obs_sbf', '', '-', &
                    minimum=0._rk,default=0._rk)
    LEVEL2 'done.'
    return

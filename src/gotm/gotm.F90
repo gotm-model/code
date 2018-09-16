@@ -156,7 +156,7 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
-   class (type_settings), pointer :: branch
+   class (type_settings), pointer :: branch, twig
    integer, parameter :: rk = kind(_ONE_)
 
    namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
@@ -199,10 +199,10 @@
                       minimum=1, default=100)
       call branch%get(dt, 'dt', 'time step', 's', &
                       minimum=0.e-10_rk, default=3600._rk)
-      call branch%get(restart_offline, 'restart/restart_offline', &
+      call branch%get(restart_offline, 'restart_offline', &
                       'initialize simulation with state stored in restart.nc', &
                       default=.false.)
-      call branch%get(restart_allow_missing_variable, 'restart/restart_allow_missing_variable', &
+      call branch%get(restart_allow_missing_variable, 'restart_allow_missing_variable', &
                       'warning or error when variable is missing in restart file', &
                       default=.false.)
       call branch%get(cnpar, 'cnpar', &
@@ -212,26 +212,26 @@
          options=(/type_option(1, 'from equation of state (i.e. from potential temperature and salinity)'), &
          type_option(2, 'from prognostic equation')/), default=1)
 
-      branch => settings_store%get_child('station')
-      call branch%get(name, 'name', '', &
+      twig => branch%get_child('station')
+      call twig%get(name, 'name', '', &
                       default='GOTM site')
-      call branch%get(latitude, 'latitude', 'latitude', 'degrees North', &
+      call twig%get(latitude, 'latitude', 'latitude', 'degrees North', &
                       minimum=-90._rk, maximum=90._rk, default=0._rk)
-      call branch%get(longitude, 'longitude', 'longitude', 'degrees East', &
+      call twig%get(longitude, 'longitude', 'longitude', 'degrees East', &
                       minimum=-360._rk, maximum=360._rk, default=0._rk)
-      call branch%get(depth, 'depth', '', '-', &
+      call twig%get(depth, 'depth', '', '-', &
                       minimum=0._rk, default=1._rk)
 
-      branch => settings_store%get_child('time')
-      call branch%get(timefmt, 'timefmt', 'time format', &
+      twig => branch%get_child('time')
+      call twig%get(timefmt, 'timefmt', 'time format', &
                       minimum=1,maximum=3,default=2)
 #if 0
-      call branch%get(MaxN, 'MaxN', 'max number of time steps', &
+      call twig%get(MaxN, 'MaxN', 'max number of time steps', &
                       minimum=1,default=100)
 #endif
-      call branch%get(start, 'start', 'start time', &
+      call twig%get(start, 'start', 'start time', &
                       default='2017-01-01 00:00:00')
-      call branch%get(stop, 'stop', 'stop time', &
+      call twig%get(stop, 'stop', 'stop time', &
                       default='2018-01-01 00:00:00')
    end if
 
