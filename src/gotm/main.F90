@@ -126,11 +126,9 @@
       case ('-h', '--help')
          call print_help()
          stop
-      case ('--no_read_yaml_file')
-         read_yaml_file = .false.
-      case ('--read_nml_files')
+      case ('--read_nml')
          read_nml_files = .true.
-      case ('--save_yaml')
+      case ('--write_yaml')
          i = i+1
          call get_command_argument(i, save_yaml_path)
       case default
@@ -164,12 +162,11 @@
       print '(a)', ''
       print '(a)', 'Options:'
       print '(a)', ''
-      print '(a)', '  -h, --help         print usage information and exit'
-      print '(a)', '  -v, --version      print version information'
-      print '(a)', '  -c, --compiler     print compilation options'
-      print '(a)', '  --no_read_yaml_file'
-      print '(a)', '  --read_nml_files   update configuration with nml specs'
-      print '(a)', '  --save_yaml <file> save yaml configuration three to file'
+      print '(a)', '  -h, --help          print usage information and exit'
+      print '(a)', '  -v, --version       print version information'
+      print '(a)', '  -c, --compiler      print compilation options'
+      print '(a)', '  --read_nml          read configuration from namelist files'
+      print '(a)', '  --write_yaml <file> save yaml configuration to file'
       print '(a)', ''
    end subroutine print_help
 

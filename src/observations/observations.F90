@@ -866,7 +866,6 @@
          end select
 
       case (FROMFILE)
-              stop 'egon'
          call register_input_1d(s_prof_file,1,sprof,'observed salinity')
          LEVEL2 'Reading salinity profiles from:'
          LEVEL3 trim(s_prof_file)

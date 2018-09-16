@@ -138,7 +138,6 @@ contains
          stop 1
       end if
       call settings_write_yaml(self, unit, 0, settings_get_maximum_depth(self, 0) + 5)
-!KB      call settings_write_yaml(self, unit, 0, 20 + 5)
    end subroutine save
 
    function get_node(self, name) result(pair)
@@ -432,6 +431,7 @@ contains
       class (type_settings),       pointer :: settings
       integer                              :: istart
       class (type_string_setting), pointer :: setting
+      class (type_yaml_node),      pointer :: node
       type (type_yaml_error),      pointer :: yaml_error
 
       call split_path(self, name, settings, istart)
@@ -444,6 +444,14 @@ contains
          setting%default = default
       end if
       if (associated(settings%backing_store)) then
+         node => settings%backing_store%get(name(istart:))
+         if (associated(node)) then
+            select type (node)
+            class is (type_yaml_null)
+               setting%value = ''
+               return
+            end select
+         end if
          setting%value = settings%backing_store%get_string(name(istart:), default, yaml_error)
          if (associated(yaml_error)) call report_error(trim(yaml_error%message))
       else
@@ -595,8 +603,7 @@ contains
             call settings_write_yaml(node, unit, indent+2, comment_depth)
          class is (type_setting)
             call node%as_string(string)
-!KBwrite(*,*) indent,len(string),comment_indent
-            write (unit, '(a,a,": ",a,a,"# ")', advance='no') repeat(' ', indent), pair%name, trim(string), repeat(' ', comment_indent-240 - 1 - len(trim(string)))
+            write (unit, '(a,a,": ",a,a,"# ")', advance='no') repeat(' ', indent), pair%name, string, repeat(' ', comment_indent - 1 - len(trim(string)))
             call write_comment(node)
          end select
          pair => pair%next
@@ -680,7 +687,7 @@ contains
    recursive subroutine string_as_string(self, string)
       class (type_string_setting), intent(in) :: self
       character(len=:), allocatable :: string
-      string = self%value
+      string = trim(self%value)
    end subroutine string_as_string
 
 end module yaml_settings

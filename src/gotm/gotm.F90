@@ -179,17 +179,26 @@
       restart_online = .true.
    end if
 
-   inquire(file='gotm.yaml',exist=file_exists)
-   if (file_exists) then
-      LEVEL2 'reading yaml configuration'
-      call settings_store%load('gotm.yaml', namlst)
-   end if
-
    if (trim(save_yaml_path) /= '') then
       config_only = .true.
       LEVEL2 'only doing configuration'
    end if
    STDERR LINE
+
+   read_yaml_file = .true.
+   if (.not.read_nml_files) then
+      inquire(file='gotm.yaml',exist=file_exists)
+      if (.not. file_exists) then
+         FATAL 'GOTM now reads its configuration from gotm.yaml.'
+         FATAL 'If you want to read it from namelists instead, specify --read_nml.'
+         FATAL 'You can generate gotm.yaml from namelists by specifying --read_nml --write_yaml gotm.yaml.'
+         stop 2
+      end if
+      LEVEL2 'reading yaml configuration'
+      call settings_store%load('gotm.yaml', namlst)
+   else
+      if (.not. config_only) read_yaml_file = .false.
+   end if
 
    if (read_yaml_file) then
       branch => settings_store%get_child('model_setup')
@@ -483,7 +492,8 @@
 
    if (config_only) then
       call settings_store%save(trim(save_yaml_path), namlst)
-      stop
+      LEVEL0 'Your configuration has been written to '//trim(save_yaml_path)//'.'
+      stop 0
    end if
    
 #ifdef _PRINTSTATE_
