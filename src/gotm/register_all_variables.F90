@@ -343,6 +343,9 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_turbulence_variables()'
+
+   if (turb_method.eq.99) return
+
    call fm%register('tke', 'm2/s2', 'turbulent kinetic energy', standard_name='??', dimensions=(/id_dim_zi/), data1d=tke(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('tkeo', 'm2/s2', 'turbulent kinetic energy - old time step', standard_name='??', dimensions=(/id_dim_zi/), data1d=tkeo(0:nlev),category='turbulence', part_of_state=.true., output_level=output_level_debug)
    call fm%register('eps', 'm2/s3', 'energy dissipation rate', standard_name='??', dimensions=(/id_dim_zi/), data1d=eps(0:nlev),category='turbulence', part_of_state=.true.)

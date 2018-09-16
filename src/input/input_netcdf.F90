@@ -10,6 +10,7 @@
 ! !DESCRIPTION:
 !
 ! !USES:
+#ifdef NETCDF_FMT
    use netcdf
    implicit none
 
@@ -140,7 +141,7 @@
    end subroutine handle_err
 
 !-----------------------------------------------------------------------
-
+#endif
    end module input_netcdf
 
 !-----------------------------------------------------------------------

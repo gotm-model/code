@@ -42,7 +42,7 @@
 
    use meanflow
    use input
-   use input_netcdf, only: read_restart_data
+   use input_netcdf
    use observations
    use time
 
@@ -462,11 +462,6 @@
    end if
 !   call init_output(title,nlev,latitude,longitude)
 
-#ifdef _FABM_
-!  Accept the current biogeochemical state and used it to compute derived diagnostics.
-   if (fabm_calc .and. .not. config_only) call start_gotm_fabm(nlev)
-#endif
-
    if (.not. config_only) then
       call do_airsea(julianday,secondsofday)
 
@@ -474,6 +469,11 @@
       ! This is needed to ensure the initial density is saved correctly, and also for FABM.
       call shear(nlev,cnpar)
       call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+
+#ifdef _FABM_
+!     Accept the current biogeochemical state and used it to compute derived diagnostics.
+      if (fabm_calc .and. .not. config_only) call start_gotm_fabm(nlev)
+#endif
 
       if (list_fields) call fm%list()
    end if
@@ -787,6 +787,7 @@
    end subroutine
 
    subroutine setup_restart()
+#ifdef NETCDF_FMT
       use netcdf_output
       use output_manager_core
       use time, only: jul2,secs2
@@ -811,10 +812,12 @@
             settings%xtype = NF90_DOUBLE
       end select
       call file%append_category(category)
+#endif
    end subroutine setup_restart
 
    subroutine read_restart(restart_allow_missing_variable)
       logical                               :: restart_allow_missing_variable
+#ifdef NETCDF_FMT
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
 
@@ -836,6 +839,10 @@
          member => member%next
       end do
       call field_set%finalize()
+#else
+      FATAL 'GOTM has been compiled without NetCDF support; restart reading is not supported'
+      stop 'read_restart'
+#endif
    end subroutine read_restart
 !-----------------------------------------------------------------------
 
