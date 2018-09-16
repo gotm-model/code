@@ -91,6 +91,7 @@
    use airsea,       only: sst,tx,ty
    use meanflow,     only: gravity,rho_0,cp,drag
    use meanflow,     only: h,u,v,s,t,rho,NN,SS,buoy,rad
+   use turbulence,   only: turb_method
    use turbulence,   only: kappa
    use turbulence,   only: num
    use turbulence,   only: tke
@@ -112,6 +113,9 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+
+   if (turb_method.eq.99) return
+
    select case(mld_method)
       case(1)          ! MLD according to TKE criterium
          mld_surf = _ZERO_
