@@ -186,6 +186,7 @@
    STDERR LINE
 
    read_yaml_file = .true.
+   settings_store%path = ''
    if (.not.read_nml_files) then
       inquire(file='gotm.yaml',exist=file_exists)
       if (.not. file_exists) then
@@ -201,47 +202,77 @@
    end if
 
    if (read_yaml_file) then
-      branch => settings_store%get_child('model_setup')
-      call branch%get(title, 'title', '', &
+      call settings_store%get(title, 'title', 'simulation title to be used in output', &
                       default='GOTM simulation')
-      call branch%get(nlev, 'nlev', 'number of vertical layers', &
+
+      branch => settings_store%get_child('location', 'geographic location')
+      call branch%get(name, 'name', 'descriptive name to be used in output', &
+                      default='GOTM site')
+      call branch%get(latitude, 'latitude', 'latitude', 'degrees North', &
+                      minimum=-90._rk, maximum=90._rk, default=0._rk)
+      call branch%get(longitude, 'longitude', 'longitude', 'degrees East', &
+                      minimum=-360._rk, maximum=360._rk, default=0._rk)
+
+      branch => settings_store%get_child('grid', 'column structure')
+      call branch%get(depth, 'depth', 'water depth', 'm', &
+                      minimum=0._rk, default=1._rk)
+      call branch%get(nlev, 'nlev', 'number of layers', &
                       minimum=1, default=100)
+      call branch%get(grid_method, 'grid_method', 'vertical grid type', &
+                   options=(/type_option(0, 'equal layers heights, optional zooming'), type_option(1, 'custom sigma grid (relative depth fractions)'), type_option(2, 'custom cartesian grid (absolute layer heights)'), type_option(3, 'adaptive grid')/),default=0)
+      call branch%get(ddu, 'ddu', 'surface zooming (0: no zooming, > 2: strong zooming)', '-', &
+                   minimum=0._rk,default=0._rk)
+      call branch%get(ddl, 'ddl', 'bottom zooming (0: no zooming, > 2: strong zooming)', '-', &
+                   minimum=0._rk,default=0._rk)
+      call branch%get(grid_file, 'grid_file', 'file with custom grid specification', &
+                   default='grid.dat')
+      call branch%get(c1ad, 'c1ad', 'weighting factor for adaptation to buoyancy frequency', '-', &
+                   default=0.8_rk)
+      call branch%get(c2ad, 'c2ad', 'weighting factor for adaptation to shear frequency', '-', &
+                   default=0.0_rk)
+      call branch%get(c3ad, 'c3ad', 'weighting factor for adaptation to surface distance', '-', &
+                   default=0.1_rk)
+      call branch%get(c4ad, 'c4ad', 'weighting factor for adaptation to background', '-', &
+                   default=0.1_rk)
+      call branch%get(Tgrid, 'Tgrid', 'grid adaption time scale', 's', &
+                   minimum=0._rk,default=3600._rk)
+      call branch%get(NNnorm, 'NNnorm', 'normalisation factor for adaptation to buoyancy frequency', '-', &
+                   minimum=0._rk,default=0.2_rk)
+      call branch%get(SSNorm, 'SSNorm', 'normalisation factor for adaptation to shear frequency', '-', &
+                   minimum=0._rk,default=0.2_rk)
+      call branch%get(dsurf, 'dsurf', 'normalisation factor for adaptation to surface distance', '-', &
+                   minimum=0._rk,default=10._rk)
+      call branch%get(dtgrid, 'dtgrid', 'time step for grid adaptation (must be fraction of dt)', 's', &
+                   minimum=0._rk,default=5._rk)
+
+      branch => settings_store%get_child('time')
+      call branch%get(timefmt, 'timefmt', 'method to specify simulated period', default=2, &
+                      options=(/type_option(1, 'number of time steps only'), type_option(2, 'start and stop times'), type_option(3, 'start time and number of time steps')/))
+#if 0
+      call branch%get(MaxN, 'MaxN', 'number of time steps', &
+                      minimum=1,default=100)
+#endif
+      call branch%get(start, 'start', 'start time', &
+                      default='2017-01-01 00:00:00')
+      call branch%get(stop, 'stop', 'stop time', &
+                      default='2018-01-01 00:00:00')
       call branch%get(dt, 'dt', 'time step', 's', &
                       minimum=0.e-10_rk, default=3600._rk)
+      call branch%get(cnpar, 'cnpar', '"explicitness" of numerical scheme', '-', &
+                      minimum=0._rk, maximum=1._rk, default=1._rk, description='Constant for the theta scheme used for time integration of diffusion-reaction components. cnpar=0.5 for Cranck-Nicholson (second-order accurate), cnpar=0 for Forward Euler (first-order accurate), cnpar=1 for Backward Euler (first-order accurate). Only cnpar=1 guarantees positive solutions for positive definite systems.')
+
+      branch => settings_store%get_child('restart')
       call branch%get(restart_offline, 'restart_offline', &
                       'initialize simulation with state stored in restart.nc', &
                       default=.false.)
       call branch%get(restart_allow_missing_variable, 'restart_allow_missing_variable', &
                       'warning or error when variable is missing in restart file', &
                       default=.false.)
-      call branch%get(cnpar, 'cnpar', &
-                      'constant for the theta scheme used for time integration of diffusion-reaction components', '-', &
-                      minimum=0._rk, maximum=1._rk, default=1._rk)
-      call branch%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
+
+      call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
          options=(/type_option(1, 'from equation of state (i.e. from potential temperature and salinity)'), &
          type_option(2, 'from prognostic equation')/), default=1)
 
-      twig => branch%get_child('station')
-      call twig%get(name, 'name', '', &
-                      default='GOTM site')
-      call twig%get(latitude, 'latitude', 'latitude', 'degrees North', &
-                      minimum=-90._rk, maximum=90._rk, default=0._rk)
-      call twig%get(longitude, 'longitude', 'longitude', 'degrees East', &
-                      minimum=-360._rk, maximum=360._rk, default=0._rk)
-      call twig%get(depth, 'depth', '', '-', &
-                      minimum=0._rk, default=1._rk)
-
-      twig => branch%get_child('time')
-      call twig%get(timefmt, 'timefmt', 'time format', &
-                      minimum=1,maximum=3,default=2)
-#if 0
-      call twig%get(MaxN, 'MaxN', 'max number of time steps', &
-                      minimum=1,default=100)
-#endif
-      call twig%get(start, 'start', 'start time', &
-                      default='2017-01-01 00:00:00')
-      call twig%get(stop, 'stop', 'stop time', &
-                      default='2018-01-01 00:00:00')
    end if
 
 !  open the namelist file.

@@ -137,7 +137,7 @@ contains
          write (*,*) 'Failed to open '//path//' for writing.'
          stop 1
       end if
-      call settings_write_yaml(self, unit, 0, settings_get_maximum_depth(self, 0) + 5)
+      call settings_write_yaml(self, unit, 0, settings_get_maximum_depth(self, 0) + 5, header=.true.)
    end subroutine save
 
    function get_node(self, name) result(pair)
@@ -275,7 +275,7 @@ contains
       pair%node => setting
    end function get_string_setting
    
-   subroutine get_real(self, target, name, long_name, units, default, minimum, maximum)
+   subroutine get_real(self, target, name, long_name, units, default, minimum, maximum, description)
       class (type_settings),intent(inout) :: self
       real(rk), target                               :: target
       character(len=*),                intent(in)    :: name
@@ -284,6 +284,7 @@ contains
       real(rk),        optional,       intent(in)    :: default
       real(rk),        optional,       intent(in)    :: minimum
       real(rk),        optional,       intent(in)    :: maximum
+      character(len=*),optional,       intent(in)    :: description
 
       class (type_settings),     pointer :: settings
       integer                            :: istart
@@ -321,16 +322,17 @@ contains
       end if
    end subroutine get_real
 
-   subroutine get_integer(self, target, name, long_name, units, default, minimum, maximum, options)
+   subroutine get_integer(self, target, name, long_name, units, default, minimum, maximum, options, description)
       class (type_settings),       intent(inout) :: self
       integer, target                            :: target
       character(len=*),            intent(in)    :: name
       character(len=*),            intent(in)    :: long_name
-      character(len=*),optional,   intent(in)    :: units
-      integer,        optional,    intent(in)    :: default
-      integer,        optional,    intent(in)    :: minimum
-      integer,        optional,    intent(in)    :: maximum
+      character(len=*),  optional, intent(in)    :: units
+      integer,           optional, intent(in)    :: default
+      integer,           optional, intent(in)    :: minimum
+      integer,           optional, intent(in)    :: maximum
       type (type_option),optional, intent(in)    :: options(:)
+      character(len=*),  optional, intent(in)    :: description
 
       class (type_settings),        pointer :: settings
       integer                               :: istart
@@ -388,12 +390,13 @@ contains
       end if
    end subroutine get_integer
 
-   subroutine get_logical(self, target, name, long_name, default)
-      class (type_settings), intent(inout) :: self
-      logical, target                                :: target
-      character(len=*),      intent(in)    :: name
-      character(len=*),      intent(in)    :: long_name
-      logical, optional,     intent(in)    :: default
+   subroutine get_logical(self, target, name, long_name, default, description)
+      class (type_settings),    intent(inout) :: self
+      logical, target                         :: target
+      character(len=*),         intent(in)    :: name
+      character(len=*),         intent(in)    :: long_name
+      logical, optional,        intent(in)    :: default
+      character(len=*),optional,intent(in)    :: description
 
       class (type_settings),        pointer :: settings
       integer                               :: istart
@@ -421,12 +424,13 @@ contains
       end if
    end subroutine get_logical
 
-   subroutine get_string(self, target, name, long_name, default)
+   subroutine get_string(self, target, name, long_name, default, description)
       class (type_settings),           intent(inout) :: self
       character(len=*), target                       :: target
       character(len=*),                intent(in)    :: name
       character(len=*),                intent(in)    :: long_name
       character(len=*),optional,       intent(in)    :: default
+      character(len=*),optional,       intent(in)    :: description
 
       class (type_settings),       pointer :: settings
       integer                              :: istart
@@ -584,11 +588,12 @@ contains
       end do
    end subroutine split_path
 
-   recursive subroutine settings_write_yaml(self, unit, indent, comment_depth)
+   recursive subroutine settings_write_yaml(self, unit, indent, comment_depth, header)
       class (type_settings), intent(in) :: self
       integer,               intent(in) :: unit
       integer,               intent(in) :: indent
       integer,               intent(in) :: comment_depth
+      logical,               intent(in) :: header
 
       type (type_key_value_pair), pointer  :: pair
       character(len=:), allocatable        :: string
@@ -599,37 +604,63 @@ contains
          comment_indent = comment_depth - indent - len(pair%name) - 1
          select type (node => pair%node)
          class is (type_settings)
-            write (unit, '(a,a,":",a,"# ",a)') repeat(' ', indent), pair%name, repeat(' ', comment_indent), node%long_name
-            call settings_write_yaml(node, unit, indent+2, comment_depth)
+            if (header) then
+               write (unit, '("# ",a,a)') repeat(' ', indent), repeat('-', 80)
+               call write_header(pair, unit, indent)
+               write (unit, '("# ",a,a)') repeat(' ', indent), repeat('-', 80)
+            end if
+            !write (unit, '(a,a,":",a,"# ",a)') repeat(' ', indent), pair%name, repeat(' ', comment_indent), node%long_name
+            write (unit, '(a,a,":",a)') repeat(' ', indent), pair%name
+            call settings_write_yaml(node, unit, indent+2, comment_depth, header=.false.)
          class is (type_setting)
             call node%as_string(string)
             write (unit, '(a,a,": ",a,a,"# ")', advance='no') repeat(' ', indent), pair%name, string, repeat(' ', comment_indent - 1 - len(trim(string)))
-            call write_comment(node)
+            !call write_comment(node)
+            select type (node)
+            class is (type_real_setting)
+               write (unit,'(a)') node%units
+            class default
+               write (unit,*)
+            end select
          end select
          pair => pair%next
       end do
    contains
-      subroutine write_comment(node)
-         class (type_setting), intent(in) :: node
+      recursive subroutine write_header(self, unit, indent)
+         type (type_key_value_pair), intent(in) :: self
+         integer,              intent(in) :: unit
+         integer,              intent(in) :: indent
 
+         type (type_key_value_pair), pointer  :: pair
          integer :: ioption
 
-         write (unit,'(a)', advance='no') node%long_name
-         select type (node)
-         class is (type_real_setting)
-            write (unit,'(" (",a,")")', advance='no') node%units
-         class is (type_integer_setting)
-            if (allocated(node%units)) write (unit,'(" (",a,")")', advance='no') node%units
-            if (allocated(node%options)) then
-               write (unit,'(": ")', advance='no')
-               do ioption=1,size(node%options)
-                  if (ioption > 1) write (unit,'(", ")', advance='no')
-                  write (unit,'(i0," = ",a)', advance='no') node%options(ioption)%value, node%options(ioption)%long_name
-               end do
-            end if
+         write (unit, '("# ",a,a,": ")', advance='no') repeat(' ', indent), self%name
+         if (allocated(self%node%long_name)) write (unit, '(a)', advance='no') self%node%long_name
+         write (unit,*)
+
+         select type (node => self%node)
+         class is (type_settings)
+            pair => node%first
+            do while (associated(pair))
+               call write_header(pair, unit, indent + 2)
+               pair => pair%next
+            end do
+         class is (type_setting)
+            select type (node)
+            class is (type_real_setting)
+               !write (unit,'(" (",a,")")', advance='no') node%units
+            class is (type_integer_setting)
+               !if (allocated(node%units)) write (unit,'(" (",a,")")', advance='no') node%units
+               if (allocated(node%options)) then
+                  do ioption=1,size(node%options)
+                     !if (ioption > 1) write (unit,'(", ")', advance='no')
+                     write (unit,'("# ",a,i0,": ",a)') repeat(' ', indent + 2),node%options(ioption)%value, node%options(ioption)%long_name
+                  end do
+               end if
+            end select
          end select
-         write (unit,'()')
-      end subroutine
+      end subroutine write_header
+
    end subroutine settings_write_yaml
 
    recursive function settings_get_maximum_depth(self, indent) result(maxdepth)

@@ -156,57 +156,29 @@
 !BOC
    LEVEL1 'init_meanflow_yaml'
 
-   call cfg%get(h0b, 'h0b', 'Note: z0b=0.03*h0b+0.1*nu/ustar', 'm', &
-                minimum=0._rk,default=0.05_rk)
-   call cfg%get(z0s_min, 'z0s_min', 'minimum surface z0', 'm', &
-                minimum=0.0_rk,default=0.02_rk)
-   call cfg%get(charnock, 'charnock', 'charnock', &
+   call cfg%get(h0b, 'h0b', 'physical bottom roughness', 'm', &
+                minimum=0._rk,default=0.05_rk, description='Physical bottom roughness or bed roughness. This variable, h0b, relates to the hydrodynamic bottom roughness z0b as z0b = 0.03*h0b + 0.1*nu/ustar')
+   call cfg%get(MaxItz0b, 'MaxItz0b', 'number of iterations for hydrodynamic bottom roughness', &
+                minimum=1,default=1000, description='Number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
+   call cfg%get(charnock, 'charnock', 'use Charnock (1955) surface roughness adaptation', &
                 default=.false.)
-   call cfg%get(charnock_val, 'charnock_val', 'charnock', '-', &
+   call cfg%get(charnock_val, 'charnock_val', 'empirical constant for surface roughness adaptation', '-', &
                 minimum=0._rk,default=1400._rk)
-   call cfg%get(ddu, 'ddu', 'grid zooming (surface)', '-', &
-                minimum=0._rk,default=0._rk)
-   call cfg%get(ddl, 'ddl', 'grid zooming (bottom)', '-', &
-                minimum=0._rk,default=0._rk)
-   call cfg%get(grid_method, 'grid_method', 'vertical grid type', &
-                minimum=0,maximum=3,default=0)
-   call cfg%get(c1ad, 'c1ad', 'buyancy frequency weight factor', '-', &
-                default=0.8_rk)
-   call cfg%get(c2ad, 'c2ad', 'shear frequency weight factor', '-', &
-                default=0.0_rk)
-   call cfg%get(c3ad, 'c3ad', 'surface distance weight factor', '-', &
-                default=0.1_rk)
-   call cfg%get(c4ad, 'c4ad', 'background weight factor', '-', &
-                default=0.1_rk)
-   call cfg%get(Tgrid, 'Tgrid', 'grid adaption time scale', 's', &
-                minimum=0._rk,default=3600._rk)
-   call cfg%get(NNnorm, 'NNnorm', 'buoyancy frequency normalization factor', '-', &
-                minimum=0._rk,default=0.2_rk)
-   call cfg%get(SSNorm, 'SSNorm', 'shear frequency normalization factor', '-', &
-                minimum=0._rk,default=0.2_rk)
-   call cfg%get(dsurf, 'dsurf', 'surface distance normalization factor', '-', &
-                minimum=0._rk,default=10._rk)
-   call cfg%get(dtgrid, 'dtgrid', 'grid adaption time step', 's', &
-                minimum=0._rk,default=5._rk)
-#if 0
-   call cfg%get(grid_file, 'grid_file', 'file with grid specification', &
-                default='grid.dat')
-#endif
+   call cfg%get(z0s_min, 'z0s_min', 'minimum hydrodynamic surface roughness', 'm', &
+                minimum=0.0_rk,default=0.02_rk)
    call cfg%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
                 minimum=0._rk,default=9.81_rk)
    call cfg%get(rho_0, 'rho_0', 'reference density', 'kg/m^3', &
                 minimum=0._rk,default=1027._rk)
    call cfg%get(cp, 'cp', 'specific heat of sea water', 'J/kg/K', &
                 minimum=0._rk,default=3985._rk)
-   call cfg%get(avmolu, 'avmolu', 'molecular viscosity - momentum', 'm^2/s', &
+   call cfg%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
                 minimum=0._rk,default=1.3e-6_rk)
-   call cfg%get(avmolt, 'avmolt', 'molecular viscosity - temperature', 'm^2/s', &
+   call cfg%get(avmolt, 'avmolt', 'molecular viscosity for temperature', 'm^2/s', &
                 minimum=0._rk,default=1.3e-7_rk)
-   call cfg%get(avmols, 'avmols', 'molecular viscosity - salinity', 'm^2/s', &
+   call cfg%get(avmols, 'avmols', 'molecular viscosity for salinity', 'm^2/s', &
                 minimum=0._rk,default=1.3e-9_rk)
-   call cfg%get(MaxItz0b, 'MaxItz0b', 'grid zooming (bottom)', &
-                minimum=1,default=10)
-   call cfg%get(no_shear, 'no_shear', 'no shear production - P=0', &
+   call cfg%get(no_shear, 'no_shear', 'set shear production term to zero', &
                 default=.false.)
    LEVEL2 'done'
    return
