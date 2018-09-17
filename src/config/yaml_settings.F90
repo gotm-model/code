@@ -13,6 +13,7 @@ module yaml_settings
 
    type,abstract :: type_settings_node
       character(len=:), allocatable :: long_name
+      character(len=:), allocatable :: description
    end type type_settings_node
    
    type type_key_value_pair
@@ -305,6 +306,7 @@ contains
          setting%has_default = .true.
          setting%default = default
       end if
+      if (present(description)) setting%description = description
       if (associated(settings%backing_store)) then
          setting%value = settings%backing_store%get_real(name(istart:), default, yaml_error)
          if (associated(yaml_error)) then
@@ -366,6 +368,7 @@ contains
          setting%has_default = .true.
          setting%default = default
       end if
+      if (present(description)) setting%description = description
       if (associated(settings%backing_store)) then
          setting%value = settings%backing_store%get_integer(name(istart:), default, yaml_error)
          if (associated(yaml_error)) then
@@ -412,6 +415,7 @@ contains
          setting%has_default = .true.
          setting%default = default
       end if
+      if (present(description)) setting%description = description
       if (associated(settings%backing_store)) then
          setting%value = settings%backing_store%get_logical(name(istart:), default, yaml_error)
          if (associated(yaml_error)) call report_error(trim(yaml_error%message))
@@ -447,6 +451,7 @@ contains
          setting%has_default = .true.
          setting%default = default
       end if
+      if (present(description)) setting%description = description
       if (associated(settings%backing_store)) then
          node => settings%backing_store%get(name(istart:))
          if (associated(node)) then
@@ -646,6 +651,7 @@ contains
                pair => pair%next
             end do
          class is (type_setting)
+            if (allocated(node%description)) write (unit,'("# ",a,a)') repeat(' ', indent + 2), node%description
             select type (node)
             class is (type_real_setting)
                !write (unit,'(" (",a,")")', advance='no') node%units
@@ -654,7 +660,7 @@ contains
                if (allocated(node%options)) then
                   do ioption=1,size(node%options)
                      !if (ioption > 1) write (unit,'(", ")', advance='no')
-                     write (unit,'("# ",a,i0,": ",a)') repeat(' ', indent + 2),node%options(ioption)%value, node%options(ioption)%long_name
+                     write (unit,'("# ",a,i0,": ",a)') repeat(' ', indent + 2), node%options(ioption)%value, node%options(ioption)%long_name
                   end do
                end if
             end select

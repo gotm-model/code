@@ -157,9 +157,9 @@
    LEVEL1 'init_meanflow_yaml'
 
    call cfg%get(h0b, 'h0b', 'physical bottom roughness', 'm', &
-                minimum=0._rk,default=0.05_rk, description='Physical bottom roughness or bed roughness. This variable, h0b, relates to the hydrodynamic bottom roughness z0b as z0b = 0.03*h0b + 0.1*nu/ustar')
+                minimum=0._rk,default=0.05_rk, description='physical bottom roughness or bed roughness. This variable, h0b, relates to the hydrodynamic bottom roughness z0b as z0b = 0.03*h0b + 0.1*nu/ustar.')
    call cfg%get(MaxItz0b, 'MaxItz0b', 'number of iterations for hydrodynamic bottom roughness', &
-                minimum=1,default=1000, description='Number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
+                minimum=1,default=1000, description='number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
    call cfg%get(charnock, 'charnock', 'use Charnock (1955) surface roughness adaptation', &
                 default=.false.)
    call cfg%get(charnock_val, 'charnock_val', 'empirical constant for surface roughness adaptation', '-', &

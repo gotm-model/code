@@ -259,7 +259,7 @@
       call branch%get(dt, 'dt', 'time step', 's', &
                       minimum=0.e-10_rk, default=3600._rk)
       call branch%get(cnpar, 'cnpar', '"explicitness" of numerical scheme', '-', &
-                      minimum=0._rk, maximum=1._rk, default=1._rk, description='Constant for the theta scheme used for time integration of diffusion-reaction components. cnpar=0.5 for Cranck-Nicholson (second-order accurate), cnpar=0 for Forward Euler (first-order accurate), cnpar=1 for Backward Euler (first-order accurate). Only cnpar=1 guarantees positive solutions for positive definite systems.')
+                      minimum=0._rk, maximum=1._rk, default=1._rk, description='constant for the theta scheme used for time integration of diffusion-reaction components. cnpar=0.5 for Cranck-Nicholson (second-order accurate), cnpar=0 for Forward Euler (first-order accurate), cnpar=1 for Backward Euler (first-order accurate). Only cnpar=1 guarantees positive solutions for positive definite systems.')
 
       branch => settings_store%get_child('restart')
       call branch%get(restart_offline, 'restart_offline', &
