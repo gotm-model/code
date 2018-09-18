@@ -11,6 +11,11 @@ module yaml_settings
 
    integer, parameter :: rk = yaml_real_kind
 
+   real(rk), parameter :: default_minimum_real = -huge(1._rk)
+   real(rk), parameter :: default_maximum_real = huge(1._rk)
+   integer, parameter :: default_minimum_integer = -huge(1)
+   integer, parameter :: default_maximum_integer = huge(1)
+
    type,abstract :: type_settings_node
       character(len=:), allocatable :: long_name
       character(len=:), allocatable :: description
@@ -65,8 +70,8 @@ module yaml_settings
    type,extends(type_setting) :: type_integer_setting
       integer, pointer :: value => null()
       integer :: default = 0
-      integer :: minimum = -huge(1)
-      integer :: maximum = huge(1)
+      integer :: minimum = default_minimum_integer
+      integer :: maximum = default_maximum_integer
       type (type_option), allocatable :: options(:)
    contains
       procedure :: as_string => integer_as_string
@@ -75,8 +80,8 @@ module yaml_settings
    type,extends(type_setting) :: type_real_setting
       real(rk), pointer :: value => null()
       real(rk) :: default = 0.0_rk
-      real(rk) :: minimum = -huge(1._rk)
-      real(rk) :: maximum = huge(1._rk)
+      real(rk) :: minimum = default_minimum_real
+      real(rk) :: maximum = default_maximum_real
    contains
       procedure :: as_string => real_as_string
    end type
@@ -659,6 +664,7 @@ contains
 
          type (type_key_value_pair), pointer  :: pair
          integer :: ioption
+         character(:), allocatable :: strmin, strmax
 
          write (unit, '("# ",a,a,": ")', advance='no') repeat(' ', indent), self%name
          if (allocated(self%node%long_name)) write (unit, '(a)', advance='no') self%node%long_name
@@ -676,6 +682,17 @@ contains
             select type (node)
             class is (type_real_setting)
                !write (unit,'(" (",a,")")', advance='no') node%units
+               if (node%minimum /= default_minimum_real) call format_real(node%minimum, strmin)
+               if (node%maximum /= default_maximum_real) call format_real(node%maximum, strmax)
+               if (allocated(strmin)) then                  
+                  if (allocated(strmax)) then
+                     write (unit,'("# ",a,a,a,a,a)') repeat(' ', indent + 2), 'minimum: ', strmin, ', maximum: ', strmax
+                  else
+                     write (unit,'("# ",a,a,a)') repeat(' ', indent + 2), 'minimum: ', strmin
+                  end if
+               elseif (allocated(strmax)) then
+                  write (unit,'("# ",a,a,a)') repeat(' ', indent + 2), 'maximum: ', strmax
+               end if
             class is (type_integer_setting)
                !if (allocated(node%units)) write (unit,'(" (",a,")")', advance='no') node%units
                if (allocated(node%options)) then
@@ -762,11 +779,18 @@ contains
       class (type_real_setting), intent(in) :: self
       character(len=:), allocatable :: string
 
+      call format_real(self%value, string)
+   end subroutine real_as_string
+
+   subroutine format_real(value, string)
+      real(rk), intent(in) :: value
+      character(:), allocatable :: string
+
       character(len=15) :: tmp
 
-      write (tmp, '(g15.8)') self%value
+      write (tmp, '(g15.8)') value
       string = trim(adjustl(tmp))
-   end subroutine real_as_string
+   end subroutine
 
    recursive subroutine integer_as_string(self, string)
       class (type_integer_setting), intent(in) :: self
