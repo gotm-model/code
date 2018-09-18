@@ -31,6 +31,7 @@ module yaml_settings
    contains
       procedure :: load
       procedure :: save
+      procedure :: write_schema
       procedure :: get_real
       procedure :: get_integer
       procedure :: get_logical
@@ -140,6 +141,25 @@ contains
       end if
       call settings_write_yaml(self, unit, 0, settings_get_maximum_depth(self, 0) + 5, header=.true.)
    end subroutine save
+
+   subroutine write_schema(self, path, unit, version)
+      class (type_settings), intent(in) :: self
+      character(len=*),      intent(in) :: path
+      integer,               intent(in) :: unit
+      character(len=*),      intent(in) :: version
+
+      integer :: ios
+
+      open(unit=unit, file=path, action='write', status='replace', iostat=ios)
+      if (ios /= 0) then
+         write (*,*) 'Failed to open '//path//' for writing.'
+         stop 1
+      end if
+      write (unit,'(a)') '<?xml version="1.0" ?>'
+      write (unit,'(a,a,a)') '<element name="scenario" label="scenario" version="', version, '" namelistextension=".nml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/scenario-1.0.xsd">'
+      call settings_write_schema(self, unit, 2)
+      write (unit,'(a)') '</element>'
+   end subroutine write_schema
 
    function get_node(self, name) result(pair)
       class (type_settings), intent(inout) :: self
@@ -610,6 +630,7 @@ contains
          select type (node => pair%node)
          class is (type_settings)
             if (header) then
+               write (unit, '()')
                write (unit, '("# ",a,a)') repeat(' ', indent), repeat('-', 80)
                call write_header(pair, unit, indent)
                write (unit, '("# ",a,a)') repeat(' ', indent), repeat('-', 80)
@@ -668,6 +689,52 @@ contains
       end subroutine write_header
 
    end subroutine settings_write_yaml
+
+   recursive subroutine settings_write_schema(self, unit, indent)
+      class (type_settings), intent(in) :: self
+      integer,               intent(in) :: unit
+      integer,               intent(in) :: indent
+
+      type (type_key_value_pair), pointer  :: pair
+      integer :: ioption
+      logical :: closed
+
+      pair => self%first
+      do while (associated(pair))
+         closed = .false.
+         write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', pair%name, '"'
+         if (allocated(pair%node%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', pair%node%long_name, '"'
+         select type (node => pair%node)
+         class is (type_settings)
+            write (unit, '(a)') '>'
+            call settings_write_schema(node, unit, indent + 2)
+            write (unit, '(a,a)') repeat(' ', indent), '</element>'
+         class is (type_setting)
+            select type (node)
+            class is (type_real_setting)
+               write (unit, '(a)', advance='no') ' type="float"'
+            class is (type_integer_setting)
+               write (unit, '(a)', advance='no') ' type="integer"'
+               if (allocated(node%options)) then
+                  write (unit, '(a)') '>'
+                  write (unit, '(a,a)') repeat(' ', indent + 2), '<options>'
+                  do ioption=1, size(node%options)
+                     write (unit,'(a,a,i0,a,a,a)') repeat(' ', indent + 4), '<option value="', node%options(ioption)%value, '" label="', node%options(ioption)%long_name, '"/>'
+                  end do
+                  write (unit, '(a,a)') repeat(' ', indent + 2), '</options>'
+                  write (unit, '(a,a)') repeat(' ', indent), '</element>'
+                  closed = .true.
+               end if
+            class is (type_logical_setting)
+               write (unit, '(a)', advance='no') ' type="bool"'
+            class is (type_string_setting)
+               write (unit, '(a)', advance='no') ' type="string"'
+            end select
+            if (.not. closed) write (unit, '(a)') '/>'
+         end select
+         pair => pair%next
+      end do
+   end subroutine settings_write_schema
 
    recursive function settings_get_maximum_depth(self, indent) result(maxdepth)
       class (type_settings), intent(in) :: self

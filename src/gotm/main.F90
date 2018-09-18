@@ -130,7 +130,10 @@
          read_nml_files = .true.
       case ('--write_yaml')
          i = i+1
-         call get_command_argument(i, save_yaml_path)
+         call get_command_argument(i, write_yaml_path)
+      case ('--write_schema')
+         i = i+1
+         call get_command_argument(i, write_schema_path)
       case default
          print '(a,a,/)', 'Unrecognized command-line option: ', arg
          call print_help()

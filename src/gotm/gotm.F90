@@ -111,7 +111,8 @@
    REALTYPE,target           :: latitude,longitude
    logical                   :: restart
 
-   character(len=1024), public :: save_yaml_path = ''
+   character(len=1024), public :: write_yaml_path = ''
+   character(len=1024), public :: write_schema_path = ''
    logical, public             :: read_yaml_file = .true.
    logical, public             :: read_nml_files = .false.
    
@@ -179,10 +180,7 @@
       restart_online = .true.
    end if
 
-   if (trim(save_yaml_path) /= '') then
-      config_only = .true.
-      LEVEL2 'only doing configuration'
-   end if
+   config_only = write_yaml_path /= '' .or. write_schema_path /= ''
    STDERR LINE
 
    read_yaml_file = .true.
@@ -521,11 +519,15 @@
    LEVEL2 'done.'
    STDERR LINE
 
-   if (config_only) then
-      call settings_store%save(trim(save_yaml_path), namlst)
-      LEVEL0 'Your configuration has been written to '//trim(save_yaml_path)//'.'
-      stop 0
+   if (write_yaml_path /= '') then
+      call settings_store%save(trim(write_yaml_path), namlst)
+      LEVEL0 'Your configuration has been written to '//trim(write_yaml_path)//'.'
    end if
+   if (write_schema_path /= '') then
+      call settings_store%write_schema(trim(write_schema_path), namlst, 'gotm-5.3')
+      LEVEL0 'Schema file has been written to '//trim(write_schema_path)//'.'
+   end if
+   if (config_only) stop 0
    
 #ifdef _PRINTSTATE_
    call print_state
