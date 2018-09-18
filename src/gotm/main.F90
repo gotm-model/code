@@ -127,7 +127,7 @@
          call print_help()
          stop
       case ('--read_nml')
-         read_nml_files = .true.
+         read_nml = .true.
       case ('--write_yaml')
          i = i+1
          call get_command_argument(i, write_yaml_path)

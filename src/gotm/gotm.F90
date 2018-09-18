@@ -113,8 +113,8 @@
 
    character(len=1024), public :: write_yaml_path = ''
    character(len=1024), public :: write_schema_path = ''
-   logical, public             :: read_yaml_file = .true.
-   logical, public             :: read_nml_files = .false.
+   logical, public             :: use_yaml = .true.
+   logical, public             :: read_nml = .false.
    
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -183,23 +183,22 @@
    config_only = write_yaml_path /= '' .or. write_schema_path /= ''
    STDERR LINE
 
-   read_yaml_file = .true.
+   use_yaml = config_only .or. .not. read_nml
    settings_store%path = ''
-   if (.not.read_nml_files) then
+   if (.not. read_nml) then
       inquire(file='gotm.yaml',exist=file_exists)
-      if (.not. file_exists) then
+      if (file_exists) then
+         LEVEL2 'reading yaml configuration'
+         call settings_store%load('gotm.yaml', namlst)
+      elseif (.not. config_only) then
          FATAL 'GOTM now reads its configuration from gotm.yaml.'
          FATAL 'If you want to read it from namelists instead, specify --read_nml.'
          FATAL 'You can generate gotm.yaml from namelists by specifying --read_nml --write_yaml gotm.yaml.'
          stop 2
       end if
-      LEVEL2 'reading yaml configuration'
-      call settings_store%load('gotm.yaml', namlst)
-   else
-      if (.not. config_only) read_yaml_file = .false.
    end if
 
-   if (read_yaml_file) then
+   if (use_yaml) then
       call settings_store%get(title, 'title', 'simulation title to be used in output', &
                       default='GOTM simulation')
 
@@ -274,7 +273,7 @@
    end if
 
 !  open the namelist file.
-   if (read_nml_files) then
+   if (read_nml) then
       LEVEL2 'reading model setup namelists..'
       open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
 
@@ -341,21 +340,21 @@
       call init_input(nlev)
       call init_time(MinN,MaxN)
    end if
-   if (read_yaml_file) then
+   if (use_yaml) then
       call init_eqstate()
    end if
-   if (read_nml_files) then
+   if (read_nml) then
       call init_eqstate(namlst)
    end if
    close (namlst)
 
 !  From here - each init_? is responsible for opening and closing the
 !  namlst - unit.
-   if (read_yaml_file) then
+   if (use_yaml) then
       branch => settings_store%get_child('meanflow')
       call init_meanflow(branch)
    end if
-   if (read_nml_files) then
+   if (read_nml) then
       call init_meanflow(namlst,'gotmmean.nml')
    end if
    if (.not. config_only) then
@@ -366,19 +365,19 @@
 
 !  initialise each of the extra features/modules
 #ifdef SEAGRASS
-   if (read_nml_files) then
+   if (read_nml) then
       call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
    end if
 #endif
 #ifdef SPM
-   if (read_nml_files) then
+   if (read_nml) then
       call init_spm(namlst,'spm.nml',unit_spm,nlev)
    end if
 #endif
-   if (read_yaml_file) then
+   if (use_yaml) then
       call init_observations()
    end if
-   if (read_nml_files) then
+   if (read_nml) then
       call init_observations(namlst,'obs.nml')
    end if
 
@@ -394,10 +393,10 @@
       call updategrid(nlev,dt,zeta)
    end if
 
-   if (read_yaml_file) then
+   if (use_yaml) then
       call init_turbulence()
    end if
-   if (read_nml_files) then
+   if (read_nml) then
       call init_turbulence(namlst,'gotmturb.nml')
    end if
 
@@ -413,16 +412,16 @@
 
 !  initialize KPP model
    if (turb_method.eq.99) then
-      if (read_nml_files) then
+      if (read_nml) then
          call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
       end if
    endif
 
-   if (read_yaml_file) then
+   if (use_yaml) then
       branch => settings_store%get_child('airsea')
       call init_airsea(branch)
    end if
-   if (read_nml_files) then
+   if (read_nml) then
       call init_airsea(namlst)
    end if
    if (.not. config_only) then
@@ -437,11 +436,11 @@
 #ifdef _FABM_
 
 !  Initialize the GOTM-FABM coupler from its configuration file.
-   if (read_yaml_file) then
+   if (use_yaml) then
       branch => settings_store%get_child('gotm_fabm')
       call init_gotm_fabm(branch)
    end if
-   if (read_nml_files) then
+   if (read_nml) then
       call init_gotm_fabm(namlst,'gotm_fabm.nml')
    end if
    if (fabm_calc .and. .not. config_only) then
@@ -467,7 +466,7 @@
 #endif
 
       ! Initialize FABM input (data files with observations)
-!   if (fabm_calc .and. read_nml_files) then
+!   if (fabm_calc .and. read_nml) then
       call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
    end if
 #endif
