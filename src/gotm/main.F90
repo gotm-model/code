@@ -165,11 +165,12 @@
       print '(a)', ''
       print '(a)', 'Options:'
       print '(a)', ''
-      print '(a)', '  -h, --help          print usage information and exit'
-      print '(a)', '  -v, --version       print version information'
-      print '(a)', '  -c, --compiler      print compilation options'
-      print '(a)', '  --read_nml          read configuration from namelist files'
-      print '(a)', '  --write_yaml <file> save yaml configuration to file'
+      print '(a)', '  -h, --help            print usage information and exit'
+      print '(a)', '  -v, --version         print version information'
+      print '(a)', '  -c, --compiler        print compilation options'
+      print '(a)', '  --read_nml            read configuration from namelist files'
+      print '(a)', '  --write_yaml <file>   save yaml configuration to file'
+      print '(a)', '  --write_schema <file> save configuration schema in xml format to file'
       print '(a)', ''
    end subroutine print_help
 
