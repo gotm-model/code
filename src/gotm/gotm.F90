@@ -458,12 +458,10 @@
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
       end if
-#if 0
    call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
                           bio_albedo,bio_drag_scale)
-#endif
 
       ! Initialize FABM input (data files with observations)
 !   if (fabm_calc .and. read_nml) then
@@ -523,7 +521,7 @@
       LEVEL0 'Your configuration has been written to '//trim(write_yaml_path)//'.'
    end if
    if (write_schema_path /= '') then
-      call settings_store%write_schema(trim(write_schema_path), namlst, 'gotm-5.3')
+      call settings_store%write_schema_file(trim(write_schema_path), namlst, 'gotm-5.3')
       LEVEL0 'Schema file has been written to '//trim(write_schema_path)//'.'
    end if
    if (config_only) stop 0

@@ -19,6 +19,8 @@ module yaml_settings
    type,abstract :: type_settings_node
       character(len=:), allocatable :: long_name
       character(len=:), allocatable :: description
+   contains
+      procedure (node_write_schema), deferred :: write_schema
    end type type_settings_node
    
    type type_key_value_pair
@@ -36,7 +38,8 @@ module yaml_settings
    contains
       procedure :: load
       procedure :: save
-      procedure :: write_schema
+      procedure :: write_schema => settings_write_schema
+      procedure :: write_schema_file
       procedure :: get_real
       procedure :: get_integer
       procedure :: get_logical
@@ -61,7 +64,16 @@ module yaml_settings
          character(len=:), allocatable :: string
       end subroutine
    end interface
-   
+
+   abstract interface
+      recursive subroutine node_write_schema(self, unit, name, indent)
+         import type_settings_node
+         class (type_settings_node), intent(in) :: self
+         integer,                    intent(in) :: unit, indent
+         character(len=*),           intent(in) :: name
+      end subroutine
+   end interface
+
    type type_option
       integer                   :: value
       character(:), allocatable :: long_name
@@ -75,6 +87,7 @@ module yaml_settings
       type (type_option), allocatable :: options(:)
    contains
       procedure :: as_string => integer_as_string
+      procedure :: write_schema => integer_write_schema
    end type
 
    type,extends(type_setting) :: type_real_setting
@@ -84,6 +97,7 @@ module yaml_settings
       real(rk) :: maximum = default_maximum_real
    contains
       procedure :: as_string => real_as_string
+      procedure :: write_schema => real_write_schema
    end type
 
    type,extends(type_setting) :: type_logical_setting
@@ -91,6 +105,7 @@ module yaml_settings
       logical :: default = .true.
    contains
       procedure :: as_string => logical_as_string
+      procedure :: write_schema => logical_write_schema
    end type
 
    type,extends(type_setting) :: type_string_setting
@@ -98,6 +113,7 @@ module yaml_settings
       character(:), allocatable :: default
    contains
       procedure :: as_string => string_as_string
+      procedure :: write_schema => string_write_schema
    end type
 
 contains
@@ -147,13 +163,14 @@ contains
       call settings_write_yaml(self, unit, 0, settings_get_maximum_depth(self, 0) + 5, header=.true.)
    end subroutine save
 
-   subroutine write_schema(self, path, unit, version)
+   subroutine write_schema_file(self, path, unit, version)
       class (type_settings), intent(in) :: self
       character(len=*),      intent(in) :: path
       integer,               intent(in) :: unit
       character(len=*),      intent(in) :: version
 
       integer :: ios
+      type (type_key_value_pair),pointer :: pair
 
       open(unit=unit, file=path, action='write', status='replace', iostat=ios)
       if (ios /= 0) then
@@ -162,9 +179,13 @@ contains
       end if
       write (unit,'(a)') '<?xml version="1.0" ?>'
       write (unit,'(a,a,a)') '<element name="scenario" label="scenario" version="', version, '" namelistextension=".nml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/scenario-1.0.xsd">'
-      call settings_write_schema(self, unit, 2)
+      pair => self%first
+      do while (associated(pair))
+         call pair%node%write_schema(unit, pair%name, 2)
+         pair => pair%next
+      end do
       write (unit,'(a)') '</element>'
-   end subroutine write_schema
+   end subroutine write_schema_file
 
    function get_node(self, name) result(pair)
       class (type_settings), intent(inout) :: self
@@ -707,52 +728,6 @@ contains
 
    end subroutine settings_write_yaml
 
-   recursive subroutine settings_write_schema(self, unit, indent)
-      class (type_settings), intent(in) :: self
-      integer,               intent(in) :: unit
-      integer,               intent(in) :: indent
-
-      type (type_key_value_pair), pointer  :: pair
-      integer :: ioption
-      logical :: closed
-
-      pair => self%first
-      do while (associated(pair))
-         closed = .false.
-         write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', pair%name, '"'
-         if (allocated(pair%node%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', pair%node%long_name, '"'
-         select type (node => pair%node)
-         class is (type_settings)
-            write (unit, '(a)') '>'
-            call settings_write_schema(node, unit, indent + 2)
-            write (unit, '(a,a)') repeat(' ', indent), '</element>'
-         class is (type_setting)
-            select type (node)
-            class is (type_real_setting)
-               write (unit, '(a)', advance='no') ' type="float"'
-            class is (type_integer_setting)
-               write (unit, '(a)', advance='no') ' type="integer"'
-               if (allocated(node%options)) then
-                  write (unit, '(a)') '>'
-                  write (unit, '(a,a)') repeat(' ', indent + 2), '<options>'
-                  do ioption=1, size(node%options)
-                     write (unit,'(a,a,i0,a,a,a)') repeat(' ', indent + 4), '<option value="', node%options(ioption)%value, '" label="', node%options(ioption)%long_name, '"/>'
-                  end do
-                  write (unit, '(a,a)') repeat(' ', indent + 2), '</options>'
-                  write (unit, '(a,a)') repeat(' ', indent), '</element>'
-                  closed = .true.
-               end if
-            class is (type_logical_setting)
-               write (unit, '(a)', advance='no') ' type="bool"'
-            class is (type_string_setting)
-               write (unit, '(a)', advance='no') ' type="string"'
-            end select
-            if (.not. closed) write (unit, '(a)') '/>'
-         end select
-         pair => pair%next
-      end do
-   end subroutine settings_write_schema
-
    recursive function settings_get_maximum_depth(self, indent) result(maxdepth)
       class (type_settings), intent(in) :: self
       integer,               intent(in) :: indent
@@ -817,5 +792,75 @@ contains
       character(len=:), allocatable :: string
       string = trim(self%value)
    end subroutine string_as_string
+
+   recursive subroutine settings_write_schema(self, unit, name, indent)
+      class (type_settings), intent(in) :: self
+      character(len=*),      intent(in) :: name
+      integer,               intent(in) :: unit, indent
+
+      type (type_key_value_pair), pointer  :: pair
+
+      write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', name, '"'
+      if (allocated(self%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', self%long_name, '"'
+      write (unit, '(a)') '>'
+      pair => self%first
+      do while (associated(pair))
+         call pair%node%write_schema(unit, pair%name, indent)
+         pair => pair%next
+      end do
+      write (unit, '(a,a)') repeat(' ', indent), '</element>'
+   end subroutine settings_write_schema
+
+   recursive subroutine integer_write_schema(self, unit, name, indent)
+      class (type_integer_setting), intent(in) :: self
+      character(len=*),             intent(in) :: name
+      integer,                      intent(in) :: unit, indent
+
+      integer :: ioption
+
+      write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', name, '" type="integer"'
+      if (allocated(self%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', self%long_name, '"'
+      if (allocated(self%options)) then
+         write (unit, '(a)') '>'
+         write (unit, '(a,a)') repeat(' ', indent + 2), '<options>'
+         do ioption=1, size(self%options)
+            write (unit,'(a,a,i0,a,a,a)') repeat(' ', indent + 4), '<option value="', self%options(ioption)%value, '" label="', self%options(ioption)%long_name, '"/>'
+         end do
+         write (unit, '(a,a)') repeat(' ', indent + 2), '</options>'
+         write (unit, '(a,a)') repeat(' ', indent), '</element>'
+      else
+         write (unit, '("/>")')
+      end if
+   end subroutine
+
+   recursive subroutine real_write_schema(self, unit, name, indent)
+      class (type_real_setting), intent(in) :: self
+      character(len=*),          intent(in) :: name
+      integer,                   intent(in) :: unit, indent
+
+      write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', name, '" type="float"'
+      if (allocated(self%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', self%long_name, '"'
+      write (unit, '("/>")')
+   end subroutine
+
+   recursive subroutine logical_write_schema(self, unit, name, indent)
+      class (type_logical_setting), intent(in) :: self
+      character(len=*),             intent(in) :: name
+      integer,                      intent(in) :: unit, indent
+
+      write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', name, '" type="bool"'
+      if (allocated(self%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', self%long_name, '"'
+      write (unit, '("/>")')
+   end subroutine
+
+   recursive subroutine string_write_schema(self, unit, name, indent)
+      class (type_string_setting), intent(in) :: self
+      character(len=*),            intent(in) :: name
+      integer,                     intent(in) :: unit, indent
+
+      write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', name, '" type="string"'
+      if (allocated(self%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', self%long_name, '"'
+      write (unit, '("/>")')
+   end subroutine
 
 end module yaml_settings
