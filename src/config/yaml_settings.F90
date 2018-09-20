@@ -805,7 +805,7 @@ contains
       write (unit, '(a)') '>'
       pair => self%first
       do while (associated(pair))
-         call pair%node%write_schema(unit, pair%name, indent)
+         call pair%node%write_schema(unit, pair%name, indent + 2)
          pair => pair%next
       end do
       write (unit, '(a,a)') repeat(' ', indent), '</element>'
@@ -817,9 +817,12 @@ contains
       integer,                      intent(in) :: unit, indent
 
       integer :: ioption
+      character(:), allocatable :: strvalue
 
       write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', name, '" type="integer"'
       if (allocated(self%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', self%long_name, '"'
+      if (self%minimum /= default_minimum_integer) write (unit, '(a,i0,a)', advance='no') ' minInclusive="', self%minimum, '"'
+      if (self%maximum /= default_maximum_integer) write (unit, '(a,i0,a)', advance='no') ' maxInclusive="', self%maximum, '"'
       if (allocated(self%options)) then
          write (unit, '(a)') '>'
          write (unit, '(a,a)') repeat(' ', indent + 2), '<options>'
@@ -838,8 +841,18 @@ contains
       character(len=*),          intent(in) :: name
       integer,                   intent(in) :: unit, indent
 
+      character(:), allocatable :: strvalue
+
       write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', name, '" type="float"'
       if (allocated(self%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', self%long_name, '"'
+      if (self%minimum /= default_minimum_real) then
+         call format_real(self%minimum, strvalue)
+         write (unit, '(a,a,a)', advance='no') ' minInclusive="', strvalue, '"'
+      end if
+      if (self%maximum /= default_maximum_real) then
+         call format_real(self%maximum, strvalue)
+         write (unit, '(a,a,a)', advance='no') ' maxInclusive="', strvalue, '"'
+      end if
       write (unit, '("/>")')
    end subroutine
 
