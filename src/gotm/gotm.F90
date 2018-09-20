@@ -507,7 +507,7 @@
 
 #ifdef _FABM_
 !     Accept the current biogeochemical state and used it to compute derived diagnostics.
-      if (fabm_calc .and. .not. config_only) call start_gotm_fabm(nlev)
+      if (fabm_calc .and. .not. config_only) call start_gotm_fabm(nlev, fm)
 #endif
 
       if (list_fields) call fm%list()
