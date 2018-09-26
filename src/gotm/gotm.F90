@@ -111,9 +111,9 @@
    REALTYPE,target           :: latitude,longitude
    logical                   :: restart
 
+   character(len=1024), public :: yaml_file = ''
    character(len=1024), public :: write_yaml_path = ''
    character(len=1024), public :: write_schema_path = ''
-   logical, public             :: use_yaml = .true.
    logical, public             :: read_nml = .false.
    
    type,extends(type_output_manager_host) :: type_gotm_host
@@ -183,13 +183,12 @@
    config_only = write_yaml_path /= '' .or. write_schema_path /= ''
    STDERR LINE
 
-   use_yaml = config_only .or. .not. read_nml
    settings_store%path = ''
    if (.not. read_nml) then
-      inquire(file='gotm.yaml',exist=file_exists)
+      inquire(file=trim(yaml_file),exist=file_exists)
       if (file_exists) then
-         LEVEL2 'reading yaml configuration'
-         call settings_store%load('gotm.yaml', namlst)
+         LEVEL2 'Reading yaml configuration from: ',trim(yaml_file)
+         call settings_store%load(trim(yaml_file), namlst)
       elseif (.not. config_only) then
          FATAL 'GOTM now reads its configuration from gotm.yaml.'
          FATAL 'If you want to read it from namelists instead, specify --read_nml.'
@@ -198,79 +197,76 @@
       end if
    end if
 
-   if (use_yaml) then
-      call settings_store%get(title, 'title', 'simulation title to be used in output', &
-                      default='GOTM simulation')
+   call settings_store%get(title, 'title', 'simulation title to be used in output', &
+                   default='GOTM simulation')
 
-      branch => settings_store%get_child('location', 'geographic location')
-      call branch%get(name, 'name', 'descriptive name to be used in output', &
-                      default='GOTM site')
-      call branch%get(latitude, 'latitude', 'latitude', 'degrees North', &
-                      minimum=-90._rk, maximum=90._rk, default=0._rk)
-      call branch%get(longitude, 'longitude', 'longitude', 'degrees East', &
-                      minimum=-360._rk, maximum=360._rk, default=0._rk)
+   branch => settings_store%get_child('location', 'geographic location')
+   call branch%get(name, 'name', 'descriptive name to be used in output', &
+                   default='GOTM site')
+   call branch%get(latitude, 'latitude', 'latitude', 'degrees North', &
+                   minimum=-90._rk, maximum=90._rk, default=0._rk)
+   call branch%get(longitude, 'longitude', 'longitude', 'degrees East', &
+                   minimum=-360._rk, maximum=360._rk, default=0._rk)
 
-      branch => settings_store%get_child('grid', 'column structure')
-      call branch%get(depth, 'depth', 'water depth', 'm', &
-                      minimum=0._rk, default=1._rk)
-      call branch%get(nlev, 'nlev', 'number of layers', &
-                      minimum=1, default=100)
-      call branch%get(grid_method, 'grid_method', 'vertical grid type', &
-                   options=(/type_option(0, 'equal layers heights, optional zooming'), type_option(1, 'custom sigma grid (relative depth fractions)'), type_option(2, 'custom cartesian grid (absolute layer heights)'), type_option(3, 'adaptive grid')/),default=0)
-      call branch%get(ddu, 'ddu', 'surface zooming (0: no zooming, > 2: strong zooming)', '-', &
-                   minimum=0._rk,default=0._rk)
-      call branch%get(ddl, 'ddl', 'bottom zooming (0: no zooming, > 2: strong zooming)', '-', &
-                   minimum=0._rk,default=0._rk)
-      call branch%get(grid_file, 'grid_file', 'file with custom grid specification', &
-                   default='grid.dat')
-      call branch%get(c1ad, 'c1ad', 'weighting factor for adaptation to buoyancy frequency', '-', &
-                   default=0.8_rk)
-      call branch%get(c2ad, 'c2ad', 'weighting factor for adaptation to shear frequency', '-', &
-                   default=0.0_rk)
-      call branch%get(c3ad, 'c3ad', 'weighting factor for adaptation to surface distance', '-', &
-                   default=0.1_rk)
-      call branch%get(c4ad, 'c4ad', 'weighting factor for adaptation to background', '-', &
-                   default=0.1_rk)
-      call branch%get(Tgrid, 'Tgrid', 'grid adaption time scale', 's', &
-                   minimum=0._rk,default=3600._rk)
-      call branch%get(NNnorm, 'NNnorm', 'normalisation factor for adaptation to buoyancy frequency', '-', &
-                   minimum=0._rk,default=0.2_rk)
-      call branch%get(SSNorm, 'SSNorm', 'normalisation factor for adaptation to shear frequency', '-', &
-                   minimum=0._rk,default=0.2_rk)
-      call branch%get(dsurf, 'dsurf', 'normalisation factor for adaptation to surface distance', '-', &
-                   minimum=0._rk,default=10._rk)
-      call branch%get(dtgrid, 'dtgrid', 'time step for grid adaptation (must be fraction of dt)', 's', &
-                   minimum=0._rk,default=5._rk)
+   branch => settings_store%get_child('grid', 'column structure')
+   call branch%get(depth, 'depth', 'water depth', 'm', &
+                   minimum=0._rk, default=1._rk)
+   call branch%get(nlev, 'nlev', 'number of layers', &
+                   minimum=1, default=100)
+   call branch%get(grid_method, 'grid_method', 'vertical grid type', &
+                options=(/type_option(0, 'equal layers heights, optional zooming'), type_option(1, 'custom sigma grid (relative depth fractions)'), type_option(2, 'custom cartesian grid (absolute layer heights)'), type_option(3, 'adaptive grid')/),default=0)
+   call branch%get(ddu, 'ddu', 'surface zooming (0: no zooming, > 2: strong zooming)', '-', &
+                minimum=0._rk,default=0._rk)
+   call branch%get(ddl, 'ddl', 'bottom zooming (0: no zooming, > 2: strong zooming)', '-', &
+                minimum=0._rk,default=0._rk)
+   call branch%get(grid_file, 'grid_file', 'file with custom grid specification', &
+                default='grid.dat')
+   call branch%get(c1ad, 'c1ad', 'weighting factor for adaptation to buoyancy frequency', '-', &
+                default=0.8_rk)
+   call branch%get(c2ad, 'c2ad', 'weighting factor for adaptation to shear frequency', '-', &
+                default=0.0_rk)
+   call branch%get(c3ad, 'c3ad', 'weighting factor for adaptation to surface distance', '-', &
+                default=0.1_rk)
+   call branch%get(c4ad, 'c4ad', 'weighting factor for adaptation to background', '-', &
+                default=0.1_rk)
+   call branch%get(Tgrid, 'Tgrid', 'grid adaption time scale', 's', &
+                minimum=0._rk,default=3600._rk)
+   call branch%get(NNnorm, 'NNnorm', 'normalisation factor for adaptation to buoyancy frequency', '-', &
+                minimum=0._rk,default=0.2_rk)
+   call branch%get(SSNorm, 'SSNorm', 'normalisation factor for adaptation to shear frequency', '-', &
+                minimum=0._rk,default=0.2_rk)
+   call branch%get(dsurf, 'dsurf', 'normalisation factor for adaptation to surface distance', '-', &
+                minimum=0._rk,default=10._rk)
+   call branch%get(dtgrid, 'dtgrid', 'time step for grid adaptation (must be fraction of dt)', 's', &
+                minimum=0._rk,default=5._rk)
 
-      branch => settings_store%get_child('time')
-      call branch%get(timefmt, 'timefmt', 'method to specify simulated period', default=2, &
-                      options=(/type_option(1, 'number of time steps only'), type_option(2, 'start and stop times'), type_option(3, 'start time and number of time steps')/))
+   branch => settings_store%get_child('time')
+   call branch%get(timefmt, 'timefmt', 'method to specify simulated period', default=2, &
+                   options=(/type_option(1, 'number of time steps only'), type_option(2, 'start and stop times'), type_option(3, 'start time and number of time steps')/))
 #if 0
-      call branch%get(MaxN, 'MaxN', 'number of time steps', &
-                      minimum=1,default=100)
+   call branch%get(MaxN, 'MaxN', 'number of time steps', &
+                   minimum=1,default=100)
 #endif
-      call branch%get(start, 'start', 'start time', &
-                      default='2017-01-01 00:00:00')
-      call branch%get(stop, 'stop', 'stop time', &
-                      default='2018-01-01 00:00:00')
-      call branch%get(dt, 'dt', 'time step', 's', &
-                      minimum=0.e-10_rk, default=3600._rk)
-      call branch%get(cnpar, 'cnpar', '"explicitness" of numerical scheme', '-', &
-                      minimum=0._rk, maximum=1._rk, default=1._rk, description='constant for the theta scheme used for time integration of diffusion-reaction components. cnpar=0.5 for Cranck-Nicholson (second-order accurate), cnpar=0 for Forward Euler (first-order accurate), cnpar=1 for Backward Euler (first-order accurate). Only cnpar=1 guarantees positive solutions for positive definite systems.')
+   call branch%get(start, 'start', 'start time', &
+                   default='2017-01-01 00:00:00')
+   call branch%get(stop, 'stop', 'stop time', &
+                   default='2018-01-01 00:00:00')
+   call branch%get(dt, 'dt', 'time step', 's', &
+                   minimum=0.e-10_rk, default=3600._rk)
+   call branch%get(cnpar, 'cnpar', '"explicitness" of numerical scheme', '-', &
+                   minimum=0._rk, maximum=1._rk, default=1._rk, description='constant for the theta scheme used for time integration of diffusion-reaction components. cnpar=0.5 for Cranck-Nicholson (second-order accurate), cnpar=0 for Forward Euler (first-order accurate), cnpar=1 for Backward Euler (first-order accurate). Only cnpar=1 guarantees positive solutions for positive definite systems.')
 
-      branch => settings_store%get_child('restart')
-      call branch%get(restart_offline, 'restart_offline', &
-                      'initialize simulation with state stored in restart.nc', &
-                      default=.false.)
-      call branch%get(restart_allow_missing_variable, 'restart_allow_missing_variable', &
-                      'warning or error when variable is missing in restart file', &
-                      default=.false.)
+   branch => settings_store%get_child('restart')
+   call branch%get(restart_offline, 'restart_offline', &
+                   'initialize simulation with state stored in restart.nc', &
+                   default=.false.)
+   call branch%get(restart_allow_missing_variable, 'restart_allow_missing_variable', &
+                   'warning or error when variable is missing in restart file', &
+                   default=.false.)
 
-      call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
-         options=(/type_option(1, 'from equation of state (i.e. from potential temperature and salinity)'), &
-         type_option(2, 'from prognostic equation')/), default=1)
-
-   end if
+   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
+                      options=(/type_option(1, 'from equation of state (i.e. from potential temperature and salinity)'), &
+                                type_option(2, 'from prognostic equation')/), default=1)
 
 !  open the namelist file.
    if (read_nml) then
@@ -340,9 +336,7 @@
       call init_input(nlev)
       call init_time(MinN,MaxN)
    end if
-   if (use_yaml) then
-      call init_eqstate()
-   end if
+   call init_eqstate()
    if (read_nml) then
       call init_eqstate(namlst)
    end if
@@ -350,10 +344,8 @@
 
 !  From here - each init_? is responsible for opening and closing the
 !  namlst - unit.
-   if (use_yaml) then
-      branch => settings_store%get_child('meanflow')
-      call init_meanflow(branch)
-   end if
+   branch => settings_store%get_child('meanflow')
+   call init_meanflow(branch)
    if (read_nml) then
       call init_meanflow(namlst,'gotmmean.nml')
    end if
@@ -374,9 +366,7 @@
       call init_spm(namlst,'spm.nml',unit_spm,nlev)
    end if
 #endif
-   if (use_yaml) then
-      call init_observations()
-   end if
+   call init_observations()
    if (read_nml) then
       call init_observations(namlst,'obs.nml')
    end if
@@ -393,9 +383,7 @@
       call updategrid(nlev,dt,zeta)
    end if
 
-   if (use_yaml) then
-      call init_turbulence()
-   end if
+   call init_turbulence()
    if (read_nml) then
       call init_turbulence(namlst,'gotmturb.nml')
    end if
@@ -417,10 +405,8 @@
       end if
    endif
 
-   if (use_yaml) then
-      branch => settings_store%get_child('airsea')
-      call init_airsea(branch)
-   end if
+   branch => settings_store%get_child('airsea')
+   call init_airsea(branch)
    if (read_nml) then
       call init_airsea(namlst)
    end if
@@ -436,10 +422,8 @@
 #ifdef _FABM_
 
 !  Initialize the GOTM-FABM coupler from its configuration file.
-   if (use_yaml) then
-      branch => settings_store%get_child('gotm_fabm')
-      call init_gotm_fabm(branch)
-   end if
+   branch => settings_store%get_child('gotm_fabm')
+   call init_gotm_fabm(branch)
    if (read_nml) then
       call init_gotm_fabm(namlst,'gotm_fabm.nml')
    end if

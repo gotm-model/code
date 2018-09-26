@@ -135,9 +135,7 @@
          i = i+1
          call get_command_argument(i, write_schema_path)
       case default
-         print '(a,a,/)', 'Unrecognized command-line option: ', arg
-         call print_help()
-         stop
+         yaml_file = arg
       end select
       i = i+1
    end do
@@ -168,6 +166,7 @@
       print '(a)', '  -h, --help            print usage information and exit'
       print '(a)', '  -v, --version         print version information'
       print '(a)', '  -c, --compiler        print compilation options'
+      print '(a)', '  <yaml_file>           read configuration from file (default gotm.yaml)'
       print '(a)', '  --read_nml            read configuration from namelist files'
       print '(a)', '  --write_yaml <file>   save yaml configuration to file'
       print '(a)', '  --write_schema <file> save configuration schema in xml format to file'
