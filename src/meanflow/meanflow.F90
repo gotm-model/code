@@ -130,7 +130,7 @@
 ! !IROUTINE: Initialisation of the mean flow variables
 !
 ! !INTERFACE:
-   subroutine init_meanflow_yaml(cfg)
+   subroutine init_meanflow_yaml()
 !
 ! !DESCRIPTION:
 !  Allocates memory and initialises everything related
@@ -138,10 +138,6 @@
 !
 ! !USES:
    use settings
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   type (type_settings), intent(inout)      :: cfg
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -149,6 +145,7 @@
 !  See log for the meanflow module
 !
 ! !LOCAL VARIABLES:
+   type (type_gotm_settings), pointer :: branch
    integer                   :: rc
    integer, parameter        :: rk = kind(_ONE_)
 !EOP
@@ -156,30 +153,35 @@
 !BOC
    LEVEL1 'init_meanflow_yaml'
 
-   call cfg%get(h0b, 'h0b', 'physical bottom roughness', 'm', &
+   branch => settings_store%get_typed_child('bottom')
+   call branch%get(h0b, 'h0b', 'physical bottom roughness', 'm', &
                 minimum=0._rk,default=0.05_rk, description='physical bottom roughness or bed roughness. This variable, h0b, relates to the hydrodynamic bottom roughness z0b as z0b = 0.03*h0b + 0.1*nu/ustar.')
-   call cfg%get(MaxItz0b, 'MaxItz0b', 'number of iterations for hydrodynamic bottom roughness', &
-                minimum=1,default=1000, description='number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
-   call cfg%get(charnock, 'charnock', 'use Charnock (1955) surface roughness adaptation', &
+   call branch%get(MaxItz0b, 'MaxItz0b', 'number of iterations for hydrodynamic bottom roughness', &
+                minimum=1,default=1, description='number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
+
+   branch => settings_store%get_typed_child('surface')
+   call branch%get(charnock, 'charnock', 'use Charnock (1955) surface roughness adaptation', &
                 default=.false.)
-   call cfg%get(charnock_val, 'charnock_val', 'empirical constant for surface roughness adaptation', '-', &
+   call branch%get(charnock_val, 'charnock_val', 'empirical constant for surface roughness adaptation', '-', &
                 minimum=0._rk,default=1400._rk)
-   call cfg%get(z0s_min, 'z0s_min', 'minimum hydrodynamic surface roughness', 'm', &
+   call branch%get(z0s_min, 'z0s_min', 'minimum hydrodynamic surface roughness', 'm', &
                 minimum=0.0_rk,default=0.02_rk)
-   call cfg%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
+
+   branch => settings_store%get_typed_child('physical_constants')
+   call branch%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
                 minimum=0._rk,default=9.81_rk)
-   call cfg%get(rho_0, 'rho_0', 'reference density', 'kg/m^3', &
+   call branch%get(rho_0, 'rho_0', 'reference density', 'kg/m^3', &
                 minimum=0._rk,default=1027._rk)
-   call cfg%get(cp, 'cp', 'specific heat of sea water', 'J/kg/K', &
+   call branch%get(cp, 'cp', 'specific heat of sea water', 'J/kg/K', &
                 minimum=0._rk,default=3985._rk)
-   call cfg%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
+   call branch%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
                 minimum=0._rk,default=1.3e-6_rk)
-   call cfg%get(avmolt, 'avmolt', 'molecular viscosity for temperature', 'm^2/s', &
+   call branch%get(avmolt, 'avmolt', 'molecular viscosity for temperature', 'm^2/s', &
                 minimum=0._rk,default=1.3e-7_rk)
-   call cfg%get(avmols, 'avmols', 'molecular viscosity for salinity', 'm^2/s', &
+   call branch%get(avmols, 'avmols', 'molecular viscosity for salinity', 'm^2/s', &
                 minimum=0._rk,default=1.3e-9_rk)
-   call cfg%get(no_shear, 'no_shear', 'set shear production term to zero', &
-                default=.false.)
+   !call branch%get(no_shear, 'no_shear', 'set shear production term to zero', &
+   !             default=.false.)
    LEVEL2 'done'
    return
    end subroutine init_meanflow_yaml

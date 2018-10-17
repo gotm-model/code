@@ -151,9 +151,6 @@
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
-! !USES:
-   IMPLICIT NONE
-!
 ! !INPUT PARAMETERS:
    integer,                   intent(in)             :: namlst
    character(len=*),          intent(in)             :: fname
@@ -219,17 +216,16 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm_yaml(cfg)
+   subroutine init_gotm_fabm_yaml()
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 
 ! !USES:
    use settings
-   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   type (type_settings), intent(inout) :: cfg
+   type (type_gotm_settings), pointer :: cfg, branch
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -242,24 +238,28 @@
 !BOC
    LEVEL1 'init_gotm_fabm_yaml'
 
+   cfg => settings_store%get_typed_child('fabm')
+
    ! Initialize all namelist variables to reasonable default values.
-   call cfg%get(fabm_calc, 'fabm_calc', '', &
+   call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
-   call cfg%get(cnpar, 'cnpar', '', '-', &
-                minimum=0._rk,default=1._rk)
-   call cfg%get(w_adv_discr, 'w_adv_discr', '', &
-                minimum=1,maximum=6,default=6)
-   call cfg%get(ode_method, 'ode_method', '', &
+   call cfg%get(repair_state, 'repair_state', 'clip state to minimum/maximum boundaries', &
+                default=.false.)
+   branch => cfg%get_typed_child('numerics')
+   call branch%get(ode_method, 'ode_method', 'time integration scheme applied to source terms', &
                 minimum=1,maximum=11,default=1)
-   call cfg%get(split_factor, 'split_factor', '', &
-                minimum=1,maximum=1,default=1)
-   call cfg%get(bioshade_feedback, 'bioshade_feedback', '', &
+   call branch%get(split_factor, 'split_factor', 'number of substeps used for source integration', &
+                minimum=1,maximum=100,default=1)
+   call branch%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme', &
+                minimum=1,maximum=6,default=6)
+   call branch%get(cnpar, 'cnpar', '"explicitness" of diffusion scheme', '1', &
+                minimum=0._rk,default=1._rk)
+   branch => cfg%get_typed_child('feedbacks', 'feedbacks to physics')
+   call branch%get(bioshade_feedback, 'bioshade_feedback', 'interior light absorption', &
                 default=.false.)
-   call cfg%get(bioalbedo_feedback, 'bioalbedo_feedback', '', &
+   call branch%get(bioalbedo_feedback, 'bioalbedo_feedback', 'surface albedo', &
                 default=.false.)
-   call cfg%get(biodrag_feedback, 'biodrag_feedback', '', &
-                default=.false.)
-   call cfg%get(repair_state, 'repair_state', '', &
+   call branch%get(biodrag_feedback, 'biodrag_feedback', 'surface drag', &
                 default=.false.)
 #if 0
    call cfg%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', '', &
@@ -267,11 +267,12 @@
 #else
    salinity_relaxation_to_freshwater_flux = .false.
 #endif
-   call cfg%get(no_precipitation_dilution, 'no_precipitation_dilution', '', &
+   branch => cfg%get_typed_child('debug')
+   call branch%get(no_precipitation_dilution, 'no_precipitation_dilution', 'disable dilution/concentration by net freshwater flux', &
                 default=.false.) ! useful to check mass conservation
-   call cfg%get(no_surface, 'no_surface', '', &
+   call branch%get(no_surface, 'no_surface', 'disable surface processes', &
                 default=.false.) ! disables surface exchange; useful to check mass conservation
-   call cfg%get(save_inputs, 'save_inputs', '', &
+   call branch%get(save_inputs, 'save_inputs', 'include additional forcing fields in output', &
                 default=.false.)
    call cfg%get(configuration_method, 'configuration_method', '', &
                 default=-1)

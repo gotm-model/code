@@ -20,7 +20,7 @@
    use fabm,only: type_bulk_variable_id,type_horizontal_variable_id,type_scalar_variable_id
    use fabm_types, only:rk
    use gotm_fabm,only:fabm_calc,model,cc,register_observation
-   use input,only: register_input_0d,register_input_1d
+   use input,only: register_input, type_scalar_input, type_profile_input
 
    implicit none
 
@@ -43,17 +43,14 @@
 
 !  Information on an observed variable
    type type_input_variable
-      character(len=64)                       :: name                 ! Variable name
-      character(len=maxpathlen)               :: path                 ! File path
-      type (type_bulk_variable_id)            :: id                   ! FABM identifier of pelagic variable (not associated if variable is not pelagic)
+      type (type_scalar_input)                :: scalar_input
+      type (type_profile_input)               :: profile_input
+      type (type_bulk_variable_id)            :: interior_id          ! FABM identifier of pelagic variable (not associated if variable is not pelagic)
       type (type_horizontal_variable_id)      :: horizontal_id        ! FABM identifier of horizontal variable (not associated if variable is not horizontal)
       type (type_scalar_variable_id)          :: scalar_id            ! FABM identifier of scalar variable (not associated if variable is not scalar)
-      integer                                 :: index                ! Column index of variable in input file
-      integer                                 :: ncid                 ! NetCDF id in output file (only used if this variable is included in output)
+      integer                                 :: ncid = -1            ! NetCDF id in output file (only used if this variable is included in output)
       REALTYPE                                :: relax_tau_0d         ! Relaxation times for scalars (depth-independent variables)
       REALTYPE, allocatable,dimension(:)      :: relax_tau_1d         ! Relaxation times for profiles (depth-dependent variables)
-      REALTYPE                                :: data_0d
-      REALTYPE,allocatable,dimension(:)       :: data_1d
       type (type_input_variable),pointer      :: next => null()       ! Next variable in current input file
    end type
 
@@ -100,6 +97,7 @@
    logical                      :: file_exists
    type (type_input_variable),pointer :: curvariable
    REALTYPE, parameter          :: missing_value = huge(_ONE_)
+   type (type_scalar_input), pointer :: scalar_input
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
                            relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot, &
                            constant_value
@@ -224,30 +222,26 @@
 
 !        Store variable name and index in file.
          nullify(curvariable%next)
-         curvariable%name = variables(i)
-         curvariable%path = file
-         curvariable%index = i
-         curvariable%ncid = -1
 
 !        First search in pelagic variables
          variabletype = type_profile
-         curvariable%id = fabm_get_bulk_variable_id(model,variables(i))
+         curvariable%interior_id = fabm_get_bulk_variable_id(model,variables(i))
 
 !        If variable was not found, search variables defined on horizontal slice of model domain (e.g., benthos)
-         if (.not.fabm_is_variable_used(curvariable%id)) then
+         if (.not.fabm_is_variable_used(curvariable%interior_id)) then
             curvariable%horizontal_id = fabm_get_horizontal_variable_id(model,variables(i))
             variabletype = type_scalar
          end if
 
 !        If variable still was not found, search scalar [non-spatial] variables.
-         if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id))) then
+         if (.not.(fabm_is_variable_used(curvariable%interior_id).or.fabm_is_variable_used(curvariable%horizontal_id))) then
             curvariable%scalar_id = fabm_get_scalar_variable_id(model,variables(i))
             variabletype = type_scalar
          end if
 
 !        Report an error if the variable was still not found.
-         if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
-            FATAL 'Variable '//trim(curvariable%name)//', referenced in namelist observations &
+         if (.not.(fabm_is_variable_used(curvariable%interior_id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
+            FATAL 'Variable '//trim(variables(i))//', referenced in namelist observations &
                   &in '//trim(fname)//', was not found in model.'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
@@ -260,32 +254,38 @@
          filetype = variabletype
 
          if (variabletype==type_scalar) then
+            curvariable%scalar_input%name = trim(variables(i))
+            curvariable%scalar_input%path = trim(file)
+            curvariable%scalar_input%index = i
+            curvariable%scalar_input%constant_value = constant_values(i)
             if (constant_values(i)/=missing_value) then
-                ! Variable fixed to constant value.
-                curvariable%data_0d = constant_values(i)
+               curvariable%scalar_input%method = 0
             else
-                ! Variable read from file.
-                call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d,curvariable%name)
+               curvariable%scalar_input%method = 2
             end if
+            call register_input(curvariable%scalar_input)
             curvariable%relax_tau_0d = relax_taus(i)
             if (fabm_is_variable_used(curvariable%horizontal_id)) then
                 ! Horizontal variable
-               call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)
+               call register_observation(curvariable%horizontal_id,curvariable%scalar_input%value,curvariable%relax_tau_0d)
             else
                 ! Scalar variable
-               call register_observation(curvariable%scalar_id,curvariable%data_0d)
+               call register_observation(curvariable%scalar_id,curvariable%scalar_input%value)
             end if
          else
-            allocate(curvariable%data_1d(0:nlev))
+            curvariable%profile_input%name = trim(variables(i))
+            curvariable%profile_input%path = trim(file)
+            curvariable%profile_input%index = i
+            curvariable%profile_input%constant_value = constant_values(i)
+            if (constant_values(i)/=missing_value) then
+               curvariable%profile_input%method = 0
+            else
+               curvariable%profile_input%method = 2
+            end if
+            call register_input(curvariable%profile_input)
+
             allocate(curvariable%relax_tau_1d(0:nlev))
             curvariable%relax_tau_1d = relax_taus(i)
-            if (constant_values(i)/=missing_value) then
-                ! Variable fixed to constant value.
-                curvariable%data_1d = constant_values(i)
-            else
-                ! Variable read from file.
-                call register_input_1d(curvariable%path,curvariable%index,curvariable%data_1d,curvariable%name)
-            end if
 
 !           Apply separate relaxation times for bottom and surface layer, if specified.
             db = _ZERO_
@@ -300,14 +300,7 @@
             end do
 
 !           Register observed variable with the GOTM-FABM driver.
-            call register_observation(curvariable%id,curvariable%data_1d,curvariable%relax_tau_1d)
-         end if
-
-!        Report that this variable will use observations.
-         if (constant_values(i)/=missing_value) then
-            LEVEL2 'Setting variable '//trim(curvariable%name)//' to constant value',constant_values(i)
-         else
-            LEVEL2 'Reading observed values for variable '//trim(curvariable%name)//' from '//trim(file)
+            call register_observation(curvariable%interior_id,curvariable%profile_input%data,curvariable%relax_tau_1d)
          end if
 
       end do

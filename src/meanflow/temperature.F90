@@ -69,9 +69,9 @@
    use meanflow,     only: h,u,v,w,T,S,avh
    use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
-   use observations, only: w_adv_discr,w_adv_method
+   use observations, only: w_adv_discr,w_adv
    use observations, only: tprof,TRelaxTau
-   use observations, only: A,g1,g2
+   use observations, only: A_,g1_,g2_
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -150,7 +150,7 @@
       z=z+h(i+1)
 
 !     compute short wave radiation
-      rad(i)=I_0*(A*exp(-z/g1)+(1.-A)*exp(-z/g2)*bioshade(i+1))
+      rad(i)=I_0*(A_%value*exp(-z/g1_%value)+(1.-A_%value)*exp(-z/g2_%value)*bioshade(i+1))
 
 !     compute total diffusivity
       avh(i)=nuh(i)+avmolT
@@ -177,12 +177,12 @@
 !  ... and from lateral advection
    if (t_adv) then
       do i=1,nlev
-         Qsour(i) = Qsour(i) - u(i)*dtdx(i) - v(i)*dtdy(i)
+         Qsour(i) = Qsour(i) - u(i)*dtdx%data(i) - v(i)*dtdy%data(i)
       end do
    end if
 
 !  do advection step
-   if (w_adv_method.ne.0) then
+   if (w_adv%method.ne.0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
    end if

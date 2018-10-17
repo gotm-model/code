@@ -145,8 +145,8 @@
    end select
 
    ! Turbulent momentum fluxes
-   taux(nlev) = -tx
-   tauy(nlev) = -ty
+   taux(nlev) = -tx%value
+   tauy(nlev) = -ty%value
    do i=nlev-1,1,-1
       taux(i)=-num(i)*(u(i+1)-u(i))/(0.5*(h(i+1)+h(i)))
       tauy(i)=-num(i)*(v(i+1)-v(i))/(0.5*(h(i+1)+h(i)))
@@ -205,7 +205,7 @@
    heat_obs=0
    do i=1,nlev
       heat_sim=heat_sim+T(i)*h(i)*rho_0*cp
-      heat_obs=heat_obs+tprof(i)*h(i)*rho_0*cp
+      heat_obs=heat_obs+tprof%data(i)*h(i)*rho_0*cp
    end do
    if (init_diagnostics) then
       heat_sim0=heat_sim

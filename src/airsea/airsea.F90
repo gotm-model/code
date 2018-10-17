@@ -35,7 +35,7 @@
 ! !USES:
    use airsea_variables
    use time,         only: julian_day, yearday, time_diff
-   use input,        only: register_input_0d,read_obs
+   use input,        only: read_obs, type_scalar_input, method_unsupported, register_input
 !
    IMPLICIT NONE
 
@@ -64,33 +64,35 @@
 !
 !  Meteorological forcing variables
    integer,  public                    :: hum_method
-   REALTYPE, public, target            :: u10,v10
-   REALTYPE, public, target            :: airp,airt
-   REALTYPE, public, target            :: hum
-   REALTYPE, public, target            :: cloud
+   character(len=PATH_MAX)   :: meteo_file
+   type (type_scalar_input), public, target            :: u10,v10
+   type (type_scalar_input), public, target            :: airp,airt
+   type (type_scalar_input), public, target            :: hum
+   type (type_scalar_input), public, target            :: cloud
 !
 !  wind speed (m/s)
    REALTYPE, public, target            :: w
 !
 !  surface short-wave radiation
 !  and surface heat flux (W/m^2)
-   REALTYPE, public, target            :: I_0,albedo
-   REALTYPE, public, target            :: heat
-   REALTYPE, public                    :: qe,qh,qb
+   type (type_scalar_input), public, target :: I_0, qb
+   REALTYPE, public, target            :: albedo
+   type (type_scalar_input), public, target            :: heat
+   REALTYPE, public                    :: qe,qh
 
 !  surface stress components (Pa)
-   REALTYPE, public, target            :: tx,ty
+   type (type_scalar_input), public, target            :: tx,ty
 
 !  precipitation and  evaporation
 !  (m/s)
-   REALTYPE, public, target            :: precip
+   type (type_scalar_input), public, target            :: precip
    REALTYPE, public, target            :: evap
 
 !  sea surface temperature (degC), sea surface salinity (psu),
 !  sea surface current components (m/s)
    REALTYPE, public                    :: sst
-   REALTYPE, public, target            :: sst_obs
-   REALTYPE, public, target            :: sss
+   type (type_scalar_input), public, target            :: sst_obs
+   type (type_scalar_input), public, target            :: sss
    REALTYPE, public                    :: ssu
    REALTYPE, public                    :: ssv
 
@@ -124,37 +126,16 @@
 #ifndef INTERPOLATE_METEO
    logical                   :: init_saved_vars
 #endif
-   integer, public           :: swr_method
    integer, public           :: albedo_method
    REALTYPE, public          :: const_albedo
    integer, public           :: fluxes_method
    integer, public           :: back_radiation_method
    integer                   :: heat_method
-   integer                   :: momentum_method
-   integer                   :: precip_method
-   integer                   :: sst_method
-   integer                   :: sss_method
    integer                   :: ssuv_method
    logical, public           :: rain_impact
    logical, public           :: calc_evaporation
 
-   character(len=PATH_MAX)   :: meteo_file
-   character(len=PATH_MAX)   :: swr_file
-   character(len=PATH_MAX)   :: back_radiation_file
-   character(len=PATH_MAX)   :: heatflux_file
-   character(len=PATH_MAX)   :: momentumflux_file
-   character(len=PATH_MAX)   :: precip_file
-   character(len=PATH_MAX)   :: sss_file
-   character(len=PATH_MAX)   :: sst_file
 
-   REALTYPE                  :: wind_factor
-   REALTYPE                  :: const_swr
-   REALTYPE                  :: swr_factor
-   REALTYPE                  :: shf_factor
-   REALTYPE                  :: const_heat
-   REALTYPE                  :: const_tx,const_ty
-   REALTYPE                  :: const_precip
-   REALTYPE                  :: precip_factor
    REALTYPE                  :: dlon,dlat
 !
 ! !BUGS:
@@ -258,6 +239,29 @@
 !  Original author(s): Karsten Bolding
 !
 ! !LOCAL VARIABLES:
+   integer :: swr_method
+   REALTYPE                  :: const_swr
+   REALTYPE                  :: swr_factor
+   character(len=PATH_MAX)   :: swr_file
+
+   integer                   :: momentum_method
+   integer                   :: precip_method
+   integer                   :: sst_method
+   integer                   :: sss_method
+   character(len=PATH_MAX)   :: back_radiation_file
+   character(len=PATH_MAX)   :: heatflux_file
+   character(len=PATH_MAX)   :: momentumflux_file
+   character(len=PATH_MAX)   :: precip_file
+   character(len=PATH_MAX)   :: sss_file
+   character(len=PATH_MAX)   :: sst_file
+
+   REALTYPE                  :: wind_factor
+   REALTYPE                  :: shf_factor
+   REALTYPE                  :: const_heat
+   REALTYPE                  :: const_tx,const_ty
+   REALTYPE                  :: const_precip
+   REALTYPE                  :: precip_factor
+
    namelist /airsea/ calc_fluxes, &
                      fluxes_method, &
                      back_radiation_method, &
@@ -320,6 +324,24 @@
    open(10,file='airsea.nml',action='read',status='old',err=90)
    read(10,nml=airsea,err=91)
    close(10)
+
+   I_0 = type_scalar_input(method=swr_method, path=swr_file, constant_value=const_swr, scale_factor=swr_factor)
+
+   u10 = type_scalar_input(method=2, path=meteo_file, index=1, scale_factor=wind_factor)
+   v10 = type_scalar_input(method=2, path=meteo_file, index=2, scale_factor=wind_factor)
+   airp = type_scalar_input(method=2, path=meteo_file, index=3, scale_factor=100.d0)
+   airt = type_scalar_input(method=2, path=meteo_file, index=4)
+   hum = type_scalar_input(method=2, path=meteo_file, index=5)
+   cloud = type_scalar_input(method=2, path=meteo_file, index=6)
+
+   tx = type_scalar_input(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
+   ty = type_scalar_input(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
+   heat = type_scalar_input(method=heat_method, path=heatflux_file, scale_factor=shf_factor, constant_value=const_heat)
+   qb = type_scalar_input(method=back_radiation_method, path=back_radiation_file)
+   sst_obs = type_scalar_input(method=sst_method,path=sst_file)
+   sss = type_scalar_input(method=sss_method,path=sss_file)
+   precip = type_scalar_input(method=precip_method, path=precip_file, scale_factor=precip_factor, constant_value=const_precip)
+
    LEVEL2 'done'
    return
 
@@ -339,7 +361,7 @@
 ! !IROUTINE: Initialise the air--sea interaction module \label{sec:init-air-sea}
 !
 ! !INTERFACE:
-   subroutine init_airsea_yaml(cfg)
+   subroutine init_airsea_yaml()
 !
 ! !DESCRIPTION:
 !  This routine initialises the air-sea module by reading various variables
@@ -417,83 +439,64 @@
    use settings
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-   type (type_settings), intent(inout) :: cfg
-!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
 ! !LOCAL VARIABLES:
+   type (type_gotm_settings), pointer :: branch
    integer, parameter :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_airsea_yaml'
 
-   call cfg%get(calc_fluxes, 'calc_fluxes', '', &
+   branch => settings_store%get_typed_child('surface')
+   call branch%get(calc_fluxes, 'calc_fluxes', 'calculate heat and momentum fluxes', &
                 default=.false.)
-   call cfg%get(fluxes_method, 'fluxes_method', '', &
-                minimum=1,maximum=2,default=1)
-   call cfg%get(back_radiation_method, 'back_radiation_method', '', &
-                minimum=0,maximum=4,default=1)
-   call cfg%get(back_radiation_file, 'back_radiation_file', '', &
-                default='back_radiation.dat')
-   call cfg%get(meteo_file, 'meteo_file', '', &
-                default='meteo.dat')
-   call cfg%get(wind_factor, 'wind_factor', '', '-', &
-                minimum=0._rk,default=1._rk)
-   call cfg%get(hum_method, 'hum_method', '', &
-                minimum=1,maximum=4,default=1)
-   call cfg%get(rain_impact, 'rain_impact', '', &
-                default=.false.)
-   call cfg%get(calc_evaporation, 'calc_evaporation', '', &
-                default=.false.)
-   call cfg%get(heat_method, 'heat_method', '', &
-                minimum=0,maximum=2,default=1)
-   call cfg%get(const_heat, 'const_heat', '', 'W/m^2', &
+   call branch%get(fluxes_method, 'fluxes_method', 'method to calculate heat and momentum fluxes', &
+                options=(/type_option(1, 'Kondo (1975)'), type_option(2, 'Fairall et al. (1996)')/), default=1)
+   call branch%get_scalar_input(u10, 'u10', '10 metre wind speed in x direction', 'm/s', &
                 default=0._rk)
-   call cfg%get(heatflux_file, 'heatflux_file', '', &
-                default='heatflux.dat')
-   call cfg%get(swr_method, 'swr_method', '', &
-                minimum=0,maximum=3,default=1)
-   call cfg%get(albedo_method, 'albedo_method', '', &
+   call branch%get_scalar_input(v10, 'v10', '10 metre wind speed in y direction', 'm/s', &
+                default=0._rk)
+   call branch%get_scalar_input(airp, 'airp', 'air pressure', 'Pa', &
+                default=0._rk)
+   call branch%get_scalar_input(airt, 'airt', '2 metre air temperature', 'Celsius or K', &
+                default=0._rk)
+   call branch%get(hum_method, 'hum_method', 'humidity metric', &
+                options=(/type_option(1, 'relative humidity (%)'), type_option(2, 'wet-bulb temperature'), &
+                type_option(3, 'dew point temperature'), type_option(4 ,'specific humidity (kg/kg)')/), default=1)
+   call branch%get_scalar_input(hum, 'hum', '2 metre humidity', '', &
+                default=0._rk)
+   call branch%get_scalar_input(cloud, 'cloud', 'cloud cover', '-', &
+                minimum=0._rk, maximum=1._rk, default=0._rk)
+   call branch%get_scalar_input(I_0, 'swr', 'shortwave radiation', 'W/m2', &
+                minimum=0._rk,default=0._rk, extra_options=(/type_option(3, 'from time, location and cloud cover')/))
+   call branch%get_scalar_input(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
+                default=0._rk, method_file=0, method_constant=method_unsupported, &
+               extra_options=(/type_option(1, 'Clark'), type_option(2, 'Hastenrath'), type_option(3, 'Bignami'), type_option(4, 'Berliand')/))
+   call branch%get(rain_impact, 'rain_impact', '', &
+                default=.false.)
+   call branch%get(calc_evaporation, 'calc_evaporation', '', &
+                default=.false.)
+   call branch%get(albedo_method, 'albedo_method', '', &
                 minimum=0,maximum=2,default=1)
-   call cfg%get(const_albedo, 'const_albedo', '', '-', &
+   call branch%get(const_albedo, 'const_albedo', '', '-', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
-   call cfg%get(const_swr, 'const_swr', '', 'W/m^2', &
-                minimum=0._rk,default=0._rk)
-   call cfg%get(swr_file, 'swr_file', '', &
-                default='swr.dat')
-   call cfg%get(swr_factor, 'swr_factor', '', '-', &
-                minimum=0._rk,default=1._rk)
-   call cfg%get(shf_factor, 'shf_factor', '', '-', &
-                minimum=0._rk,default=1._rk)
-   call cfg%get(momentum_method, 'momentum_method', '', &
-                minimum=0,maximum=2,default=1)
-   call cfg%get(const_tx, 'const_tx', '', 'Pa', &
+   call branch%get_scalar_input(heat, 'heat', 'surface heat flux', 'W/m2', &
                 default=0._rk)
-   call cfg%get(const_ty, 'const_ty', '', 'Pa', &
+   call branch%get_scalar_input(tx, 'tx', 'surface momentum flux: x-direction', 'Pa', &
                 default=0._rk)
-   call cfg%get(momentumflux_file, 'momentumflux_file', '', &
-                default='momentumflux.dat')
-   call cfg%get(precip_method, 'precip_method', '', &
-                minimum=0,maximum=2,default=0)
-   call cfg%get(const_precip, 'const_precip', '', 'm/s', &
+   call branch%get_scalar_input(ty, 'ty', 'surface momentum flux: y-direction', 'Pa', &
                 default=0._rk)
-   call cfg%get(precip_file, 'precip_file', '', &
-                default='precip.dat')
-   call cfg%get(precip_factor, 'precip_factor', '', '-', &
-                minimum=0._rk,default=1._rk)
-   call cfg%get(sst_method, 'sst_method', '', &
-                minimum=0,maximum=2,default=0)
-   call cfg%get(sst_file, 'sst_file', '', &
-                default='sst.dat')
-   call cfg%get(sss_method, 'sss_method', '', &
-                minimum=0,maximum=2,default=0)
-   call cfg%get(sss_file, 'sss_file', '', &
-                default='sss.dat')
-   call cfg%get(ssuv_method, 'ssuv_method', '', &
-                minimum=0,maximum=1,default=0)
+   call branch%get_scalar_input(precip, 'precip', 'precipitation', 'm/s', &
+                default=0._rk)
+   call branch%get_scalar_input(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
+                default=0._rk)
+   call branch%get_scalar_input(sss, 'sss', 'observed surface salinity', 'PSU', &
+                default=0._rk)
+   call branch%get(ssuv_method, 'ssuv_method', 'wind speed correction for current velocity', &
+                options=(/type_option(0, 'use absolute wind speed'), type_option(1, 'use relative wind speed')/), default=0)
    LEVEL2 'done'
    return
    end subroutine init_airsea_yaml
@@ -602,42 +605,17 @@
    w = _ZERO_
 
 !  surface short-wave radiation and surface heat flux (W/m^2)
-   I_0  = _ZERO_
    albedo = _ZERO_
-   heat = _ZERO_
-
-!  surface stress components (Pa)
-   tx = _ZERO_
-   ty = _ZERO_
 
 !  precipitation and  evaporation (m/s)
-   precip = _ZERO_
    evap   = _ZERO_
 
 !  sea surface temperature (degC) and sea surface salinity (psu)
    sst     = _ZERO_
-   sst_obs = _ZERO_
-   sss     = _ZERO_
 
 !  sea surface velocities (m/s)
    ssu = _ZERO_
    ssv = _ZERO_
-
-!  cloud cover
-   cloud = _ZERO_
-
-!  humidity (various options - select through hum_method)
-   hum  = _ZERO_
-
-!  air temperature
-   airt = _ZERO_
-
-!  u and v components of wind at 10 m
-   u10 = _ZERO_
-   v10 = _ZERO_
-
-!  air pressure
-   airp = _ZERO_
 
 !  initialize additional variables defined in airsea_variables module
    es   = _ZERO_
@@ -664,17 +642,7 @@
    dlat = lat
 
 !  The short wave radiation
-   select case (swr_method)
-      case (CONSTVAL)
-         LEVEL2 'Using constant short wave radiation= ',const_swr
-         I_0 = const_swr
-      case (FROMFILE)
-         call register_input_0d(swr_file,1,I_0,'surface short wave radiation',scale_factor=swr_factor)
-         LEVEL2 'Reading short wave radiation data from:'
-         LEVEL3 trim(swr_file)
-         if (swr_factor .ne. _ONE_) then
-            LEVEL3 'applying swr factor= ',swr_factor
-         end if
+   select case (I_0%method)
       case (3)
          if (.not. calc_fluxes) then
             LEVEL2 'Not possible to calculate swr - when calc_fluxes=.false.'
@@ -684,6 +652,7 @@
          end if
          LEVEL2 'Albedo method: ',albedo_method
       case default
+         call register_input(I_0)
    end select
 
    if (calc_fluxes) then
@@ -691,19 +660,14 @@
 #ifndef INTERPOLATE_METEO
       open(meteo_unit,file=meteo_file,action='read',status='old',err=93)
 #else
-      call register_input_0d(meteo_file,1,u10,'wind speed: x-direction',scale_factor=wind_factor)
-      call register_input_0d(meteo_file,2,v10,'wind speed: y-direction',scale_factor=wind_factor)
-      call register_input_0d(meteo_file,3,airp,'air pressure',scale_factor=100.d0)
-      call register_input_0d(meteo_file,4,airt,'air temperature')
-      call register_input_0d(meteo_file,5,hum,'relative humidity')
-      call register_input_0d(meteo_file,6,cloud,'cloud cover')
+      call register_input(u10)
+      call register_input(v10)
+      call register_input(airp)
+      call register_input(airt)
+      call register_input(hum)
+      call register_input(cloud)
 #endif
       LEVEL2 'Air-sea exchanges will be calculated'
-      LEVEL2 'Reading meteo data from:'
-      LEVEL3 trim(meteo_file)
-      if (wind_factor .ne. _ONE_) then
-         LEVEL3 'applying wind factor= ',wind_factor
-      end if
 
       LEVEL3 'heat- and momentum-fluxes:'
       select case (fluxes_method)
@@ -714,11 +678,9 @@
          case default
       end select
       LEVEL3 'long-wave back radiation:'
-      select case (back_radiation_method)
+      select case (qb%method)
          case(0) ! Read from file instead of calculating
-            call register_input_0d(back_radiation_file,1,qb,'long-wave back radiation',scale_factor=_ONE_)
-            LEVEL4 'reading data from:'
-            LEVEL4  trim(back_radiation_file)
+            call register_input(qb)
          case(1)
             LEVEL4 'using Clark formulation'
          case(2)
@@ -733,74 +695,27 @@
    else
 
 !     The heat fluxes
-      select case (heat_method)
-         case (CONSTVAL)
-            heat = const_heat
-         case (FROMFILE)
-            call register_input_0d(heatflux_file,1,heat,'surface heat flux')
-            LEVEL2 'Reading heat fluxes from:'
-            LEVEL3 trim(heatflux_file)
-         case default
-      end select
+      call register_input(heat)
 
 !     The momentum fluxes
-      select case (momentum_method)
-         case (CONSTVAL)
-            tx = const_tx
-            ty = const_ty
-         case (FROMFILE)
-            call register_input_0d(momentumflux_file,1,tx,'surface momentum flux: x-direction')
-            call register_input_0d(momentumflux_file,2,ty,'surface momentum flux: y-direction')
-            LEVEL2 'Reading momentum fluxes from:'
-            LEVEL3 trim(momentumflux_file)
-         case default
-      end select
+      call register_input(tx)
+      call register_input(ty)
 
    end if
 
 !  The fresh water fluxes (used for calc_fluxes=.true. and calc_fluxes=.false.)
-   select case (precip_method)
-      case (CONSTVAL)
-         LEVEL2 'Using constant precipitation= ',const_precip
-         LEVEL2 'rain_impact=      ',rain_impact
-         LEVEL2 'calc_evaporation= ',calc_evaporation
-         precip = const_precip
-      case (FROMFILE)
-         call register_input_0d(precip_file,1,precip,'precipitation',scale_factor=precip_factor)
-         LEVEL2 'Reading precipitation data from:'
-         LEVEL3 trim(precip_file)
-         if (precip_factor .ne. _ONE_) then
-            LEVEL3 'applying factor= ',precip_factor
-         end if
-         LEVEL2 'rain_impact=      ',rain_impact
-         LEVEL2 'calc_evaporation= ',calc_evaporation
-      case default
-   end select
+   call register_input(precip)
+   LEVEL2 'rain_impact=      ',rain_impact
+   LEVEL2 'calc_evaporation= ',calc_evaporation
 
 !  The observed sea surface temperature
-   select case (sst_method)
-      case (FROMFILE)
-         call register_input_0d(sst_file,1,sst_obs,'sea surface temperature')
-         LEVEL2 'Reading sea surface temperature from:'
-         LEVEL3 trim(sst_file)
-      case default
-   end select
+   call register_input(sst_obs)
 
 !  The observed sea surface salinity
-   select case (sss_method)
-      case (FROMFILE)
-         call register_input_0d(sss_file,1,sss,'sea surface salinity')
-         LEVEL2 'Reading sea surface salinity from:'
-         LEVEL3 trim(sss_file)
-      case default
-   end select
+   call register_input(sss)
    LEVEL2 'done'
    return
 
-90 FATAL 'I could not open airsea.nml'
-   stop 'init_airsea'
-91 FATAL 'I could not read airsea namelist'
-   stop 'init_airsea'
 93 FATAL 'I could not open ',trim(meteo_file)
    stop 'init_airsea'
 
@@ -851,37 +766,32 @@
 
 !     Optionally calculate surface shortwave radiation from location, time, cloud cover.
       have_zenith_angle = .false.
-      if (swr_method .eq. 3) then
+      if (I_0%method .eq. 3) then
          hh = secs*(_ONE_/3600)
          zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
          have_zenith_angle = .true.
-         I_0 = swr_factor*short_wave_radiation(zenith_angle,yearday,dlon,dlat,cloud)
+         I_0%value = I_0%scale_factor*short_wave_radiation(zenith_angle,yearday,dlon,dlat,cloud%value)
       end if
    else
 !     If using constant momentum flux, apply time-varying feedback from biogeochemistry to drag.
-      if (momentum_method==CONSTVAL) then
-         tx = const_tx*bio_drag_scale
-         ty = const_ty*bio_drag_scale
-      end if
-
+      if (tx%method==CONSTVAL) tx%value = tx%value*bio_drag_scale
+      if (ty%method==CONSTVAL) ty%value = ty%value*bio_drag_scale
    end if
 
-   if (swr_method .ne. CONSTVAL) then
+   if (I_0%method .ne. CONSTVAL) then
       if (.not. have_zenith_angle) then
          hh = secs*(_ONE_/3600)
          zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
       end if
       albedo = albedo_water(albedo_method,zenith_angle,yearday)
-      I_0 = I_0*(_ONE_-albedo-bio_albedo)
+      I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
    end if
 
-   if (shf_factor .ne. _ONE_) then
-      heat = shf_factor*heat
-   end if
+   heat%value = heat%scale_factor*heat%value
 
 !  If reading SST from file, overwrite current (model) SST with observed value,
 !  to be used in output.
-   if (sst_method==FROMFILE) sst = sst_obs
+   if (sst_obs%method==FROMFILE) sst = sst_obs%value
 
 #ifndef INTERPOLATE_METEO
    if (init_saved_vars) init_saved_vars = .false.
@@ -1071,28 +981,28 @@
       tw_k= sst
    end if
 
-   if (airt .lt. 100.) then
-      ta_k  = airt + KELVIN
-      ta = airt
+   if (airt%value .lt. 100.) then
+      ta_k  = airt%value + KELVIN
+      ta = airt%value
    else
-      ta  = airt - KELVIN
-      ta_k = airt
+      ta  = airt%value - KELVIN
+      ta_k = airt%value
    end if
 
-   call humidity(hum_method,hum,airp,tw,ta)
+   call humidity(hum_method,hum,airp%value,tw,ta)
    if (back_radiation_method .gt. 0) then
       call back_radiation(back_radiation_method, &
-                          dlat,tw_k,ta_k,cloud,qb)
+                          dlat,tw_k,ta_k,cloud%value,qb)
    endif
    call airsea_fluxes(fluxes_method, &
-                      tw,ta,u10-ssu,v10-ssv,precip,evap,tx,ty,qe,qh)
-   heat = (qb+qe+qh)
+                      tw,ta,u10%value-ssu,v10%value-ssv,precip,evap,tx,ty,qe,qh)
+   heat%value = (qb%value+qe+qh)
 #endif
 
-   w = sqrt((u10-ssu)*(u10-ssu)+(v10-ssv)*(v10-ssv))
+   w = sqrt((u10%value-ssu)*(u10%value-ssu)+(v10%value-ssv)*(v10%value-ssv))
 
-   tx = tx*bio_drag_scale
-   ty = ty*bio_drag_scale
+   tx%value = tx%value*bio_drag_scale
+   ty%value = ty%value*bio_drag_scale
 
    end subroutine flux_from_meteo
 !EOC
@@ -1121,11 +1031,11 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   int_precip= int_precip + dt*precip
+   int_precip= int_precip + dt*precip%value
    int_evap  = int_evap   + dt*evap
    int_fwf   = int_precip + int_evap
-   int_swr   = int_swr    + dt*I_0
-   int_heat  = int_heat   + dt*heat
+   int_swr   = int_swr    + dt*I_0%value
+   int_heat  = int_heat   + dt*heat%value
    int_total = int_swr    + int_heat
    return
    end subroutine integrated_fluxes

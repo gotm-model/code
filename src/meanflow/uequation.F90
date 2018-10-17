@@ -66,7 +66,7 @@
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,u,uo,v,w,avh
    use meanflow,     only: drag,SS,runtimeu
-   use observations, only: w_adv_method,w_adv_discr
+   use observations, only: w_adv,w_adv_discr
    use observations, only: uprof,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdx,dpdx
    use util,         only: Dirichlet,Neumann
@@ -140,7 +140,7 @@
 
 !  set external pressure gradient
    if (method .eq. 0) then
-      dzetadx = dpdx
+      dzetadx = dpdx%value
    else
       dzetadx = _ZERO_
    endif
@@ -182,7 +182,7 @@
    Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
 
 !  do advection step
-   if (w_adv_method.ne.0) then
+   if (w_adv%method.ne.0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvUup,AdvUdw,w_adv_discr,adv_mode,U)
    end if
