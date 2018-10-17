@@ -74,9 +74,9 @@
    use spm, only: init_spm, set_env_spm, do_spm, end_spm
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:init_gotm_fabm,post_init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
+   use gotm_fabm,only:configure_gotm_fabm,configure_gotm_fabm_from_nml,gotm_fabm_create_model,init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
-   use gotm_fabm_input,only:init_gotm_fabm_input
+   use gotm_fabm_input,only: configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
 #endif
 
    IMPLICIT NONE
@@ -271,7 +271,9 @@
    call init_airsea()
    call init_observations()
    call init_turbulence()
-   call init_gotm_fabm()
+#ifdef _FABM_
+   call configure_gotm_fabm()
+#endif
    call init_meanflow()
    call init_eqstate()
 
@@ -303,10 +305,18 @@
       if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
 
       call init_airsea(namlst)
-
-!     Initialize the GOTM-FABM coupler from its configuration file.
-      call init_gotm_fabm(namlst,'gotm_fabm.nml')
    end if
+
+#ifdef _FABM_
+   if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
+
+   ! Allow FABM to cretae its model tree. After this we know all biogeochemical variables
+   ! This must be done before gotm_fabm_input configuration.
+   call gotm_fabm_create_model(namlst)
+
+   call configure_gotm_fabm_input()
+   if (read_nml) call configure_gotm_fabm_input_from_nml(namlst, 'fabm_input.nml')
+#endif
 
    if (write_yaml_path /= '') then
       call settings_store%save(trim(write_yaml_path), namlst)
@@ -405,7 +415,7 @@
 #ifdef _FABM_
 
    if (fabm_calc) then
-      call post_init_gotm_fabm(nlev,namlst,dt,fm)
+      call init_gotm_fabm(nlev,dt,fm)
 
 !     Link relevant GOTM data to FABM.
 !     This sets pointers, rather than copying data, and therefore needs to be done only once.
@@ -423,8 +433,7 @@
                              bio_albedo,bio_drag_scale)
 
       ! Initialize FABM input (data files with observations)
-!   if (fabm_calc .and. read_nml) then
-      call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
+      call init_gotm_fabm_input(nlev,h(1:nlev))
    end if
 #endif
 

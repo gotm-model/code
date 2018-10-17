@@ -21,6 +21,7 @@
    use fabm_types, only:rk
    use gotm_fabm,only:fabm_calc,model,cc,register_observation
    use input,only: register_input, type_scalar_input, type_profile_input
+   use settings
 
    implicit none
 
@@ -28,7 +29,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm_input
+   public configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
    public type_input_variable,first_input_variable
 !
 ! !REVISION HISTORY:
@@ -49,7 +50,10 @@
       type (type_horizontal_variable_id)      :: horizontal_id        ! FABM identifier of horizontal variable (not associated if variable is not horizontal)
       type (type_scalar_variable_id)          :: scalar_id            ! FABM identifier of scalar variable (not associated if variable is not scalar)
       integer                                 :: ncid = -1            ! NetCDF id in output file (only used if this variable is included in output)
-      REALTYPE                                :: relax_tau_0d         ! Relaxation times for scalars (depth-independent variables)
+      REALTYPE                                :: relax_tau            ! Relaxation times
+      REALTYPE                                :: relax_tau_bot        ! Relaxation times for bottom layer (depth-dependent variables only)
+      REALTYPE                                :: relax_tau_surf       ! Relaxation times for surface layer (depth-dependent variables only)
+      REALTYPE                                :: h_bot, h_surf        ! Thickness of bottom and surface layers (for relaxation rates that vary per layer)
       REALTYPE, allocatable,dimension(:)      :: relax_tau_1d         ! Relaxation times for profiles (depth-dependent variables)
       type (type_input_variable),pointer      :: next => null()       ! Next variable in current input file
    end type
@@ -60,6 +64,9 @@
 !  PRIVATE PARAMETERS
    integer,parameter :: max_variable_count_per_file = 256
 
+   class (type_gotm_settings), pointer :: cfg           => null()
+   type (type_input_variable), pointer :: last_variable => null()
+
    contains
 
 !-----------------------------------------------------------------------
@@ -68,36 +75,98 @@
 ! !IROUTINE: Initialize input
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm_input(namlst,fname,nlev,h)
+   subroutine configure_gotm_fabm_input()
+
+   cfg => settings_store%get_typed_child('fabm/input')
+   call cfg%populate(register_fabm_input)
+
+   end subroutine configure_gotm_fabm_input
+!EOC
+
+   subroutine register_fabm_input(settings, name)
+      class (type_settings), intent(inout) :: settings
+      character(len=*),      intent(in)    :: name
+
+      class (type_gotm_settings), pointer :: branch
+      type (type_input_variable), pointer :: curvariable
+
+      if (.not.associated(first_input_variable)) then
+!        This is the first variable in the file: create it at the head of the list.
+         allocate(first_input_variable)
+         curvariable => first_input_variable
+      else
+!        This is not the first variable in the file: append to previous variable.
+         curvariable => first_input_variable
+         do while (associated(curvariable%next))
+            curvariable => curvariable%next
+         end do
+         allocate(curvariable%next)
+         curvariable => curvariable%next
+      end if
+
+!     First search in pelagic variables
+      curvariable%interior_id = fabm_get_bulk_variable_id(model, name)
+
+      if (fabm_is_variable_used(curvariable%interior_id)) then
+         select type (settings)
+         class is (type_gotm_settings)
+            call settings%get_profile_input(curvariable%profile_input, name, name, '', default=0._rk, pchild=branch)
+         end select
+         call branch%get_real(curvariable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
+         call branch%get_real(curvariable%relax_tau_bot, 'relax_tau_bot', 'relaxation time scale for bottom layer', 's', minimum=0._rk, default=1.e15_rk)
+         call branch%get_real(curvariable%relax_tau_surf, 'relax_tau_surf', 'relaxation time scale for surface layer', 's', minimum=0._rk, default=1.e15_rk)
+         call branch%get_real(curvariable%h_bot, 'thickness_bot', 'thickness of surface relaxation layer', 'm', minimum=0._rk, default=0._rk)
+         call branch%get_real(curvariable%h_surf, 'thickness_surf', 'thickness of bottom relaxation layer', 'm', minimum=0._rk, default=0._rk)
+      else
+!        Variable was not found among interior variables. Try variables defined on horizontal slice of model domain (e.g., benthos)
+         curvariable%horizontal_id = fabm_get_horizontal_variable_id(model, name)
+         if (.not. fabm_is_variable_used(curvariable%horizontal_id)) then
+!           Variable was not found among interior or horizontal variables. Try global scalars.
+            curvariable%scalar_id = fabm_get_scalar_variable_id(model, name)
+            if (.not. fabm_is_variable_used(curvariable%scalar_id)) then
+               FATAL 'Variable '//name//', referenced among FABM inputs was not found in model.'
+               stop 'gotm_fabm_input:init_gotm_fabm_input'
+            end if
+         end if
+         select type (settings)
+         class is (type_gotm_settings)
+            call settings%get_scalar_input(curvariable%scalar_input, name, name, '', default=0._rk, pchild=branch)
+         end select
+         call branch%get_real(curvariable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
+      end if
+      last_variable => curvariable
+   end subroutine
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialize input
+!
+! !INTERFACE:
+   subroutine configure_gotm_fabm_input_from_nml(namlst, fname)
 !
 ! !DESCRIPTION:
 !  Initialize files with observations on FABM variables.
 !
 ! !USES:
+   use settings
 !
 ! !INPUT PARAMETERS:
-   integer,          intent(in) :: nlev,namlst
+   integer,          intent(in) :: namlst
    character(len=*), intent(in) :: fname
-   REALTYPE,         intent(in) :: h(1:nlev)
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
 !
 !EOP
 !
 ! !LOCAL VARIABLES:
    character(len=maxpathlen)    :: file
    character(len=64)            :: variable,variables(max_variable_count_per_file)
-   integer                      :: i,k,file_variable_count,index
-   integer                      :: variabletype,filetype
-   REALTYPE                     :: relax_tau,db,ds,depth,constant_value
+   integer                      :: i,index
+   integer                      :: variabletype
+   REALTYPE                     :: relax_tau,constant_value
    REALTYPE,dimension(max_variable_count_per_file) :: relax_taus,relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
    REALTYPE,dimension(max_variable_count_per_file) :: constant_values
-   integer, parameter           :: type_unknown = 0, type_profile = 1, type_scalar = 2
    logical                      :: file_exists
-   type (type_input_variable),pointer :: curvariable
    REALTYPE, parameter          :: missing_value = huge(_ONE_)
-   type (type_scalar_input), pointer :: scalar_input
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
                            relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot, &
                            constant_value
@@ -112,14 +181,10 @@
 !  Initialize empty lists of observations files.
    nullify(first_input_variable)
 
-!  Calculate depth (used to determine whether in surface/bottom/bulk for relaxation times)
-   depth = sum(h)
-
 !  Open the file that contains zero, one or more namelists specifying input observations.
    open(namlst,file=fname,action='read',status='old',err=98)
 
    do
-
 !     Initialize namelist variables.
       file = ''
       variable = ''
@@ -133,9 +198,6 @@
       thicknesses_bot = _ZERO_
       constant_value = missing_value
       constant_values = missing_value
-
-!     Initialize file type (profile or scalar) to unknown
-      filetype = type_unknown
 
 !     Read a namelist that describes a single file with observations.
 !     If no namelist is found, exit the do loop.
@@ -201,107 +263,31 @@
       end if
 
 !     Find the provided variable names in FABM.
-      file_variable_count = 0
       do i=1,size(variables)
 !        If this variable is not used, skip to the next.
          if (variables(i)=='') cycle
 
-         if (.not.associated(first_input_variable)) then
-!           This is the first variable in the file: create it at the head of the list.
-            allocate(first_input_variable)
-            curvariable => first_input_variable
+         call register_fabm_input(cfg, trim(variables(i)))
+         if (fabm_is_variable_used(last_variable%interior_id)) then
+            last_variable%profile_input = type_profile_input(path=trim(file), index=i, constant_value=constant_values(i))
+            if (constant_values(i) /= missing_value) then
+               last_variable%profile_input%method = 0
+            else
+               last_variable%profile_input%method = 2
+            end if
+            last_variable%relax_tau = relax_taus(i)
+            last_variable%relax_tau_bot = relax_taus_bot(i)
+            last_variable%relax_tau_surf = relax_taus_surf(i)
+            last_variable%h_bot = thicknesses_bot(i)
+            last_variable%h_surf = thicknesses_surf(i)
          else
-!           This is not the first variable in the file: append to previous variable.
-            curvariable => first_input_variable
-            do while (associated(curvariable%next))
-               curvariable => curvariable%next
-            end do
-            allocate(curvariable%next)
-            curvariable => curvariable%next
-         end if
-
-!        Store variable name and index in file.
-         nullify(curvariable%next)
-
-!        First search in pelagic variables
-         variabletype = type_profile
-         curvariable%interior_id = fabm_get_bulk_variable_id(model,variables(i))
-
-!        If variable was not found, search variables defined on horizontal slice of model domain (e.g., benthos)
-         if (.not.fabm_is_variable_used(curvariable%interior_id)) then
-            curvariable%horizontal_id = fabm_get_horizontal_variable_id(model,variables(i))
-            variabletype = type_scalar
-         end if
-
-!        If variable still was not found, search scalar [non-spatial] variables.
-         if (.not.(fabm_is_variable_used(curvariable%interior_id).or.fabm_is_variable_used(curvariable%horizontal_id))) then
-            curvariable%scalar_id = fabm_get_scalar_variable_id(model,variables(i))
-            variabletype = type_scalar
-         end if
-
-!        Report an error if the variable was still not found.
-         if (.not.(fabm_is_variable_used(curvariable%interior_id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
-            FATAL 'Variable '//trim(variables(i))//', referenced in namelist observations &
-                  &in '//trim(fname)//', was not found in model.'
-            stop 'gotm_fabm_input:init_gotm_fabm_input'
-         end if
-
-!        Make sure profile and scalar variables are not mixed in the same input file.
-         if (filetype/=type_unknown .and. filetype/=variabletype) then
-            FATAL 'Cannot mix 0d and 1d variables in one observation file, as they require different formats.'
-            stop 'gotm_fabm_input:init_gotm_fabm_input'
-         end if
-         filetype = variabletype
-
-         if (variabletype==type_scalar) then
-            curvariable%scalar_input%name = trim(variables(i))
-            curvariable%scalar_input%path = trim(file)
-            curvariable%scalar_input%index = i
-            curvariable%scalar_input%constant_value = constant_values(i)
-            if (constant_values(i)/=missing_value) then
-               curvariable%scalar_input%method = 0
+            last_variable%scalar_input = type_scalar_input(path=trim(file), index=i, constant_value=constant_values(i))
+            if (constant_values(i) /= missing_value) then
+               last_variable%scalar_input%method = 0
             else
-               curvariable%scalar_input%method = 2
+               last_variable%scalar_input%method = 2
             end if
-            call register_input(curvariable%scalar_input)
-            curvariable%relax_tau_0d = relax_taus(i)
-            if (fabm_is_variable_used(curvariable%horizontal_id)) then
-                ! Horizontal variable
-               call register_observation(curvariable%horizontal_id,curvariable%scalar_input%value,curvariable%relax_tau_0d)
-            else
-                ! Scalar variable
-               call register_observation(curvariable%scalar_id,curvariable%scalar_input%value)
-            end if
-         else
-            curvariable%profile_input%name = trim(variables(i))
-            curvariable%profile_input%path = trim(file)
-            curvariable%profile_input%index = i
-            curvariable%profile_input%constant_value = constant_values(i)
-            if (constant_values(i)/=missing_value) then
-               curvariable%profile_input%method = 0
-            else
-               curvariable%profile_input%method = 2
-            end if
-            allocate(curvariable%profile_input%data(0:nlev))
-            call register_input(curvariable%profile_input)
-
-            allocate(curvariable%relax_tau_1d(0:nlev))
-            curvariable%relax_tau_1d = relax_taus(i)
-
-!           Apply separate relaxation times for bottom and surface layer, if specified.
-            db = _ZERO_
-            ds = depth
-            do k=1,nlev
-               db = db+0.5*h(k)
-               ds = ds-0.5*h(k)
-               if (db<=thicknesses_bot (i)) curvariable%relax_tau_1d(k) = relax_taus_bot(i)
-               if (ds<=thicknesses_surf(i)) curvariable%relax_tau_1d(k) = relax_taus_surf(i)
-               db = db+0.5*h(k)
-               ds = ds-0.5*h(k)
-            end do
-
-!           Register observed variable with the GOTM-FABM driver.
-            call register_observation(curvariable%interior_id,curvariable%profile_input%data,curvariable%relax_tau_1d)
+            last_variable%relax_tau = relax_taus(i)
          end if
 
       end do
@@ -312,11 +298,80 @@
 97 close(namlst)
 
 98 LEVEL1 'done'
-
+   
    return
 
 99 FATAL 'Error reading namelist "observations" from '//trim(fname)
    stop 'gotm_fabm_input:init_gotm_fabm_input'
+
+   end subroutine configure_gotm_fabm_input_from_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialize input
+!
+! !INTERFACE:
+   subroutine init_gotm_fabm_input(nlev,h)
+!
+! !DESCRIPTION:
+!  Initialize files with observations on FABM variables.
+!
+! !USES:
+   use settings
+!
+! !INPUT PARAMETERS:
+   integer,          intent(in) :: nlev
+   REALTYPE,         intent(in) :: h(1:nlev)
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   type (type_input_variable), pointer :: curvariable
+   integer                             :: k
+   REALTYPE                            :: db,ds,depth
+!
+!-----------------------------------------------------------------------
+!BOC
+!  Calculate depth (used to determine whether in surface/bottom/bulk for relaxation times)
+   depth = sum(h)
+
+   curvariable => first_input_variable
+   do while (associated(curvariable))
+      if (fabm_is_variable_used(curvariable%interior_id)) then
+         allocate(curvariable%profile_input%data(0:nlev))
+         call register_input(curvariable%profile_input)
+
+         allocate(curvariable%relax_tau_1d(0:nlev))
+         curvariable%relax_tau_1d = curvariable%relax_tau
+
+!        Apply separate relaxation times for bottom and surface layer, if specified.
+         db = _ZERO_
+         ds = depth
+         do k=1,nlev
+            db = db+0.5*h(k)
+            ds = ds-0.5*h(k)
+            if (db<=curvariable%h_bot) curvariable%relax_tau_1d(k) = curvariable%relax_tau_bot
+            if (ds<=curvariable%h_surf) curvariable%relax_tau_1d(k) = curvariable%relax_tau_surf
+            db = db+0.5*h(k)
+            ds = ds-0.5*h(k)
+         end do
+
+!        Register observed variable with the GOTM-FABM driver.
+         call register_observation(curvariable%interior_id, curvariable%profile_input%data, curvariable%relax_tau_1d)
+      else
+         call register_input(curvariable%scalar_input)
+         if (fabm_is_variable_used(curvariable%horizontal_id)) then
+            ! Horizontal variable
+            call register_observation(curvariable%horizontal_id, curvariable%scalar_input%value, curvariable%relax_tau)
+         else
+            ! Scalar variable
+            call register_observation(curvariable%scalar_id, curvariable%scalar_input%value)
+         end if
+      end if
+      curvariable => curvariable%next
+   end do
 
    end subroutine init_gotm_fabm_input
 !EOC

@@ -37,7 +37,6 @@ contains
       class (type_gotm_settings),  pointer      :: child
 
       class (type_settings),  pointer :: generic_child
-      type (type_yaml_error), pointer :: yaml_error
 
       child => null()
       generic_child => self%get_child(name, long_name)

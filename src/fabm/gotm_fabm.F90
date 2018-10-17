@@ -26,7 +26,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm, post_init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
+   public configure_gotm_fabm, configure_gotm_fabm_from_nml, gotm_fabm_create_model, init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
@@ -43,15 +43,10 @@
    ! Variables below must be accessible for getm_fabm
    public cc_transport
 
-   interface init_gotm_fabm
-      module procedure init_gotm_fabm_nml
-      module procedure init_gotm_fabm_yaml
-   end interface
-
 !
 ! !PUBLIC DATA MEMBERS:
 !  The one and only model
-   class (type_model), pointer, public :: model
+   class (type_model), pointer, save, public :: model => null()
 
    type,extends(type_base_driver) :: type_gotm_driver
    contains
@@ -146,14 +141,14 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm_nml(namlst,fname)
+   subroutine configure_gotm_fabm_from_nml(namlst, fname)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
 ! !INPUT PARAMETERS:
-   integer,                   intent(in)             :: namlst
-   character(len=*),          intent(in)             :: fname
+   integer,          intent(in) :: namlst
+   character(len=*), intent(in) :: fname
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -207,7 +202,7 @@
    stop 'init_gotm_fabm_nml'
    return
 
-   end subroutine init_gotm_fabm_nml
+   end subroutine configure_gotm_fabm_from_nml
 !EOC
 
 !-----------------------------------------------------------------------
@@ -216,7 +211,7 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm_yaml()
+   subroutine configure_gotm_fabm()
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
@@ -277,9 +272,10 @@
    call cfg%get(configuration_method, 'configuration_method', '', &
                 default=-1)
 !KB                minimum=1,maximum=2,default=1)
+
    LEVEL2 'done.'
-   return
-   end subroutine init_gotm_fabm_yaml
+
+   end subroutine configure_gotm_fabm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -288,16 +284,56 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine post_init_gotm_fabm(nlev,namlst,dt,field_manager)
+   subroutine gotm_fabm_create_model(namlst)
+!
+! !INPUT PARAMETERS:
+   integer, intent(in) :: namlst
+
+   logical :: file_exists
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (.not. fabm_calc) return
+
+   ! Provide FABM with an object for communication with host
+   allocate(type_gotm_driver::driver)
+
+   fabm_ready = .false.
+
+   ! Create model tree
+   if (configuration_method==-1) then
+      configuration_method = 1
+      inquire(file='fabm.yaml',exist=file_exists)
+      if (.not.file_exists) then
+         inquire(file='fabm.nml',exist=file_exists)
+         if (file_exists) configuration_method = 0
+      end if
+   end if
+   select case (configuration_method)
+   case (0)
+      ! From namelists in fabm.nml
+      model => fabm_create_model_from_file(namlst)
+   case (1)
+      ! From YAML file fabm.yaml
+      allocate(model)
+      call fabm_create_model_from_yaml_file(model)
+   end select   
+
+   end subroutine
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine init_gotm_fabm(nlev,dt,field_manager)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
-! !USES:
-   IMPLICIT NONE
-!
 ! !INPUT PARAMETERS:
-   integer,                   intent(in)             :: nlev,namlst
+   integer,                   intent(in)             :: nlev
 !   character(len=*),          intent(in)             :: fname
    REALTYPE,optional,         intent(in)             :: dt
    class (type_field_manager),intent(inout),optional :: field_manager
@@ -307,18 +343,13 @@
 !
 !  local variables
    integer :: i
-   logical :: file_exists, in_output
+   logical :: in_output
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'post_init_gotm_fabm'
 
-   nullify(model)
-
    if (fabm_calc) then
-      ! Provide FABM with an object for communication with host
-      allocate(type_gotm_driver::driver)
-
       clock_adv    = 0
       clock_diff   = 0
       clock_source = 0
@@ -326,27 +357,6 @@
       repair_interior_count = 0
       repair_surface_count = 0
       repair_bottom_count = 0
-
-      fabm_ready = .false.
-
-      ! Create model tree
-      if (configuration_method==-1) then
-         configuration_method = 1
-         inquire(file='fabm.yaml',exist=file_exists)
-         if (.not.file_exists) then
-            inquire(file='fabm.nml',exist=file_exists)
-            if (file_exists) configuration_method = 0
-         end if
-      end if
-      select case (configuration_method)
-         case (0)
-            ! From namelists in fabm.nml
-            model => fabm_create_model_from_file(namlst)
-         case (1)
-            ! From YAML file fabm.yaml
-            allocate(model)
-            call fabm_create_model_from_yaml_file(model)
-      end select
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call fabm_set_domain(model,nlev,dt)
@@ -479,9 +489,10 @@
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
       call check_fabm_expressions()
    end if
+
    LEVEL2 'done.'
-   return
-   end subroutine post_init_gotm_fabm
+
+   end subroutine init_gotm_fabm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -1715,6 +1726,7 @@
    nullify(g2)
    nullify(yearday)
    nullify(secondsofday)
+   nullify(model)
 
    LEVEL1 'done.'
 

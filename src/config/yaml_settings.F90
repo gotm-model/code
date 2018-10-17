@@ -51,6 +51,7 @@ module yaml_settings
       procedure :: get_node
       procedure :: split_path
       procedure :: create_child
+      procedure :: populate
       procedure :: get_maximum_depth => settings_get_maximum_depth
       generic :: get => get_real, get_integer, get_logical, get_string
       procedure :: finalize
@@ -578,10 +579,23 @@ contains
       character(len=*),optional, intent(in)    :: long_name
       class (type_settings),  pointer :: child
 
-      type (type_key_value_pair),     pointer :: pair
-      type (type_yaml_error),         pointer :: yaml_error
+      class (type_settings),      pointer :: settings
+      integer                             :: istart
 
-      pair => get_node(self,name)
+      call split_path(self, name, settings, istart)
+      child => get_direct_child(settings, name(istart:), long_name)
+   end function
+
+   function get_direct_child(self, name, long_name) result(child)
+      class (type_settings),     intent(inout) :: self
+      character(len=*),          intent(in)    :: name
+      character(len=*),optional, intent(in)    :: long_name
+      class (type_settings),  pointer :: child
+
+      type (type_key_value_pair), pointer :: pair
+      type (type_yaml_error),     pointer :: yaml_error
+
+      pair => get_node(self, name)
 
       child => null()
       if (associated(pair%node)) then
@@ -602,7 +616,7 @@ contains
          child%backing_store => self%backing_store%get_dictionary(pair%key, required=.false., error=yaml_error)
          if (associated(yaml_error)) call report_error(trim(yaml_error%message))
       end if
-   end function get_child
+   end function get_direct_child
 
    subroutine populate(self, callback)
       class (type_settings), intent(inout) :: self
@@ -703,7 +717,7 @@ contains
       do
          islash = index(path(istart:), '/')
          if (islash == 0) exit
-         settings => settings%get_child(path(istart:istart+islash-2))
+         settings => get_direct_child(settings, path(istart:istart+islash-2))
          istart = istart + islash
       end do
    end subroutine split_path
