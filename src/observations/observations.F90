@@ -51,10 +51,10 @@
 !  'observed' oxygen profile
    type (type_profile_input), public, target :: o2_prof
 
-!  'observed' horizontal salinity  gradients
+!  'observed' horizontal salinity gradients
    type (type_profile_input), public, target :: dsdx,dsdy
 
-!  'observed' horizontal temperarure  gradients
+!  'observed' horizontal temperature gradients
    type (type_profile_input), public, target :: dtdx,dtdy
 
 !  internal horizontal pressure gradients
@@ -142,9 +142,9 @@
    REALTYPE, public          :: phase_2
 
 !  Wind waves - 'wave_nml' namelist
-   type (type_scalar_input), public          :: Hs_
-   type (type_scalar_input), public          :: Tz_
-   type (type_scalar_input), public          :: phiw_
+   type (type_scalar_input), public :: Hs_
+   type (type_scalar_input), public :: Tz_
+   type (type_scalar_input), public :: phiw_
 
 !  Observed velocity profile profiles - typically from ADCP
    integer                   :: vel_prof_method
@@ -748,6 +748,14 @@
 
    LEVEL2 'allocation observation memory..'
 
+   allocate(idpdx(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (idpdx)'
+   idpdx = _ZERO_
+
+   allocate(idpdy(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (idpdy)'
+   idpdy = _ZERO_
+
    allocate(SRelaxTau(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (SRelaxTau)'
    SRelaxTau = _ZERO_
@@ -989,6 +997,8 @@
    LEVEL1 'clean_observations'
 
    LEVEL2 'de-allocate observation memory ...'
+   if (allocated(idpdx)) deallocate(idpdx)
+   if (allocated(idpdy)) deallocate(idpdy)
    if (allocated(SRelaxTau)) deallocate(SRelaxTau)
    if (allocated(TRelaxTau)) deallocate(TRelaxTau)
    LEVEL2 'done.'
