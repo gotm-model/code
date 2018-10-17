@@ -111,7 +111,7 @@
    REALTYPE,target           :: latitude,longitude
    logical                   :: restart
 
-   character(len=1024), public :: yaml_file = ''
+   character(len=1024), public :: yaml_file = 'gotm.yaml'
    character(len=1024), public :: write_yaml_path = ''
    character(len=1024), public :: write_schema_path = ''
    logical, public             :: read_nml = .false.
