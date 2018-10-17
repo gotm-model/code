@@ -101,7 +101,7 @@ add_library(config
             config/yaml_settings.F90
             config/settings.F90
            )
-target_link_libraries(config output_manager)
+target_link_libraries(config output_manager input)
 add_dependencies(config yaml)
 #KBset_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 set(GOTM_LIBS ${GOTM_LIBS} config)
