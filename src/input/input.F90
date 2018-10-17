@@ -202,10 +202,9 @@
    if (nlev==-1) call fatal_error('input::register_profile_input', 'input module has not been initialized without depth information; &
       &depth-explicit inputs can therefore not be registered.')
 
-   allocate(input%data(1:nlev))
-
    call profile_inputs%add(input)
 
+   allocate(input%data(1:nlev))
    if (input%method == input%method_constant) then
       LEVEL2 'Using constant ' // input%name // '= ', input%constant_value
       input%data = input%constant_value
@@ -237,6 +236,8 @@
       end if
       file%path = input%path
       call file%variables%add(input)
+   else
+      input%data = 0
    end if
 
    end subroutine register_profile_input
@@ -301,6 +302,8 @@
       end if
       file%path = input%path
       call file%variables%add(input)
+   else
+      input%value = 0
    end if
 
    end subroutine register_scalar_input
