@@ -282,6 +282,7 @@
             else
                curvariable%profile_input%method = 2
             end if
+            allocate(curvariable%profile_input%data(0:nlev))
             call register_input(curvariable%profile_input)
 
             allocate(curvariable%relax_tau_1d(0:nlev))

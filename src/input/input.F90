@@ -131,8 +131,8 @@
    integer, save :: nlev = -1
 
    interface register_input
-      procedure :: register_scalar_input
-      procedure :: register_profile_input
+      module procedure register_scalar_input
+      module procedure register_profile_input
    end interface
 
    contains
@@ -204,7 +204,7 @@
 
    call profile_inputs%add(input)
 
-   allocate(input%data(1:nlev))
+   if (.not.allocated(input%data)) allocate(input%data(1:nlev))
    if (input%method == input%method_constant) then
       LEVEL2 'Using constant ' // input%name // '= ', input%constant_value
       input%data = input%constant_value
