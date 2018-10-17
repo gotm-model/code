@@ -210,17 +210,17 @@
       LEVEL2 'Using constant ' // input%name // '= ', input%constant_value
       input%data = input%constant_value
    elseif (input%method == input%method_file) then
-      if (input%path=='') call fatal_error('input::register_input_1d', 'Empty file path specified to read variable '//input%name//' from.')
+      if (input%path=='') call fatal_error('input::register_profile_input', 'Empty file path specified to read variable '//input%name//' from.')
+
+      LEVEL2 'Reading ' // input%name // ' from:'
+      LEVEL3 trim(input%path)
+      if (input%scale_factor /= 1) LEVEL3 'applying scale factor = ', input%scale_factor
 
       ! Find a file object for the specified file path; create one if it does exist yet.
       if (.not.associated(first_profile_file)) then
          allocate(first_profile_file)
          file => first_profile_file
       else
-         LEVEL2 'Reading ' // input%name // ' from:'
-         LEVEL3 trim(input%path)
-         if (input%scale_factor /= 1) LEVEL3 'applying scale factor = ', input%scale_factor
-
          file => first_profile_file
          do while (associated(file))
             if (file%path==input%path.and.file%unit==-1) exit
@@ -274,11 +274,11 @@
       LEVEL2 'Using constant ' // input%name // '= ', input%constant_value
       input%value = input%constant_value
    elseif (input%method == input%method_file) then
+      if (input%path=='') call fatal_error('input::register_scalar_input', 'Empty file path specified to read variable '//input%name//' from.')
+
       LEVEL2 'Reading ' // input%name // ' from:'
       LEVEL3 trim(input%path)
       if (input%scale_factor /= 1) LEVEL3 'applying scale factor = ', input%scale_factor
-
-      if (input%path=='') call fatal_error('input::register_input_0d', 'Empty file path specified to read variable '//input%name//' from.')
 
       ! Find a file object for the specified file path; create one if it does exist yet.
       if (.not.associated(first_timeseries_file)) then
