@@ -432,26 +432,12 @@
    read(10,nml=o2_profile,err=92)
    close(10)
 
-   tprof = type_profile_input(method=t_prof_method, path=t_prof_file)
    sprof = type_profile_input(method=s_prof_method, path=s_prof_file)
-   o2_prof = type_profile_input(method=o2_prof_method, path=o2_prof_file)
-   select case (o2_units)
-   case (1) ! mg/l
-      o2_prof%scale_factor=mmol_o2_per_gram
-   case (2) ! ml/l
-      o2_prof%scale_factor=mmol_o2_per_liter
-   end select
-
-   LEVEL2 'done.'
+   tprof = type_profile_input(method=t_prof_method, path=t_prof_file)
 
    h_press = type_scalar_input(method=ext_press_method, path=ext_press_file, index=1, constant_value=PressHeight)
    dpdx = type_scalar_input(method=ext_press_method, path=ext_press_file, index=2, constant_value=PressConstU)
    dpdy = type_scalar_input(method=ext_press_method, path=ext_press_file, index=3, constant_value=PressConstV)
-
-   zeta = type_scalar_input(method=zeta_method, path=zeta_file, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
-
-   uprof = type_profile_input(method=vel_prof_method, path=vel_prof_file, index=1)
-   vprof = type_profile_input(method=vel_prof_method, path=vel_prof_file, index=2)
 
    dsdx = type_profile_input(method=int_press_method, path=int_press_file, index=1, constant_value=const_dsdx)
    dsdy = type_profile_input(method=int_press_method, path=int_press_file, index=2, constant_value=const_dsdy)
@@ -469,7 +455,29 @@
       g2_ = type_scalar_input(method=0, path=extinct_file, index=3, constant_value=g2)
    end if
 
+   w_adv = type_scalar_input(method=w_adv_method, path=w_adv_file, index=1, constant_value=w_adv0)
+   w_height = type_scalar_input(method=w_adv_method, path=w_adv_file, index=2, constant_value=w_adv_height0)
+
+   zeta = type_scalar_input(method=zeta_method, path=zeta_file, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
+
+   Hs_ = type_scalar_input(method=wave_method, path=wave_file, index=1, constant_value=Hs)
+   Tz_ = type_scalar_input(method=wave_method, path=wave_file, index=2, constant_value=Tz)
+   phiw_ = type_scalar_input(method=wave_method, path=wave_file, index=3, constant_value=phiw)
+
+   uprof = type_profile_input(method=vel_prof_method, path=vel_prof_file, index=1)
+   vprof = type_profile_input(method=vel_prof_method, path=vel_prof_file, index=2)
+
    epsprof = type_profile_input(method=e_prof_method, path=e_prof_file, constant_value=e_obs_const)
+
+   o2_prof = type_profile_input(method=o2_prof_method, path=o2_prof_file)
+   select case (o2_units)
+   case (1) ! mg/l
+      o2_prof%scale_factor=mmol_o2_per_gram
+   case (2) ! ml/l
+      o2_prof%scale_factor=mmol_o2_per_liter
+   end select
+
+   LEVEL2 'done.'
 
    return
 
@@ -530,27 +538,27 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
-   class (type_gotm_settings), pointer :: branch, twig
+   class (type_gotm_settings), pointer :: branch, twig, leaf
    integer, parameter             :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_observations_yaml'
 
-   branch => settings_store%get_typed_child('temperature')
-   call branch%get_profile_input(tprof, 'profile', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
-                   extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported)
-   call branch%get(t_analyt_method, 't_analyt_method', '', &
+   call settings_store%get_profile_input(tprof, 'temperature', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
+                   extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
+   twig => branch%get_typed_child('analytical')
+   call twig%get(t_analyt_method, 't_analyt_method', '', &
                    minimum=1,maximum=3,default=1)
-   call branch%get(z_t1, 'z_t1', '', 'm', &
+   call twig%get(z_t1, 'z_t1', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(t_1, 't_1', '', 'Celsius', &
+   call twig%get(t_1, 't_1', '', 'Celsius', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call branch%get(z_t2, 'z_t2', '', 'm', &
+   call twig%get(z_t2, 'z_t2', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(t_2, 't_2', '', 'Celsius', &
+   call twig%get(t_2, 't_2', '', 'Celsius', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call branch%get(t_obs_NN, 't_obs_NN', '', 's^-2', &
+   call twig%get(t_obs_NN, 't_obs_NN', '', 's^-2', &
                    minimum=0._rk,default=0._rk)
    twig => branch%get_typed_child('relaxation')
    call twig%get(TRelaxTauM, 'TRelaxTauM', 'time scale for interior layer', 's', &
@@ -564,20 +572,20 @@
    call twig%get(TRelaxBott, 'TRelaxBott', 'height of bottom relaxation layer', 'm', &
                    minimum=0._rk,default=0._rk)
 
-   branch => settings_store%get_typed_child('salinity')
-   call branch%get_profile_input(sprof, 'profile', 'salinity profile used for initialization and optionally relaxation', 'PSU', &
-                   extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported)
-   call branch%get(s_analyt_method, 's_analyt_method', '', &
+   call settings_store%get_profile_input(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'PSU', &
+                   extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
+   twig => branch%get_typed_child('analytical')
+   call twig%get(s_analyt_method, 's_analyt_method', '', &
                    minimum=1,maximum=3,default=1)
-   call branch%get(z_s1, 'z_s1', '', 'm', &
+   call twig%get(z_s1, 'z_s1', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(s_1, 's_1', '', 'PSU', &
+   call twig%get(s_1, 's_1', '', 'PSU', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call branch%get(z_s2, 'z_s2', '', 'm', &
+   call twig%get(z_s2, 'z_s2', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call branch%get(s_2, 's_2', '', 'PSU', &
+   call twig%get(s_2, 's_2', '', 'PSU', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call branch%get(s_obs_NN, 's_obs_NN', '', 's^-2', &
+   call twig%get(s_obs_NN, 's_obs_NN', '', 's^-2', &
                    minimum=0._rk,default=0._rk)
    twig => branch%get_typed_child('relaxation')
    call twig%get(SRelaxTauM, 'SRelaxTauM', 'time scale for interior layer', 's', &
@@ -591,7 +599,7 @@
    call twig%get(SRelaxBott, 'SRelaxBott', 'height of bottom relaxation layer', 'm', &
                    minimum=0._rk,default=0._rk)
 
-   twig => settings_store%get_typed_child('light')
+   twig => settings_store%get_typed_child('light_extinction')
    call twig%get(extinct_method, 'extinct_method', 'water type', &
                    options=(/type_option(1, 'Jerlov type I'), type_option(2, 'Jerlov type 1 (upper 50 m)'), type_option(3, 'Jerlov type IA'), &
                    type_option(4, 'Jerlov type IB'), type_option(5, 'Jerlov type II'), type_option(6, 'Jerlov type III'), type_option(7, 'custom')/), default=1)
@@ -608,29 +616,29 @@
    call twig%get_scalar_input(h_press, 'h', 'height above bed', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get_scalar_input(dpdx, 'dpdx', 'pressure in x-direction', '', &
+                   default=0._rk, pchild=leaf)
+   call leaf%get(AmpMu, 'AmpMu', '', '-', &
                    default=0._rk)
+   call leaf%get(PhaseMu, 'PhaseMu', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call leaf%get(AmpSu, 'AmpSu', '', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseSu, 'PhaseSu', '', 's', &
+                   minimum=0._rk,default=0._rk)
    call twig%get_scalar_input(dpdy, 'dpdy', 'pressure in y-direction', '', &
+                   default=0._rk, pchild=leaf)
+   call leaf%get(AmpMv, 'AmpMv', '', '-', &
                    default=0._rk)
+   call leaf%get(PhaseMv, 'PhaseMv', '', 's', &
+                   minimum=0._rk,default=0._rk)
+   call leaf%get(AmpSv, 'AmpSv', '', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseSv, 'PhaseSv', '', 's', &
+                   minimum=0._rk,default=0._rk)
    call twig%get(PeriodM, 'PeriodM', '', 's', &
                    default=44714._rk)
-   call twig%get(AmpMu, 'AmpMu', '', '-', &
-                   default=0._rk)
-   call twig%get(AmpMv, 'AmpMv', '', '-', &
-                   default=0._rk)
-   call twig%get(PhaseMu, 'PhaseMu', '', 's', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(PhaseMv, 'PhaseMv', '', 's', &
-                   minimum=0._rk,default=0._rk)
    call twig%get(PeriodS, 'PeriodS', '', 's', &
                    default=43200._rk)
-   call twig%get(AmpSu, 'AmpSu', '', '-', &
-                   default=0._rk)
-   call twig%get(AmpSv, 'AmpSv', '', '-', &
-                   default=0._rk)
-   call twig%get(PhaseSu, 'PhaseSu', '', 's', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(PhaseSv, 'PhaseSv', '', 's', &
-                   minimum=0._rk,default=0._rk)
 
    twig => branch%get_typed_child('int_press', 'internal pressure')
    call twig%get_profile_input(dsdx, 'dsdx', 'salinity gradient: x direction', 'Celsius/m', &
@@ -652,8 +660,7 @@
    call twig%get(w_adv_discr, 'w_adv_discr', '', &
                    minimum=0,maximum=6,default=6)
 
-   twig => branch%get_typed_child('zetaspec', 'surface elevation')
-   call twig%get_scalar_input(zeta, 'zeta', 'surface elevation', 'm', default=0._rk)
+   call branch%get_scalar_input(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, pchild=twig)
    call twig%get(period_1, 'period_1', '', 's', &
                    default=44714._rk)
    call twig%get(amp_1, 'amp_1', '', 'm', &

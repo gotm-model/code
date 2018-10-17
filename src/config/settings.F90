@@ -17,7 +17,7 @@ module settings
       procedure :: get_profile_input
    end type
 
-   type,extends(type_settings) :: type_input_setting
+   type,extends(type_gotm_settings) :: type_input_setting
    end type
 
    type (type_gotm_settings) :: settings_store
@@ -47,7 +47,7 @@ contains
       end select
    end function get_typed_child
 
-   subroutine get_scalar_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file)
+   subroutine get_scalar_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
       class (type_gotm_settings), intent(inout) :: self
       type (type_scalar_input), target         :: target
       character(len=*),          intent(in)    :: name
@@ -59,11 +59,12 @@ contains
       character(len=*),optional, intent(in)    :: description
       type (type_option),optional,intent(in)   :: extra_options(:)
       integer,         optional,  intent(in)   :: method_off, method_constant, method_file
+      class (type_gotm_settings), optional, pointer :: pchild
 
-      call get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file)
+      call get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
    end subroutine
 
-   subroutine get_profile_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file)
+   subroutine get_profile_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
       class (type_gotm_settings), intent(inout) :: self
       type (type_profile_input), target         :: target
       character(len=*),          intent(in)    :: name
@@ -75,11 +76,12 @@ contains
       character(len=*),optional, intent(in)    :: description
       type (type_option),optional,intent(in)   :: extra_options(:)
       integer,         optional,  intent(in)   :: method_off, method_constant, method_file
+      class (type_gotm_settings), optional, pointer :: pchild
 
-      call get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file)
+      call get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
    end subroutine
 
-   subroutine get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file)
+   subroutine get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
       class (type_gotm_settings), intent(inout) :: self
       class (type_input), target                :: target
       character(len=*),           intent(in)    :: name
@@ -91,6 +93,7 @@ contains
       character(len=*),  optional,intent(in)    :: description
       type (type_option),optional,intent(in)    :: extra_options(:)
       integer,           optional,intent(in)    :: method_off, method_constant, method_file
+      class (type_gotm_settings), optional, pointer :: pchild
 
       integer :: default_method
       integer :: noptions
@@ -172,6 +175,7 @@ contains
          call setting%get_real(target%add_offset, 'offset', 'offset to be added to values read from file', units=units, default=0._rk)
       end if
       target%name = setting%path
+      if (present(pchild)) pchild => setting
 
    contains
 
