@@ -243,6 +243,7 @@ add_library(input
             config/settings.F90
            )
 target_link_libraries(input util output_manager)
+target_include_directories(input PRIVATE "${YAML_INCLUDE_DIRS}")
 set(GOTM_LIBS ${GOTM_LIBS} input)
 
 add_library(airsea
