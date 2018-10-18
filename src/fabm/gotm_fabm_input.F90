@@ -59,13 +59,13 @@
    end type
 
 !  PRIVATE DATA MEMBERS
-   type (type_input_variable),pointer :: first_input_variable
+   type (type_input_variable), pointer, save :: first_input_variable => null()
+   type (type_input_variable), pointer, save :: last_input_variable  => null()
 !
 !  PRIVATE PARAMETERS
    integer,parameter :: max_variable_count_per_file = 256
 
    class (type_gotm_settings), pointer :: cfg           => null()
-   type (type_input_variable), pointer :: last_variable => null()
 
    contains
 
@@ -88,49 +88,41 @@
       character(len=*),      intent(in)    :: name
 
       class (type_gotm_settings), pointer :: branch
-      type (type_input_variable), pointer :: curvariable
 
-      if (.not.associated(first_input_variable)) then
-!        This is the first variable in the file: create it at the head of the list.
+      if (.not. associated(first_input_variable)) then
          allocate(first_input_variable)
-         curvariable => first_input_variable
+         last_input_variable => first_input_variable
       else
-!        This is not the first variable in the file: append to previous variable.
-         curvariable => first_input_variable
-         do while (associated(curvariable%next))
-            curvariable => curvariable%next
-         end do
-         allocate(curvariable%next)
-         curvariable => curvariable%next
+         allocate(last_input_variable%next)
+         last_input_variable => last_input_variable%next
       end if
 
 !     First search in pelagic variables
-      curvariable%interior_id = fabm_get_bulk_variable_id(model, name)
+      last_input_variable%interior_id = fabm_get_bulk_variable_id(model, name)
 
-      if (fabm_is_variable_used(curvariable%interior_id)) then
-         call cfg%get_profile_input(curvariable%profile_input, name, trim(curvariable%interior_id%variable%long_name), trim(curvariable%interior_id%variable%units), default=0._rk, pchild=branch)
-         call branch%get_real(curvariable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
-         call branch%get_real(curvariable%relax_tau_bot, 'relax_tau_bot', 'relaxation time scale for bottom layer', 's', minimum=0._rk, default=1.e15_rk)
-         call branch%get_real(curvariable%relax_tau_surf, 'relax_tau_surf', 'relaxation time scale for surface layer', 's', minimum=0._rk, default=1.e15_rk)
-         call branch%get_real(curvariable%h_bot, 'thickness_bot', 'thickness of bottom relaxation layer', 'm', minimum=0._rk, default=0._rk)
-         call branch%get_real(curvariable%h_surf, 'thickness_surf', 'thickness of surface relaxation layer', 'm', minimum=0._rk, default=0._rk)
+      if (fabm_is_variable_used(last_input_variable%interior_id)) then
+         call cfg%get_profile_input(last_input_variable%profile_input, name, trim(last_input_variable%interior_id%variable%long_name), trim(last_input_variable%interior_id%variable%units), default=0._rk, pchild=branch)
+         call branch%get_real(last_input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
+         call branch%get_real(last_input_variable%relax_tau_bot, 'relax_tau_bot', 'relaxation time scale for bottom layer', 's', minimum=0._rk, default=1.e15_rk)
+         call branch%get_real(last_input_variable%relax_tau_surf, 'relax_tau_surf', 'relaxation time scale for surface layer', 's', minimum=0._rk, default=1.e15_rk)
+         call branch%get_real(last_input_variable%h_bot, 'thickness_bot', 'thickness of bottom relaxation layer', 'm', minimum=0._rk, default=0._rk)
+         call branch%get_real(last_input_variable%h_surf, 'thickness_surf', 'thickness of surface relaxation layer', 'm', minimum=0._rk, default=0._rk)
       else
 !        Variable was not found among interior variables. Try variables defined on horizontal slice of model domain (e.g., benthos)
-         curvariable%horizontal_id = fabm_get_horizontal_variable_id(model, name)
-         if (fabm_is_variable_used(curvariable%horizontal_id)) then
-            call cfg%get_scalar_input(curvariable%scalar_input, name, trim(curvariable%horizontal_id%variable%long_name), trim(curvariable%horizontal_id%variable%units), default=0._rk, pchild=branch)
+         last_input_variable%horizontal_id = fabm_get_horizontal_variable_id(model, name)
+         if (fabm_is_variable_used(last_input_variable%horizontal_id)) then
+            call cfg%get_scalar_input(last_input_variable%scalar_input, name, trim(last_input_variable%horizontal_id%variable%long_name), trim(last_input_variable%horizontal_id%variable%units), default=0._rk, pchild=branch)
          else
 !           Variable was not found among interior or horizontal variables. Try global scalars.
-            curvariable%scalar_id = fabm_get_scalar_variable_id(model, name)
-            if (.not. fabm_is_variable_used(curvariable%scalar_id)) then
+            last_input_variable%scalar_id = fabm_get_scalar_variable_id(model, name)
+            if (.not. fabm_is_variable_used(last_input_variable%scalar_id)) then
                FATAL 'Variable '//name//', referenced among FABM inputs was not found in model.'
                stop 'gotm_fabm_input:init_gotm_fabm_input'
             end if
-            call cfg%get_scalar_input(curvariable%scalar_input, name, trim(curvariable%scalar_id%variable%long_name), trim(curvariable%scalar_id%variable%units), default=0._rk, pchild=branch)
+            call cfg%get_scalar_input(last_input_variable%scalar_input, name, trim(last_input_variable%scalar_id%variable%long_name), trim(last_input_variable%scalar_id%variable%units), default=0._rk, pchild=branch)
          end if
-         call branch%get_real(curvariable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
+         call branch%get_real(last_input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
       end if
-      last_variable => curvariable
    end subroutine
 
 !-----------------------------------------------------------------------
@@ -172,10 +164,7 @@
    LEVEL1 'init_gotm_fabm_input'
 
 !  If FABM is not used, return immediately.
-   if (.not.fabm_calc) return
-
-!  Initialize empty lists of observations files.
-   nullify(first_input_variable)
+   if (.not. fabm_calc) return
 
 !  Open the file that contains zero, one or more namelists specifying input observations.
    open(namlst,file=fname,action='read',status='old',err=98)
@@ -264,26 +253,26 @@
          if (variables(i)=='') cycle
 
          call register_fabm_input(cfg, trim(variables(i)))
-         if (fabm_is_variable_used(last_variable%interior_id)) then
-            last_variable%profile_input = type_profile_input(path=trim(file), index=i, constant_value=constant_values(i))
+         if (fabm_is_variable_used(last_input_variable%interior_id)) then
+            last_input_variable%profile_input = type_profile_input(path=trim(file), index=i, constant_value=constant_values(i))
             if (constant_values(i) /= missing_value) then
-               last_variable%profile_input%method = 0
+               last_input_variable%profile_input%method = 0
             else
-               last_variable%profile_input%method = 2
+               last_input_variable%profile_input%method = 2
             end if
-            last_variable%relax_tau = relax_taus(i)
-            last_variable%relax_tau_bot = relax_taus_bot(i)
-            last_variable%relax_tau_surf = relax_taus_surf(i)
-            last_variable%h_bot = thicknesses_bot(i)
-            last_variable%h_surf = thicknesses_surf(i)
+            last_input_variable%relax_tau = relax_taus(i)
+            last_input_variable%relax_tau_bot = relax_taus_bot(i)
+            last_input_variable%relax_tau_surf = relax_taus_surf(i)
+            last_input_variable%h_bot = thicknesses_bot(i)
+            last_input_variable%h_surf = thicknesses_surf(i)
          else
-            last_variable%scalar_input = type_scalar_input(path=trim(file), index=i, constant_value=constant_values(i))
+            last_input_variable%scalar_input = type_scalar_input(path=trim(file), index=i, constant_value=constant_values(i))
             if (constant_values(i) /= missing_value) then
-               last_variable%scalar_input%method = 0
+               last_input_variable%scalar_input%method = 0
             else
-               last_variable%scalar_input%method = 2
+               last_input_variable%scalar_input%method = 2
             end if
-            last_variable%relax_tau = relax_taus(i)
+            last_input_variable%relax_tau = relax_taus(i)
          end if
 
       end do
