@@ -155,6 +155,7 @@
    REALTYPE,dimension(max_variable_count_per_file) :: constant_values
    logical                      :: file_exists
    REALTYPE, parameter          :: missing_value = huge(_ONE_)
+   integer                      :: method
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
                            relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot, &
                            constant_value
@@ -252,26 +253,19 @@
 !        If this variable is not used, skip to the next.
          if (variables(i)=='') cycle
 
+         method = 2
+         if (constant_values(i) /= missing_value) method = 0
+
          call register_fabm_input(cfg, trim(variables(i)))
          if (fabm_is_variable_used(last_input_variable%interior_id)) then
-            last_input_variable%profile_input = type_profile_input(path=trim(file), index=i, constant_value=constant_values(i))
-            if (constant_values(i) /= missing_value) then
-               last_input_variable%profile_input%method = 0
-            else
-               last_input_variable%profile_input%method = 2
-            end if
+            last_input_variable%profile_input = type_profile_input(method=method, path=trim(file), index=i, constant_value=constant_values(i))
             last_input_variable%relax_tau = relax_taus(i)
             last_input_variable%relax_tau_bot = relax_taus_bot(i)
             last_input_variable%relax_tau_surf = relax_taus_surf(i)
             last_input_variable%h_bot = thicknesses_bot(i)
             last_input_variable%h_surf = thicknesses_surf(i)
          else
-            last_input_variable%scalar_input = type_scalar_input(path=trim(file), index=i, constant_value=constant_values(i))
-            if (constant_values(i) /= missing_value) then
-               last_input_variable%scalar_input%method = 0
-            else
-               last_input_variable%scalar_input%method = 2
-            end if
+            last_input_variable%scalar_input = type_scalar_input(method=method, path=trim(file), index=i, constant_value=constant_values(i))
             last_input_variable%relax_tau = relax_taus(i)
          end if
 
