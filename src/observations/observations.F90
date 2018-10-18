@@ -432,44 +432,44 @@
    read(10,nml=o2_profile,err=92)
    close(10)
 
-   sprof = type_profile_input(method=s_prof_method, path=s_prof_file)
-   tprof = type_profile_input(method=t_prof_method, path=t_prof_file)
+   call sprof%configure(method=s_prof_method, path=s_prof_file, index=1)
+   call tprof%configure(method=t_prof_method, path=t_prof_file, index=1)
 
-   h_press = type_scalar_input(method=ext_press_method, path=ext_press_file, index=1, constant_value=PressHeight)
-   dpdx = type_scalar_input(method=ext_press_method, path=ext_press_file, index=2, constant_value=PressConstU)
-   dpdy = type_scalar_input(method=ext_press_method, path=ext_press_file, index=3, constant_value=PressConstV)
+   call h_press%configure(method=ext_press_method, path=ext_press_file, index=1, constant_value=PressHeight)
+   call dpdx%configure(method=ext_press_method, path=ext_press_file, index=2, constant_value=PressConstU)
+   call dpdy%configure(method=ext_press_method, path=ext_press_file, index=3, constant_value=PressConstV)
 
-   dsdx = type_profile_input(method=int_press_method, path=int_press_file, index=1, constant_value=const_dsdx)
-   dsdy = type_profile_input(method=int_press_method, path=int_press_file, index=2, constant_value=const_dsdy)
-   dtdx = type_profile_input(method=int_press_method, path=int_press_file, index=3, constant_value=const_dtdx)
-   dtdy = type_profile_input(method=int_press_method, path=int_press_file, index=4, constant_value=const_dtdy)
+   call dsdx%configure(method=int_press_method, path=int_press_file, index=1, constant_value=const_dsdx)
+   call dsdy%configure(method=int_press_method, path=int_press_file, index=2, constant_value=const_dsdy)
+   call dtdx%configure(method=int_press_method, path=int_press_file, index=3, constant_value=const_dtdx)
+   call dtdy%configure(method=int_press_method, path=int_press_file, index=4, constant_value=const_dtdy)
 
    if (extinct_method == 0) then
       extinct_method = 7
-      A_ = type_scalar_input(method=2, path=extinct_file, index=1, constant_value=A)
-      g1_ = type_scalar_input(method=2, path=extinct_file, index=2, constant_value=g1)
-      g2_ = type_scalar_input(method=2, path=extinct_file, index=3, constant_value=g2)
+      call A_%configure(method=2, path=extinct_file, index=1, constant_value=A)
+      call g1_%configure(method=2, path=extinct_file, index=2, constant_value=g1)
+      call g2_%configure(method=2, path=extinct_file, index=3, constant_value=g2)
    else
-      A_ = type_scalar_input(method=0, path=extinct_file, index=1, constant_value=A)
-      g1_ = type_scalar_input(method=0, path=extinct_file, index=2, constant_value=g1)
-      g2_ = type_scalar_input(method=0, path=extinct_file, index=3, constant_value=g2)
+      call A_%configure(method=0, path=extinct_file, index=1, constant_value=A)
+      call g1_%configure(method=0, path=extinct_file, index=2, constant_value=g1)
+      call g2_%configure(method=0, path=extinct_file, index=3, constant_value=g2)
    end if
 
-   w_adv = type_scalar_input(method=w_adv_method, path=w_adv_file, index=1, constant_value=w_adv0)
-   w_height = type_scalar_input(method=w_adv_method, path=w_adv_file, index=2, constant_value=w_adv_height0)
+   call w_adv%configure(method=w_adv_method, path=w_adv_file, index=1, constant_value=w_adv0)
+   call w_height%configure(method=w_adv_method, path=w_adv_file, index=2, constant_value=w_adv_height0)
 
-   zeta = type_scalar_input(method=zeta_method, path=zeta_file, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
+   call zeta%configure(method=zeta_method, path=zeta_file, index=1, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
 
-   Hs_ = type_scalar_input(method=wave_method, path=wave_file, index=1, constant_value=Hs)
-   Tz_ = type_scalar_input(method=wave_method, path=wave_file, index=2, constant_value=Tz)
-   phiw_ = type_scalar_input(method=wave_method, path=wave_file, index=3, constant_value=phiw)
+   call Hs_%configure(method=wave_method, path=wave_file, index=1, constant_value=Hs)
+   call Tz_%configure(method=wave_method, path=wave_file, index=2, constant_value=Tz)
+   call phiw_%configure(method=wave_method, path=wave_file, index=3, constant_value=phiw)
 
-   uprof = type_profile_input(method=vel_prof_method, path=vel_prof_file, index=1)
-   vprof = type_profile_input(method=vel_prof_method, path=vel_prof_file, index=2)
+   call uprof%configure(method=vel_prof_method, path=vel_prof_file, index=1)
+   call vprof%configure(method=vel_prof_method, path=vel_prof_file, index=2)
 
-   epsprof = type_profile_input(method=e_prof_method, path=e_prof_file, constant_value=e_obs_const)
+   call epsprof%configure(method=e_prof_method, path=e_prof_file, index=1, constant_value=e_obs_const)
 
-   o2_prof = type_profile_input(method=o2_prof_method, path=o2_prof_file)
+   call o2_prof%configure(method=o2_prof_method, path=o2_prof_file, index=1)
    select case (o2_units)
    case (1) ! mg/l
       o2_prof%scale_factor=mmol_o2_per_gram

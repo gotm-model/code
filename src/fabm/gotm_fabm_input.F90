@@ -258,14 +258,14 @@
 
          call register_fabm_input(cfg, trim(variables(i)))
          if (fabm_is_variable_used(last_input_variable%interior_id)) then
-            last_input_variable%profile_input = type_profile_input(method=method, path=trim(file), index=i, constant_value=constant_values(i))
+            call last_input_variable%profile_input%configure(method=method, path=trim(file), index=i, constant_value=constant_values(i))
             last_input_variable%relax_tau = relax_taus(i)
             last_input_variable%relax_tau_bot = relax_taus_bot(i)
             last_input_variable%relax_tau_surf = relax_taus_surf(i)
             last_input_variable%h_bot = thicknesses_bot(i)
             last_input_variable%h_surf = thicknesses_surf(i)
          else
-            last_input_variable%scalar_input = type_scalar_input(method=method, path=trim(file), index=i, constant_value=constant_values(i))
+            call last_input_variable%scalar_input%configure(method=method, path=trim(file), index=i, constant_value=constant_values(i))
             last_input_variable%relax_tau = relax_taus(i)
          end if
 

@@ -325,22 +325,22 @@
    read(10,nml=airsea,err=91)
    close(10)
 
-   I_0 = type_scalar_input(method=swr_method, path=swr_file, constant_value=const_swr, scale_factor=swr_factor)
+   call I_0%configure(method=swr_method, path=swr_file, index=1, constant_value=const_swr, scale_factor=swr_factor)
 
-   u10 = type_scalar_input(method=2, path=meteo_file, index=1, scale_factor=wind_factor)
-   v10 = type_scalar_input(method=2, path=meteo_file, index=2, scale_factor=wind_factor)
-   airp = type_scalar_input(method=2, path=meteo_file, index=3, scale_factor=100.d0)
-   airt = type_scalar_input(method=2, path=meteo_file, index=4)
-   hum = type_scalar_input(method=2, path=meteo_file, index=5)
-   cloud = type_scalar_input(method=2, path=meteo_file, index=6)
+   call u10%configure(method=2, path=meteo_file, index=1, scale_factor=wind_factor)
+   call v10%configure(method=2, path=meteo_file, index=2, scale_factor=wind_factor)
+   call airp%configure(method=2, path=meteo_file, index=3, scale_factor=100.d0)
+   call airt%configure(method=2, path=meteo_file, index=4)
+   call hum%configure(method=2, path=meteo_file, index=5)
+   call cloud%configure(method=2, path=meteo_file, index=6)
 
-   tx = type_scalar_input(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
-   ty = type_scalar_input(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
-   heat = type_scalar_input(method=heat_method, path=heatflux_file, scale_factor=shf_factor, constant_value=const_heat)
-   qb = type_scalar_input(method=back_radiation_method, path=back_radiation_file)
-   sst_obs = type_scalar_input(method=sst_method,path=sst_file)
-   sss = type_scalar_input(method=sss_method,path=sss_file)
-   precip = type_scalar_input(method=precip_method, path=precip_file, scale_factor=precip_factor, constant_value=const_precip)
+   call tx%configure(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
+   call ty%configure(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
+   call heat%configure(method=heat_method, path=heatflux_file, index=1, scale_factor=shf_factor, constant_value=const_heat)
+   call qb%configure(method=back_radiation_method, path=back_radiation_file, index=1)
+   call sst_obs%configure(method=sst_method, path=sst_file, index=1)
+   call sss%configure(method=sss_method, path=sss_file, index=1)
+   call precip%configure(method=precip_method, path=precip_file, index=1, scale_factor=precip_factor, constant_value=const_precip)
 
    LEVEL2 'done'
    return

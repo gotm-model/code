@@ -44,6 +44,8 @@
       integer                       :: method_off = method_unsupported
       integer                       :: method_constant = 0
       integer                       :: method_file = 2
+   contains
+      procedure :: configure
    end type
 
 !  Information on an observed variable
@@ -137,6 +139,20 @@
 
    contains
 
+   subroutine configure(self, method, path, index, constant_value, scale_factor, add_offset)
+      class (type_input), intent(inout) :: self
+      integer, optional :: method, index
+      character(len=*), optional :: path
+      REALTYPE, optional :: constant_value, scale_factor, add_offset
+
+      if (present(method)) self%method = method
+      if (present(path)) self%path = path
+      if (present(index)) self%index = index
+      if (present(constant_value)) self%constant_value = constant_value
+      if (present(scale_factor)) self%scale_factor = scale_factor
+      if (present(add_offset)) self%add_offset = add_offset
+   end subroutine
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -197,7 +213,7 @@
 !-----------------------------------------------------------------------
 !BOC
    if (.not.allocated(input%name)) &
-      call fatal_error('input::register_scalar_input', 'input has not had a name assigned')
+      call fatal_error('input::register_profile_input', 'input has not had a name assigned')
 
    if (nlev==-1) call fatal_error('input::register_profile_input', 'input module has not been initialized without depth information; &
       &depth-explicit inputs can therefore not be registered.')
