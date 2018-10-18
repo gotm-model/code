@@ -273,7 +273,8 @@
    branch => settings_store%get_child('turbulence')
    call init_turbulence(branch)
 #ifdef _FABM_
-   call configure_gotm_fabm()
+   branch => settings_store%get_typed_child('fabm')
+   call configure_gotm_fabm(branch)
 #endif
    call init_meanflow()
    branch => settings_store%get_child('eqstate')

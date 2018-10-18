@@ -211,16 +211,17 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine configure_gotm_fabm()
+   subroutine configure_gotm_fabm(cfg)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 
 ! !USES:
-   use settings
+   use yaml_settings
 !
 ! !INPUT PARAMETERS:
-   type (type_gotm_settings), pointer :: cfg, branch
+   class (type_settings), intent(inout) :: cfg
+   type (type_settings), pointer :: branch
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -233,14 +234,12 @@
 !BOC
    LEVEL1 'init_gotm_fabm_yaml'
 
-   cfg => settings_store%get_typed_child('fabm')
-
    ! Initialize all namelist variables to reasonable default values.
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
    call cfg%get(repair_state, 'repair_state', 'clip state to minimum/maximum boundaries', &
                 default=.false.)
-   branch => cfg%get_typed_child('numerics')
+   branch => cfg%get_child('numerics')
    call branch%get(ode_method, 'ode_method', 'time integration scheme applied to source terms', &
                 minimum=1,maximum=11,default=1)
    call branch%get(split_factor, 'split_factor', 'number of substeps used for source integration', &
@@ -249,7 +248,7 @@
                 minimum=1,maximum=6,default=6)
    call branch%get(cnpar, 'cnpar', '"explicitness" of diffusion scheme', '1', &
                 minimum=0._rk,default=1._rk)
-   branch => cfg%get_typed_child('feedbacks', 'feedbacks to physics')
+   branch => cfg%get_child('feedbacks', 'feedbacks to physics')
    call branch%get(bioshade_feedback, 'bioshade_feedback', 'interior light absorption', &
                 default=.false.)
    call branch%get(bioalbedo_feedback, 'bioalbedo_feedback', 'surface albedo', &
@@ -262,7 +261,7 @@
 #else
    salinity_relaxation_to_freshwater_flux = .false.
 #endif
-   branch => cfg%get_typed_child('debug')
+   branch => cfg%get_child('debug')
    call branch%get(no_precipitation_dilution, 'no_precipitation_dilution', 'disable dilution/concentration by net freshwater flux', &
                 default=.false.) ! useful to check mass conservation
    call branch%get(no_surface, 'no_surface', 'disable surface processes', &
