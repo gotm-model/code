@@ -65,7 +65,8 @@
    type type_scalar_input_list
       type (type_scalar_input_node), pointer :: first => null()
    contains
-      procedure :: add => scalar_input_list_add
+      procedure :: add      => scalar_input_list_add
+      procedure :: finalize => scalar_input_list_finalize
    end type
 
    type type_profile_input_node
@@ -76,7 +77,8 @@
    type type_profile_input_list
       type (type_profile_input_node), pointer :: first => null()
    contains
-      procedure :: add => profile_input_list_add
+      procedure :: add      => profile_input_list_add
+      procedure :: finalize => profile_input_list_finalize
    end type
 
 !  Information on file with observed profiles
@@ -341,7 +343,7 @@
       end if
       node%p => input
    end subroutine
-
+   
    subroutine profile_input_list_add(self, input)
       class(type_profile_input_list), intent(inout) :: self
       type(type_profile_input), target              :: input
@@ -360,6 +362,34 @@
          node => self%first
       end if
       node%p => input
+   end subroutine
+
+   subroutine scalar_input_list_finalize(self)
+      class(type_scalar_input_list), intent(inout) :: self
+
+      type(type_scalar_input_node), pointer :: node, next_node
+
+      node => self%first
+      do while (associated(node))
+         next_node => node%next
+         deallocate(node)
+         node => next_node
+      end do
+      self%first => null()
+   end subroutine
+
+   subroutine profile_input_list_finalize(self)
+      class(type_profile_input_list), intent(inout) :: self
+
+      type(type_profile_input_node), pointer :: node, next_node
+
+      node => self%first
+      do while (associated(node))
+         next_node => node%next
+         deallocate(node)
+         node => next_node
+      end do
+      self%first => null()
    end subroutine
 
 !-----------------------------------------------------------------------
@@ -738,12 +768,7 @@
 
    profile_file => first_profile_file
    do while (associated(profile_file))
-      curvar_1d => profile_file%variables%first
-      do while (associated(curvar_1d))
-         nextvar_1d => curvar_1d%next
-         deallocate(curvar_1d)
-         curvar_1d => nextvar_1d
-      end do
+      call profile_file%variables%finalize()
 
       next_profile_file => profile_file%next
       if (profile_file%unit/=-1) close(profile_file%unit)
@@ -758,12 +783,7 @@
 
    timeseries_file => first_timeseries_file
    do while (associated(timeseries_file))
-      curvar_0d => timeseries_file%variables%first
-      do while (associated(curvar_0d))
-         nextvar_0d => curvar_0d%next
-         deallocate(curvar_0d)
-         curvar_0d => nextvar_0d
-      end do
+      call timeseries_file%variables%finalize()
 
       next_scalar_file => timeseries_file%next
       if (timeseries_file%unit/=-1) close(timeseries_file%unit)
@@ -775,6 +795,9 @@
       timeseries_file => next_scalar_file
    end do
    nullify(first_timeseries_file)
+
+   call scalar_inputs%finalize()
+   call profile_inputs%finalize()
 
    next_unit_no = first_unit_no
    nlev = -1
