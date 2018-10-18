@@ -232,7 +232,7 @@ add_library(output_manager
             output/text_output.F90
             )
 target_link_libraries(output_manager util config ${YAML_LIBRARIES})
-target_include_directories(config PRIVATE "${YAML_INCLUDE_DIRS}")
+target_include_directories(output_manager PRIVATE "${YAML_INCLUDE_DIRS}")
 set(GOTM_LIBS ${GOTM_LIBS} output_manager)
 
 if(NOT GOTM_BUILD_LIBRARIES_ONLY)
