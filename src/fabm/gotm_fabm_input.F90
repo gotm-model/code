@@ -16,9 +16,9 @@
 !  variables.
 !
 ! !USES:
-   use fabm, only: fabm_get_bulk_variable_id,fabm_get_horizontal_variable_id,fabm_get_scalar_variable_id,fabm_is_variable_used
+   use fabm, only: fabm_get_bulk_variable_id,fabm_get_horizontal_variable_id,fabm_get_scalar_variable_id,fabm_is_variable_used,fabm_get_variable_name
    use fabm,only: type_bulk_variable_id,type_horizontal_variable_id,type_scalar_variable_id
-   use fabm_types, only:rk
+   use fabm_types, only:rk, attribute_length
    use gotm_fabm,only:fabm_calc,model,cc,register_observation
    use input,only: register_input, type_scalar_input, type_profile_input
    use settings
@@ -88,6 +88,7 @@
       character(len=*),      intent(in)    :: name
 
       class (type_gotm_settings), pointer :: branch
+      character(len=attribute_length)     :: fabm_name
       integer :: i
 
       if (.not. associated(first_input_variable)) then
@@ -102,9 +103,10 @@
       last_input_variable%interior_id = fabm_get_bulk_variable_id(model, name)
 
       if (fabm_is_variable_used(last_input_variable%interior_id)) then
-         call cfg%get_profile_input(last_input_variable%profile_input, name, trim(last_input_variable%interior_id%variable%long_name), trim(last_input_variable%interior_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
+         fabm_name = fabm_get_variable_name(model, last_input_variable%interior_id)
+         call cfg%get_profile_input(last_input_variable%profile_input, trim(fabm_name), trim(last_input_variable%interior_id%variable%long_name), trim(last_input_variable%interior_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
          do i = 1, size(model%state_variables)
-            if (last_input_variable%profile_input%name == model%state_variables(i)%name) then
+            if (fabm_name == model%state_variables(i)%name) then
                call branch%get_real(last_input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
                call branch%get_real(last_input_variable%relax_tau_bot, 'relax_tau_bot', 'relaxation time scale for bottom layer', 's', minimum=0._rk, default=1.e15_rk)
                call branch%get_real(last_input_variable%relax_tau_surf, 'relax_tau_surf', 'relaxation time scale for surface layer', 's', minimum=0._rk, default=1.e15_rk)
@@ -117,9 +119,10 @@
 !        Variable was not found among interior variables. Try variables defined on horizontal slice of model domain (e.g., benthos)
          last_input_variable%horizontal_id = fabm_get_horizontal_variable_id(model, name)
          if (fabm_is_variable_used(last_input_variable%horizontal_id)) then
-            call cfg%get_scalar_input(last_input_variable%scalar_input, name, trim(last_input_variable%horizontal_id%variable%long_name), trim(last_input_variable%horizontal_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
+            fabm_name = fabm_get_variable_name(model, last_input_variable%horizontal_id)
+            call cfg%get_scalar_input(last_input_variable%scalar_input, trim(fabm_name), trim(last_input_variable%horizontal_id%variable%long_name), trim(last_input_variable%horizontal_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
             do i = 1, size(model%bottom_state_variables)
-               if (last_input_variable%profile_input%name == model%bottom_state_variables(i)%name) then
+               if (fabm_name == model%bottom_state_variables(i)%name) then
                   call branch%get_real(last_input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
                   exit
                end if
@@ -131,7 +134,8 @@
                FATAL 'Variable '//name//', referenced among FABM inputs was not found in model.'
                stop 'gotm_fabm_input:init_gotm_fabm_input'
             end if
-            call cfg%get_scalar_input(last_input_variable%scalar_input, name, trim(last_input_variable%scalar_id%variable%long_name), trim(last_input_variable%scalar_id%variable%units), default=0._rk, pchild=branch)
+            fabm_name = fabm_get_variable_name(model, last_input_variable%scalar_id)
+            call cfg%get_scalar_input(last_input_variable%scalar_input, trim(fabm_name), trim(last_input_variable%scalar_id%variable%long_name), trim(last_input_variable%scalar_id%variable%units), default=0._rk, pchild=branch)
          end if
       end if
    end subroutine
