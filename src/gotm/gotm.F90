@@ -270,12 +270,14 @@
    LEVEL2 'configuring modules ....'
    call init_airsea()
    call init_observations()
-   call init_turbulence()
+   branch => settings_store%get_child('turbulence')
+   call init_turbulence(branch)
 #ifdef _FABM_
    call configure_gotm_fabm()
 #endif
    call init_meanflow()
-   call init_eqstate()
+   branch => settings_store%get_child('eqstate')
+   call init_eqstate(branch)
 
    call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
                            options=(/type_option(1, 'equation of state'), type_option(2, 'prognostic equation')/), default=1)

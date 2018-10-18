@@ -99,9 +99,8 @@ include_directories(BEFORE
 
 add_library(config
             config/yaml_settings.F90
-            config/settings.F90
            )
-target_link_libraries(config output_manager input)
+target_link_libraries(config output_manager)
 add_dependencies(config yaml)
 #KBset_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 set(GOTM_LIBS ${GOTM_LIBS} config)
@@ -246,6 +245,7 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 add_library(input
             input/input.F90
             input/input_netcdf.F90
+            config/settings.F90
            )
 target_link_libraries(input util output_manager)
 set(GOTM_LIBS ${GOTM_LIBS} input)

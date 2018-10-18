@@ -513,7 +513,7 @@
 ! !IROUTINE: Initialise the turbulence module
 !
 ! !INTERFACE:
-   subroutine init_turbulence_yaml()
+   subroutine init_turbulence_yaml(branch)
 !
 ! !DESCRIPTION:
 ! Initialises all turbulence related stuff. This routine reads a number
@@ -534,10 +534,11 @@
 ! results on the screen.
 !
 ! !USES:
-   use settings
+   use yaml_settings
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   class (type_settings), intent(inout) :: branch
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -545,7 +546,7 @@
 !                      Lars Umlauf
 !
 ! !LOCAL VARIABLES:
-   class (type_settings), pointer :: branch, twig
+   class (type_settings), pointer :: twig
    integer, parameter :: rk = kind(_ONE_)
    integer                            :: rc
 !EOP
@@ -553,7 +554,6 @@
 !BOC
    LEVEL1 'init_turbulence_yaml'
 
-   branch => settings_store%get_child('turbulence')
    call branch%get(turb_method, 'turb_method', '', &
                    minimum=0,default=3)
    call branch%get(tke_method, 'tke_method', '', &

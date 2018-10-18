@@ -120,15 +120,16 @@
 ! !IROUTINE: Read the yaml configuration {\tt eqstate}
 !
 ! !INTERFACE:
-   subroutine init_eqstate_yaml()
+   subroutine init_eqstate_yaml(branch)
 !
 ! !DESCRIPTION:
 !
 ! !USES:
-   use settings
+   use yaml_settings
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   class (type_settings), intent(inout) :: branch
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -136,13 +137,11 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   class (type_settings), pointer :: branch
    integer, parameter :: rk = kind(_ONE_)
 !
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_eqstate_yaml'
-   branch => settings_store%get_child('eqstate')
    call branch%get(eq_state_mode, 'eq_state_mode', '', &
                    minimum=1,maximum=2,default=2)
    call branch%get(eq_state_method, 'eq_state_method', '', &
