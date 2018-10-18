@@ -13,8 +13,8 @@ module settings
    contains
       procedure :: create_child
       procedure :: get_typed_child
-      procedure :: get_scalar_input
-      procedure :: get_profile_input
+      procedure :: get_scalar_input => get_input
+      procedure :: get_profile_input => get_input
    end type
 
    type,extends(type_gotm_settings) :: type_input_setting
@@ -46,41 +46,7 @@ contains
       end select
    end function get_typed_child
 
-   subroutine get_scalar_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
-      class (type_gotm_settings), intent(inout) :: self
-      type (type_scalar_input), target         :: target
-      character(len=*),          intent(in)    :: name
-      character(len=*),          intent(in)    :: long_name
-      character(len=*),          intent(in)    :: units
-      real(rk),        optional, intent(in)    :: default
-      real(rk),        optional, intent(in)    :: minimum
-      real(rk),        optional, intent(in)    :: maximum
-      character(len=*),optional, intent(in)    :: description
-      type (type_option),optional,intent(in)   :: extra_options(:)
-      integer,         optional,  intent(in)   :: method_off, method_constant, method_file
-      class (type_gotm_settings), optional, pointer :: pchild
-
-      call get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
-   end subroutine
-
-   subroutine get_profile_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
-      class (type_gotm_settings), intent(inout) :: self
-      type (type_profile_input), target         :: target
-      character(len=*),          intent(in)    :: name
-      character(len=*),          intent(in)    :: long_name
-      character(len=*),          intent(in)    :: units
-      real(rk),        optional, intent(in)    :: default
-      real(rk),        optional, intent(in)    :: minimum
-      real(rk),        optional, intent(in)    :: maximum
-      character(len=*),optional, intent(in)    :: description
-      type (type_option),optional,intent(in)   :: extra_options(:)
-      integer,         optional,  intent(in)   :: method_off, method_constant, method_file
-      class (type_gotm_settings), optional, pointer :: pchild
-
-      call get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
-   end subroutine
-
-   subroutine get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild)
+   subroutine get_input(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path)
       class (type_gotm_settings), intent(inout) :: self
       class (type_input), target                :: target
       character(len=*),           intent(in)    :: name
@@ -92,6 +58,7 @@ contains
       character(len=*),  optional,intent(in)    :: description
       type (type_option),optional,intent(in)    :: extra_options(:)
       integer,           optional,intent(in)    :: method_off, method_constant, method_file
+      logical,           optional,intent(in)    :: treat_as_path
       class (type_gotm_settings), optional, pointer :: pchild
 
       integer :: default_method
@@ -106,7 +73,7 @@ contains
       type (type_yaml_error),     pointer :: yaml_error
       logical                             :: success
 
-      call self%split_path(name, settings, istart)
+      call self%split_path(name, settings, istart, treat_as_path)
       
       setting => get_setting(settings, name(istart:))
       setting%long_name = long_name

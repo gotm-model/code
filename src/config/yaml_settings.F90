@@ -573,29 +573,21 @@ contains
       allocate(child)
    end function create_child
 
-   function get_child(self, name, long_name) result(child)
-      class (type_settings),     intent(inout) :: self
-      character(len=*),          intent(in)    :: name
-      character(len=*),optional, intent(in)    :: long_name
+   recursive function get_child(self, name, long_name, treat_as_path) result(child)
+      class (type_settings), target, intent(inout) :: self
+      character(len=*),              intent(in)    :: name
+      character(len=*),optional,     intent(in)    :: long_name
+      logical, optional,             intent(in)    :: treat_as_path
       class (type_settings),  pointer :: child
 
-      class (type_settings),      pointer :: settings
+      logical :: treat_as_path_
+      class (type_settings),      pointer :: parent
       integer                             :: istart
-
-      call split_path(self, name, settings, istart)
-      child => get_direct_child(settings, name(istart:), long_name)
-   end function
-
-   function get_direct_child(self, name, long_name) result(child)
-      class (type_settings),     intent(inout) :: self
-      character(len=*),          intent(in)    :: name
-      character(len=*),optional, intent(in)    :: long_name
-      class (type_settings),  pointer :: child
-
       type (type_key_value_pair), pointer :: pair
       type (type_yaml_error),     pointer :: yaml_error
 
-      pair => get_node(self, name)
+      call split_path(self, name, parent, istart, treat_as_path)
+      pair => get_node(parent, name(istart:))
 
       child => null()
       if (associated(pair%node)) then
@@ -607,16 +599,16 @@ contains
          end select
       end if
       if (.not.associated(child)) then
-         child => self%create_child()
+         child => parent%create_child()
          pair%node => child
       end if
-      child%path = trim(self%path)//'/'//name
+      child%path = trim(parent%path)//'/'//name(istart:)
       if (present(long_name)) child%long_name = long_name
-      if (associated(self%backing_store)) then
-         child%backing_store => self%backing_store%get_dictionary(pair%key, required=.false., error=yaml_error)
+      if (associated(parent%backing_store)) then
+         child%backing_store => parent%backing_store%get_dictionary(pair%key, required=.false., error=yaml_error)
          if (associated(yaml_error)) call report_error(trim(yaml_error%message))
       end if
-   end function get_direct_child
+   end function get_child
 
    subroutine populate(self, callback)
       class (type_settings), intent(inout) :: self
@@ -704,20 +696,27 @@ contains
       stop 1
    end subroutine report_error
 
-   subroutine split_path(self, path, settings, istart)
+   subroutine split_path(self, path, settings, istart, treat_as_path)
       class (type_settings), target      :: self
       character(len=*),      intent(in)  :: path
       class (type_settings), pointer     :: settings
       integer,               intent(out) :: istart
+      logical, optional,     intent(in)  :: treat_as_path
 
+      logical :: treat_as_path_
       integer :: islash
 
       istart = 1
       settings => self
+
+      treat_as_path_ = .true.
+      if (present(treat_as_path)) treat_as_path_ = treat_as_path
+      if (.not. treat_as_path_) return
+
       do
          islash = index(path(istart:), '/')
          if (islash == 0) exit
-         settings => get_direct_child(settings, path(istart:istart+islash-2))
+         settings => get_child(settings, path(istart:istart+islash-2), treat_as_path=.false.)
          istart = istart + islash
       end do
    end subroutine split_path
