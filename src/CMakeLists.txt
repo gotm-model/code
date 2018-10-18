@@ -134,7 +134,7 @@ add_library(config
            )
 if(GOTM_USE_FABM)
   target_link_libraries(config ${FABM_LIBRARIES})
-  set_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  target_include_directories(config PUBLIC "${FABM_INCLUDE_DIRS}")
 endif()
 set(GOTM_LIBS ${GOTM_LIBS} config)
 
