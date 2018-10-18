@@ -121,6 +121,8 @@ if(GOTM_USE_FABM)
   set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm)
   set(EXTERNAL_LIBS ${FABM_LIBRARIES})
+  set(YAML_INCLUDE_DIRS "${FABM_INCLUDE_DIRS}")
+  set(YAML_LIBRARIES "${FABM_LIBRARIES}")
 else()
   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
   add_subdirectory(yaml)
@@ -132,10 +134,8 @@ add_library(config
             ${YAML_SOURCES}
             config/yaml_settings.F90
            )
-if(GOTM_USE_FABM)
-  target_link_libraries(config ${FABM_LIBRARIES})
-  target_include_directories(config PUBLIC "${FABM_INCLUDE_DIRS}")
-endif()
+target_include_directories(config PRIVATE "${YAML_INCLUDE_DIRS}")
+target_link_libraries(config ${YAML_LIBRARIES})
 set(GOTM_LIBS ${GOTM_LIBS} config)
 
 add_library(util
@@ -231,7 +231,8 @@ add_library(output_manager
             output/netcdf_output.F90
             output/text_output.F90
             )
-target_link_libraries(output_manager util config)
+target_link_libraries(output_manager util config ${YAML_LIBRARIES})
+target_include_directories(config PRIVATE "${YAML_INCLUDE_DIRS}")
 set(GOTM_LIBS ${GOTM_LIBS} output_manager)
 
 if(NOT GOTM_BUILD_LIBRARIES_ONLY)
