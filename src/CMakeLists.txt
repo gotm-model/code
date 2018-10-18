@@ -97,12 +97,19 @@ include_directories(BEFORE
                     "${CMAKE_CURRENT_BINARY_DIR}/modules"
                    )
 
+if(NOT GOTM_USE_FABM)
+  add_subdirectory(yaml)
+  set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
+  set(YAML_SOURCES $<TARGET_OBJECTS:yaml>)
+endif()
 add_library(config
+            ${YAML_SOURCES}
             config/yaml_settings.F90
            )
-target_link_libraries(config output_manager)
-add_dependencies(config yaml)
-#KBset_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+if(GOTM_USE_FABM)
+  target_link_libraries(config ${FABM_LIBRARIES})
+  set_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+endif()
 set(GOTM_LIBS ${GOTM_LIBS} config)
 
 add_library(util
@@ -221,23 +228,13 @@ else()
   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
 endif(GOTM_USE_FABM)
 
-if(NOT GOTM_USE_FABM)
-  add_subdirectory(yaml)
-  set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
-  set(YAML_SOURCES $<TARGET_OBJECTS:yaml>)
-endif()
 add_library(output_manager
-            ${YAML_SOURCES}
             output/output_manager.F90
             output/output_manager_core.F90
             output/netcdf_output.F90
             output/text_output.F90
             )
-target_link_libraries(output_manager util)
-if(GOTM_USE_FABM)
-  target_link_libraries(output_manager ${FABM_LIBRARIES})
-  set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-endif()
+target_link_libraries(output_manager util config)
 set(GOTM_LIBS ${GOTM_LIBS} output_manager)
 
 if(NOT GOTM_BUILD_LIBRARIES_ONLY)
