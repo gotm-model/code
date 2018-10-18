@@ -108,30 +108,26 @@
       curvariable%interior_id = fabm_get_bulk_variable_id(model, name)
 
       if (fabm_is_variable_used(curvariable%interior_id)) then
-         select type (settings)
-         class is (type_gotm_settings)
-            call settings%get_profile_input(curvariable%profile_input, name, name, '', default=0._rk, pchild=branch)
-         end select
+         call cfg%get_profile_input(curvariable%profile_input, name, trim(curvariable%interior_id%variable%long_name), trim(curvariable%interior_id%variable%units), default=0._rk, pchild=branch)
          call branch%get_real(curvariable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
          call branch%get_real(curvariable%relax_tau_bot, 'relax_tau_bot', 'relaxation time scale for bottom layer', 's', minimum=0._rk, default=1.e15_rk)
          call branch%get_real(curvariable%relax_tau_surf, 'relax_tau_surf', 'relaxation time scale for surface layer', 's', minimum=0._rk, default=1.e15_rk)
-         call branch%get_real(curvariable%h_bot, 'thickness_bot', 'thickness of surface relaxation layer', 'm', minimum=0._rk, default=0._rk)
-         call branch%get_real(curvariable%h_surf, 'thickness_surf', 'thickness of bottom relaxation layer', 'm', minimum=0._rk, default=0._rk)
+         call branch%get_real(curvariable%h_bot, 'thickness_bot', 'thickness of bottom relaxation layer', 'm', minimum=0._rk, default=0._rk)
+         call branch%get_real(curvariable%h_surf, 'thickness_surf', 'thickness of surface relaxation layer', 'm', minimum=0._rk, default=0._rk)
       else
 !        Variable was not found among interior variables. Try variables defined on horizontal slice of model domain (e.g., benthos)
          curvariable%horizontal_id = fabm_get_horizontal_variable_id(model, name)
-         if (.not. fabm_is_variable_used(curvariable%horizontal_id)) then
+         if (fabm_is_variable_used(curvariable%horizontal_id)) then
+            call cfg%get_scalar_input(curvariable%scalar_input, name, trim(curvariable%horizontal_id%variable%long_name), trim(curvariable%horizontal_id%variable%units), default=0._rk, pchild=branch)
+         else
 !           Variable was not found among interior or horizontal variables. Try global scalars.
             curvariable%scalar_id = fabm_get_scalar_variable_id(model, name)
             if (.not. fabm_is_variable_used(curvariable%scalar_id)) then
                FATAL 'Variable '//name//', referenced among FABM inputs was not found in model.'
                stop 'gotm_fabm_input:init_gotm_fabm_input'
             end if
+            call cfg%get_scalar_input(curvariable%scalar_input, name, trim(curvariable%scalar_id%variable%long_name), trim(curvariable%scalar_id%variable%units), default=0._rk, pchild=branch)
          end if
-         select type (settings)
-         class is (type_gotm_settings)
-            call settings%get_scalar_input(curvariable%scalar_input, name, name, '', default=0._rk, pchild=branch)
-         end select
          call branch%get_real(curvariable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
       end if
       last_variable => curvariable
