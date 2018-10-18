@@ -97,11 +97,38 @@ include_directories(BEFORE
                     "${CMAKE_CURRENT_BINARY_DIR}/modules"
                    )
 
-if(NOT GOTM_USE_FABM)
+if(GOTM_USE_FABM)
+  find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
+  mark_as_advanced(CLEAR FABM_BASE)
+  if(FABM_BASE)
+    # Build FABM from source by including its CMakeLists.txt directory.
+    set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
+    set(FABM_FORCED_HOST gotm)
+    add_subdirectory(${FABM_BASE}/src ${CMAKE_CURRENT_BINARY_DIR}/fabm_src)
+    set(FABM_LIBRARIES fabm)
+    set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
+    mark_as_advanced(FORCE FABM_PREFIX FABM_EMBED_VERSION)
+  else()
+    # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
+    find_package(FABM REQUIRED)
+    mark_as_advanced(CLEAR FABM_PREFIX)
+  endif()
+  add_library(gotm_fabm
+              fabm/gotm_fabm.F90
+             )
+  target_link_libraries(gotm_fabm util ${FABM_LIBRARIES})
+  set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  set_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm)
+  set(EXTERNAL_LIBS ${FABM_LIBRARIES})
+else()
+  mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
   add_subdirectory(yaml)
   set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
   set(YAML_SOURCES $<TARGET_OBJECTS:yaml>)
 endif()
+
 add_library(config
             ${YAML_SOURCES}
             config/yaml_settings.F90
@@ -198,35 +225,6 @@ add_library(turbulence
            )
 target_link_libraries(turbulence util config)
 set(GOTM_LIBS ${GOTM_LIBS} turbulence)
-
-if(GOTM_USE_FABM)
-  find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
-  mark_as_advanced(CLEAR FABM_BASE)
-  if(FABM_BASE)
-    # Build FABM from source by including its CMakeLists.txt directory.
-    set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
-    set(FABM_FORCED_HOST gotm)
-    add_subdirectory(${FABM_BASE}/src ${CMAKE_CURRENT_BINARY_DIR}/fabm_src)
-    set(FABM_LIBRARIES fabm)
-    set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
-    mark_as_advanced(FORCE FABM_PREFIX FABM_EMBED_VERSION)
-  else()
-    # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
-    find_package(FABM REQUIRED)
-    mark_as_advanced(CLEAR FABM_PREFIX)
-  endif()
-  add_library(gotm_fabm
-              fabm/gotm_fabm.F90
-             )
-  target_link_libraries(gotm_fabm util ${FABM_LIBRARIES})
-  set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  set_property(TARGET config APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm)
-  set(EXTERNAL_LIBS ${FABM_LIBRARIES})
-else()
-  mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
-endif(GOTM_USE_FABM)
 
 add_library(output_manager
             output/output_manager.F90
