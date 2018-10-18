@@ -443,7 +443,7 @@
 !  Original author(s): Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   type (type_gotm_settings), pointer :: branch
+   class (type_gotm_settings), pointer :: branch, leaf
    integer, parameter :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
@@ -463,11 +463,11 @@
                 default=0._rk)
    call branch%get_scalar_input(airt, 'airt', '2 metre air temperature', 'Celsius or K', &
                 default=0._rk)
-   call branch%get(hum_method, 'hum_method', 'humidity metric', &
+   call branch%get_scalar_input(hum, 'hum', '2 metre humidity', '', &
+                default=0._rk, pchild=leaf)
+   call leaf%get(hum_method, 'hum_method', 'humidity metric', &
                 options=(/type_option(1, 'relative humidity (%)'), type_option(2, 'wet-bulb temperature'), &
                 type_option(3, 'dew point temperature'), type_option(4 ,'specific humidity (kg/kg)')/), default=1)
-   call branch%get_scalar_input(hum, 'hum', '2 metre humidity', '', &
-                default=0._rk)
    call branch%get_scalar_input(cloud, 'cloud', 'cloud cover', '-', &
                 minimum=0._rk, maximum=1._rk, default=0._rk)
    call branch%get_scalar_input(I_0, 'swr', 'shortwave radiation', 'W/m2', &
