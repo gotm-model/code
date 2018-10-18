@@ -115,20 +115,20 @@
       procedure :: initialize => timeseries_file_initialize
       procedure :: update => timeseries_file_update
    end type
+!
+!  PRIVATE PARAMETERS
+   integer,parameter :: first_unit_no = 555
 
    type (type_scalar_input_list),  save :: scalar_inputs
    type (type_profile_input_list), save :: profile_inputs
 
 !  PRIVATE DATA MEMBERS
 !  Pointers to first files with observed profiles and observed scalars.
-   type (type_profile_file),    pointer :: first_profile_file
-   type (type_timeseries_file), pointer :: first_timeseries_file
+   type (type_profile_file),    pointer, save :: first_profile_file => null()
+   type (type_timeseries_file), pointer, save :: first_timeseries_file => null()
 
 !  Unit to use for next data file.
-   integer :: next_unit_no
-!
-!  PRIVATE PARAMETERS
-   integer,parameter :: first_unit_no = 555
+   integer, save :: next_unit_no = first_unit_no
 
    integer, save :: nlev = -1
 
@@ -180,9 +180,6 @@
    else
       nlev = -1
    end if
-   next_unit_no = first_unit_no
-   nullify(first_profile_file)
-   nullify(first_timeseries_file)
 
    LEVEL2 'done'
 
@@ -778,6 +775,9 @@
       timeseries_file => next_scalar_file
    end do
    nullify(first_timeseries_file)
+
+   next_unit_no = first_unit_no
+   nlev = -1
 
    end subroutine close_input
 !EOC
