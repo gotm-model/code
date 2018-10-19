@@ -1,13 +1,13 @@
 module yaml_settings
    
-   use yaml_types, only: yaml_real_kind => real_kind, type_yaml_node => type_node, type_yaml_null => type_null, type_yaml_dictionary => type_dictionary, type_yaml_error => type_error, type_yaml_key_value_pair => type_key_value_pair
+   use yaml_types, only: yaml_real_kind => real_kind, type_yaml_node => type_node, type_yaml_null => type_null, type_yaml_scalar => type_scalar, type_yaml_dictionary => type_dictionary, type_yaml_list => type_list, type_yaml_list_item => type_list_item, type_yaml_error => type_error, type_yaml_key_value_pair => type_key_value_pair
    use yaml, only: yaml_parse => parse, yaml_error_length => error_length
 
    implicit none
 
    private
 
-   public type_settings, type_option, type_key_value_pair, type_setting, report_error, type_real_setting
+   public type_settings, type_option, type_scalar_setting, report_error, type_real_setting, type_settings_node
 
    integer, parameter :: rk = yaml_real_kind
 
@@ -16,48 +16,61 @@ module yaml_settings
    integer, parameter :: default_minimum_integer = -huge(1)
    integer, parameter :: default_maximum_integer = huge(1)
 
-   type,abstract :: type_settings_node
+   type type_setting
       character(len=:), allocatable :: long_name
       character(len=:), allocatable :: description
+      class (type_yaml_node), pointer :: backing_store_node => null()
+      character(len=:), allocatable  :: path
+      class (type_setting), pointer :: parent => null()
    contains
-      procedure (node_write_schema),      deferred :: write_schema
-      procedure (node_write_yaml),        deferred :: write_yaml
-      procedure (node_get_maximum_depth), deferred :: get_maximum_depth
-   end type type_settings_node
-   
-   type type_key_value_pair
-      character(len=:), allocatable          :: key
-      character(len=:), allocatable          :: name
-      class (type_settings_node),    pointer :: node      => null()
-      type (type_key_value_pair),    pointer :: next      => null()
+      procedure :: write_schema => node_write_schema
+      procedure :: write_yaml => node_write_yaml
+      procedure :: get_maximum_depth => node_get_maximum_depth
+      procedure :: create_child
+   end type type_setting
+
+   type type_settings_node
+      class (type_setting),   pointer :: value => null()
+   contains
+      procedure :: as_dictionary => node_as_dictionary
+      procedure :: set_value => node_set_value
    end type
 
-   type,extends(type_settings_node) :: type_settings
-      character(len=:), allocatable :: path
+   type, extends(type_settings_node) :: type_key_value_pair
+      character(len=:), allocatable       :: key
+      character(len=:), allocatable       :: name
+      type (type_key_value_pair), pointer :: next => null()
+   end type
+
+   type, extends(type_settings_node) :: type_list_item
+      type (type_list_item), pointer :: next      => null()
+   end type
+
+   type,extends(type_setting) :: type_settings
       class (type_yaml_dictionary), pointer :: backing_store => null()
       type (type_key_value_pair),pointer :: first => null()
       type (type_key_value_pair),pointer :: last  => null()
    contains
-      procedure :: load
-      procedure :: save
       procedure :: write_schema => settings_write_schema
       procedure :: write_yaml => settings_write_yaml
+      procedure :: get_maximum_depth => settings_get_maximum_depth
+      procedure :: load
+      procedure :: save
       procedure :: write_schema_file
       procedure :: get_real
       procedure :: get_integer
       procedure :: get_logical
       procedure :: get_string
       procedure :: get_child
+      procedure :: get_list
       procedure :: get_node
       procedure :: split_path
-      procedure :: create_child
       procedure :: populate
-      procedure :: get_maximum_depth => settings_get_maximum_depth
       generic :: get => get_real, get_integer, get_logical, get_string
       procedure :: finalize
    end type type_settings
 
-   type,abstract,extends(type_settings_node) :: type_setting
+   type,abstract,extends(type_setting) :: type_scalar_setting
       character(:),allocatable :: units
       logical                  :: has_default = .false.
    contains
@@ -65,45 +78,15 @@ module yaml_settings
       procedure :: write_yaml => setting_write_yaml
       procedure :: get_comment => setting_get_comment
       procedure :: get_maximum_depth => setting_get_maximum_depth
-   end type type_setting
+   end type type_scalar_setting
 
    abstract interface
       subroutine setting_as_string(self, string, use_default)
-         import type_setting
-         class (type_setting),intent(in) :: self
+         import type_scalar_setting
+         class (type_scalar_setting),intent(in) :: self
          character(len=:), allocatable :: string
          logical,             intent(in) :: use_default
       end subroutine
-   end interface
-
-   abstract interface
-      recursive subroutine node_write_schema(self, unit, name, indent)
-         import type_settings_node
-         class (type_settings_node), intent(in) :: self
-         integer,                    intent(in) :: unit, indent
-         character(len=*),           intent(in) :: name
-      end subroutine
-   end interface
-
-   abstract interface
-      recursive subroutine node_write_yaml(self, unit, name, indent, comment_depth, header)
-         import type_settings_node
-         class (type_settings_node), intent(in) :: self
-         integer,               intent(in) :: unit
-         character(len=*),      intent(in) :: name
-         integer,               intent(in) :: indent
-         integer,               intent(in) :: comment_depth
-         logical,               intent(in) :: header
-      end subroutine
-   end interface
-
-   abstract interface
-      recursive function node_get_maximum_depth(self, name) result(maxdepth)
-         import type_settings_node
-         class (type_settings_node), intent(in) :: self
-         character(len=*),           intent(in) :: name
-         integer                                :: maxdepth
-      end function
    end interface
 
    type type_option
@@ -111,7 +94,16 @@ module yaml_settings
       character(:), allocatable :: long_name
    end type
 
-   type,extends(type_setting) :: type_integer_setting
+   type,extends(type_setting) :: type_list
+      class (type_yaml_list), pointer :: backing_store => null()
+      type (type_list_item), pointer :: first => null()
+   contains
+      procedure :: write_schema => list_write_schema
+      procedure :: write_yaml => list_write_yaml
+      procedure :: get_maximum_depth => list_get_maximum_depth
+   end type
+  
+   type,extends(type_scalar_setting) :: type_integer_setting
       integer, pointer :: value => null()
       integer :: default = 0
       integer :: minimum = default_minimum_integer
@@ -123,7 +115,7 @@ module yaml_settings
       procedure :: get_comment => integer_get_comment
    end type
 
-   type,extends(type_setting) :: type_real_setting
+   type,extends(type_scalar_setting) :: type_real_setting
       real(rk), pointer :: value => null()
       real(rk) :: default = 0.0_rk
       real(rk) :: minimum = default_minimum_real
@@ -134,7 +126,7 @@ module yaml_settings
       procedure :: get_comment => real_get_comment
    end type
 
-   type,extends(type_setting) :: type_logical_setting
+   type,extends(type_scalar_setting) :: type_logical_setting
       logical, pointer :: value => null()
       logical :: default = .true.
    contains
@@ -142,7 +134,7 @@ module yaml_settings
       procedure :: write_schema => logical_write_schema
    end type
 
-   type,extends(type_setting) :: type_string_setting
+   type,extends(type_scalar_setting) :: type_string_setting
       character(:), pointer :: value => null()
       character(:), allocatable :: default
    contains
@@ -151,6 +143,28 @@ module yaml_settings
    end type
 
 contains
+
+
+   recursive subroutine node_write_schema(self, unit, name, indent)
+      class (type_setting), intent(in) :: self
+      integer,              intent(in) :: unit, indent
+      character(len=*),     intent(in) :: name
+   end subroutine
+
+   recursive subroutine node_write_yaml(self, unit, name, indent, comment_depth, header)
+      class (type_setting),  intent(in) :: self
+      integer,               intent(in) :: unit
+      character(len=*),      intent(in) :: name
+      integer,               intent(in) :: indent
+      integer,               intent(in) :: comment_depth
+      logical,               intent(in) :: header
+   end subroutine
+
+   recursive function node_get_maximum_depth(self, name) result(maxdepth)
+      class (type_setting), intent(in) :: self
+      character(len=*),     intent(in) :: name
+      integer                          :: maxdepth
+   end function
 
    subroutine load(self, path, unit)
       class (type_settings), intent(inout) :: self
@@ -199,7 +213,7 @@ contains
       comment_depth = self%get_maximum_depth('') + 1
       pair => self%first
       do while (associated(pair))
-         call pair%node%write_yaml(unit, pair%name, 0, comment_depth, header=.false.)
+         call pair%value%write_yaml(unit, pair%name, 0, comment_depth, header=.false.)
          pair => pair%next
       end do
    end subroutine save
@@ -222,15 +236,17 @@ contains
       write (unit,'(a,a,a)') '<element name="scenario" label="scenario" version="', version, '" namelistextension=".nml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/scenario-1.0.xsd">'
       pair => self%first
       do while (associated(pair))
-         call pair%node%write_schema(unit, pair%name, 2)
+         call pair%value%write_schema(unit, pair%name, 2)
          pair => pair%next
       end do
       write (unit,'(a)') '</element>'
    end subroutine write_schema_file
 
-   function get_node(self, name) result(pair)
-      class (type_settings), intent(inout) :: self
-      character(len=*),      intent(in)    :: name
+   function get_node(self, name) result(node)
+      class (type_settings), intent(inout), target :: self
+      character(len=*),      intent(in)            :: name
+      class (type_settings_node), pointer          :: node
+
       type (type_key_value_pair), pointer  :: pair
 
       character(len=len(name))           :: key
@@ -277,91 +293,16 @@ contains
          end if
          pair => self%last
          pair%key = key
+         allocate(type_setting::pair%value)
+         pair%value%parent => self
+         pair%value%path = self%path//'/'//name
+         if (associated(self%backing_store)) pair%value%backing_store_node  => self%backing_store%get(name)
       end if
 
       pair%name = name
       call check(self,'get_node')
+      node => pair
    end function get_node
-
-   function get_real_setting(self,name) result(setting)
-      class (type_settings),intent(inout) :: self
-      character(len=*),                intent(in)    :: name
-      class (type_real_setting), pointer :: setting
-
-      type (type_key_value_pair),pointer :: pair
-      pair => self%get_node(name)
-
-      if (associated(pair%node)) then
-         select type (node => pair%node)
-         class is (type_real_setting)
-            setting => node
-            return
-         end select
-         deallocate(pair%node)
-      end if
-      allocate(setting)
-      pair%node => setting
-   end function get_real_setting
-
-   function get_integer_setting(self,name) result(setting)
-      class (type_settings),intent(inout) :: self
-      character(len=*),                intent(in)    :: name
-      class (type_integer_setting), pointer :: setting
-
-      type (type_key_value_pair),pointer :: pair
-      pair => self%get_node(name)
-
-      if (associated(pair%node)) then
-         select type (node => pair%node)
-         class is (type_integer_setting)
-            setting => node
-            return
-         end select
-         deallocate(pair%node)
-      end if
-      allocate(setting)
-      pair%node => setting
-   end function get_integer_setting
-
-   function get_logical_setting(self,name) result(setting)
-      class (type_settings),intent(inout) :: self
-      character(len=*),                intent(in)    :: name
-      class (type_logical_setting), pointer :: setting
-
-      type (type_key_value_pair),pointer :: pair
-      pair => self%get_node(name)
-
-      if (associated(pair%node)) then
-         select type (node => pair%node)
-         class is (type_logical_setting)
-            setting => node
-            return
-         end select
-         deallocate(pair%node)
-      end if
-      allocate(setting)
-      pair%node => setting
-   end function get_logical_setting
-
-   function get_string_setting(self,name) result(setting)
-      class (type_settings),intent(inout) :: self
-      character(len=*),                intent(in)    :: name
-      class (type_string_setting), pointer :: setting
-
-      type (type_key_value_pair),pointer :: pair
-      pair => self%get_node(name)
-
-      if (associated(pair%node)) then
-         select type (node => pair%node)
-         class is (type_string_setting)
-            setting => node
-            return
-         end select
-         deallocate(pair%node)
-      end if
-      allocate(setting)
-      pair%node => setting
-   end function get_string_setting
    
    subroutine get_real(self, target, name, long_name, units, default, minimum, maximum, description)
       class (type_settings),intent(inout) :: self
@@ -374,39 +315,49 @@ contains
       real(rk),        optional,       intent(in)    :: maximum
       character(len=*),optional,       intent(in)    :: description
 
-      class (type_settings),     pointer :: settings
-      integer                            :: istart
-      class (type_real_setting), pointer :: setting
-      type (type_yaml_error),    pointer :: yaml_error
+      class (type_settings),      pointer :: settings
+      integer                             :: istart
+      class (type_settings_node), pointer :: node
+      class (type_real_setting),  pointer :: setting
+      logical                             :: success
 
       call split_path(self, name, settings, istart)
+      node => settings%get_node(name(istart:))
 
-      setting => get_real_setting(settings, name(istart:))
+      select type (value => node%value)
+      class is (type_real_setting)
+         setting => value
+      class default
+         allocate(setting)
+         call node%set_value(setting)
+      end select
       setting%value => target
       setting%long_name = long_name
       if (units /= '') setting%units = units
       if (present(minimum)) setting%minimum = minimum
       if (present(maximum)) setting%maximum = maximum
       if (present(default)) then
-         if (default < setting%minimum) call report_error('Default value of parameter '//trim(settings%path)//'/'//name(istart:)//' lies below prescribed minimum.')
-         if (default > setting%maximum) call report_error('Default value of parameter '//trim(settings%path)//'/'//name(istart:)//' exceeds prescribed maximum.')
+         if (default < setting%minimum) call report_error('Default value of setting '//setting%path//' lies below prescribed minimum.')
+         if (default > setting%maximum) call report_error('Default value of setting '//setting%path//' exceeds prescribed maximum.')
          setting%has_default = .true.
          setting%default = default
       end if
       if (present(description)) setting%description = description
-      if (associated(settings%backing_store)) then
-         setting%value = settings%backing_store%get_real(name(istart:), default, yaml_error)
-         if (associated(yaml_error)) then
-            call report_error(trim(yaml_error%message))
-         else
-            if (setting%value < setting%minimum) call report_error('Value specified for parameter '//trim(settings%path)//'/'//name(istart:)//' lies below prescribed minimum.')
-            if (setting%value > setting%maximum) call report_error('Value specified for parameter '//trim(settings%path)//'/'//name(istart:)//' exceeds prescribed maximum.')
-         end if
+      if (associated(setting%backing_store_node)) then
+         select type (yaml_node => setting%backing_store_node)
+         class is (type_yaml_scalar)
+            setting%value = yaml_node%to_real(setting%value, success)
+            if (.not. success) call report_error(setting%path//' is set to "'//trim(yaml_node%string)//'", which cannot be interpreted as a real number.')
+         class default
+            call report_error('Setting '//setting%path//' must be a real number.')
+         end select
+         if (setting%value < setting%minimum) call report_error('Value specified for parameter '//setting%path//' lies below prescribed minimum.')
+         if (setting%value > setting%maximum) call report_error('Value specified for parameter '//setting%path//' exceeds prescribed maximum.')
       else
          if (setting%has_default) then
             setting%value = setting%default
          else
-            call report_error('No value specified for parameter '//trim(settings%path)//'/'//name(istart:)//'; cannot continue because this parameter does not have a default value either.')
+            call report_error('No value specified for setting '//setting%path//'; cannot continue because this parameter does not have a default value either.')
          end if
       end if
    end subroutine get_real
@@ -425,14 +376,22 @@ contains
 
       class (type_settings),        pointer :: settings
       integer                               :: istart
+      class (type_settings_node),   pointer :: node
       class (type_integer_setting), pointer :: setting
-      type (type_yaml_error),       pointer :: yaml_error
+      logical                               :: success
       logical                               :: found
       integer                               :: ioption, ioption2
 
       call split_path(self, name, settings, istart)
+      node => settings%get_node(name(istart:))
 
-      setting => get_integer_setting(settings, name(istart:))
+      select type (value => node%value)
+      class is (type_integer_setting)
+         setting => value
+      class default
+         allocate(setting)
+         call node%set_value(setting)
+      end select
       setting%value => target
       setting%long_name = long_name
       if (present(units)) setting%units = units
@@ -442,40 +401,42 @@ contains
          do ioption = 1, size(options)
             do ioption2 = ioption + 1, size(options)
                if (options(ioption)%value == options(ioption2)%value) call report_error( &
-                  'Setting '//trim(settings%path)//'/'//name(istart:)//' has multiple options with the same integer value.')
+                  'Setting '//setting%path//' has multiple options with the same integer value.')
             end do
          end do
+         if (allocated(setting%options)) deallocate(setting%options)
          allocate(setting%options(size(options)))
          setting%options(:) = options
       end if
       if (present(default)) then
-         if (default < setting%minimum) call report_error('Default value of setting '//trim(settings%path)//'/'//name(istart:)//' lies below prescribed minimum.')
-         if (default > setting%maximum) call report_error('Default value of setting '//trim(settings%path)//'/'//name(istart:)//' exceeds prescribed maximum.')
+         if (default < setting%minimum) call report_error('Default value of setting '//setting%path//' lies below prescribed minimum.')
+         if (default > setting%maximum) call report_error('Default value of setting '//setting%path//' exceeds prescribed maximum.')
          if (allocated(setting%options)) then
             found = .false.
             do ioption = 1, size(setting%options)
                if (default == setting%options(ioption)%value) found = .true.
             end do
-            if (.not.found) call report_error('Default value of setting '//trim(settings%path)//'/'//name(istart:)//' does not correspond to any known option.')
+            if (.not.found) call report_error('Default value of setting '//setting%path//' does not correspond to any known option.')
          end if
          setting%has_default = .true.
          setting%default = default
       end if
       if (present(description)) setting%description = description
-      if (associated(settings%backing_store)) then
-         setting%value = settings%backing_store%get_integer(name(istart:), default, yaml_error)
-         if (associated(yaml_error)) then
-            call report_error(trim(yaml_error%message))
-         else
-            if (setting%value < setting%minimum) call report_error('Value specified for setting '//trim(settings%path)//'/'//name(istart:)//' lies below prescribed minimum.')
-            if (setting%value > setting%maximum) call report_error('Value specified for setting '//trim(settings%path)//'/'//name(istart:)//' exceeds prescribed maximum.')
-            if (allocated(setting%options)) then
-               found = .false.
-               do ioption = 1, size(setting%options)
-                  if (setting%value == setting%options(ioption)%value) found = .true.
-               end do
-               if (.not.found) call report_error('Value specified for setting '//trim(settings%path)//'/'//name(istart:)//' does not correspond to any known option.')
-            end if
+      if (associated(setting%backing_store_node)) then
+         success = .false.
+         select type (yaml_node => setting%backing_store_node)
+         class is (type_yaml_scalar)
+            setting%value = yaml_node%to_integer(setting%value, success)
+         end select
+         if (.not. success) call report_error('Setting '//setting%path//' must be an integer number.')
+         if (setting%value < setting%minimum) call report_error('Value specified for setting '//setting%path//' lies below prescribed minimum.')
+         if (setting%value > setting%maximum) call report_error('Value specified for setting '//setting%path//' exceeds prescribed maximum.')
+         if (allocated(setting%options)) then
+            found = .false.
+            do ioption = 1, size(setting%options)
+               if (setting%value == setting%options(ioption)%value) found = .true.
+            end do
+            if (.not.found) call report_error('Value specified for setting '//setting%path//' does not correspond to any known option.')
          end if
       else
          if (setting%has_default) then
@@ -496,12 +457,20 @@ contains
 
       class (type_settings),        pointer :: settings
       integer                               :: istart
+      class (type_settings_node),   pointer :: node
       class (type_logical_setting), pointer :: setting
-      type (type_yaml_error),       pointer :: yaml_error
+      logical                               :: success
 
       call split_path(self, name, settings, istart)
+      node => settings%get_node(name(istart:))
 
-      setting => get_logical_setting(settings, name(istart:))
+      select type (value => node%value)
+      class is (type_logical_setting)
+         setting => value
+      class default
+         allocate(setting)
+         call node%set_value(setting)
+      end select
       setting%value => target
       setting%long_name = long_name
       if (present(default)) then
@@ -509,14 +478,19 @@ contains
          setting%default = default
       end if
       if (present(description)) setting%description = description
-      if (associated(settings%backing_store)) then
-         setting%value = settings%backing_store%get_logical(name(istart:), default, yaml_error)
-         if (associated(yaml_error)) call report_error(trim(yaml_error%message))
+      if (associated(setting%backing_store_node)) then
+         select type (yaml_node => setting%backing_store_node)
+         class is (type_yaml_scalar)
+            setting%value = yaml_node%to_logical(setting%value, success)
+            if (.not. success) call report_error(setting%path//' is set to "'//trim(yaml_node%string)//'", which cannot be interpreted as logical value (true or false).')
+         class default
+            call report_error('Setting '//setting%path//' must be set to a logical value (true or false).')
+         end select
       else
          if (setting%has_default) then
             setting%value = setting%default
          else
-            call report_error('No value specified for parameter '//trim(settings%path)//'/'//name(istart:)//'; cannot continue because this parameter does not have a default value either.')
+            call report_error('No value specified for parameter '//setting%path//'; cannot continue because this parameter does not have a default value either.')
          end if
       end if
    end subroutine get_logical
@@ -532,13 +506,19 @@ contains
 
       class (type_settings),       pointer :: settings
       integer                              :: istart
+      class (type_settings_node),  pointer :: node
       class (type_string_setting), pointer :: setting
-      class (type_yaml_node),      pointer :: node
-      type (type_yaml_error),      pointer :: yaml_error
 
       call split_path(self, name, settings, istart)
+      node => settings%get_node(name(istart:))
 
-      setting => get_string_setting(settings, name(istart:))
+      select type (value => node%value)
+      class is (type_string_setting)
+         setting => value
+      class default
+         allocate(setting)
+         call node%set_value(setting)
+      end select
       setting%value => target
       setting%long_name = long_name
       if (present(units)) setting%units = units
@@ -547,17 +527,15 @@ contains
          setting%default = default
       end if
       if (present(description)) setting%description = description
-      if (associated(settings%backing_store)) then
-         node => settings%backing_store%get(name(istart:))
-         if (associated(node)) then
-            select type (node)
-            class is (type_yaml_null)
-               setting%value = ''
-               return
-            end select
-         end if
-         setting%value = settings%backing_store%get_string(name(istart:), default, yaml_error)
-         if (associated(yaml_error)) call report_error(trim(yaml_error%message))
+      if (associated(setting%backing_store_node)) then
+         select type (yaml_node => setting%backing_store_node)
+         class is (type_yaml_null)
+            setting%value = ''
+         class is (type_yaml_scalar)
+            setting%value = trim(yaml_node%string)
+         class default
+            call report_error(setting%path//' must be be a string or null.')
+         end select
       else
          if (setting%has_default) then
             setting%value = setting%default
@@ -567,10 +545,14 @@ contains
       end if
    end subroutine get_string
 
-   function create_child(self) result(child)
-      class (type_settings), intent(in) :: self
+   recursive function create_child(self) result(child)
+      class (type_setting), intent(in) :: self
       class (type_settings),  pointer   :: child
-      allocate(child)
+      if (associated(self%parent)) then
+         child => self%parent%create_child()
+      else
+         allocate(child)
+      end if
    end function create_child
 
    recursive function get_child(self, name, long_name, treat_as_path) result(child)
@@ -583,32 +565,110 @@ contains
       logical :: treat_as_path_
       class (type_settings),      pointer :: parent
       integer                             :: istart
-      type (type_key_value_pair), pointer :: pair
-      type (type_yaml_error),     pointer :: yaml_error
+      class (type_settings_node), pointer :: node
 
       call split_path(self, name, parent, istart, treat_as_path)
-      pair => get_node(parent, name(istart:))
-
-      child => null()
-      if (associated(pair%node)) then
-         select type (node => pair%node)
-         class is (type_settings)
-            child => node
-         class default
-            deallocate(pair%node)
-         end select
-      end if
-      if (.not.associated(child)) then
-         child => parent%create_child()
-         pair%node => child
-      end if
-      child%path = trim(parent%path)//'/'//name(istart:)
-      if (present(long_name)) child%long_name = long_name
-      if (associated(parent%backing_store)) then
-         child%backing_store => parent%backing_store%get_dictionary(pair%key, required=.false., error=yaml_error)
-         if (associated(yaml_error)) call report_error(trim(yaml_error%message))
-      end if
+      node => get_node(parent, name(istart:))
+      child => node%as_dictionary()
    end function get_child
+
+   subroutine node_set_value(self, value)
+      class (type_settings_node), intent(inout) :: self
+      class (type_setting), target :: value
+      value%parent => self%value%parent
+      value%path = self%value%path
+      value%backing_store_node => self%value%backing_store_node
+      deallocate(self%value)
+      self%value => value
+   end subroutine
+
+   function node_as_dictionary(self, long_name) result(child)
+      class (type_settings_node), intent(inout) :: self
+      character(len=*), optional, intent(in)    :: long_name
+      class (type_settings),  pointer :: child
+
+      select type (value => self%value)
+      class is (type_settings)
+         child => value
+      class default
+         child => self%value%parent%create_child()
+         call self%set_value(child)
+      end select
+
+      if (present(long_name)) child%long_name = long_name
+      if (associated(self%value%backing_store_node)) then
+         select type (yaml_node => self%value%backing_store_node)
+         class is (type_yaml_dictionary)
+            child%backing_store => yaml_node
+         class default
+            call report_error(trim(self%value%path)//' should be a dictionary')
+         end select 
+      end if
+   end function
+   
+   recursive subroutine get_list(self, name, long_name, treat_as_path, populator)
+      class (type_settings), target, intent(inout) :: self
+      character(len=*),              intent(in)    :: name
+      character(len=*),optional,     intent(in)    :: long_name
+      logical, optional,             intent(in)    :: treat_as_path
+      interface
+         subroutine populator(node)
+            import type_settings_node
+            class (type_settings_node), intent(inout) :: node
+         end subroutine
+      end interface
+
+      logical :: treat_as_path_
+      class (type_settings),      pointer :: parent
+      integer                             :: istart
+      type (type_settings_node),  pointer :: node
+      class (type_list),          pointer :: list
+      type (type_yaml_list_item), pointer :: yaml_item
+      type (type_list_item),      pointer :: item, last_item
+      integer                             :: i
+      character(len=8)                    :: strindex
+
+      call split_path(self, name, parent, istart, treat_as_path)
+      node => get_node(parent, name(istart:))
+
+      select type (value => node%value)
+      class is (type_list)
+         list => value
+      class default
+         allocate(list)
+         call node%set_value(list)
+      end select
+
+      if (present(long_name)) list%long_name = long_name
+      if (associated(node%value%backing_store_node)) then
+         select type (yaml_node => node%value%backing_store_node)
+         class is (type_yaml_list)
+            list%backing_store => yaml_node
+            last_item = list%first
+            yaml_item => yaml_node%first
+            i = 1
+            do while (associated(yaml_item))
+               write (strindex,'(i0)') i
+               allocate(item)
+               allocate(type_setting::item%value)
+               item%value%path = list%path//'['//strindex//']'
+               item%value%backing_store_node => yaml_item%node
+               item%value%parent => list
+               if (.not. associated(last_item)) then
+                  list%first => item
+               else
+                  last_item%next => item
+               end if
+               last_item => item
+               call populator(item)
+               yaml_item => yaml_item%next
+               i = i + 1
+            end do
+         class default
+            call report_error(trim(node%value%path)//' should be a list')
+         end select 
+      end if
+   end subroutine get_list
 
    subroutine populate(self, callback)
       class (type_settings), intent(inout) :: self
@@ -620,7 +680,7 @@ contains
          end subroutine
       end interface
 
-      type (type_yaml_key_value_pair),pointer :: yaml_pair
+      type (type_yaml_key_value_pair), pointer :: yaml_pair
 
       if (associated(self%backing_store)) then
          yaml_pair => self%backing_store%first
@@ -639,11 +699,11 @@ contains
       current => self%first
       do while (associated(current))
          next => current%next
-         select type (node => current%node)
+         select type (value => current%value)
          class is (type_settings)
-            call node%finalize()
+            call value%finalize()
          end select
-         deallocate(current%node)
+         deallocate(current%value)
          deallocate(current)
          current => next
       end do
@@ -744,14 +804,14 @@ contains
 
       pair => self%first
       do while (associated(pair))
-         call pair%node%write_yaml(unit, pair%name, indent + 2, comment_depth, header=.false.)
+         call pair%value%write_yaml(unit, pair%name, indent + 2, comment_depth, header=.false.)
          pair => pair%next
       end do
 
    contains
 
       recursive subroutine write_header(self, name, indent)
-         class (type_settings_node), intent(in) :: self
+         class (type_setting), intent(in) :: self
          character(len=*),           intent(in) :: name
          integer,                    intent(in) :: indent
 
@@ -768,10 +828,10 @@ contains
          class is (type_settings)
             pair => self%first
             do while (associated(pair))
-               call write_header(pair%node, pair%name, indent + 2)
+               call write_header(pair%value, pair%name, indent + 2)
                pair => pair%next
             end do
-         class is (type_setting)
+         class is (type_scalar_setting)
             if (allocated(self%description)) write (unit,'("# ",a,a)') repeat(' ', indent + 2), self%description
             select type (self)
             class is (type_real_setting)
@@ -817,9 +877,31 @@ contains
       end subroutine write_header
 
    end subroutine
-   
+
+
+   recursive subroutine list_write_yaml(self, unit, name, indent, comment_depth, header)
+      class (type_list), intent(in) :: self
+      integer,           intent(in) :: unit
+      character(len=*),  intent(in) :: name
+      integer,           intent(in) :: indent
+      integer,           intent(in) :: comment_depth
+      logical,           intent(in) :: header
+
+      type (type_list_item), pointer :: item
+
+      write (unit, '(a,a,":",a)', advance='no') repeat(' ', indent), name
+      if (allocated(self%long_name)) write (unit,'(a,"# ",a)', advance='no') repeat(' ', comment_depth - indent - len(name) - 1), self%long_name
+      write (unit,*)
+
+      item => self%first
+      do while (associated(item))
+         call item%value%write_yaml(unit, '', indent + 2, comment_depth, header=.false.)
+         item => item%next
+      end do
+   end subroutine
+
    recursive subroutine setting_write_yaml(self, unit, name, indent, comment_depth, header)
-      class (type_setting), intent(in) :: self
+      class (type_scalar_setting), intent(in) :: self
       integer,              intent(in) :: unit
       character(len=*),     intent(in) :: name
       integer,              intent(in) :: indent
@@ -852,12 +934,12 @@ contains
    end subroutine setting_write_yaml
 
    recursive subroutine setting_get_comment(self, comment)
-      class (type_setting), intent(in) :: self
+      class (type_scalar_setting), intent(in) :: self
       character(len=:),allocatable, intent(inout) :: comment
    end subroutine
    
    recursive function setting_get_maximum_depth(self, name) result(maxdepth)
-      class (type_setting), intent(in) :: self
+      class (type_scalar_setting), intent(in) :: self
       character(len=*),     intent(in) :: name
       integer                          :: maxdepth
 
@@ -878,10 +960,26 @@ contains
       maxdepth = len(name) + 1
       pair => self%first
       do while (associated(pair))
-         maxdepth = max(maxdepth, pair%node%get_maximum_depth(pair%name) + 2)
+         maxdepth = max(maxdepth, pair%value%get_maximum_depth(pair%name) + 2)
          pair => pair%next
       end do
    end function settings_get_maximum_depth
+
+   recursive function list_get_maximum_depth(self, name) result(maxdepth)
+      class (type_list), intent(in) :: self
+      character(len=*),  intent(in) :: name
+      integer                       :: maxdepth
+
+      type (type_list_item), pointer :: item
+      character(len=:), allocatable :: string
+
+      maxdepth = len(name) + 1
+      item => self%first
+      do while (associated(item))
+         maxdepth = max(maxdepth, item%value%get_maximum_depth('') + 2)
+         item => item%next
+      end do
+   end function list_get_maximum_depth
 
    subroutine real_as_string(self, string, use_default)
       class (type_real_setting), intent(in) :: self
@@ -1015,11 +1113,17 @@ contains
       write (unit, '(a)') '>'
       pair => self%first
       do while (associated(pair))
-         call pair%node%write_schema(unit, pair%name, indent + 2)
+         call pair%value%write_schema(unit, pair%name, indent + 2)
          pair => pair%next
       end do
       write (unit, '(a,a)') repeat(' ', indent), '</element>'
    end subroutine settings_write_schema
+
+   recursive subroutine list_write_schema(self, unit, name, indent)
+      class (type_list), intent(in) :: self
+      character(len=*),  intent(in) :: name
+      integer,           intent(in) :: unit, indent
+   end subroutine list_write_schema
 
    recursive subroutine integer_write_schema(self, unit, name, indent)
       class (type_integer_setting), intent(in) :: self

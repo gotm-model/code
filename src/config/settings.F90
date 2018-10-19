@@ -65,17 +65,24 @@ contains
       integer :: noptions
       type (type_option),allocatable :: options(:)
       class (type_input_setting), pointer :: setting
-      type (type_key_value_pair), pointer :: pair
-      class (type_settings),      pointer :: settings
+      class (type_settings),      pointer :: parent
       integer                             :: istart
-      class(type_yaml_node),      pointer :: node, node2
+      class (type_settings_node), pointer :: node
+      class(type_yaml_node),      pointer :: node2
       class(type_yaml_scalar),    pointer :: scalar
       type (type_yaml_error),     pointer :: yaml_error
       logical                             :: success
 
-      call self%split_path(name, settings, istart, treat_as_path)
-      
-      setting => get_setting(settings, name(istart:))
+      call self%split_path(name, parent, istart, treat_as_path)
+      node => parent%get_node(name(istart:))
+      select type (value => node%value)
+      class is (type_input_setting)
+         setting => value
+      class default
+         allocate(setting)
+         call node%set_value(setting)
+      end select
+
       setting%long_name = long_name
       if (present(description)) setting%description = description
 
@@ -84,25 +91,22 @@ contains
       if (present(method_file)) target%method_file = method_file
 
       default_method = method_unsupported
-      if (associated(settings%backing_store)) then
-         node => settings%backing_store%get(name(istart:))
-         if (associated(node)) then
-            select type (node)
-            class is (type_yaml_dictionary)
-               setting%backing_store => node
-               if (target%method_file /= method_unsupported) default_method = target%method_file
-            class is (type_yaml_scalar)
-               target%constant_value = node%to_real(default, success)
-               if (.not. success) then
-                  call report_error(trim(node%path)//' is set to a single value "'//trim(node%string)//'" that cannot be interpreted as a real number.')
-                  return
-               end if
-            class is (type_yaml_null)
-               call report_error(trim(node%path)//' must be a constant or a dictionary with further information. It cannot be null.')
-            class is (type_yaml_list)
-               call report_error(trim(node%path)//' must be a constant or a dictionary with further information. It cannot be a list.')
-            end select
-         end if
+      if (associated(setting%backing_store_node)) then
+         select type (yaml_node => setting%backing_store_node)
+         class is (type_yaml_dictionary)
+            setting%backing_store => yaml_node
+            if (target%method_file /= method_unsupported) default_method = target%method_file
+         class is (type_yaml_scalar)
+            target%constant_value = yaml_node%to_real(default, success)
+            if (.not. success) then
+               call report_error(setting%path//' is set to a single value "'//trim(yaml_node%string)//'" that cannot be interpreted as a real number.')
+               return
+            end if
+         class is (type_yaml_null)
+            call report_error(setting%path//' must be a constant or a dictionary with further information. It cannot be null.')
+         class is (type_yaml_list)
+            call report_error(setting%path//' must be a constant or a dictionary with further information. It cannot be a list.')
+         end select
       end if
 
       ! Count allowed options
@@ -143,28 +147,6 @@ contains
       target%name = setting%path
       if (present(pchild)) pchild => setting
 
-   contains
-
-      function get_setting(self, name) result(setting)
-         class (type_settings), intent(inout) :: self
-         character(len=*),      intent(in) :: name
-         class (type_input_setting), pointer :: setting
-
-         type (type_key_value_pair), pointer :: pair
-
-         pair => self%get_node(name)
-         if (associated(pair%node)) then
-            select type (node => pair%node)
-            class is (type_input_setting)
-               setting => node
-               return
-            end select
-            deallocate(pair%node)
-         end if
-         allocate(setting)
-         setting%path = self%path//'/'//name
-         pair%node => setting
-      end function
    end subroutine get_input
 
 end module
