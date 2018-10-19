@@ -66,6 +66,7 @@ module yaml_settings
       procedure :: get_node
       procedure :: split_path
       procedure :: populate
+      procedure :: check_all_used
       generic :: get => get_real, get_integer, get_logical, get_string
       procedure :: finalize
    end type type_settings
@@ -183,7 +184,8 @@ contains
          write (*,*) trim(error)
          stop 1
       end if
-      nullify(self%backing_store)
+      self%path  =''
+      self%backing_store => null()
       if (associated(root)) then
          select type (root)
          class is (type_yaml_dictionary)
@@ -195,6 +197,49 @@ contains
          end select
       end if
    end subroutine load
+
+   logical function check_all_used(self)
+      class (type_settings), intent(in) :: self
+
+      integer :: n
+
+      if (.not. associated(self%backing_store)) return
+      n = 0
+      call node_check(self%backing_store, n)
+      check_all_used = n == 0
+
+   contains
+
+      recursive subroutine node_check(self, n)
+         class (type_yaml_node), intent(in)    :: self
+         integer,                intent(inout) :: n
+
+         type (type_yaml_list_item),      pointer :: item
+         type (type_yaml_key_value_pair), pointer :: pair
+
+         select type (self)
+         class is (type_yaml_dictionary)
+            pair => self%first
+            do while (associated(pair))
+               if (.not. pair%accessed) then
+                  n = n + 1
+                  if (n == 1) write (*,*) 'ERROR: the following setting(s) were not recognized:'
+                  write (*,*) '- ' // trim(pair%value%path)
+               else
+                  call node_check(pair%value, n)
+               end if
+               pair => pair%next
+            end do
+         class is (type_yaml_list)
+            item => self%first
+            do while (associated(item))
+               call node_check(item%node, n)
+               item => item%next
+            end do
+         end select
+      end subroutine
+
+   end function check_all_used
 
    subroutine save(self, path, unit)
       class (type_settings), intent(in) :: self

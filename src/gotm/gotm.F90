@@ -321,6 +321,12 @@
    if (read_nml) call configure_gotm_fabm_input_from_nml(namlst, 'fabm_input.nml')
 #endif
 
+   ! Make sure all elements in the YAML configuraiton file were recognized
+   if (.not. settings_store%check_all_used()) then
+      FATAL trim(yaml_file) // ' is invalid.'
+      stop 1
+   end if
+
    if (write_yaml_path /= '') then
       call settings_store%save(trim(write_yaml_path), namlst)
       LEVEL0 'Your configuration has been written to '//trim(write_yaml_path)//'.'
