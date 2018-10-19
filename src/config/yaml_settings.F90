@@ -562,14 +562,13 @@ contains
       logical, optional,             intent(in)    :: treat_as_path
       class (type_settings),  pointer :: child
 
-      logical :: treat_as_path_
       class (type_settings),      pointer :: parent
       integer                             :: istart
       class (type_settings_node), pointer :: node
 
       call split_path(self, name, parent, istart, treat_as_path)
       node => get_node(parent, name(istart:))
-      child => node%as_dictionary()
+      child => node%as_dictionary(long_name)
    end function get_child
 
    subroutine node_set_value(self, value)
@@ -618,7 +617,6 @@ contains
          end subroutine
       end interface
 
-      logical :: treat_as_path_
       class (type_settings),      pointer :: parent
       integer                             :: istart
       type (type_settings_node),  pointer :: node
@@ -955,7 +953,6 @@ contains
       integer                           :: maxdepth
 
       type (type_key_value_pair), pointer :: pair
-      character(len=:), allocatable :: string
 
       maxdepth = len(name) + 1
       pair => self%first
@@ -971,7 +968,6 @@ contains
       integer                       :: maxdepth
 
       type (type_list_item), pointer :: item
-      character(len=:), allocatable :: string
 
       maxdepth = len(name) + 1
       item => self%first
@@ -1131,7 +1127,6 @@ contains
       integer,                      intent(in) :: unit, indent
 
       integer :: ioption
-      character(:), allocatable :: strvalue
 
       write (unit, '(a,a,a,a)', advance='no') repeat(' ', indent), '<element name="', name, '" type="integer"'
       if (allocated(self%long_name)) write (unit, '(a,a,a)', advance='no') ' label="', self%long_name, '"'
