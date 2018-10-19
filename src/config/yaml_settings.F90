@@ -203,9 +203,8 @@ contains
 
       integer :: n
 
-      if (.not. associated(self%backing_store)) return
       n = 0
-      call node_check(self%backing_store, n)
+      if (associated(self%backing_store)) call node_check(self%backing_store, n)
       check_all_used = n == 0
 
    contains
