@@ -423,12 +423,22 @@ contains
       end if
       if (present(description)) setting%description = description
       if (associated(setting%backing_store_node)) then
-         success = .false.
          select type (yaml_node => setting%backing_store_node)
          class is (type_yaml_scalar)
             setting%value = yaml_node%to_integer(setting%value, success)
+            if (.not. success) then
+               do ioption = 1, size(setting%options)
+                  if (yaml_node%string == setting%options(ioption)%long_name) then
+                     setting%value = setting%options(ioption)%value
+                     success = .true.
+                     exit
+                  end if
+               end do
+            end if
+            if (.not. success) call report_error(setting%path//' is set to "'//trim(yaml_node%string)//'", which cannot be interpreted as an integer number.')
+         class default
+            call report_error('Setting '//setting%path//' must be an integer number.')
          end select
-         if (.not. success) call report_error('Setting '//setting%path//' must be an integer number.')
          if (setting%value < setting%minimum) call report_error('Value specified for setting '//setting%path//' lies below prescribed minimum.')
          if (setting%value > setting%maximum) call report_error('Value specified for setting '//setting%path//' exceeds prescribed maximum.')
          if (allocated(setting%options)) then
@@ -638,11 +648,11 @@ contains
       end select
 
       if (present(long_name)) list%long_name = long_name
-      if (associated(node%value%backing_store_node)) then
-         select type (yaml_node => node%value%backing_store_node)
+      if (associated(list%backing_store_node)) then
+         select type (yaml_node => list%backing_store_node)
          class is (type_yaml_list)
             list%backing_store => yaml_node
-            last_item = list%first
+            last_item => list%first
             yaml_item => yaml_node%first
             i = 1
             do while (associated(yaml_item))
