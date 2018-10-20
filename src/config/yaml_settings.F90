@@ -7,7 +7,7 @@ module yaml_settings
 
    private
 
-   public type_settings, type_option, type_scalar_setting, report_error, type_real_setting, type_settings_node
+   public type_settings, type_option, type_scalar_setting, report_error, type_real_setting, type_settings_node, type_settings_create
 
    integer, parameter :: rk = yaml_real_kind
 
@@ -26,13 +26,13 @@ module yaml_settings
       procedure :: write_schema => node_write_schema
       procedure :: write_yaml => node_write_yaml
       procedure :: get_maximum_depth => node_get_maximum_depth
+      procedure :: get_yaml_style => node_get_yaml_style
       procedure :: create_child
    end type type_setting
 
    type type_settings_node
-      class (type_setting),   pointer :: value => null()
+      class (type_setting), pointer :: value => null()
    contains
-      procedure :: as_dictionary => node_as_dictionary
       procedure :: set_value => node_set_value
    end type
 
@@ -43,7 +43,7 @@ module yaml_settings
    end type
 
    type, extends(type_settings_node) :: type_list_item
-      type (type_list_item), pointer :: next      => null()
+      type (type_list_item), pointer :: next => null()
    end type
 
    type,extends(type_setting) :: type_settings
@@ -54,6 +54,7 @@ module yaml_settings
       procedure :: write_schema => settings_write_schema
       procedure :: write_yaml => settings_write_yaml
       procedure :: get_maximum_depth => settings_get_maximum_depth
+      procedure :: get_yaml_style => settings_get_yaml_style
       procedure :: load
       procedure :: save
       procedure :: write_schema_file
@@ -102,6 +103,7 @@ module yaml_settings
       procedure :: write_schema => list_write_schema
       procedure :: write_yaml => list_write_yaml
       procedure :: get_maximum_depth => list_get_maximum_depth
+      procedure :: get_yaml_style => list_get_yaml_style
    end type
   
    type,extends(type_scalar_setting) :: type_integer_setting
@@ -150,21 +152,40 @@ contains
       class (type_setting), intent(in) :: self
       integer,              intent(in) :: unit, indent
       character(len=*),     intent(in) :: name
+      stop 'node_write_schema not overridden'
    end subroutine
 
-   recursive subroutine node_write_yaml(self, unit, name, indent, comment_depth, header)
+   recursive subroutine node_write_yaml(self, unit, indent, comment_depth, header)
       class (type_setting),  intent(in) :: self
       integer,               intent(in) :: unit
-      character(len=*),      intent(in) :: name
       integer,               intent(in) :: indent
       integer,               intent(in) :: comment_depth
       logical,               intent(in) :: header
+      stop 'node_write_schema not overridden'
    end subroutine
 
    recursive function node_get_maximum_depth(self, name) result(maxdepth)
       class (type_setting), intent(in) :: self
       character(len=*),     intent(in) :: name
       integer                          :: maxdepth
+      stop 'node_get_maximum_depth not overridden'
+   end function
+
+   integer function node_get_yaml_style(self)
+      class (type_setting), intent(in) :: self
+      node_get_yaml_style = 1
+   end function
+
+   integer function settings_get_yaml_style(self)
+      class (type_settings), intent(in) :: self
+      settings_get_yaml_style = 2
+      if (.not. associated(self%first)) settings_get_yaml_style = 0
+   end function
+
+   integer function list_get_yaml_style(self)
+      class (type_list), intent(in) :: self
+      list_get_yaml_style = 2
+      if (.not. associated(self%first)) list_get_yaml_style = 0
    end function
 
    subroutine load(self, path, unit)
@@ -247,7 +268,6 @@ contains
 
       integer :: ios
       integer :: comment_depth
-      type (type_key_value_pair),pointer :: pair
 
       open(unit=unit, file=path, action='write', status='replace', iostat=ios)
       if (ios /= 0) then
@@ -255,11 +275,7 @@ contains
          stop 1
       end if
       comment_depth = self%get_maximum_depth('') + 1
-      pair => self%first
-      do while (associated(pair))
-         call pair%value%write_yaml(unit, pair%name, 0, comment_depth, header=.false.)
-         pair => pair%next
-      end do
+      call self%write_yaml(unit, 0, comment_depth, header=.false.)
    end subroutine save
 
    subroutine write_schema_file(self, path, unit, version)
@@ -622,20 +638,20 @@ contains
 
       call split_path(self, name, parent, istart, treat_as_path)
       node => get_node(parent, name(istart:))
-      child => node%as_dictionary(long_name)
+      child => type_settings_create(node, long_name)
    end function get_child
 
    subroutine node_set_value(self, value)
       class (type_settings_node), intent(inout) :: self
       class (type_setting), target :: value
       value%parent => self%value%parent
-      value%path = self%value%path
+      call move_alloc(self%value%path, value%path)
       value%backing_store_node => self%value%backing_store_node
       deallocate(self%value)
       self%value => value
    end subroutine
 
-   function node_as_dictionary(self, long_name) result(child)
+   function type_settings_create(self, long_name) result(child)
       class (type_settings_node), intent(inout) :: self
       character(len=*), optional, intent(in)    :: long_name
       class (type_settings),  pointer :: child
@@ -653,12 +669,13 @@ contains
          select type (yaml_node => self%value%backing_store_node)
          class is (type_yaml_dictionary)
             child%backing_store => yaml_node
+         class is (type_yaml_null)
          class default
             call report_error(trim(self%value%path)//' should be a dictionary')
          end select 
       end if
    end function
-   
+
    recursive subroutine get_list(self, name, long_name, treat_as_path, populator)
       class (type_settings), target, intent(inout) :: self
       character(len=*),              intent(in)    :: name
@@ -716,6 +733,7 @@ contains
                yaml_item => yaml_item%next
                i = i + 1
             end do
+         class is (type_yaml_null)
          class default
             call report_error(trim(node%value%path)//' should be a list')
          end select 
@@ -833,30 +851,42 @@ contains
       end do
    end subroutine split_path
 
-   recursive subroutine settings_write_yaml(self, unit, name, indent, comment_depth, header)
+   recursive subroutine settings_write_yaml(self, unit, indent, comment_depth, header)
       class (type_settings), intent(in) :: self
       integer,               intent(in) :: unit
-      character(len=*),      intent(in) :: name
       integer,               intent(in) :: indent
       integer,               intent(in) :: comment_depth
       logical,               intent(in) :: header
 
       type (type_key_value_pair), pointer  :: pair
+      integer :: style
 
-      if (header) then
-         write (unit, '()')
-         write (unit, '("# ",a,a)') repeat(' ', indent), repeat('-', 80)
-         call write_header(self, name, indent)
-         write (unit, '("# ",a,a)') repeat(' ', indent), repeat('-', 80)
-      end if
-
-      write (unit, '(a,a,":",a)', advance='no') repeat(' ', indent), name
-      if (allocated(self%long_name)) write (unit,'(a,"# ",a)', advance='no') repeat(' ', comment_depth - indent - len(name) - 1), self%long_name
-      write (unit,*)
+      !if (header) then
+      !   write (unit, '()')
+      !   write (unit, '("# ",a,a)') repeat(' ', indent), repeat('-', 80)
+      !   call write_header(self, name, indent)
+      !   write (unit, '("# ",a,a)') repeat(' ', indent), repeat('-', 80)
+      !end if
 
       pair => self%first
       do while (associated(pair))
-         call pair%value%write_yaml(unit, pair%name, indent + 2, comment_depth, header=.false.)
+         if (.not. associated(pair, self%first)) write (unit, '(a)', advance='no') repeat(' ', indent)
+         write (unit, '(a,":")', advance='no') pair%name
+         style = pair%value%get_yaml_style()
+         if (style == 1) then
+            ! flow
+            write (unit, '(" ")', advance='no')
+            call pair%value%write_yaml(unit, indent + len(pair%name) + 2, comment_depth - len(pair%name) - 2, header=.false.)
+         else
+            ! block or null
+            if (allocated(pair%value%long_name)) write (unit, '(a,"# ",a)', advance='no') repeat(' ', comment_depth - len(pair%name) - 1), pair%value%long_name
+            write (unit, *)
+            if (style == 2) then
+               ! block
+               write (unit, '(a)', advance='no') repeat(' ', indent + 2)
+               call pair%value%write_yaml(unit, indent + 2, comment_depth - 2, header=.false.)
+            end if
+         end if
          pair => pair%next
       end do
 
@@ -931,42 +961,35 @@ contains
    end subroutine
 
 
-   recursive subroutine list_write_yaml(self, unit, name, indent, comment_depth, header)
+   recursive subroutine list_write_yaml(self, unit, indent, comment_depth, header)
       class (type_list), intent(in) :: self
       integer,           intent(in) :: unit
-      character(len=*),  intent(in) :: name
       integer,           intent(in) :: indent
       integer,           intent(in) :: comment_depth
       logical,           intent(in) :: header
 
       type (type_list_item), pointer :: item
 
-      write (unit, '(a,a,":",a)', advance='no') repeat(' ', indent), name
-      if (allocated(self%long_name)) write (unit,'(a,"# ",a)', advance='no') repeat(' ', comment_depth - indent - len(name) - 1), self%long_name
-      write (unit,*)
-
       item => self%first
       do while (associated(item))
-         call item%value%write_yaml(unit, '', indent + 2, comment_depth, header=.false.)
+         if (.not. associated(item, self%first)) write (unit, '(a)', advance='no') repeat(' ', indent)
+         write (unit, '("- ")', advance='no')
+         call item%value%write_yaml(unit, indent + 2, comment_depth - 2, header=.false.)
          item => item%next
       end do
    end subroutine
 
-   recursive subroutine setting_write_yaml(self, unit, name, indent, comment_depth, header)
+   recursive subroutine setting_write_yaml(self, unit, indent, comment_depth, header)
       class (type_scalar_setting), intent(in) :: self
       integer,              intent(in) :: unit
-      character(len=*),     intent(in) :: name
       integer,              intent(in) :: indent
       integer,              intent(in) :: comment_depth
       logical,              intent(in) :: header
 
       character(len=:), allocatable :: string, comment
-      integer :: nspaces
 
       call self%as_string(string, .false.)
-      nspaces = comment_depth - indent - len(name) - 2 - len(string)
-      write (unit, '(a,a,": ",a,a,"# ")', advance='no') repeat(' ', indent), name, string, repeat(' ', nspaces)
-      write (unit,'(a)', advance='no') self%long_name
+      write (unit, '(a,a,"# ",a)', advance='no') string, repeat(' ', comment_depth - len(string)), self%long_name
       if (allocated(self%units)) then
          if (self%units == '-') then
             call append_string(comment, '; ', 'dimensionless')
