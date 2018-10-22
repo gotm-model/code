@@ -214,7 +214,7 @@
    if (.not.allocated(input%name)) &
       call fatal_error('input::register_profile_input', 'input has not had a name assigned')
 
-   if (nlev==-1) call fatal_error('input::register_profile_input', 'input module has not been initialized without depth information; &
+   if (nlev==-1) call fatal_error('input::register_profile_input', 'input module has not been initialized with depth information; &
       &depth-explicit inputs can therefore not be registered.')
 
    call profile_inputs%add(input)
@@ -386,6 +386,7 @@
       node => self%first
       do while (associated(node))
          next_node => node%next
+         if (allocated(node%p%data)) deallocate(node%p%data)
          deallocate(node)
          node => next_node
       end do
