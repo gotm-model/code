@@ -5,8 +5,7 @@ module output_manager
    use netcdf_output
    use text_output
 
-   use yaml_types
-   use yaml,yaml_parse=>parse,yaml_error_length=>error_length
+   use yaml_settings
 
    implicit none
 
@@ -14,20 +13,43 @@ module output_manager
 
    private
 
-   class (type_file),pointer :: first_file
-   logical                   :: files_initialized
+   class (type_file), pointer :: first_file
+   logical                    :: files_initialized
 
    interface output_manager_save
       module procedure output_manager_save1
       module procedure output_manager_save2
    end interface
 
+   type,extends(type_dictionary_populator) :: type_file_populator
+      type (type_field_manager), pointer :: fm => null()
+      character(len=:), allocatable :: title
+      character(len=:), allocatable :: postfix
+   contains
+      procedure :: create => process_file
+   end type
+
+   type,extends(type_list_populator) :: type_group_populator
+      class (type_file), pointer :: file
+      class (type_output_variable_settings), pointer :: variable_settings => null()
+   contains
+      procedure :: create => create_group_settings
+   end type
+
+   type,extends(type_list_populator) :: type_variable_populator
+      class (type_file), pointer :: file => null()
+      class (type_output_variable_settings), pointer :: variable_settings => null()
+   contains
+      procedure :: create => create_variable_settings
+   end type
+
 contains
 
-   subroutine output_manager_init(field_manager,title,postfix)
+   subroutine output_manager_init(field_manager, title, postfix, settings)
       type (type_field_manager), target :: field_manager
       character(len=*),           intent(in) :: title
       character(len=*), optional, intent(in) :: postfix
+      class (type_settings), pointer, optional :: settings
 
       if (.not.associated(host)) then
          write (*,*) 'output_manager_init: the host of an output manager must set the host pointer before calling output_manager_init'
@@ -35,7 +57,7 @@ contains
       end if
       nullify(first_file)
       files_initialized = .false.
-      call configure_from_yaml(field_manager,title,postfix)
+      call configure_from_yaml(field_manager,title,postfix, settings)
    end subroutine
 
    subroutine output_manager_clean()
@@ -396,289 +418,214 @@ contains
       end do
    end subroutine output_manager_save2
 
-   subroutine configure_from_yaml(field_manager,title,postfix)
+   subroutine configure_from_yaml(field_manager, title, postfix, settings)
       type (type_field_manager), target      :: field_manager
       character(len=*),           intent(in) :: title
       character(len=*), optional, intent(in) :: postfix
+      class (type_settings), pointer, optional :: settings
 
-      character(len=yaml_error_length)   :: yaml_error
-      class (type_node),         pointer :: node
-      type (type_key_value_pair),pointer :: pair
-      integer,parameter                  :: yaml_unit = 100
-      logical                            :: file_exists
+      logical                        :: file_exists
+      integer,parameter              :: yaml_unit = 100
+      class (type_settings), pointer :: settings_
+      class (type_file_populator), pointer :: populator
+
+      allocate(populator)
+      populator%fm => field_manager
+      populator%title = trim(title)
+      if (present(postfix)) populator%postfix = postfix
+      if (present(settings)) then
+         settings_ => settings
+         call settings_%populate(populator)
+      else
+         settings_ => type_settings_create(populator=populator)
+      end if
 
       inquire(file='output.yaml',exist=file_exists)
-      if (.not.file_exists) then
+      if (file_exists) then
+         call settings_%load('output.yaml', yaml_unit)
+      elseif (.not. present(settings)) then
          call host%log_message('WARNING: no output files will be written because output.yaml is not present.')
          return
       end if
+   end subroutine
 
-      ! Parse YAML.
-      node => yaml_parse('output.yaml',yaml_unit,yaml_error)
-      if (yaml_error/='') call host%fatal_error('configure_from_yaml',trim(yaml_error))
-      if (.not.associated(node)) then
-         call host%log_message('WARNING: no output files will be written because output.yaml is empty.')
-         return
-      end if
-
-      ! Process root-level dictionary.
-      select type (node)
-         class is (type_dictionary)
-            pair => node%first
-            do while (associated(pair))
-               if (pair%key=='') call host%fatal_error('configure_from_yaml','Error parsing output.yaml: empty file path specified.')
-               select type (dict=>pair%value)
-                  class is (type_dictionary)
-                     call process_file(field_manager,trim(pair%key),dict,title,postfix=postfix)
-                  class default
-                     call host%fatal_error('configure_from_yaml','Error parsing output.yaml: contents of '//trim(dict%path)//' must be a dictionary, not a single value.')
-               end select
-               pair => pair%next
-            end do
-         class default
-            call host%fatal_error('configure_from_yaml','output.yaml must contain a dictionary with (variable name : information) pairs.')
-      end select
-   end subroutine configure_from_yaml
-
-   subroutine output_manager_add_file(field_manager,file)
+   subroutine output_manager_add_file(field_manager, file)
       type (type_field_manager), target :: field_manager
-      class (type_file),target :: file
+      class (type_file),         target :: file
 
       file%field_manager => field_manager
       file%next => first_file
       first_file => file
    end subroutine output_manager_add_file
 
-   subroutine process_file(field_manager,path,mapping,title,postfix,default_settings)
-      type (type_field_manager), target                           :: field_manager
-      character(len=*),                                intent(in) :: path
-      class (type_dictionary),                         intent(in) :: mapping
-      character(len=*),                                intent(in) :: title
-      character(len=*),                      optional, intent(in) :: postfix
-      class (type_output_variable_settings), optional, intent(in) :: default_settings
+   subroutine process_file(self, pair)
+      class (type_file_populator), intent(inout) :: self
+      type (type_key_value_pair),  intent(inout) :: pair
 
-      type (type_error),   pointer :: config_error
-      class (type_scalar), pointer :: scalar
-      class (type_file),   pointer :: file
-      character(len=string_length) :: string
-      logical                      :: success
-
+      logical                              :: is_active
+      integer                              :: fmt
+      class (type_file), pointer           :: file
+      character(len=:), allocatable        :: string
+      class (type_settings),       pointer :: file_settings
+      logical :: success
       type (type_dimension),       pointer :: dim
       type (type_output_dimension),pointer :: output_dim
       character(len=8)                     :: strmax
       integer                              :: distance
+
+      file_settings => type_settings_create(pair, 'path of output file')
+
+      is_active = file_settings%get_logical('is_active', 'write output to this file', default=.true.)
 #ifdef NETCDF_FMT
-      character(len=*), parameter :: default_format = 'netcdf'
+      fmt = file_settings%get_integer('format', 'format', options=(/type_option(1, 'text'), type_option(2, 'NetCDF')/), default=2)
 #else
-      character(len=*), parameter :: default_format = 'text'
+      fmt = file_settings%get_integer('format', 'format', options=(/type_option(1, 'text')/), default=1)
 #endif
-      logical                              :: is_active
 
-      is_active = mapping%get_logical('is_active',default=.true.,error=config_error)
-      if (is_active) then
-         string = mapping%get_string('format',default=default_format,error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-         select case (string)
-         case ('netcdf')
+      select case (fmt)
+      case (1)
+         allocate(type_text_file::file)
+      case (2)
 #ifdef NETCDF_FMT
-            allocate(type_netcdf_file::file)
-#else
-            call host%fatal_error('process_file','Error parsing output.yaml: "netcdf" specified for format of output file "'//trim(path)//'", but GOTM has been compiled without NetCDF support. Valid options are: text.')
+         allocate(type_netcdf_file::file)
 #endif
-         case ('text')
-            allocate(type_text_file::file)
-         case default
-            call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(string)//'" specified for format of output file "'//trim(path)//'". Valid options are: netcdf, text.')
-         end select
+      end select
 
-         ! Create file object and prepend to list.
-         file%path = path
-         if (present(postfix)) file%postfix = postfix
-         call output_manager_add_file(field_manager,file)
+      ! Create file object and prepend to list.
+      file%path = pair%name
+      if (allocated(self%postfix)) file%postfix = self%postfix
+      call output_manager_add_file(self%fm, file)
 
-         ! Can be used for CF global attributes
-         file%title = mapping%get_string('title',default=title,error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+      ! Can be used for CF global attributes
+      call file_settings%get(file%title, 'title', 'title', default=self%title)
+      call file_settings%get(file%time_unit, 'time_unit', 'time unit', default=time_unit_day, options=(/ &
+         type_option(time_unit_second, 'second'), type_option(time_unit_hour, 'hour'), type_option(time_unit_day, 'day'), &
+         type_option(time_unit_month, 'month'), type_option(time_unit_year, 'year'), type_option(time_unit_dt, 'dt')/))
 
-         ! Determine time unit
-         scalar => mapping%get_scalar('time_unit',required=.true.,error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-         select case (scalar%string)
-            case ('second')
-               file%time_unit = time_unit_second
-            case ('hour')
-               file%time_unit = time_unit_hour
-            case ('day')
-               file%time_unit = time_unit_day
-            case ('month')
-               file%time_unit = time_unit_month
-            case ('year')
-               file%time_unit = time_unit_year
-            case ('dt')
-               file%time_unit = time_unit_dt
-            case default
-               call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for time_unit of output file "'//trim(path)//'". Valid options are second, day, month, year.')
-         end select
+      ! Determine time step
+      call file_settings%get(file%time_step, 'time_step', 'number of time units between output', minimum=1, default=1)
+      string = file_settings%get_string('time_start', 'start', 'yyyy-mm-dd HH:MM:SS', default='')
+      if (string /= '') then
+         call read_time_string(string, file%first_julian, file%first_seconds, success)
+         if (.not. success) call host%fatal_error('process_file','Error in output configuration: invalid time_start "'//string//'" specified for file "'//pair%name//'". Required format: yyyy-mm-dd HH:MM:SS.')
+      end if
+      string = file_settings%get_string('time_stop', 'stop', 'yyyy-mm-dd HH:MM:SS', default='')
+      if (string /= '') then
+         call read_time_string(string, file%last_julian, file%last_seconds, success)
+         if (.not. success) call host%fatal_error('process_file','Error in output configuration: invalid time_stop "'//string//'" specified for file "'//pair%name//'". Required format: yyyy-mm-dd HH:MM:SS.')
+      end if
 
-         ! Determine time step
-         file%time_step = mapping%get_integer('time_step',error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
+      ! Determine dimension ranges
+      dim => self%fm%first_dimension
+      do while (associated(dim))
+         if (dim%iterator /= '') then
+            write (strmax,'(i0)') dim%global_length
+            output_dim => file%get_dimension(dim)
+            if (dim%global_length > 1) then
+               call file_settings%get(output_dim%global_start, trim(dim%iterator)//'_start', 'start index for '//trim(dim%iterator)//' dimension', default=1, minimum=1, maximum=dim%global_length)
+               call file_settings%get(output_dim%global_stop, trim(dim%iterator)//'_stop', 'stop index for '//trim(dim%iterator)//' dimension', default=dim%global_length, minimum=1, maximum=dim%global_length)
+               if (output_dim%global_start > output_dim%global_stop) call host%fatal_error('process_file', 'Error in output configuration: '//trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
+               call file_settings%get(output_dim%stride, trim(dim%iterator)//'_stride', 'stride for '//trim(dim%iterator)//' dimension', default=1)
+            end if
 
-         ! Determine time of first output (default to start of simulation)
-         scalar => mapping%get_scalar('time_start',required=.false.,error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-         if (associated(scalar)) then
-            call read_time_string(trim(scalar%string),file%first_julian,file%first_seconds,success)
-            if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
-         end if
+            ! Reduce stop to last point that is actually included (due to stride > 1)
+            output_dim%global_stop = output_dim%global_stop - mod(output_dim%global_stop - output_dim%global_start, output_dim%stride)
 
-         ! Determine time of last output (default: save until simulation ends)
-         scalar => mapping%get_scalar('time_stop',required=.false.,error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-         if (associated(scalar)) then
-            call read_time_string(trim(scalar%string),file%last_julian,file%last_seconds,success)
-            if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
-         end if
+            ! Compute local [i.e., within-subdomain] start and stop positons from global positions and local offset.
+            if (output_dim%global_start > dim%offset + dim%length) then
+               ! Start point lies beyond our subdomain
+               output_dim%start = 1
+               output_dim%stop = output_dim%start - output_dim%stride
+            else
+               if (output_dim%global_start > dim%offset) then
+                  ! Starting point lies within our subdomain
+                  output_dim%start = output_dim%global_start - dim%offset
+               else
+                  ! Starting point lies before our subdomain: we start immediately but have to account for stride
 
-         ! Determine dimension ranges
-         dim => field_manager%first_dimension
-         do while (associated(dim))
-            if (dim%iterator/='') then
-               write (strmax,'(i0)') dim%global_length
-               output_dim => file%get_dimension(dim)
-               output_dim%global_start = mapping%get_integer(trim(dim%iterator)//'_start',default=1,error=config_error)
-               if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-               if (output_dim%global_start<0.or.output_dim%global_start>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 0 and '//trim(strmax))
-               output_dim%global_stop = mapping%get_integer(trim(dim%iterator)//'_stop',default=dim%global_length,error=config_error)
-               if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-               if (output_dim%global_stop<1.or.output_dim%global_stop>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))
-               if (output_dim%global_start>output_dim%global_stop) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
-               output_dim%stride = mapping%get_integer(trim(dim%iterator)//'_stride',default=1,error=config_error)
-               if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-               if (output_dim%stride<1) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stride must be larger than 0.')
+                  ! Determine distance between subdomain start and nearest included point outside the domain.
+                  distance = mod(dim%offset + 1 - output_dim%global_start, output_dim%stride)
 
-               ! Reduce stop to last point that is actually included (due to stride>1)
-               output_dim%global_stop = output_dim%global_stop - mod(output_dim%global_stop-output_dim%global_start,output_dim%stride)
+                  ! Convert to distance to next point within the domain
+                  if (distance > 0) distance = output_dim%stride - distance
+                  output_dim%start = 1 + distance
+               end if
 
-               ! Compute local [i.e., within-subdomain] start and stop positons from global positions and local offset.
-               if (output_dim%global_start>dim%offset+dim%length) then
-                  ! Start point lies beyond our subdomain
-                  output_dim%start = 1
+               ! Determine local stop by subtracting subdomain offset [maximum is subdomain length)
+               output_dim%stop = min(output_dim%global_stop - dim%offset, dim%length)
+
+               if (output_dim%stop < output_dim%start) then
+                  ! stop precedes start, so we have 0 length, i.e.,
+                  ! length = (output_dimension%stop-output_dimension%start)/output_dimension%stride + 1 = 0
                   output_dim%stop = output_dim%start - output_dim%stride
                else
-                  if (output_dim%global_start>dim%offset) then
-                     ! Starting point lies within our subdomain
-                     output_dim%start = output_dim%global_start - dim%offset
-                  else
-                     ! Starting point lies before our subdomain: we start immediately but have to account for stride
-
-                     ! Determine distance between subdomain start and nearest included point outside the domain.
-                     distance = mod(dim%offset + 1 - output_dim%global_start, output_dim%stride)
-
-                     ! Convert to distance to next point within the domain
-                     if (distance>0) distance = output_dim%stride - distance
-                     output_dim%start = 1 + distance
-                  end if
-
-                  ! Determine local stop by subtracting subdomain offset [maximum is subdomain length)
-                  output_dim%stop = min(output_dim%global_stop - dim%offset, dim%length)
-
-                  if (output_dim%stop<output_dim%start) then
-                     ! stop precedes start, so we have 0 length, i.e.,
-                     ! length = (output_dimension%stop-output_dimension%start)/output_dimension%stride + 1 = 0
-                     output_dim%stop = output_dim%start - output_dim%stride
-                  else
-                     ! Reduce stop to last point that is actually included (due to stride>1)
-                     output_dim%stop = output_dim%stop - mod(output_dim%stop-output_dim%start,output_dim%stride)
-                  end if
+                  ! Reduce stop to last point that is actually included (due to stride>1)
+                  output_dim%stop = output_dim%stop - mod(output_dim%stop - output_dim%start, output_dim%stride)
                end if
             end if
-            dim => dim%next
-         end do
+         end if
+         dim => dim%next
+      end do
 
-         ! Allow specific file implementation to parse additional settings from yaml file.
-         call file%configure(mapping)
+      ! Allow specific file implementation to parse additional settings from yaml file.
+      call file%configure(file_settings)
 
-         call process_group(file,mapping,default_settings)
-      end if
+      call configure_group(file, file_settings) !, default_variable_settings)
+
    end subroutine process_file
 
-   recursive subroutine process_group(file,mapping,default_settings)
-      class (type_file),                               intent(inout) :: file
-      class (type_dictionary),                         intent(in)    :: mapping
-      class (type_output_variable_settings), optional, intent(in)    :: default_settings
+   recursive subroutine configure_group(file, settings, default_variable_settings)
+      class (type_file), target, intent(inout) :: file
+      class (type_settings),     intent(inout) :: settings
+      class (type_output_variable_settings), optional, intent(in) :: default_variable_settings
 
-      class (type_list),                     pointer :: list
-      type (type_list_item),                 pointer :: item
-      type (type_error),                     pointer :: config_error
-      class (type_output_variable_settings), pointer :: settings
-      type (type_key_value_pair),            pointer :: pair
-
-      settings => file%create_settings()
-      call settings%initialize(mapping, default_settings)
+      class (type_group_populator),    pointer :: group_populator
+      class (type_variable_populator), pointer :: variable_populator
 
       ! Get list with groups [if any]
-      list => mapping%get_list('groups',required=.false.,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_group',config_error%message)
-      if (associated(list)) then
-         item => list%first
-         do while (associated(item))
-            select type (node=>item%node)
-               class is (type_dictionary)
-                  call process_group(file, node, settings)
-               class default
-                  call host%fatal_error('process_group','Elements below '//trim(list%path)//' must be dictionaries.')
-            end select
-            item => item%next
-         end do
-      end if
+      allocate(group_populator)
+      group_populator%variable_settings => file%create_settings()
+      call group_populator%variable_settings%initialize(settings, default_variable_settings)
+      group_populator%file => file
+      call settings%get_list('groups', group_populator)
 
       ! Get list with variables
-      list => mapping%get_list('variables',required=.true.,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_group',config_error%message)
-      item => list%first
-      do while (associated(item))
-         select type (node=>item%node)
-            class is (type_dictionary)
-               call process_variable(file, node, settings)
-            class default
-               call host%fatal_error('process_group','Elements below '//trim(list%path)//' must be dictionaries.')
-         end select
-         item => item%next
-      end do
+      allocate(variable_populator)
+      variable_populator%file => file
+      variable_populator%variable_settings => group_populator%variable_settings
+      call settings%get_list('variables', variable_populator)
 
-      ! Raise error if any keys are left unused.
-      pair => mapping%first
-      do while (associated(pair))
-         if (.not.pair%accessed) call host%fatal_error('process_group','key '//trim(pair%key)//' below '//trim(mapping%path)//' not recognized.')
-         pair => pair%next
-      end do
+   end subroutine
 
-      deallocate(settings)
-   end subroutine process_group
+   recursive subroutine create_group_settings(self, item)
+      class (type_group_populator), intent(inout) :: self
+      type (type_list_item),        intent(inout) :: item
 
-   subroutine process_variable(file,mapping,default_settings)
-      class (type_file),                    intent(inout) :: file
-      class (type_dictionary),              intent(in)    :: mapping
-      class (type_output_variable_settings),intent(in)    :: default_settings
+      class (type_settings), pointer :: group_settings
 
-      character(len=string_length) :: source_name
-      type (type_error),        pointer :: config_error
-      class (type_output_category),pointer  :: output_category
-      class (type_output_field),pointer :: output_field
-      integer                           :: n
-      type (type_key_value_pair),pointer :: pair
+      group_settings => type_settings_create(item)
+      call configure_group(self%file, group_settings, self%variable_settings)
+   end subroutine
+
+   recursive subroutine create_variable_settings(self, item)
+      class (type_variable_populator), intent(inout) :: self
+      type (type_list_item),           intent(inout) :: item
+
+      class (type_settings),        pointer :: variable_settings
+      character(len=:), allocatable         :: source_name
+      integer                               :: n
+      class (type_output_category), pointer :: output_category
+      class (type_output_field),    pointer :: output_field
+
+      variable_settings => type_settings_create(item)
 
       ! Name of source variable
-      source_name = mapping%get_string('source',error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
+      source_name = variable_settings%get_string('source', 'name in model')
 
       ! Determine whether to create an output field or an output category
-      n = len_trim(source_name)
+      n = len(source_name)
       if (source_name(n:n)=='*') then
          allocate(output_category)
-         output_category%settings => file%create_settings()
-         call output_category%settings%initialize(mapping, default_settings)
 
          if (n==1) then
             output_category%name = ''
@@ -687,40 +634,32 @@ contains
          end if
 
          ! Prefix for output name
-         output_category%prefix = mapping%get_string('prefix',default='',error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
+         call variable_settings%get(output_category%prefix, 'prefix', 'name prefix used in output', default='')
 
          ! Postfix for output name
-         output_category%postfix = mapping%get_string('postfix',default='',error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
+         call variable_settings%get(output_category%postfix, 'postfix', 'name postfix used in output', default='')
 
          ! Output level
-         output_category%output_level = mapping%get_integer('output_level',default=output_level_default,error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
+         call variable_settings%get(output_category%output_level, 'output_level', 'output level', default=output_level_default)
 
-         call file%append_category(output_category)
+         output_category%settings => self%file%create_settings()
+         call output_category%settings%initialize(variable_settings, self%variable_settings)
+
+         call self%file%append_category(output_category)
       else
-         output_field => file%create_field()
-         output_field%settings => file%create_settings()
-         call output_field%settings%initialize(mapping, default_settings)
-
-         ! Select this variable for output in the field manager.
-         output_field%source => file%field_manager%select_for_output(source_name)
+         output_field => self%file%create_field()
 
          ! Name of output variable (may differ from source name)
-         output_field%output_name = mapping%get_string('name',default=source_name,error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
+         call variable_settings%get(output_field%output_name, 'name', 'name used in output', default=source_name)
 
-         call file%append(output_field)
+         output_field%settings => self%file%create_settings()
+         call output_field%settings%initialize(variable_settings, self%variable_settings)
+
+         ! Select this variable for output in the field manager.
+         output_field%source => self%file%field_manager%select_for_output(source_name)
+
+         call self%file%append(output_field)
       end if
-
-      ! Raise error if any keys are left unused.
-      pair => mapping%first
-      do while (associated(pair))
-         if (.not.pair%accessed) call host%fatal_error('process_group','key '//trim(pair%key)//' below '//trim(mapping%path)//' not recognized.')
-         pair => pair%next
-      end do
-
-   end subroutine process_variable
+   end subroutine
 
 end module

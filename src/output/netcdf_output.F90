@@ -1,7 +1,7 @@
 module netcdf_output
    use field_manager
    use output_manager_core
-   use yaml_types, only: type_dictionary, type_error, type_scalar
+   use yaml_settings
 #ifdef NETCDF_FMT
    use netcdf
 
@@ -43,26 +43,24 @@ module netcdf_output
 
 contains
 
-   subroutine configure(self,mapping)
-      class (type_netcdf_file),intent(inout) :: self
-      class (type_dictionary), intent(in)    :: mapping
+   subroutine configure(self, settings)
+      class (type_netcdf_file), intent(inout) :: self
+      class (type_settings),    intent(inout) :: settings
 
-      type (type_error),  pointer :: config_error
-      class (type_scalar),pointer :: scalar
-      logical                     :: success
+
+      character(len=:), allocatable :: time_reference
+      logical :: success
 
       ! Determine time of first output (default to start of simulation)
-      scalar => mapping%get_scalar('time_reference',required=.false.,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-      if (associated(scalar)) then
-         call read_time_string(trim(scalar%string),self%reference_julian,self%reference_seconds,success)
-         if (.not.success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//trim(scalar%string)//'" specified for '//trim(scalar%path)//'. Required format: yyyy-mm-dd HH:MM:SS.')
+      time_reference = settings%get_string('time_reference', 'reference date and time to use in time units', default='')
+      if (time_reference /= '') then
+         call read_time_string(time_reference, self%reference_julian, self%reference_seconds, success)
+         if (.not. success) call host%fatal_error('process_file','Error parsing output.yaml: invalid value "'//time_reference//'" specified for '//trim(self%path)//'/time_reference. Required format: yyyy-mm-dd HH:MM:SS.')
       end if
 
       ! Determine interval between calls to nf90_sync (default: after every output)
-      self%sync_interval = mapping%get_integer('sync_interval',default=1,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-   end subroutine
+      call settings%get(self%sync_interval, 'sync_interval', 'number of output steps between sychronization to disk (<= 0: sync on close only)', default=1)
+  end subroutine
 
    subroutine initialize(self)
       class (type_netcdf_file),intent(inout) :: self
@@ -313,19 +311,12 @@ contains
       if (iret/=NF90_NOERR) call host%fatal_error('check_err',nf90_strerror(iret))
    end subroutine
 
-   subroutine netcdf_variable_settings_initialize(self,mapping,parent)
-      use yaml_types
-
+   subroutine netcdf_variable_settings_initialize(self, settings, parent)
       class (type_netcdf_variable_settings),           intent(inout) :: self
-      class (type_dictionary),                         intent(in)    :: mapping
+      class (type_settings),                           intent(inout) :: settings
       class (type_output_variable_settings), optional, intent(in)    :: parent
 
-      type (type_error),  pointer :: config_error
-      class (type_scalar),pointer :: scalar
-      logical                     :: success
-      character(len=8)            :: strfloat, strdouble
-
-      call self%type_output_variable_settings%initialize(mapping,parent)
+      call self%type_output_variable_settings%initialize(settings, parent)
 
       if (present(parent)) then
          select type (parent)
@@ -333,16 +324,7 @@ contains
             self%xtype = parent%xtype
          end select
       end if
-      scalar => mapping%get_scalar('xtype',required=.false.,error=config_error)
-      if (associated(config_error)) call host%fatal_error('netcdf_output_item_initialize',config_error%message)
-      if (associated(scalar)) then
-         self%xtype = scalar%to_integer(self%xtype,success)
-         if (.not.success.or.(self%xtype /= NF90_DOUBLE .and. self%xtype /= NF90_FLOAT)) then
-            write (strfloat, '(i0)') NF90_FLOAT
-            write (strdouble, '(i0)') NF90_DOUBLE
-            call host%fatal_error('netcdf_output_item_initialize',trim(scalar%path)//' is set to invalid value "'//trim(scalar%string)//'". Supported: '//trim(strfloat)//' for 32 bits float, '//trim(strdouble)//' for 64 bits double.')
-         end if
-      end if
+      call settings%get(self%xtype, 'xtype', 'data type', options=(/type_option(NF90_FLOAT, '32-bit float'), type_option(NF90_DOUBLE, '64-bit double')/), default=self%xtype)
    end subroutine netcdf_variable_settings_initialize
 
 #endif

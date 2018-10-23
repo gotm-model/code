@@ -3,7 +3,7 @@
 module output_manager_core
 
    use field_manager
-   use yaml_types,only: type_dictionary
+   use yaml_settings
 
    implicit none
 
@@ -151,9 +151,9 @@ module output_manager_core
 
 contains
 
-   subroutine configure(self,mapping)
-      class (type_file),      intent(inout) :: self
-      class (type_dictionary),intent(in)    :: mapping
+   subroutine configure(self,settings)
+      class (type_file),     intent(inout) :: self
+      class (type_settings), intent(inout) :: settings
    end subroutine
 
    subroutine initialize(self)
@@ -200,13 +200,18 @@ contains
    end subroutine write_time_string
 
    subroutine read_time_string(timestr,jul,secs,success)
-      character(len=19)    :: timestr
+      character(len=*)     :: timestr
       integer, intent(out) :: jul,secs
       logical, intent(out) :: success
 
       integer   :: ios
       character :: c1,c2,c3,c4
       integer   :: yy,mm,dd,hh,min,ss
+
+      if (len_trim(timestr) < 19) then
+         success = .false.
+         return
+      end if
 
       read(timestr,'(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)',iostat=ios)  &
                           yy,c1,mm,c2,dd,hh,c3,min,c4,ss
@@ -327,34 +332,14 @@ contains
       output_dimension%global_stop = dim%global_length
    end function get_dimension
 
-   subroutine output_variable_settings_initialize(self,mapping,parent)
-      use yaml_types
-
-      class (type_output_variable_settings),intent(inout)       :: self
-      class (type_dictionary), intent(in)          :: mapping
-      class (type_output_variable_settings),intent(in),optional :: parent
-
-      type (type_error),  pointer :: config_error
-      class (type_scalar),pointer :: scalar
-      logical                     :: success
+   subroutine output_variable_settings_initialize(self, settings, parent)
+      class (type_output_variable_settings), intent(inout)        :: self
+      class (type_settings),                 intent(inout)        :: settings
+      class (type_output_variable_settings), intent(in), optional :: parent
 
       if (present(parent)) self%time_method = parent%time_method
-
-      scalar => mapping%get_scalar('time_method',required=.false.,error=config_error)
-      if (associated(config_error)) call host%fatal_error('output_item_initialize',config_error%message)
-      if (.not.associated(scalar)) return
-      select case (scalar%string)
-      case ('mean')
-         self%time_method = time_method_mean
-      case ('point','instantaneous')
-         self%time_method = time_method_instantaneous
-      case ('integrated')
-         self%time_method = time_method_integrated
-      case default
-         self%time_method = scalar%to_integer(self%time_method,success)
-         if (.not.success.or.self%time_method<0.or.self%time_method>3) call host%fatal_error('output_item_initialize', trim(scalar%path)//' is set to "' &
-            //trim(scalar%string)//'", which is not a supported value. Supported: point (1), mean (2), integrated (3).')
-      end select
+      call settings%get(self%time_method, 'time_method', '', options=(/type_option(time_method_mean, 'mean'), &
+         type_option(time_method_instantaneous, 'point'), type_option(time_method_integrated, 'integrated')/), default=self%time_method)
    end subroutine output_variable_settings_initialize
 
 end module output_manager_core

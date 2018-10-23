@@ -455,24 +455,24 @@
                 default=.false.)
    call branch%get(fluxes_method, 'fluxes_method', 'method to calculate heat and momentum fluxes', &
                 options=(/type_option(1, 'Kondo (1975)'), type_option(2, 'Fairall et al. (1996)')/), default=1)
-   call branch%get_scalar_input(u10, 'u10', '10 metre wind speed in x direction', 'm/s', &
+   call branch%get(u10, 'u10', '10 metre wind speed in x direction', 'm/s', &
                 default=0._rk)
-   call branch%get_scalar_input(v10, 'v10', '10 metre wind speed in y direction', 'm/s', &
+   call branch%get(v10, 'v10', '10 metre wind speed in y direction', 'm/s', &
                 default=0._rk)
-   call branch%get_scalar_input(airp, 'airp', 'air pressure', 'Pa', &
+   call branch%get(airp, 'airp', 'air pressure', 'Pa', &
                 default=0._rk)
-   call branch%get_scalar_input(airt, 'airt', '2 metre air temperature', 'Celsius or K', &
+   call branch%get(airt, 'airt', '2 metre air temperature', 'Celsius or K', &
                 default=0._rk)
-   call branch%get_scalar_input(hum, 'hum', '2 metre humidity', '', &
+   call branch%get(hum, 'hum', '2 metre humidity', '', &
                 default=0._rk, pchild=leaf)
    call leaf%get(hum_method, 'hum_method', 'humidity metric', &
                 options=(/type_option(1, 'relative humidity (%)'), type_option(2, 'wet-bulb temperature'), &
                 type_option(3, 'dew point temperature'), type_option(4 ,'specific humidity (kg/kg)')/), default=1)
-   call branch%get_scalar_input(cloud, 'cloud', 'cloud cover', '-', &
+   call branch%get(cloud, 'cloud', 'cloud cover', '-', &
                 minimum=0._rk, maximum=1._rk, default=0._rk)
-   call branch%get_scalar_input(I_0, 'swr', 'shortwave radiation', 'W/m2', &
+   call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m2', &
                 minimum=0._rk,default=0._rk, extra_options=(/type_option(3, 'from time, location and cloud cover')/))
-   call branch%get_scalar_input(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
+   call branch%get(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
                extra_options=(/type_option(1, 'Clark'), type_option(2, 'Hastenrath'), type_option(3, 'Bignami'), type_option(4, 'Berliand')/))
    call branch%get(rain_impact, 'rain_impact', '', &
@@ -483,17 +483,17 @@
                 minimum=0,maximum=2,default=1)
    call branch%get(const_albedo, 'const_albedo', '', '-', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
-   call branch%get_scalar_input(heat, 'heat', 'surface heat flux', 'W/m2', &
+   call branch%get(heat, 'heat', 'surface heat flux', 'W/m2', &
                 default=0._rk)
-   call branch%get_scalar_input(tx, 'tx', 'surface momentum flux: x-direction', 'Pa', &
+   call branch%get(tx, 'tx', 'surface momentum flux: x-direction', 'Pa', &
                 default=0._rk)
-   call branch%get_scalar_input(ty, 'ty', 'surface momentum flux: y-direction', 'Pa', &
+   call branch%get(ty, 'ty', 'surface momentum flux: y-direction', 'Pa', &
                 default=0._rk)
-   call branch%get_scalar_input(precip, 'precip', 'precipitation', 'm/s', &
+   call branch%get(precip, 'precip', 'precipitation', 'm/s', &
                 default=0._rk)
-   call branch%get_scalar_input(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
+   call branch%get(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
                 default=0._rk)
-   call branch%get_scalar_input(sss, 'sss', 'observed surface salinity', 'PSU', &
+   call branch%get(sss, 'sss', 'observed surface salinity', 'PSU', &
                 default=0._rk)
    call branch%get(ssuv_method, 'ssuv_method', 'wind speed correction for current velocity', &
                 options=(/type_option(0, 'use absolute wind speed'), type_option(1, 'use relative wind speed')/), default=0)

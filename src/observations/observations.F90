@@ -545,7 +545,7 @@
 !BOC
    LEVEL1 'init_observations_yaml'
 
-   call settings_store%get_profile_input(tprof, 'temperature', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
+   call settings_store%get(tprof, 'temperature', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
                    extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
    call twig%get(t_analyt_method, 't_analyt_method', '', &
@@ -572,7 +572,7 @@
    call twig%get(TRelaxBott, 'TRelaxBott', 'height of bottom relaxation layer', 'm', &
                    minimum=0._rk,default=0._rk)
 
-   call settings_store%get_profile_input(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'PSU', &
+   call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'PSU', &
                    extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
    call twig%get(s_analyt_method, 's_analyt_method', '', &
@@ -603,19 +603,19 @@
    call twig%get(extinct_method, 'extinct_method', 'water type', &
                    options=(/type_option(1, 'Jerlov type I'), type_option(2, 'Jerlov type 1 (upper 50 m)'), type_option(3, 'Jerlov type IA'), &
                    type_option(4, 'Jerlov type IB'), type_option(5, 'Jerlov type II'), type_option(6, 'Jerlov type III'), type_option(7, 'custom')/), default=1)
-   call twig%get_scalar_input(A_, 'A', 'non-visible fraction of shortwave radiation', '1', &
+   call twig%get(A_, 'A', 'non-visible fraction of shortwave radiation', '1', &
                    minimum=0._rk,maximum=1._rk,default=0.7_rk)
-   call twig%get_scalar_input(g1_, 'g1', 'e-folding depth of non-visible shortwave radiation', 'm', &
+   call twig%get(g1_, 'g1', 'e-folding depth of non-visible shortwave radiation', 'm', &
                    minimum=0._rk,default=0.4_rk)
-   call twig%get_scalar_input(g2_, 'g2', 'e-folding depth of visible shortwave radiation', 'm', &
+   call twig%get(g2_, 'g2', 'e-folding depth of visible shortwave radiation', 'm', &
                    minimum=0._rk,default=8._rk)
    
    branch => settings_store%get_typed_child('mimic_3d')
    
    twig => branch%get_typed_child('ext_pressure', 'external pressure')
-   call twig%get_scalar_input(h_press, 'h', 'height above bed', 'm', &
+   call twig%get(h_press, 'h', 'height above bed', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get_scalar_input(dpdx, 'dpdx', 'pressure in x-direction', '', &
+   call twig%get(dpdx, 'dpdx', 'pressure in x-direction', '', &
                    default=0._rk, pchild=leaf)
    call leaf%get(AmpMu, 'AmpMu', '', '-', &
                    default=0._rk)
@@ -625,7 +625,7 @@
                    default=0._rk)
    call leaf%get(PhaseSu, 'PhaseSu', '', 's', &
                    minimum=0._rk,default=0._rk)
-   call twig%get_scalar_input(dpdy, 'dpdy', 'pressure in y-direction', '', &
+   call twig%get(dpdy, 'dpdy', 'pressure in y-direction', '', &
                    default=0._rk, pchild=leaf)
    call leaf%get(AmpMv, 'AmpMv', '', '-', &
                    default=0._rk)
@@ -641,26 +641,26 @@
                    default=43200._rk)
 
    twig => branch%get_typed_child('int_press', 'internal pressure')
-   call twig%get_profile_input(dsdx, 'dsdx', 'salinity gradient: x direction', 'Celsius/m', &
+   call twig%get(dsdx, 'dsdx', 'salinity gradient: x direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get_profile_input(dsdy, 'dsdy', 'salinity gradient: y direction', 'Celsius/m', &
+   call twig%get(dsdy, 'dsdy', 'salinity gradient: y direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get_profile_input(dtdx, 'dtdx', 'temperature gradient: x direction', 'PSU/m', &
+   call twig%get(dtdx, 'dtdx', 'temperature gradient: x direction', 'PSU/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get_profile_input(dtdy, 'dtdy', 'temperature gradient: y direction', 'PSU/m', &
+   call twig%get(dtdy, 'dtdy', 'temperature gradient: y direction', 'PSU/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    call twig%get(t_adv, 't_adv', 'advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'advect salinity', default=.false.)
 
    twig => branch%get_typed_child('w_advspec', 'vertical velocity')
-   call twig%get_scalar_input(w_adv, 'w_adv', 'vertical velocity', 'm/s', &
+   call twig%get(w_adv, 'w_adv', 'vertical velocity', 'm/s', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get_scalar_input(w_height, 'w_height', 'height', 'm', &
+   call twig%get(w_height, 'w_height', 'height', 'm', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    call twig%get(w_adv_discr, 'w_adv_discr', '', &
                    minimum=0,maximum=6,default=6)
 
-   call branch%get_scalar_input(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, pchild=twig)
+   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, pchild=twig)
    call twig%get(period_1, 'period_1', '', 's', &
                    default=44714._rk)
    call twig%get(amp_1, 'amp_1', '', 'm', &
@@ -675,9 +675,9 @@
                    minimum=0._rk, default=0._rk)
 
    twig => branch%get_typed_child('velprofile', 'horizontal velocities')
-   call twig%get_profile_input(uprof, 'uprof', 'velocity in x direction', 'm/s', default=0._rk, &
+   call twig%get(uprof, 'uprof', 'velocity in x direction', 'm/s', default=0._rk, &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
-   call twig%get_profile_input(vprof, 'vprof', 'velocity in y direction', 'm/s', default=0._rk, &
+   call twig%get(vprof, 'vprof', 'velocity in y direction', 'm/s', default=0._rk, &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
    call twig%get(vel_relax_tau, 'vel_relax_tau', 'relaxation time', 's', &
                    minimum=0._rk,default=1.e15_rk)
@@ -687,17 +687,17 @@
    branch => settings_store%get_typed_child('observations')
 
    twig => branch%get_typed_child('wave', 'wind waves')
-   call twig%get_scalar_input(Hs_, 'Hs', '', 'm', &
+   call twig%get(Hs_, 'Hs', '', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get_scalar_input(Tz_, 'Tz', '', 's', &
+   call twig%get(Tz_, 'Tz', '', 's', &
                    minimum=0._rk,default=0._rk)
-   call twig%get_scalar_input(phiw_, 'phiw', '', '-', &
+   call twig%get(phiw_, 'phiw', '', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
 
-   call branch%get_profile_input(epsprof, 'epsprof', 'turbulence dissipation rate', 'W/kg', &
+   call branch%get(epsprof, 'epsprof', 'turbulence dissipation rate', 'W/kg', &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
 
-   call branch%get_profile_input(o2_prof, 'o2_prof', 'oxygen profile', '', &
+   call branch%get(o2_prof, 'o2_prof', 'oxygen profile', '', &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
 
    twig => branch%get_typed_child('bprofile', 'buoyancy profile')
