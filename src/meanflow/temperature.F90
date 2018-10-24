@@ -64,16 +64,22 @@
 !  which is ensured by setting the local variable {\tt adv\_mode=0},
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
+!  If lake is true the advection due to streams will be accounted for.
+!
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
-   use meanflow,     only: h,u,v,w,T,S,avh
+   use meanflow,     only: lake
+   use meanflow,     only: h,Vco,Vc,Afo,Af
+   use meanflow,     only: u,v,w,T,S,avh
    use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
    use observations, only: w_adv_discr,w_adv
    use observations, only: tprof,TRelaxTau
    use observations, only: A_,g1_,g2_
+   use observations, only: Qt, Lt, Qres, wq
+   use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
-   use util,         only: oneSided,zeroDivergence
+   use util,         only: oneSided,zeroDivergence,flux
 
    IMPLICIT NONE
 !
@@ -121,6 +127,7 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: z
+   REALTYPE                  :: net_precip
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -156,6 +163,35 @@
       avh(i)=nuh(i)+avmolT
    end do
 
+!  ... and from streams
+   if (lake) then
+!KB
+#if 0
+      net_precip = precip + evap
+      if ( net_precip .gt. _ZERO_ ) then
+         Qt(nlev) = Qt(nlev) + net_precip*Afo(nlev)*T(nlev)
+      else
+         Lt(nlev) = Lt(nlev) + net_precip*Afo(nlev)
+      end if
+      do i=1,nlev
+         if ( Qres(i) .gt. _ZERO_ ) then
+            Qt(i) = Qt(i) + Qres(i)*T(i)
+         else
+            Lt(i) = Lt(i) + Qres(i)
+         end if
+      end do
+      call adv_center(nlev,dt,h,Vco,Vc,Afo,wq,flux,flux,                &
+                      _ZERO_,_ZERO_,Lt,Qt,w_adv_discr,1,T)
+#endif
+   end if
+
+!  do advection step
+   if (w_adv%method.ne.0) then
+      Lsour = _ZERO_
+      Qsour = _ZERO_
+      call adv_center(nlev,dt,h,Vc,Vc,Af,w,AdvBcup,AdvBcdw,             &
+                      AdvTup,AdvTdw,Lsour,Qsour,w_adv_discr,adv_mode,T)
+   end if
 
 !  add contributions to source term
    Lsour=_ZERO_
@@ -181,14 +217,8 @@
       end do
    end if
 
-!  do advection step
-   if (w_adv%method.ne.0) then
-      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                          AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
-   end if
-
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
+   call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
                     DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
    return
    end subroutine temperature

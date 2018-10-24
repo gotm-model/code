@@ -31,7 +31,7 @@
    public clean_gotm_fabm
    public fabm_calc
    public no_precipitation_dilution
-   public register_observation
+   public register_observation, register_stream, register_stream_concentration
    public calculate_conserved_quantities, total0
 
    ! Passed through from fabm_types, used by hosts to provide additional inputs:
@@ -72,9 +72,27 @@
 
    REALTYPE,allocatable,dimension(:),target :: horizontal_expression_data
 
+   type type_stream_concentration
+      REALTYPE, pointer :: data => null()
+   end type
+
+   type type_stream
+      character(len=64) :: name = ''
+      REALTYPE, pointer  :: QI,Q(:)
+      type (type_stream_concentration),dimension(:),allocatable :: cc
+      type (type_stream), pointer :: next => null()
+   end type
+
 !  Observation indices (from obs_0d, obs_1d) for pelagic and benthic state variables.
    type (type_forced_1d_state),allocatable :: cc_obs(:)
    type (type_forced_0d_state),allocatable :: cc_ben_obs(:)
+
+   type type_bottom_diagnostic
+      real(rk), pointer :: local => null()
+      real(rk), allocatable :: column(:)
+      type (type_bottom_diagnostic), pointer :: next => null()
+   end type
+   type (type_bottom_diagnostic), pointer, save :: first_bottom_diagnostic => null()
 
    interface register_observation
       module procedure register_bulk_observation
@@ -98,8 +116,9 @@
                                 save_inputs, no_surface
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
+   REALTYPE,allocatable,dimension(:),target :: zeros,ones,curh
    REALTYPE,allocatable,dimension(:,:) :: ws
-   REALTYPE,allocatable,dimension(:)   :: sfl,bfl,Qsour,Lsour,DefaultRelaxTau,curh,curnuh,iweights
+   REALTYPE,allocatable,dimension(:)   :: sfl,bfl,Qsour,Lsour,DefaultRelaxTau,curnuh,iweights
    logical,allocatable, dimension(:)   :: cc_transport
    integer,allocatable, dimension(:)   :: posconc
 
@@ -113,10 +132,16 @@
    REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
+!  GOTM-specific quantities
+   logical                       :: gotm_lake=.false.
+   REALTYPE,pointer,dimension(:) :: Af,Afo,Vc,Vco,wq,Qres
+
    REALTYPE,pointer :: I_0,A,g1,g2
    integer,pointer  :: yearday,secondsofday
    REALTYPE, target :: decimal_yearday
    logical          :: fabm_ready
+
+   type (type_stream),pointer :: first_stream
 
    logical              :: check_conservation
    REALTYPE,allocatable :: local(:,:)
@@ -126,6 +151,9 @@
    integer :: repair_interior_count
    integer :: repair_surface_count
    integer :: repair_bottom_count
+
+   logical :: bottom_everywhere
+   integer :: kmax_bot
 
 !-----------------------------------------------------------------------
 
@@ -141,7 +169,7 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine configure_gotm_fabm_from_nml(namlst, fname)
+   subroutine configure_gotm_fabm_from_nml(namlst, fname, lake)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
@@ -149,6 +177,7 @@
 ! !INPUT PARAMETERS:
    integer,          intent(in) :: namlst
    character(len=*), intent(in) :: fname
+   logical,          intent(in)   ,optional :: lake
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -161,11 +190,15 @@
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
                             repair_state,no_precipitation_dilution,                  &
                             salinity_relaxation_to_freshwater_flux,save_inputs, &
-                            no_surface,configuration_method
+                            no_surface,configuration_method,bottom_everywhere
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_gotm_fabm_nml'
+
+!KB   nullify(model)
+
+   nullify(first_stream)
 
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
@@ -182,6 +215,7 @@
    no_surface = .false.                             ! disables surface exchange; useful to check mass conservation
    save_inputs = .false.
    configuration_method = -1                        ! -1: auto-detect, 0: namelists, 1: YAML
+   bottom_everywhere = .false.
 
    ! Open the namelist file and read the namelist.
    ! Note that the namelist file is left open until the routine terminates,
@@ -283,10 +317,11 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine gotm_fabm_create_model(namlst)
+   subroutine gotm_fabm_create_model(namlst,nlev,lake)
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in) :: namlst
+   integer, intent(in) :: namlst, nlev
+   logical, intent(in), optional :: lake
 
    logical :: file_exists
 !EOP
@@ -298,6 +333,17 @@
    allocate(type_gotm_driver::driver)
 
    fabm_ready = .false.
+
+   if ( present(lake) ) then
+      gotm_lake = lake
+   else
+      gotm_lake = .false.
+      ! bottom_everywhere only makes sense when we have a hypsograph.
+      if (bottom_everywhere) bottom_everywhere = .false.
+   end if
+
+   kmax_bot = 1
+   if (bottom_everywhere) kmax_bot = nlev
 
    ! Create model tree
    if (configuration_method==-1) then
@@ -318,7 +364,7 @@
       call fabm_create_model_from_yaml_file(model)
    end select   
 
-   end subroutine
+   end subroutine gotm_fabm_create_model
 
 !-----------------------------------------------------------------------
 !BOP
@@ -477,12 +523,29 @@
          ! Inform field manager about available diagnostics
          ! This also tells FABM which diagnostics need computing (through setting of the "save" attribute).
          ! This MUST be done before fabm_check_ready is called.
+!KB
+#if 0
          do i=1,size(model%diagnostic_variables)
             call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=model%diagnostic_variables(i)%save)
          end do
          do i=1,size(model%horizontal_diagnostic_variables)
             call register_field(field_manager, model%horizontal_diagnostic_variables(i), used= model%horizontal_diagnostic_variables(i)%save)
          end do
+#else
+         do i=1,size(model%diagnostic_variables)
+            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
+            if (in_output) model%diagnostic_variables(i)%save = .true.
+         end do
+         do i=1,size(model%horizontal_diagnostic_variables)
+            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
+            else
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=in_output)
+            end if
+            if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
+         end do
+
+#endif
       end if
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
@@ -513,6 +576,8 @@
 !
 ! !LOCAL VARIABLES:
    integer :: i,rc,output_level
+   logical :: used
+   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -529,7 +594,7 @@
       call fabm_link_bulk_state_data(model,i,cc(1:,i))
    end do
    do i=1,size(model%bottom_state_variables)
-      cc(1,size(model%state_variables)+i) = model%bottom_state_variables(i)%initial_value
+      cc(1:kmax_bot,size(model%state_variables)+i) = model%bottom_state_variables(i)%initial_value
       call fabm_link_bottom_state_data(model,i,cc(1,size(model%state_variables)+i))
    end do
    do i=1,size(model%surface_state_variables)
@@ -546,6 +611,63 @@
    allocate(change_in_total(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (change_in_total)'
    change_in_total = 0
+
+!KB
+#if 0
+   do i=1,size(model%conserved_quantities)
+      call field_manager%register(trim(model%conserved_quantities(i)%name)//'_ini',  model%conserved_quantities(i)%units, &
+          trim(model%conserved_quantities(i)%long_name)//' at simulation start', minimum=model%conserved_quantities(i)%minimum, &
+          maximum=model%conserved_quantities(i)%maximum, fill_value= model%conserved_quantities(i)%missing_value, &
+          no_default_dimensions=.true., dimensions=(/id_dim_lon, id_dim_lat/), data0d=total0(i), category='fabm', &
+          output_level=output_level_debug, part_of_state=.true.)
+   end do
+
+   if (present(field_manager)) then
+      do i=1,size(model%state_variables)
+         call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i), part_of_state=.true.)
+      end do
+      do i=1,size(model%bottom_state_variables)
+         if (bottom_everywhere) then
+            call register_field(field_manager, model%bottom_state_variables(i), data1d=cc(1:,size(model%state_variables)+i), dimensions=(/id_dim_z/), part_of_state=.true.)
+         else
+            call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i), part_of_state=.true.)
+         end if
+      end do
+      do i=1,size(model%surface_state_variables)
+         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i), part_of_state=.true.)
+      end do
+
+      check_conservation = .false.
+      do i=1,size(model%conserved_quantities)
+         call field_manager%register('int_change_in_'//trim(model%conserved_quantities(i)%name), trim(model%conserved_quantities(i)%units)//'*m', &
+            'integrated change in '//trim(model%conserved_quantities(i)%long_name), fill_value=-1d20, &
+            data0d=change_in_total(i), category='fabm', output_level=output_level_debug, used=used)
+         if (used) check_conservation = .true.
+      end do
+
+      ! Send pointers to diagnostic data to output manager.
+      do i=1,size(model%diagnostic_variables)
+         if (model%diagnostic_variables(i)%save) &
+            call field_manager%send_data(model%diagnostic_variables(i)%name, fabm_get_bulk_diagnostic_data(model,i))
+      end do
+      do i=1,size(model%horizontal_diagnostic_variables)
+         if (model%horizontal_diagnostic_variables(i)%save) then
+            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
+               allocate(bottom_diagnostic_data)
+               allocate(bottom_diagnostic_data%column(nlev))
+               bottom_diagnostic_data%local => fabm_get_horizontal_diagnostic_data(model,i)
+               bottom_diagnostic_data%column(:) = model%horizontal_diagnostic_variables(i)%missing_value
+               bottom_diagnostic_data%next => first_bottom_diagnostic
+               first_bottom_diagnostic => bottom_diagnostic_data
+               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, bottom_diagnostic_data%column)
+            else
+               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, fabm_get_horizontal_diagnostic_data(model,i))
+            end if
+         end if
+      end do
+   end if
+#endif
+!KB
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indices to -1 (no external observations provided)
@@ -664,6 +786,20 @@
    do i=1,size(model%state_variables)
       if (model%state_variables(i)%minimum>=_ZERO_) posconc(i) = 1
    end do
+
+   allocate(zeros(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (zeros)'
+   zeros = _ZERO_
+   allocate(ones(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (ones)'
+   ones = _ONE_
+
+   Af   => ones
+   Afo  => ones
+   Vc   => curh
+   Vco  => curh
+   wq   => zeros
+   Qres => zeros
 
    end subroutine init_var_gotm_fabm
 !EOC
@@ -816,6 +952,100 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
+   subroutine register_stream(name,QI,Q)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT PARAMETERS:
+   character(len=*),intent(in) :: name
+   REALTYPE,target             :: QI,Q(:)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   type (type_stream),pointer :: stream
+   integer :: rc
+!
+!EOP
+!-----------------------------------------------------------------------!
+!BOC
+   ! Start stream list, or append stream if list exists.
+   if (associated(first_stream)) then
+      stream => first_stream
+      do while (associated(stream%next))
+         stream => stream%next
+      end do
+      allocate(stream%next)
+      stream => stream%next
+   else
+      allocate(first_stream)
+      stream => first_stream
+   end if
+
+   stream%name = name
+   stream%QI => QI
+   stream%Q => Q
+   allocate(stream%cc(1:size(model%state_variables)),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (stream%cc)'
+   end subroutine register_stream
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine register_stream_concentration(id,stream_name,data)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT PARAMETERS:
+   type(type_bulk_variable_id),intent(in) :: id
+   character(len=*),intent(in)            :: stream_name
+   REALTYPE,target                        :: data
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer                     :: i
+   character(len=64)           :: varname
+   type (type_stream), pointer :: curstream,stream
+!
+!EOP
+!-----------------------------------------------------------------------!
+!BOC
+   ! Find associated stream (needs to be registered beforehand with register_stream)
+   nullify(stream)
+   curstream => first_stream
+   do while (associated(curstream))
+      if (curstream%name==stream_name) stream => curstream
+      curstream => curstream%next
+   end do
+   if (.not.associated(stream)) stop 'gotm_fabm:register_stream_concentration: stream was not registered with register_stream'
+
+   ! Find associated state variable
+   varname = fabm_get_variable_name(model,id)
+   do i=1,size(model%state_variables)
+      if (varname==model%state_variables(i)%name) then
+         stream%cc(i)%data => data
+         return
+      end if
+   end do
+   stop 'register_stream: state variable not found'
+   end subroutine register_stream_concentration
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
    subroutine init_gotm_fabm_state(nlev)
 !
 ! !DESCRIPTION:
@@ -828,7 +1058,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer :: i
+   integer :: i,k
 !EOP
 
 !-----------------------------------------------------------------------
@@ -839,7 +1069,13 @@
    ! Allow individual biogeochemical models to provide a custom initial state.
    call fabm_initialize_state(model,1,nlev)
    call fabm_initialize_surface_state(model)
-   call fabm_initialize_bottom_state(model)
+   do k=1,kmax_bot
+      do i=1,size(model%bottom_state_variables)
+         call fabm_link_bottom_state_data(model,i,cc(k,size(model%state_variables)+i))
+      end do
+      call model%set_bottom_index(k)
+      call fabm_initialize_bottom_state(model)
+   end do
 
    ! If custom initial state have been provided through fabm_input.nml, use these to override the current initial state.
    do i=1,size(model%state_variables)
@@ -911,9 +1147,16 @@
    ! Call fabm_do here to make sure diagnostic variables all have an initial value.
    ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
    rhs = _ZERO_
-   call fabm_do_bottom(model,rhs(1,:),bottom_flux)
-   call fabm_do_surface(model,rhs(nlev,:))
+#if 0
+! This is how it is called in the master repository - does this matter Jorn?
+      call fabm_do_bottom(model,rhs(1,:),bottom_flux)
+      call fabm_do_surface(model,rhs(nlev,:))
+      call fabm_do(model,1,nlev,rhs)
+#else
    call fabm_do(model,1,nlev,rhs)
+   call fabm_do_surface(model,rhs(nlev,:))
+   call fabm_do_bottom(model,rhs(1,:),bottom_flux)
+#endif
 
    ! Obtain current values of diagnostic variables from FABM.
    do i=1,size(model%horizontal_diagnostic_variables)
@@ -945,7 +1188,8 @@
 ! !INTERFACE:
    subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
                                 bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
-                                yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
+                                yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_,       &
+                                Af_,Afo_,Vc_,Vco_,wq_,Qres_)
 !
 ! !DESCRIPTION:
 ! This routine is called once from GOTM to provide pointers to the arrays that describe
@@ -961,6 +1205,7 @@
    integer,  intent(in),target :: yearday_,secondsofday_
    REALTYPE, intent(in),optional,target,dimension(:) :: SRelaxTau_,sProf_
    REALTYPE, intent(in),optional,target :: bio_albedo_,bio_drag_scale_
+   REALTYPE, intent(in),optional,target,dimension(:) :: Af_,Afo_,Vc_,Vco_,wq_,Qres_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -986,7 +1231,7 @@
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
-   w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
+   w(0:)    => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
    precip   => precip_     ! precipitation [scalar] - used to calculate dilution due to increased water volume
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
@@ -1013,6 +1258,25 @@
               &but salinity relaxation arrays are not provided.'
       nullify(SRelaxTau)
       nullify(sProf)
+   end if
+
+   if ( present(Af_) .and. present(Afo_) .and. present(Vc_) .and. present(Vco_) ) then
+      Af (0:) => Af_
+      Afo(0:) => Afo_
+      Vc (0:) => Vc_
+      Vco(0:) => Vco_
+   else
+      Af  => ones
+      Afo => ones
+      Vc  => curh
+      Vco => curh
+   end if
+   if ( present(wq_) .and. present(Qres_) ) then
+      wq  (0:) => wq_
+      Qres(0:) => Qres_
+   else
+      wq   => zeros
+      Qres => zeros
    end if
 
    ! Copy scalars that will not change during simulation, and are needed in do_gotm_fabm)
@@ -1099,8 +1363,9 @@
 ! TODO
 !
 ! !USES:
-   use util,only: flux,Neumann
+   use util,only: flux,oneSided,Neumann
 !
+! !INPUT PARAMETERS:
    integer, intent(in)          :: nlev
    REALTYPE,intent(in),optional :: itime
 !
@@ -1112,9 +1377,11 @@
    integer, parameter        :: adv_mode_1=1
    REALTYPE,dimension(0:nlev):: ws1d
    REALTYPE                  :: dilution,virtual_dilution
-   integer                   :: i
+   integer                   :: i,k
    integer                   :: split
    integer(8)                :: clock_start,clock_end
+   type (type_stream),pointer :: stream
+   REALTYPE                  :: stream_conc
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1132,6 +1399,7 @@
    ! Calculate dilution due to surface freshwater flux (m/s)
    dilution = precip+evap
 
+   if (.not. gotm_lake) then
    ! If salinity is relaxed to observations, the change in column-integrated salinity can converted into a
    ! a virtual freshwater flux. Optionally, this freshwater flux can be imposed at the surface on biogeochemical
    ! variables, effectively mimicking precipitation or evaporation. This makes sense only if the salinity change
@@ -1150,6 +1418,7 @@
          if (virtual_dilution/=_ZERO_) sfl(i) = sfl(i)-sum(cc(1:nlev,i)*curh(1:nlev))*virtual_dilution
       end if
    end do
+   end if
 
    ! Vertical advection and residual movement (sinking/floating)
    ws1d(0   ) = _ZERO_
@@ -1158,12 +1427,76 @@
    call system_clock(clock_start)
    do i=1,size(model%state_variables)
       if (cc_transport(i)) then
+         Qsour = _ZERO_
+         Lsour = _ZERO_
+
+         stream => first_stream
+         do while (associated(stream))
+
+            if (stream%QI .ge. _ZERO_) then
+
+               if (associated(stream%cc(i)%data).or..not.model%state_variables(i)%no_river_dilution) then
+                  ! Default stream concentration: zero
+                  stream_conc = _ZERO_
+
+                  ! See if a specific stream concentration is prescribed for this biogeochemical variable.
+                  if (associated(stream%cc(i)%data)) stream_conc = stream%cc(i)%data
+               else
+                  stream_conc = cc(nlev,i)
+               end if
+
+               ! Calculate change in all layers due to stream
+               do k=1,nlev
+                  Qsour(k) = Qsour(k) + stream%Q(k)*stream_conc
+               end do
+
+            else
+
+               if (associated(stream%cc(i)%data)) then
+                  stream_conc = stream%cc(i)%data
+                  do k=1,nlev
+                     Qsour(k) = Qsour(k) + stream%Q(k)*stream_conc
+                  end do
+               else
+                  do k=1,nlev
+                     Lsour(k) = Lsour(k) + stream%Q(k)
+                  end do
+               end if
+
+            end if
+
+            stream => stream%next
+         end do
+
+         if (gotm_lake) then
+!           KK-TODO: do we need to consider virtual_dilution?
+            if (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution) then
+               if ( dilution .gt. _ZERO_ ) then
+                  Qsour(nlev) = Qsour(nlev) + dilution*Afo(nlev)*cc(nlev,i)
+               else
+                  Lsour(nlev) = Lsour(nlev) + dilution*Afo(nlev)
+               end if
+            end if
+            do k=1,nlev
+               if ( Qres(k) .gt. _ZERO_ ) then
+                  Qsour(k) = Qsour(k) + Qres(k)*cc(k,i)
+               else
+                  Lsour(k) = Lsour(k) + Qres(k)
+               end if
+            end do
+            call adv_center(nlev,dt,curh,Vco,Vc,Afo,wq,flux,flux,       &
+                            _ZERO_,_ZERO_,Lsour,Qsour,w_adv_ctr,adv_mode_1,cc(:,i))
+         end if
+
+         Qsour = _ZERO_
+         Lsour = _ZERO_
          ! Do advection step due to settling or rising
          ws1d(1:nlev-1) = iweights(1:nlev-1)*ws(1:nlev-1,i) + (_ONE_-iweights(1:nlev-1))*ws(2:nlev,i)
-         call adv_center(nlev,dt,curh,curh,ws1d,flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
+         call adv_center(nlev,dt,curh,Vc,Vc,Af,ws1d,flux,flux,          &
+                         _ZERO_,_ZERO_,Lsour,Qsour,w_adv_discr,adv_mode_1,cc(:,i))
 
          ! Do advection step due to vertical velocity
-         if (w_adv_method/=0) call adv_center(nlev,dt,curh,curh,w,flux,flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(:,i))
+         if (w_adv_method/=0) call adv_center(nlev,dt,curh,Vc,Vc,Af,w,flux,flux,_ZERO_,_ZERO_,Lsour,Qsour,w_adv_ctr,adv_mode_0,cc(:,i))
       end if
    end do
    call system_clock(clock_end)
@@ -1173,14 +1506,16 @@
    clock_start = clock_end
    do i=1,size(model%state_variables)
       if (cc_transport(i)) then
+         Qsour = _ZERO_
+         Lsour = _ZERO_
          ! Do diffusion step
          if (associated(cc_obs(i)%data)) then
    !        Observations on this variable are available.
-            call diff_center(nlev,dt,cnpar,posconc(i),curh,Neumann,Neumann,&
+            call diff_center(nlev,dt,cnpar,posconc(i),curh,Vc,Af,Neumann,Neumann,&
                sfl(i),bfl(i),curnuh,Lsour,Qsour,cc_obs(i)%relax_tau,cc_obs(i)%data,cc(:,i))
          else
    !        Observations on this variable are not available.
-            call diff_center(nlev,dt,cnpar,posconc(i),curh,Neumann,Neumann,&
+            call diff_center(nlev,dt,cnpar,posconc(i),curh,Vc,Af,Neumann,Neumann,&
                sfl(i),bfl(i),curnuh,Lsour,Qsour,DefaultRelaxTau,cc(:,i),cc(:,i))
          end if
       end if
@@ -1371,6 +1706,7 @@
 !
 ! !LOCAL VARIABLES:
    logical :: valid,tmpvalid
+   integer :: i,k
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1382,9 +1718,15 @@
       valid = valid.and.tmpvalid
    end if
    if (valid .or. repair_state) then
-      call fabm_check_bottom_state(model,repair_state,tmpvalid)
-      if (repair_state.and..not.tmpvalid) repair_bottom_count = repair_bottom_count + 1
-      valid = valid.and.tmpvalid
+      do k=1,kmax_bot
+         do i=1,size(model%bottom_state_variables)
+            call fabm_link_bottom_state_data(model,i,cc(k,size(model%state_variables)+i))
+         end do
+         call model%set_bottom_index(k)
+         call fabm_check_bottom_state(model,repair_state,tmpvalid)
+         if (repair_state.and..not.tmpvalid) repair_bottom_count = repair_bottom_count + 1
+         valid = valid.and.tmpvalid
+      end do
    end if
    if (.not. (valid .or. repair_state)) then
       FATAL 'State variable values are invalid and repair is not allowed.'
@@ -1419,7 +1761,8 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer :: i,n
+   integer :: i,k,n
+   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1427,6 +1770,7 @@
    n = size(model%state_variables)
 
    ! Provide FABM with (pointers to) the current state.
+   call model%set_bottom_index(1)
    do i=1,size(model%state_variables)
       call fabm_link_bulk_state_data(model,i,cc(1:nlev,i))
    end do
@@ -1447,10 +1791,26 @@
    rhs = _ZERO_
 
    ! Calculate temporal derivatives due to bottom processes (e.g. sedimentation, benthic biota).
-   call fabm_do_bottom(model,rhs(1,1:n),rhs(1,n+1:n+size(model%bottom_state_variables)))
+   do k=1,kmax_bot
+      do i=1,size(model%bottom_state_variables)
+         call fabm_link_bottom_state_data(model,i,cc(k,n+i))
+      end do
+      call model%set_bottom_index(k)
+      call fabm_do_bottom(model,rhs(k,1:n),rhs(k,n+1:n+size(model%bottom_state_variables)))
 
-   ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
-   rhs(1,1:n) = rhs(1,1:n)/curh(1)
+      bottom_diagnostic_data => first_bottom_diagnostic
+      do while (associated(bottom_diagnostic_data))
+         bottom_diagnostic_data%column(k) = bottom_diagnostic_data%local
+         bottom_diagnostic_data => bottom_diagnostic_data%next
+      end do
+
+      ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
+      if (k==1) then
+         rhs(1,1:n) = rhs(1,1:n)*Af(1)/Vc(1)
+      else
+         rhs(k,1:n) = rhs(k,1:n)*(Af(k) - Af(k-1))/Vc(k)
+      end if
+   end do
 
    ! Relax bottom-attached variables to observed values, if specified in fabm_input.nml.
    do i=1,size(model%bottom_state_variables)
@@ -1685,7 +2045,10 @@
    if (allocated(horizontal_expression_data)) deallocate(horizontal_expression_data)
 
    ! Deallocate work arrays used from do_gotm_fabm.
+   if (allocated(zeros))           deallocate(zeros)
+   if (allocated(ones))            deallocate(ones)
    if (allocated(ws))              deallocate(ws)
+   if (allocated(iweights))        deallocate(iweights)
    if (allocated(sfl))             deallocate(sfl)
    if (allocated(bfl))             deallocate(bfl)
    if (allocated(Qsour))           deallocate(Qsour)

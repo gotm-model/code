@@ -25,7 +25,10 @@
 !
 ! !USES:
    use input
+   use streams, only: configure_streams,clean_streams
+
    IMPLICIT NONE
+
 !  default: all is private.
    private
 !
@@ -78,6 +81,16 @@
 
 !  Parameters for water classification - default Jerlov type I
    type (type_scalar_input), public, target :: A_, g1_, g2_
+
+!  streams for lake model
+!KB
+#if 0
+   type (type_profile_input), public, target :: Qs, Qt, Ls, Lt
+   type (type_profile_input), public, target :: Qlayer, Qres, FQ, wq
+#else
+   REALTYPE, public, dimension(:), allocatable   :: Qs, Qt, Ls, Lt
+   REALTYPE, public, dimension(:), allocatable   :: Qlayer, Qres, FQ, wq
+#endif
 
 !------------------------------------------------------------------------------
 !
@@ -170,6 +183,7 @@
    integer, parameter        :: ANALYTICAL=1
    integer, parameter        :: CONSTANT=1
    integer, parameter        :: FROMFILE=2
+   integer, parameter        :: FREE_SURFACE=3
    integer, parameter        :: CONST_PROF=1
    integer, parameter        :: TWO_LAYERS=2
    integer, parameter        :: CONST_NN=3
@@ -192,7 +206,13 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
+!KB
+#if 1
    subroutine init_observations_nml(namlst,fn)
+#else
+   subroutine init_observations(namlst,fn,julday,secs,                 &
+                                depth,nlev,z,h,gravity,rho_0,lake)
+#endif
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -207,8 +227,18 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+!KB
+#if 1
    integer, intent(in)                 :: namlst
    character(len=*), intent(in)        :: fn
+#else
+   integer, intent(in)                 :: julday,secs
+   REALTYPE, intent(in)                :: depth
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
+   REALTYPE, intent(in)                :: gravity,rho_0
+   logical,  intent(in)                :: lake
+#endif
 !
 !
 ! !REVISION HISTORY:
@@ -720,7 +750,7 @@
 !
 ! !INTERFACE:
 !KB   subroutine post_init_observations(julday,secs,depth,nlev,z,h,gravity,rho_0)
-   subroutine post_init_observations(depth,nlev,z,h,gravity,rho_0)
+   subroutine post_init_observations(depth,nlev,z,h,gravity,rho_0,lake)
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -740,6 +770,7 @@
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
    REALTYPE, intent(in)                :: gravity,rho_0
+   logical,  intent(in)                :: lake
 !
 !
 ! !REVISION HISTORY:
@@ -809,6 +840,9 @@
 !  The salinity profile
    call register_input(sprof)
    select case (sprof%method)
+      case (NOTHING)
+         LEVEL3 "none"
+         sprof%data = _ZERO_
       case (ANALYTICAL)
          ! different ways to prescribe profiles analytically
          select case (s_analyt_method)
@@ -817,6 +851,7 @@
             case (TWO_LAYERS)
                call analytical_profile(nlev,z,z_s1,s_1,z_s2,s_2,sprof%data)
             case (CONST_NN)
+               LEVEL3 "constant NN"
 
                if (.not.((tprof%method    .eq. ANALYTICAL) .and.      &
                          (t_analyt_method .eq. CONST_PROF))   )  then
@@ -840,6 +875,9 @@
 !  The temperature profile
    call register_input(tprof)
    select case (tprof%method)
+      case (NOTHING)
+         LEVEL3 "none"
+         tprof%data = _ZERO_
       case (ANALYTICAL)
 
         ! different ways to prescribe profiles analytically
@@ -849,6 +887,7 @@
             case (TWO_LAYERS)
                call analytical_profile(nlev,z,z_t1,t_1,z_t2,t_2,tprof%data)
             case (CONST_NN)
+               LEVEL3 "constant NN"
 
                if (.not.((sprof%method    .eq. ANALYTICAL) .and.      &
                          (s_analyt_method .eq. CONST_PROF))   )  then
@@ -882,6 +921,7 @@
    call register_input(dtdy)
 
 !  The light extinction profiles
+   LEVEL2 "extinction method"
    select case (extinct_method)
       case (1)
          A_%value=0.58;g1_%value=0.35;g2_%value=23.0
@@ -923,6 +963,43 @@
 !  The oxygen profile
    call register_input(o2_prof)
    LEVEL2 'done.'
+
+!KB
+!  The streams
+   allocate(Qs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qs)'
+   Qs = _ZERO_
+
+   allocate(Qt(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qt)'
+   Qt = _ZERO_
+
+   allocate(Ls(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Ls)'
+   Ls = _ZERO_
+
+   allocate(Lt(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Lt)'
+   Lt = _ZERO_
+
+   allocate(Qlayer(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qlayer)'
+   Qlayer = _ZERO_
+
+   allocate(Qres(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qres)'
+   Qres = _ZERO_
+
+   allocate(FQ(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (FQ)'
+   FQ = _ZERO_
+
+   allocate(wq(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (wq)'
+   wq = _ZERO_
+
+!KB   call configure_streams()
+!KB
    return
 
    end subroutine post_init_observations
@@ -1004,6 +1081,7 @@
    LEVEL1 'clean_observations'
 
    LEVEL2 'de-allocate observation memory ...'
+   !KB - is this don in - close_input()?
    if (allocated(idpdx)) deallocate(idpdx)
    if (allocated(idpdy)) deallocate(idpdy)
    if (allocated(SRelaxTau)) deallocate(SRelaxTau)
@@ -1049,6 +1127,7 @@
    if (allocated(epsprof)) LEVEL2 'epsprof',epsprof
    if (allocated(SRelaxTau)) LEVEL2 'SRelaxTau',SRelaxTau
    if (allocated(TRelaxTau)) LEVEL2 'TRelaxTau',TRelaxTau
+
    LEVEL2 'zeta,dpdx,dpdy,h_press',zeta,dpdx,dpdy,h_press
    LEVEL2 'w_adv,w_height',w_adv,w_height
    LEVEL2 'A,g1,g2',A,g1,g2

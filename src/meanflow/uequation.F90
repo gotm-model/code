@@ -62,15 +62,21 @@
 !  which is ensured by setting the local variable {\tt adv\_mode=0},
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
+! If lake is true additional "bottom" friction over the whole water column is
+! included.
+!
 ! !USES:
    use meanflow,     only: gravity,avmolu
-   use meanflow,     only: h,u,uo,v,w,avh
+   use meanflow,     only: lake
+   use meanflow,     only: h,Vco,Vc,Afo,Af
+   use meanflow,     only: u,uo,v,w,avh
    use meanflow,     only: drag,SS,runtimeu
    use observations, only: w_adv,w_adv_discr
    use observations, only: uprof,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdx,dpdx
+   use observations, only: wq
    use util,         only: Dirichlet,Neumann
-   use util,         only: oneSided,zeroDivergence
+   use util,         only: oneSided,zeroDivergence,flux
 
    IMPLICIT NONE
 !
@@ -121,6 +127,7 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: URelaxTau(0:nlev)
+   logical                   :: call_adv
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -160,6 +167,24 @@
 !  compute total diffusivity
    avh=num+avmolu
 
+   if (lake) then
+      call_adv = ANY( wq(1:nlev-1) .ne. _ZERO_ )
+      if (call_adv) then
+         Lsour = _ZERO_
+         Qsour = _ZERO_
+         call adv_center(nlev,dt,h,Vco,Vc,Afo,wq,flux,flux,             &
+                         _ZERO_,_ZERO_,Lsour,Qsour,w_adv_discr,1,U)
+      end if
+   end if
+
+!  do advection step
+   if (w_adv%method.ne.0) then
+      Lsour = _ZERO_
+      Qsour = _ZERO_
+      call adv_center(nlev,dt,h,Vc,Vc,Af,w,AdvBcup,AdvBcdw,             &
+                      AdvUup,AdvUdw,Lsour,Qsour,w_adv_discr,adv_mode,U)
+   end if
+
    do i=1,nlev
       Qsour(i) = _ZERO_
       Lsour(i) = _ZERO_
@@ -167,30 +192,18 @@
 !     add external and internal pressure gradients
       Qsour(i) = Qsour(i) - gravity*dzetadx + idpdx(i)
 
-#ifdef SEAGRASS
+!     implement bottom friction as source term
       Lsour(i) = -drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
-#endif
 
 !     add non-local fluxes
 #ifdef NONLOCAL
 !      Qsour(i) = Qsour(i) - ( gamu(i) - gamu(i-1) )/h(i)
 #endif
-
    end do
 
-!  implement bottom friction as source term
-   Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
-
-!  do advection step
-   if (w_adv%method.ne.0) then
-      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                          AdvUup,AdvUdw,w_adv_discr,adv_mode,U)
-   end if
-
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
+   call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
                     DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uprof,U)
-
 
    return
    end subroutine uequation

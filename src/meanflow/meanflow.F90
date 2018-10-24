@@ -34,6 +34,9 @@
 !  coordinate z, layer thicknesses
    REALTYPE, public, dimension(:), allocatable, target  :: ga,z,zi,h,ho
 
+!  volume of cells
+   REALTYPE, public, dimension(:), allocatable, target  :: Vc,Vco
+
 !  the velocity components
    REALTYPE, public, dimension(:), allocatable, target  :: u,v,w
 
@@ -60,7 +63,12 @@
    REALTYPE, public, dimension(:), allocatable  :: avh
 
 !  extra friction terms due to e.g. seagrass
+#if 0
    REALTYPE, public, dimension(:), allocatable  :: fric,drag
+#else
+   REALTYPE, public, dimension(:), allocatable  :: fric,drag
+   REALTYPE, public, dimension(:), allocatable  :: u_taub,u_taubo,taub
+#endif
 
 !  shading in the water column
    REALTYPE, public, dimension(:), allocatable, target  :: bioshade
@@ -106,15 +114,35 @@
    REALTYPE, public                    :: cori
 
 !  the friction velocities
+#if 0
    REALTYPE, public                    :: u_taub,u_taubo,u_taus
+#else
+   REALTYPE, public                    :: u_taus
+#endif
 
 !  bottom stress
+#if 0
    REALTYPE, public, target            :: taub
+#endif
 
 !  other stuff
    REALTYPE, public, target            :: depth0
    REALTYPE, public, target            :: depth
    REALTYPE, public                    :: runtimeu, runtimev
+
+!  variables needed for the lake model
+   logical, public                               :: lake
+   CHARACTER(LEN=PATH_MAX), public               :: hypsograph_file
+!  the hypsograph at the interfaces Af
+   REALTYPE, public, dimension(:), allocatable   :: Af,Afo
+   integer,  public, parameter                   :: WATER_BALANCE_NONE=0
+   integer,  public, parameter                   :: WATER_BALANCE_SURFACE=1
+   integer,  public, parameter                   :: WATER_BALANCE_ALLLAYERS=2
+   integer,  public, parameter                   :: WATER_BALANCE_ZETA=3
+   integer,  public                              :: water_balance_method=WATER_BALANCE_SURFACE
+   REALTYPE, public                              :: net_water_balance, int_water_balance=_ZERO_
+   REALTYPE, public                              :: int_flows
+   REALTYPE, public                              :: int_fwf
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -182,6 +210,10 @@
                 minimum=0._rk,default=1.3e-9_rk)
    !call branch%get(no_shear, 'no_shear', 'set shear production term to zero', &
    !             default=.false.)
+
+   branch => settings_store%get_typed_child('location')
+   call branch%get(hypsograph_file, 'hypsograph', 'hypsograph', default="")
+!KB   call branch%get(hypsograph_file,water_balance_method, 'gravity', 'gravitational acceleration', 'm/s^2', &
    LEVEL2 'done'
    return
    end subroutine init_meanflow_yaml
@@ -215,7 +247,8 @@
    namelist /meanflow/  h0b,z0s_min,charnock,charnock_val,ddu,ddl,     &
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
-                        avmolu,avmolT,avmolS,MaxItz0b,no_shear
+                        avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
+                        hypsograph_file,water_balance_method
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -249,6 +282,10 @@
    avmolS       = 1.1e-9
    MaxItz0b     = 10
    no_shear     = .false.
+   hypsograph_file  = ''
+   net_water_balance = _ZERO_
+   int_flows    = _ZERO_
+   int_fwf      = _ZERO_
 
 !  Read namelist from file.
    open(10,file='gotmmean.nml',status='old',action='read',err=80)
@@ -304,9 +341,11 @@
 
 !  Initialize bottom and surface stress to zero
 !  They will be set in friction, but also used as input in the same routine.
+#if 0
    u_taub = _ZERO_
    u_taus = _ZERO_
    taub = _ZERO_
+#endif
 
 !  Store initial depth (actual depth will e a function of surface elevation)
    depth0=depth
@@ -350,6 +389,14 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (ho)'
    ho = _ZERO_
 
+   allocate(Vc(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Vc)'
+   Vc = _ZERO_
+
+   allocate(Vco(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Vco)'
+   Vco = _ZERO_
+
    allocate(u(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (u)'
    u = _ZERO_
@@ -377,6 +424,18 @@
    allocate(drag(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (drag)'
    drag = _ZERO_
+
+   allocate(u_taub(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (u_taub)'
+   u_taub = _ZERO_
+
+   allocate(u_taubo(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (u_taubo)'
+   u_taubo = _ZERO_
+
+   allocate(taub(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (taub)'
+   taub = _ZERO_
 
    allocate(T(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (T)'
@@ -495,6 +554,8 @@
    if (allocated(zi)) deallocate(zi)
    if (allocated(h)) deallocate(h)
    if (allocated(ho)) deallocate(ho)
+   if (allocated(Vc)) deallocate(Vc)
+   if (allocated(Vco)) deallocate(Vco)
    if (allocated(u)) deallocate(u)
    if (allocated(uo)) deallocate(uo)
    if (allocated(v)) deallocate(v)
@@ -555,8 +616,10 @@
    LEVEL2 'init_buoyancy',init_buoyancy
    if (allocated(ga))  LEVEL2 'ga',ga
    if (allocated(z))   LEVEL2 'z',z
+   if (allocated(zi))  LEVEL2 'zi',zi
    if (allocated(h))   LEVEL2 'h',h
    if (allocated(ho))  LEVEL2 'ho',ho
+   if (allocated(Vc))  LEVEL2 'Vc',Vc
    if (allocated(u))   LEVEL2 'u',u
    if (allocated(v))   LEVEL2 'v',v
    if (allocated(w))   LEVEL2 'w',w

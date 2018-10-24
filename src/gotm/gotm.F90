@@ -50,6 +50,7 @@
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
    use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp
+   use airsea,      only: int_net_precip
    use airsea,      only: bio_albedo,bio_drag_scale
    use airsea_variables, only: qa,ta
 
@@ -78,6 +79,9 @@
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm_input,only: configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
 #endif
+
+   use hypsograph, only: lake,init_hypsograph,clean_hypsograph
+   use streams, only: configure_streams, post_init_streams, update_streams
 
    IMPLICIT NONE
    private
@@ -270,6 +274,7 @@
    LEVEL2 'configuring modules ....'
    call init_airsea()
    call init_observations()
+   call configure_streams()
    branch => settings_store%get_child('turbulence')
    call init_turbulence(branch)
 #ifdef _FABM_
@@ -315,7 +320,7 @@
 
    ! Allow FABM to cretae its model tree. After this we know all biogeochemical variables
    ! This must be done before gotm_fabm_input configuration.
-   call gotm_fabm_create_model(namlst)
+   call gotm_fabm_create_model(namlst,nlev,lake)
 
    call configure_gotm_fabm_input()
    if (read_nml) call configure_gotm_fabm_input_from_nml(namlst, 'fabm_input.nml')
@@ -387,12 +392,14 @@
 !  From here - each init_? is responsible for opening and closing the
 !  namlst - unit.
    call post_init_meanflow(nlev,latitude)
+   call init_hypsograph(nlev)
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta)
 
 !KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
-   call post_init_observations(depth,nlev,z,h,gravity,rho_0)
+   call post_init_observations(depth,nlev,z,h,gravity,rho_0,lake)
    call get_all_obs(julianday,secondsofday,nlev,z)
+   call post_init_streams(nlev)
 
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
@@ -431,9 +438,10 @@
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
       end if
       call set_env_gotm_fabm(latitude,longitude,dt,w_adv%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
-                             nuh,h,w,bioshade(1:nlev),I_0%value,cloud%value,taub,wind,precip%value,evap,z(1:nlev), &
+                             nuh,h,w,bioshade(1:nlev),I_0%value,cloud%value,taub(1),wind,precip%value,evap,z(1:nlev), &
                              A_%value,g1_%value,g2_%value,yearday,secondsofday,SRelaxTau(1:nlev),sProf%data(1:nlev), &
-                             bio_albedo,bio_drag_scale)
+                             bio_albedo,bio_drag_scale,                                                      &
+                             Af,Afo,Vc,Vco,wq,Qres)
 
       ! Initialize FABM input (data files with observations)
       call init_gotm_fabm_input(nlev,h(1:nlev))
@@ -586,8 +594,14 @@
       ty%value = ty%value/rho_0
 
       call integrated_fluxes(dt)
+      int_fwf = int_net_precip
+
+      call update_streams(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Qs,Qt,Ls,Lt,Qlayer)
 
 !     meanflow integration starts
+      if (lake) then
+         call water_balance(nlev,dt)
+      end if
       call updategrid(nlev,dt,zeta)
       call wequation(nlev,dt)
       call coriolis(nlev,dt)
@@ -639,16 +653,16 @@
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
-                     u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
+                     u_taus,u_taub(1),tFlux,btFlux,sFlux,bsFlux,           &
                      tRad,bRad,cori)
 
       case default
 !        update one-point models
 # ifdef SEAGRASS
-         call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
+         call do_turbulence(nlev,dt,depth,u_taus,u_taub(1),z0s,z0b,h,      &
                             NN,SS,xP)
 # else
-         call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
+         call do_turbulence(nlev,dt,depth,u_taus,u_taub(1),z0s,z0b,h,      &
                             NN,SS)
 # endif
       end select
@@ -692,6 +706,8 @@
    LEVEL1 'clean_up'
 
    call clean_airsea()
+
+   call clean_hypsograph()
 
    call clean_meanflow()
 

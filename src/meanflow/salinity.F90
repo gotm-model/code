@@ -60,15 +60,20 @@
 !  which is ensured by setting the local variable {\tt adv\_mode=0},
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
+!  If lake is true the advection due to streams will be accounted for.
+!
 ! !USES:
    use meanflow,     only: avmols
-   use meanflow,     only: h,u,v,w,S,avh
+   use meanflow,     only: lake
+   use meanflow,     only: h,Vco,Vc,Afo,Af
+   use meanflow,     only: u,v,w,S,avh
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv
    use observations, only: sprof,SRelaxTau
+   use observations, only: Qs, Ls, Qres, wq
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
-   use util,         only: oneSided,zeroDivergence
+   use util,         only: oneSided,zeroDivergence,flux
 
    IMPLICIT NONE
 !
@@ -111,7 +116,12 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*(precip%value+evap)
+   if (lake) then
+!     (ZERO) salt flux due to evap and precip already accounted for in advection
+      DiffSup     = _ZERO_
+   else
+      DiffSup     = -S(nlev)*(precip%value+evap)
+   end if
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided
@@ -123,6 +133,30 @@
    do i=0,nlev
       avh(i)=nus(i)+avmolS
    end do
+
+!  ... and from streams
+   if (lake) then
+!KB
+#if 1
+      do i=1,nlev
+         if ( Qres(i) .gt. _ZERO_ ) then
+            Qs(i) = Qs(i) + Qres(i)*S(i)
+         else
+            Ls(i) = Ls(i) + Qres(i)
+         end if
+      end do
+      call adv_center(nlev,dt,h,Vco,Vc,Afo,wq,flux,flux,                &
+                      _ZERO_,_ZERO_,Ls,Qs,w_adv_discr,1,S)
+#endif
+   end if
+
+!  do advection step
+   if (w_adv%method .ne. 0) then
+      Lsour = _ZERO_
+      Qsour = _ZERO_
+      call adv_center(nlev,dt,h,Vc,Vc,Af,w,AdvBcup,AdvBcdw,             &
+                      AdvSup,AdvSdw,Lsour,Qsour,w_adv_discr,adv_mode,S)
+   end if
 
 !  add contributions to source term
    Lsour=_ZERO_
@@ -142,15 +176,8 @@
       end do
    end if
 
-
-!  do advection step
-   if (w_adv%method .ne. 0) then
-      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                          AdvSup,AdvSdw,w_adv_discr,adv_mode,S)
-   end if
-
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
+   call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
                     DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
 
    return

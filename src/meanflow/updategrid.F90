@@ -41,22 +41,14 @@
 !  This method is not recommended when a varying sea surface is considered.
 !  \end{enumerate}
 !
-!  Furthermore, vertical velocity profiles are calculated here, if
-!  {\tt w\_adv\_method} is 1 or 2, which has to be chosen in the
-!  {\tt w\_advspec} namelist in {\tt obs.nml}. The profiles of vertical
-!  velocity are determined by two values,
-!  the height of maximum absolute value of vertical velocity, {\tt w\_height},
-!  and the vertical velocity at this height, {\tt w\_adv}. From {\tt w\_height},
-!  the vertical velocity is linearly decreasing towards the surface and
-!  the bottom, where its value is zero.
-
-!
 ! !USES:
    use meanflow,     only: grid_ready
    use meanflow,     only: depth0,depth
    use meanflow,     only: ga,z,zi,h,ho,ddu,ddl,grid_method
-   use meanflow,     only: grid_file,w
-   use observations, only: w_adv,w_height
+   use meanflow,     only: grid_file
+   use meanflow,     only: lake,Vc,Vco,Af,Afo
+!KB   use observations, only: zeta_method
+   use hypsograph,   only: update_hypsograph
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -181,6 +173,7 @@
       h = ga *depth
    case (2)
       ho=h
+      h(nlev) = depth - SUM( h(1:nlev-1) )
     case default
          stop "updategrid: No valid grid_method specified"
    end select
@@ -190,6 +183,15 @@
       zi(i) = zi(i-1) +     h(i)
       z (i) = zi(i-1) + 0.5*h(i)
    end do
+
+   if (lake) then
+      Vco = Vc
+      Afo = Af
+      call update_hypsograph(nlev,z,h)
+   else
+      Vco = ho
+      Vc  = h
+   end if
 
    return
 

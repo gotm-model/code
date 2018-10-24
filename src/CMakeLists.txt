@@ -266,6 +266,7 @@ add_library(observations
             observations/analytical_profile.F90
             observations/const_NNS.F90
             observations/const_NNT.F90
+            observations/streams.F90
             observations/observations.F90
            )
 target_link_libraries(observations util input)
@@ -277,6 +278,7 @@ add_library(meanflow
             meanflow/coriolis.F90
             meanflow/extpressure.F90
             meanflow/friction.F90
+            meanflow/hypsograph.F90
             meanflow/intpressure.F90
             meanflow/meanflow.F90
             meanflow/salinity.F90
@@ -286,6 +288,7 @@ add_library(meanflow
             meanflow/uequation.F90
             meanflow/updategrid.F90
             meanflow/vequation.F90
+            meanflow/water_balance.F90
             meanflow/wequation.F90
            )
 target_link_libraries(meanflow util observations airsea)
@@ -311,7 +314,7 @@ if(GOTM_USE_FABM)
   add_library(gotm_fabm_io
               fabm/gotm_fabm_input.F90
               )
-  target_link_libraries(gotm_fabm_io input gotm_fabm)
+  target_link_libraries(gotm_fabm_io observations input gotm_fabm)
   set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm_io)
 endif(GOTM_USE_FABM)
 

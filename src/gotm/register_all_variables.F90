@@ -61,9 +61,7 @@
    call register_meanflow_variables(nlev)
    call register_airsea_variables(nlev)
    call register_observation_variables(nlev)
-#if 0
    call register_stream_variables(nlev)
-#endif
    call register_turbulence_variables(nlev)
    call register_diagnostic_variables(nlev)
 !   LEVEL2 'registrated ',N,'variables'
@@ -201,7 +199,6 @@
    end subroutine register_observation_variables
 !EOC
 
-#if 0
 !-----------------------------------------------------------------------
 !BOP
 ! !IROUTINE: stream variable registration
@@ -212,7 +209,7 @@
 ! !DESCRIPTION:
 !
 ! !USES:
-   use observations, only: Q, Qs, Qt, wq, FQ, Qres
+   use observations, only: Qlayer, Qs, Qt, wq, FQ, Qres
    use streams
    IMPLICIT NONE
 !
@@ -227,7 +224,7 @@
 !BOC
    LEVEL2 'register_stream_variables()'
    if (nstreams>0) then
-      call fm%register('Q', 'm3/s', 'inflows over water column', standard_name='??', dimensions=(/id_dim_z/), data1d=Q(1:nlev), category='streams')
+      call fm%register('Qlayer', 'm3/s', 'inflows over water column', standard_name='??', dimensions=(/id_dim_z/), data1d=Qlayer(1:nlev), category='streams')
       call fm%register('Qs', '1/s', 'salt inflow', standard_name='??', dimensions=(/id_dim_z/), data1d=Qs(1:nlev), category='streams')
       call fm%register('Qt', 'Celsius/s', 'temperature inflow', standard_name='??', dimensions=(/id_dim_z/), data1d=Qt(1:nlev), category='streams')
       call fm%register('wq', 'm/s', 'vertical water balance advection velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=wq(1:nlev), category='streams')
@@ -237,20 +234,19 @@
 
    current_stream => first_stream
    do while (associated(current_stream))
-      call fm%register('Q_'//trim(current_stream%name), 'm3/s', 'stream (Q): '//trim(current_stream%name), data0d=current_stream%QI, category='streams')
+      call fm%register('Q_'//trim(current_stream%name), 'm3/s', 'stream (Q): '//trim(current_stream%name),data0d=current_stream%QI%value, category='streams')
       if (current_stream%has_T) then
-         call fm%register('T_'//trim(current_stream%name), 'Celsius', 'stream (T): '//trim(current_stream%name), data0d=current_stream%TI, category='streams')
+         call fm%register('T_'//trim(current_stream%name), 'Celsius', 'stream (T): '//trim(current_stream%name),data0d=current_stream%TI%value, category='streams')
       end if
       current_stream => current_stream%next
    end do
 
-   call fm%register('int_inflow', 'm3/s', 'integrated inflow', data0d=int_inflow, category='streams')
-   call fm%register('int_outflow', 'm3/s', 'integrated outflow', data0d=int_outflow, category='streams')
+   call fm%register('int_inflow', 'm3', 'integrated inflow', data0d=int_inflow, category='streams')
+   call fm%register('int_outflow', 'm3', 'integrated outflow', data0d=int_outflow, category='streams')
 
    return
    end subroutine register_stream_variables
 !EOC
-#endif
 
 !-----------------------------------------------------------------------
 !BOP
@@ -286,9 +282,11 @@
    call fm%register('fric', '', 'extra friction coefficient in water column', standard_name='??', dimensions=(/id_dim_z/), data1d=fric(1:nlev),category='turbulence/shear')
    call fm%register('drag', '', 'drag coefficient in water column', standard_name='??', dimensions=(/id_dim_z/), data1d=drag(1:nlev),category='turbulence/shear')
    call fm%register('u_taus', 'm/s', 'surface friction velocity', data0d=u_taus,category='surface')
+#if 0
    call fm%register('u_taub', 'm/s', 'bottom friction velocity', data0d=u_taub,category='bottom')
    call fm%register('u_taubo', 'm/s', 'bottom friction velocity', data0d=u_taubo,category='bottom', part_of_state=.true.)
    call fm%register('taub', 'Pa', 'bottom stress', data0d=taub,category='bottom')
+#endif
    call fm%register('NN', '1/s2', 'buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NN(1:nlev),category='turbulence/buoyancy')
    call fm%register('NNT', '1/s2', 'contribution of T-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNT(1:nlev),category='turbulence/buoyancy')
    call fm%register('NNS', '1/s2', 'contribution of S-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNS(1:nlev),category='turbulence/buoyancy')
@@ -302,11 +300,12 @@
    call fm%register('bioshade', '-', 'fraction of visible light that is not shaded by overlying biogeochemistry', dimensions=(/id_dim_z/), data1d=bioshade(1:nlev),category='light')
 
    call fm%register('ga', '', 'coordinate scaling', standard_name='??', dimensions=(/id_dim_z/), data1d=ga(1:nlev),category='column_structure')
-#if 0
    if (lake) then
       call fm%register('Af', 'm^2', 'hypsograph at grid interfaces', standard_name='??', dimensions=(/id_dim_z/), data1d=Af(1:nlev), category='column_structure')
+      call fm%register('int_water_balance', 'm3', 'integrated total water balance', data0d=int_water_balance, category='meanflow/waterbalance')
+   else
+      call fm%register('int_water_balance', 'm', 'integrated total water balance', data0d=int_water_balance, category='meanflow/waterbalance')
    end if
-#endif
    call fm%register('z', 'm', 'depth', standard_name='??', dimensions=(/id_dim_z/), data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='column_structure')
    call fm%register('zi', 'm', 'interface depth', standard_name='??', dimensions=(/id_dim_zi/), data1d=zi(0:nlev), coordinate_dimension=id_dim_zi,category='column_structure')
    call fm%register('h', 'm', 'layer thickness', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='column_structure',part_of_state=.true.)

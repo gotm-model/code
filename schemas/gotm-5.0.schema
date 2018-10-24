@@ -6,7 +6,7 @@
          <element name="nlev" type="int" label="number of levels" minInclusive="1" maxInclusive="1000" description="Number of depth levels used to describe the water column" />
          <element name="dt" type="float" label="time step" minInclusive="0.001" maxInclusive="86400" unit="s" description="Time step for integration" />
          <element name="cnpar" type="float" label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)"
-				minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." />
+            minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." />
          <element name="buoy_method" type="int" label="method to compute mean buoyancy">
             <options>
                <option value="1" label="from equation of state (i.e. from potential temperature and salinity)" />
@@ -62,14 +62,14 @@
             </options>
          </element>
          <element name="diff_k" type="float" label="TKE threshold for mixed layer depth" minInclusive="0"
-				maxInclusive="1" unit="m^2/s^2">
+            maxInclusive="1" unit="m^2/s^2">
             <condition type="and">
                <condition type="eq" variable="./diagnostics" value="True" />
                <condition type="eq" variable="./mld_method" value="1" />
             </condition>
          </element>
          <element name="Ri_crit" type="float" label="Ri threshold for mixed layer depth" minInclusive="0"
-				maxInclusive="1000">
+            maxInclusive="1000">
             <condition type="and">
                <condition type="eq" variable="./diagnostics" value="True" />
                <condition type="eq" variable="./mld_method" value="2" />
@@ -95,7 +95,7 @@
             </options>
          </element>
          <element name="T0" type="float" label="reference temperature for linear equation of state"
-				unit="°C">
+            unit="°C">
             <condition type="or">
                <condition type="eq" variable="./eq_state_method" value="3" />
                <condition type="eq" variable="./eq_state_method" value="4" />
@@ -124,9 +124,9 @@
    <element name="gotmmean">
       <element name="meanflow">
          <element name="h0b" type="float" label="bottom roughness  - Note: z0b=0.03*h0b+0.1*nu/ustar"
-				unit="m" />
+            unit="m" />
          <element name="z0s_min" type="float" label="minimum value of z0s, default value if charnock=.false."
-				unit="m" />
+            unit="m" />
          <element name="charnock" type="bool" label="adaptation of Charnock 1955 formula used" />
          <element name="charnock_val" type="float" label="emp. constant in Charnock 1955 formula (default = 1400.)">
             <condition type="eq" variable="./charnock" value="True" />
@@ -190,8 +190,19 @@
          <element name="avmolt" type="float" label="molecular diffusity for temperature" unit="m^2/s" />
          <element name="avmols" type="float" label="molecular diffusity for salinity" unit="m^2/s" />
          <element name="MaxItz0b" type="int" label="max # of iterations for z0b as function of u_taub"
-				minInclusive="1" maxInclusive="1000" />
+            minInclusive="1" maxInclusive="1000" />
          <element name="no_shear" type="bool" label=".true.: shear production term P is set to zero" />
+         <element name="hypsograph_file" type="string" label="file name of file with hypsography values. If this string is not empty it switches on the lake model." />
+         <element name="water_balance_method" type="int" label="introduce residual streams to correct water balance due to evap, precip, in- and outflows">
+            <options>
+               <option value="0" label="no water balance" />
+               <option value="1" label="residual stream at surface layer" />
+               <option value="2" label="volume-weighted residual streams at all layers" />
+               <option value="3" label="water balance by free surface adjustment">
+                  <condition type="eq" variable="/obs/zetaspec/zeta_method" value="3" />
+               </option>
+            </options>
+         </element>
       </element>
    </element>
    <element name="airsea">
@@ -314,14 +325,14 @@
             </options>
          </element>
          <element name="const_tx" type="float" label="x-component of surface momentum flux" unit="N/m^2"
-				minInclusive="-1000" maxInclusive="1000">
+            minInclusive="-1000" maxInclusive="1000">
             <condition type="and">
                <condition type="eq" variable="./calc_fluxes" value="False" />
                <condition type="eq" variable="./momentum_method" value="1" />
             </condition>
          </element>
          <element name="const_ty" type="float" label="y-component of surface momentum flux" unit="N/m^2"
-				minInclusive="-1000" maxInclusive="1000">
+            minInclusive="-1000" maxInclusive="1000">
             <condition type="and">
                <condition type="eq" variable="./calc_fluxes" value="False" />
                <condition type="eq" variable="./momentum_method" value="1" />
@@ -347,7 +358,7 @@
             </options>
          </element>
          <element name="const_precip" type="float" label="constant value for precipitation"
-				unit="m/s" minInclusive="-0.01" maxInclusive="0.01">
+            unit="m/s" minInclusive="-0.01" maxInclusive="0.01">
             <condition type="eq" variable="./precip_method" value="1" />
          </element>
          <element name="precip_file" type="gotmdatafile" label="file with value for precipitation">
@@ -679,15 +690,15 @@
             <condition type="eq" variable="./iw_model" value="2" />
          </element>
          <element name="numshear" type="float" label="background diffusivity for shear instability"
-				unit="m**2/s">
+            unit="m**2/s">
             <condition type="eq" variable="./iw_model" value="2" />
          </element>
          <element name="numiw" type="float" label="background viscosity for internal wave breaking"
-				unit="m**2/s">
+            unit="m**2/s">
             <condition type="eq" variable="./iw_model" value="2" />
          </element>
          <element name="nuhiw" type="float" label="background diffusivity for internal wave breaking"
-				unit="m**2/s">
+            unit="m**2/s">
             <condition type="eq" variable="./iw_model" value="2" />
          </element>
       </element>
@@ -726,7 +737,7 @@
             </condition>
          </element>
          <element name="s_1" type="float" label="constant salinity if s_analyt_method=1, upper layer salinity if s_analyt_method=2, surface salinity if s_analyt_method=3"
-				unit="psu">
+            unit="psu">
             <condition type="eq" variable="./s_prof_method" value="1" />
          </element>
          <element name="z_s2" type="float" label="lower layer thickness if s_analyt_method=2" unit="m">
@@ -771,11 +782,11 @@
             </condition>
          </element>
          <element name="SRelaxBott" type="float" label="height of bottom relaxation layer (set to 0. if not used)"
-				unit="m">
+            unit="m">
             <condition type="ne" variable="./s_prof_method" value="0" />
          </element>
          <element name="SRelaxSurf" type="float" label="height of surface relaxation layer (set to 0. if not used)"
-				unit="m">
+            unit="m">
             <condition type="ne" variable="./s_prof_method" value="0" />
          </element>
       </element>
@@ -802,7 +813,7 @@
             </condition>
          </element>
          <element name="t_1" type="float" label="constant temperature if t_analyt_method=1, upper layer temperature if t_analyt_method=2, surface temperature if t_analyt_method=3"
-				unit="°C">
+            unit="°C">
             <condition type="eq" variable="./t_prof_method" value="1" />
          </element>
          <element name="z_t2" type="float" label="lower layer thickness if t_analyt_method=2" unit="m">
@@ -847,11 +858,11 @@
             </condition>
          </element>
          <element name="TRelaxBott" type="float" label="height of bottom relaxation layer (set to 0. if not used)"
-				unit="m">
+            unit="m">
             <condition type="ne" variable="./t_prof_method" value="0" />
          </element>
          <element name="TRelaxSurf" type="float" label="height of surface relaxation layer (set to 0. if not used)"
-				unit="m">
+            unit="m">
             <condition type="ne" variable="./t_prof_method" value="0" />
          </element>
       </element>
@@ -887,7 +898,7 @@
             <condition type="ne" variable="./ext_press_method" value="2" />
          </element>
          <element name="PressHeight" type="float" label="height above bottom for current meter observations"
-				unit="m">
+            unit="m">
             <condition type="and">
                <condition type="ne" variable="./ext_press_method" value="2" />
                <condition type="eq" variable="./ext_press_mode"   value="1" />
@@ -1004,7 +1015,7 @@
             </options>
          </element>
          <element name="w_adv_height0" type="float" label="constant height of maximum absolute value of vertical advection velocity"
-				unit="m">
+            unit="m">
             <condition type="eq" variable="./w_adv_method" value="1" />
          </element>
          <element name="w_adv0" type="float" label="constant vertical advection velocity" unit="m/s">
@@ -1037,6 +1048,7 @@
                <option value="0" label="constant sea surface elevation" />
                <option value="1" label="sea surface elevation from tidal constituents" />
                <option value="2" label="sea surface elevation from file" />
+               <option value="3" label="free sea surface elevation" />
             </options>
          </element>
          <element name="zeta_file" type="gotmdatafile" label="filename for file with sea surface elevations">
@@ -1121,9 +1133,9 @@
             </fileinfo>
          </element>
          <element name="vel_relax_tau" type="float" label="relaxation time for velocity (set to 1.e15 s for no relaxation)"
-				unit="s" />
+            unit="s" />
          <element name="vel_relax_ramp" type="float" label="duration of initial relaxation (set to 1.e15 for constant relaxation)"
-				unit="s" />
+            unit="s" />
       </element>
       <element name="eprofile" label="turbulent dissipation rate profiles">
          <element name="e_prof_method" type="int" label="method to create initial or observed dissipation profiles">
@@ -1268,4 +1280,128 @@
          </element>
       </element>
    </element>
+   <element name="streams" label="basic settings for streams" optional="True">
+      <!--
+      <element name="stream" label="observed stream profiles" >
+      -->
+      <element name="stream" label="observed stream profiles" minOccurs="0" maxOccurs="unbounded" >
+         <element name="name" type="string" label="name of stream" />
+         <element name="method" type="int" label="inflow/outflow method" >
+            <options>
+               <option value="1" label="surface flow" />
+               <option value="2" label="bottom flow" />
+               <option value="3" label="depth range" />
+               <option value="4" label="interleaving - only for inflow" />
+            </options>
+         </element>
+         <element name="zl" type="float" label="vertical position of lower inflow boundary" description="as a negative value" >
+            <condition type="eq" variable="./method" value="3" />
+         </element>
+         <element name="zu" type="float" label="vertical position of upper inflow boundary" description="as a negative value" >
+            <condition type="eq" variable="./method" value="3" />
+         </element>
+         <element name="Q_file" type="string" label="filename of file with discharge data" />
+         <element name="S_file" type="string" label="filename of file with salinity data" />
+         <element name="T_file" type="string" label="filename of file with temperature data" />
+         <element name="Q_col" type="int" label="column in &quot;Q_file&quot; after timestamp" />
+         <element name="S_col" type="int" label="column in &quot;S_file&quot; after timestamp" />
+         <element name="T_col" type="int" label="column in &quot;T_file&quot; after timestamp" />
+      </element>
+   </element>
+   <element name="gotm_fabm" label="FABM specific settings" optional="True">
+      <element name="gotm_fabm_nml" label="GOTM coupling">
+         <element name="fabm_calc" type="bool" label="apply FABM - or not" />
+         <element name="cnpar" type="float" value = "1." label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)"
+            minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="w_adv_discr" type="int" label="method to discretize the vertical advection due to settling/rising">
+            <condition type="eq" variable="./fabm_calc" value="True" />
+            <options>
+               <option value="1" label="first-order upstream" />
+               <option value="2" label="second-order polynomial (P2)" />
+               <option value="3" label="third-order polynomial (P3)" />
+               <option value="4" label="TVD with Superbee limiter" />
+               <option value="5" label="TVD with MUSCL limiter" />
+               <option value="6" label="TVD with ULTIMATE QUICKEST" />
+            </options>
+         </element>
+         <element name="ode_method" type="int" label="ODE scheme for source and sink dynamics">
+            <condition type="eq" variable="./fabm_calc" value="True" />
+            <options>
+               <option value="1" label="first-order explicit (not positive)" />
+               <option value="2" label="second-order explicit Runge-Kutta (not positive)" />
+               <option value="3" label="fourth-order explicit Runge-Kutta (not positive)" />
+               <option value="4" label="Patankar (first-order, not conservative)" />
+               <option value="5" label="Patankar-RK (second-order, not conservative)" />
+               <option value="6" label="Patankar-RK (does not work, not conservative)" />
+               <option value="7" label="Modified Patankar (1st-order, conservat., posit.)" />
+               <option value="8" label="Modified Patankar-RK (2nd-order, conservat., posit.)" />
+               <option value="9" label="Modified Patankar-RK (does not work, conservat., posit.)" />
+               <option value="10" label="Extended Modified Patankar (1st-order, conservat., posit.)" />
+               <option value="11" label="Extended Modified Patankar-RK (2nd-order, conservat., posit.)" />
+            </options>
+         </element>
+         <element name="split_factor" type="int" label="split_factor: presently not used - must be 1" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="bioshade_feedback" type="bool" label="feedback of bio-turbidity to temperature equation" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="bioalbedo_feedback" type="bool" label="feedback of bio-albedo to albedo calculation" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="biodrag_feedback" type="bool" label="feedback of bio-drag to surface stress calculation" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="repair_state" type="bool" label="allow FABM to keep variables within given limits" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="salinity_relaxation_to_freshwater_flux" type="bool" label="add virtual surface freshwater flux corresponding to relaxation of salinity profile" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="no_precipitation_dilution" type="bool" label="switch off dilution due to surface freshwater fluxes (useful to check mass conservation)" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="save_inputs" type="bool" label="save FABM specific input to output file" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="no_surface" type="bool" label="switch off surface processes, e.g. gas exchange and ice algae (good to check mass conservation)" >
+            <condition type="eq" variable="./fabm_calc" value="True" />
+         </element>
+         <element name="configuration_method" type="int" label="type of fabm specifications file">
+            <condition type="eq" variable="./fabm_calc" value="True" />
+            <options>
+               <option value="-1" label="first try fabm.yaml, then fabm.nml" />
+               <option value="0" label="fabm.nml (containing Fortran namelists)" />
+               <option value="1" label="fabm.yaml (containing YAML trees)" />
+            </options>
+         </element>
+         <element name="bottom_everywhere" type="bool" label="apply benthic-pelagic coupling for all layers">
+            <condition type="and">
+               <condition type="eq" variable="./fabm_calc" value="True" />
+               <condition type="ne" variable="/gotmmean/meanflow/hypsograph_file" value="" />
+            </condition>
+         </element>
+      </element>
+   </element>
+   <!--   
+   <element name="fabm_input" label="Input specifications" optional="True">
+      <condition type="eq" variable="/gotm_fabm/gotm_fabm_nml/fabm_calc" value="True" />
+            <element name="observations" label="scalar or profile data" minOccurs="0" maxOccurs="unbounded">
+      <element name="observations" label="scalar or profile data">
+         <element name="variable" type="string" label="name of variable - instance_varname[_streamname]" />
+         <element name="file" type="string" label="file name" />
+         <element name="index" type="int" label="column # in file" optional="True" >
+            <condition type="ne" variable="./file" value="" />
+         </element>
+         <element name="relax_tau" type="float" label="relaxation time" unit="s" optional="True" >
+            <condition type="ne" variable="./file" value="" />
+         </element>
+         <element name="constant_value" type="float" label="constant variable value" >
+            <condition type="eq" variable="./file" value="" />
+         </element>
+      </element>
+   </element>
+   -->
 </element>

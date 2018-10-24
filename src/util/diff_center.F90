@@ -5,7 +5,7 @@
 ! !ROUTINE: Diffusion schemes --- grid centers\label{sec:diffusionMean}
 !
 ! !INTERFACE:
-   subroutine diff_center(N,dt,cnpar,posconc,h,Bcup,Bcdw, &
+   subroutine diff_center(N,dt,cnpar,posconc,h,Vc,Af,Bcup,Bcdw, &
                           Yup,Ydw,nuY,Lsour,Qsour,Taur,Yobs,Y)
 !
 ! !DESCRIPTION:
@@ -74,6 +74,12 @@
 !  layer thickness (m)
    REALTYPE, intent(in)                :: h(0:N)
 
+!  hypsograph at grid centre
+   REALTYPE, intent(in)                :: Vc(0:N)
+
+!  hypsograph at grid face
+   REALTYPE, intent(in)                :: Af(0:N)
+
 !  type of upper BC
    integer,  intent(in)                :: Bcup
 
@@ -120,8 +126,8 @@
 !
 !  set up matrix
    do i=2,N-1
-      c     = 2.0d0*dt*nuY(i)  /(h(i)+h(i+1))/h(i)
-      a     = 2.0d0*dt*nuY(i-1)/(h(i)+h(i-1))/h(i)
+      c     = 2.0d0*dt*Af(i)*nuY(i)    /(h(i)+h(i+1))/Vc(i)
+      a     = 2.0d0*dt*Af(i-1)*nuY(i-1)/(h(i)+h(i-1))/Vc(i)
       l     =     dt*Lsour(i)
 
       cu(i) =-cnpar*c
@@ -134,7 +140,7 @@
 !   set up upper boundary condition
    select case(Bcup)
    case(Neumann)
-      a     = 2.0d0*dt*nuY(N-1)/(h(N)+h(N-1))/h(N)
+      a     = 2.0d0*dt*Af(N-1)*nuY(N-1)/(h(N)+h(N-1))/Vc(N)
       l     = dt*Lsour(N)
 
       au(N) =-cnpar*a
@@ -159,7 +165,7 @@
 !   set up lower boundary condition
    select case(Bcdw)
    case(Neumann)
-      c     = 2.0d0*dt*nuY(1)/(h(1)+h(2))/h(1)
+      c     = 2.0d0*dt*Af(1)*nuY(1)/(h(1)+h(2))/Vc(1)
       l     = dt*Lsour(1)
 
       cu(1) =-cnpar*c
