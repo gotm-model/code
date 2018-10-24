@@ -35,7 +35,7 @@
 ! !USES:
    use field_manager
    use register_all_variables, only: do_register_all_variables, fm
-   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_category
+   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,time_unit_second,type_output_category
    use output_manager
    use diagnostics
    use settings
@@ -260,7 +260,7 @@
    branch => settings_store%get_child('time_integration')
    call branch%get(dt, 'dt', 'time step', 's', &
                    minimum=0.e-10_rk, default=3600._rk)
-   call branch%get(cnpar, 'cnpar', '"explicitness" of diffusion scheme', '1', &
+   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
                    minimum=0._rk, maximum=1._rk, default=1._rk, description='constant for the theta scheme used for time integration of diffusion-reaction components. cnpar=0.5 for Cranck-Nicholson (second-order accurate), cnpar=0 for Forward Euler (first-order accurate), cnpar=1 for Backward Euler (first-order accurate). Only cnpar=1 guarantees positive solutions for positive definite systems.')
 
    branch => settings_store%get_child('restart')
@@ -326,6 +326,30 @@
    if (read_nml) call configure_gotm_fabm_input_from_nml(namlst, 'fabm_input.nml')
 #endif
 
+   ! Initialize field manager
+   ! This is needed for the output manager to be able to read its configuration [output_manager_init]
+   call fm%register_dimension('lon',1,id=id_dim_lon)
+   call fm%register_dimension('lat',1,id=id_dim_lat)
+   call fm%register_dimension('z',nlev,id=id_dim_z)
+   call fm%register_dimension('zi',nlev+1,id=id_dim_zi)
+   call fm%register_dimension('time',id=id_dim_time)
+   call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
+
+   allocate(type_gotm_host::output_manager_host)
+   branch => settings_store%get_child('output')
+   call output_manager_init(fm,title,settings=branch)
+
+   inquire(file='output.yaml',exist=file_exists)
+   if (.not.file_exists) then
+      call deprecated_output(namlst,title,dt,list_fields)
+   end if
+
+   ! Make sure all elements in the YAML configuration file were recognized
+   if (.not. settings_store%check_all_used()) then
+      FATAL trim(yaml_file) // ' is invalid.'
+      stop 1
+   end if
+
    if (write_yaml_path /= '') then
       call settings_store%save(trim(write_yaml_path), namlst)
       LEVEL0 'Your configuration has been written to '//trim(write_yaml_path)//'.'
@@ -350,22 +374,6 @@
 !  therefore, we set to to a reasonable default here.
    zeta%value = _ZERO_
    w_adv%method = 0
-
-   ! Initialize field manager
-   call fm%register_dimension('lon',1,id=id_dim_lon)
-   call fm%register_dimension('lat',1,id=id_dim_lat)
-   call fm%register_dimension('z',nlev,id=id_dim_z)
-   call fm%register_dimension('zi',nlev+1,id=id_dim_zi)
-   call fm%register_dimension('time',id=id_dim_time)
-   call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
-
-   allocate(type_gotm_host::output_manager_host)
-   call output_manager_init(fm,title)
-
-   inquire(file='output.yaml',exist=file_exists)
-   if (.not.file_exists) then
-      call deprecated_output(namlst,title,dt,list_fields)
-   end if
 
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.

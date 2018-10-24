@@ -280,7 +280,7 @@
                 minimum=1,maximum=100,default=1)
    call branch%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme', &
                 minimum=1,maximum=6,default=6)
-   call branch%get(cnpar, 'cnpar', '"explicitness" of diffusion scheme', '1', &
+   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
                 minimum=0._rk,default=1._rk)
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
    call branch%get(bioshade_feedback, 'bioshade_feedback', 'interior light absorption', &

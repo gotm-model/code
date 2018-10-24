@@ -23,6 +23,7 @@
    use input,only: register_input, type_scalar_input, type_profile_input
    use streams, only: type_stream,first_stream
    use settings
+   use yaml_settings
 
    implicit none
 
@@ -75,7 +76,11 @@
 !  PRIVATE PARAMETERS
    integer,parameter :: max_variable_count_per_file = 256
 
-   class (type_gotm_settings), pointer :: cfg           => null()
+   type, extends(type_dictionary_populator) :: type_fabm_input_populator
+   contains
+      procedure :: create => fabm_input_create
+   end type
+   class (type_fabm_input_populator), pointer :: fabm_input_populator => null()
 
    contains
 
@@ -87,68 +92,75 @@
 ! !INTERFACE:
    subroutine configure_gotm_fabm_input()
 
-   cfg => settings_store%get_typed_child('fabm/input')
-   call cfg%populate(register_fabm_input)
+      class (type_settings), pointer :: cfg
 
+      allocate(fabm_input_populator)
+      cfg => settings_store%get_child('fabm/input', populator=fabm_input_populator)
    end subroutine configure_gotm_fabm_input
 !EOC
 
-   subroutine register_fabm_input(settings, name)
-      class (type_settings), intent(inout) :: settings
-      character(len=*),      intent(in)    :: name
+   subroutine append_input(input_variable)
+      type (type_input_variable), target :: input_variable
 
+      if (.not. associated(first_input_variable)) then
+         first_input_variable => input_variable
+      else
+         last_input_variable%next => input_variable
+      end if
+      last_input_variable => input_variable
+   end subroutine
+
+   subroutine fabm_input_create(self, pair)
+      class (type_fabm_input_populator), intent(inout) :: self
+      type (type_key_value_pair),        intent(inout) :: pair
+
+      type (type_input_variable), pointer :: input_variable
       class (type_gotm_settings), pointer :: branch
       character(len=attribute_length)     :: fabm_name
       integer :: i
 
-      if (.not. associated(first_input_variable)) then
-         allocate(first_input_variable)
-         last_input_variable => first_input_variable
-      else
-         allocate(last_input_variable%next)
-         last_input_variable => last_input_variable%next
-      end if
+      allocate(input_variable)
 
-!     First search in pelagic variables
-      last_input_variable%interior_id = fabm_get_bulk_variable_id(model, name)
+!     First search in interior variables
+      input_variable%interior_id = fabm_get_bulk_variable_id(model, pair%name)
 
-      if (fabm_is_variable_used(last_input_variable%interior_id)) then
-         fabm_name = fabm_get_variable_name(model, last_input_variable%interior_id)
-         call cfg%get_profile_input(last_input_variable%profile_input, trim(fabm_name), trim(last_input_variable%interior_id%variable%long_name), trim(last_input_variable%interior_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
+      if (fabm_is_variable_used(input_variable%interior_id)) then
+         fabm_name = fabm_get_variable_name(model, input_variable%interior_id)
+         call type_input_create(pair, input_variable%profile_input, trim(input_variable%interior_id%variable%long_name), trim(input_variable%interior_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
          do i = 1, size(model%state_variables)
             if (fabm_name == model%state_variables(i)%name) then
-               call branch%get_real(last_input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
-               call branch%get_real(last_input_variable%relax_tau_bot, 'relax_tau_bot', 'relaxation time scale for bottom layer', 's', minimum=0._rk, default=1.e15_rk)
-               call branch%get_real(last_input_variable%relax_tau_surf, 'relax_tau_surf', 'relaxation time scale for surface layer', 's', minimum=0._rk, default=1.e15_rk)
-               call branch%get_real(last_input_variable%h_bot, 'thickness_bot', 'thickness of bottom relaxation layer', 'm', minimum=0._rk, default=0._rk)
-               call branch%get_real(last_input_variable%h_surf, 'thickness_surf', 'thickness of surface relaxation layer', 'm', minimum=0._rk, default=0._rk)
+               call branch%get(input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
+               call branch%get(input_variable%relax_tau_bot, 'relax_tau_bot', 'relaxation time scale for bottom layer', 's', minimum=0._rk, default=1.e15_rk)
+               call branch%get(input_variable%relax_tau_surf, 'relax_tau_surf', 'relaxation time scale for surface layer', 's', minimum=0._rk, default=1.e15_rk)
+               call branch%get(input_variable%h_bot, 'thickness_bot', 'thickness of bottom relaxation layer', 'm', minimum=0._rk, default=0._rk)
+               call branch%get(input_variable%h_surf, 'thickness_surf', 'thickness of surface relaxation layer', 'm', minimum=0._rk, default=0._rk)
                exit
             end if
          end do
       else
 !        Variable was not found among interior variables. Try variables defined on horizontal slice of model domain (e.g., benthos)
-         last_input_variable%horizontal_id = fabm_get_horizontal_variable_id(model, name)
-         if (fabm_is_variable_used(last_input_variable%horizontal_id)) then
-            fabm_name = fabm_get_variable_name(model, last_input_variable%horizontal_id)
-            call cfg%get_scalar_input(last_input_variable%scalar_input, trim(fabm_name), trim(last_input_variable%horizontal_id%variable%long_name), trim(last_input_variable%horizontal_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
+         input_variable%horizontal_id = fabm_get_horizontal_variable_id(model, pair%name)
+         if (fabm_is_variable_used(input_variable%horizontal_id)) then
+            fabm_name = fabm_get_variable_name(model, input_variable%horizontal_id)
+            call type_input_create(pair, input_variable%scalar_input, trim(input_variable%horizontal_id%variable%long_name), trim(input_variable%horizontal_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
             do i = 1, size(model%bottom_state_variables)
                if (fabm_name == model%bottom_state_variables(i)%name) then
-                  call branch%get_real(last_input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
+                  call branch%get(input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
                   exit
                end if
             end do
          else
 !           Variable was not found among interior or horizontal variables. Try global scalars.
-            last_input_variable%scalar_id = fabm_get_scalar_variable_id(model, name)
-            if (.not. fabm_is_variable_used(last_input_variable%scalar_id)) then
-               FATAL 'Variable '//name//', referenced among FABM inputs was not found in model.'
+            input_variable%scalar_id = fabm_get_scalar_variable_id(model, pair%name)
+            if (.not. fabm_is_variable_used(input_variable%scalar_id)) then
+               FATAL 'Variable '//pair%name//', referenced among FABM inputs was not found in model.'
                stop 'gotm_fabm_input:init_gotm_fabm_input'
             end if
-            fabm_name = fabm_get_variable_name(model, last_input_variable%scalar_id)
-            call cfg%get_scalar_input(last_input_variable%scalar_input, trim(fabm_name), trim(last_input_variable%scalar_id%variable%long_name), trim(last_input_variable%scalar_id%variable%units), default=0._rk, pchild=branch)
+            call type_input_create(pair, input_variable%scalar_input, trim(input_variable%scalar_id%variable%long_name), trim(input_variable%scalar_id%variable%units), default=0._rk, pchild=branch)
          end if
       end if
-   end subroutine
+      call append_input(input_variable)
+   end subroutine fabm_input_create
 
 !-----------------------------------------------------------------------
 !BOP
@@ -198,6 +210,7 @@
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
                            relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot, &
                            constant_value
+   type (type_key_value_pair), pointer :: pair
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -308,7 +321,8 @@
          method = 2
          if (constant_values(i) /= missing_value) method = 0
 
-         call register_fabm_input(cfg, trim(variables(i)))
+         pair => settings_store%get_node('fabm/input/'//trim(variables(i)))
+         call fabm_input_populator%create(pair)
          if (fabm_is_variable_used(last_input_variable%interior_id)) then
             call last_input_variable%profile_input%configure(method=method, path=trim(file), index=i, constant_value=constant_values(i))
             last_input_variable%relax_tau = relax_taus(i)
