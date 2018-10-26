@@ -57,15 +57,7 @@
       REALTYPE                                :: relax_tau_surf       ! Relaxation times for surface layer (depth-dependent variables only)
       REALTYPE                                :: h_bot, h_surf        ! Thickness of bottom and surface layers (for relaxation rates that vary per layer)
       REALTYPE, allocatable,dimension(:)      :: relax_tau_1d         ! Relaxation times for profiles (depth-dependent variables)
-!KB
-#if 0
-<<<<<<< HEAD
-=======
-      REALTYPE                                :: data_0d
-      REALTYPE,allocatable,dimension(:)       :: data_1d
       type (type_stream),pointer              :: stream => null()     ! Inflow that this variable corresponds to (only for pelagic variables)
->>>>>>> upstream/lake
-#endif
       type (type_input_variable),pointer      :: next => null()       ! Next variable in current input file
    end type
 
@@ -82,6 +74,12 @@
    end type
    class (type_fabm_input_populator), pointer :: fabm_input_populator => null()
 
+   type, extends(type_dictionary_populator) :: type_stream_input_populator
+      type (type_stream), pointer :: stream => null()
+   contains
+      procedure :: create => stream_input_create
+   end type
+
    contains
 
 !-----------------------------------------------------------------------
@@ -91,11 +89,22 @@
 !
 ! !INTERFACE:
    subroutine configure_gotm_fabm_input()
-
-      class (type_settings), pointer :: cfg
+      class (type_settings),              pointer :: cfg, child
+      type (type_stream),                 pointer :: stream
+      type (type_stream_input_populator), pointer :: stream_populator
 
       allocate(fabm_input_populator)
       cfg => settings_store%get_child('fabm/input', populator=fabm_input_populator)
+
+      cfg => settings_store%get_child('streams')
+      stream => first_stream
+      do while (associated(stream))
+         child => cfg%get_child(trim(stream%name))
+         allocate(stream_populator)
+         stream_populator%stream => stream
+         call child%populate(stream_populator)
+         stream => stream%next
+      end do
    end subroutine configure_gotm_fabm_input
 !EOC
 
@@ -162,6 +171,23 @@
       call append_input(input_variable)
    end subroutine fabm_input_create
 
+   subroutine stream_input_create(self, pair)
+      class (type_stream_input_populator), intent(inout) :: self
+      type (type_key_value_pair),          intent(inout) :: pair
+
+      type (type_input_variable), pointer :: input_variable
+
+      allocate(input_variable)
+      input_variable%interior_id = fabm_get_bulk_variable_id(model, pair%name)
+      if (fabm_is_variable_used(input_variable%interior_id)) then
+         input_variable%stream => self%stream
+         call type_input_create(pair, input_variable%scalar_input, trim(input_variable%interior_id%variable%long_name), trim(input_variable%interior_id%variable%units), default=0._rk, treat_as_path=.false.)
+         call append_input(input_variable)
+      else
+         deallocate(input_variable)
+      end if
+   end subroutine stream_input_create
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -183,28 +209,14 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-!KB
-#if 0
    character(len=maxpathlen)    :: file
    character(len=64)            :: variable,variables(max_variable_count_per_file)
-<<<<<<< HEAD
    integer                      :: i,index
    integer                      :: variabletype
    REALTYPE                     :: relax_tau,constant_value
-=======
-   integer                      :: i,k,file_variable_count,index
-   integer                      :: variabletype,filetype
-   integer                      :: vl,ifl
-   REALTYPE                     :: relax_tau,db,ds,depth,constant_value
->>>>>>> upstream/lake
    REALTYPE,dimension(max_variable_count_per_file) :: relax_taus,relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
    REALTYPE,dimension(max_variable_count_per_file) :: constant_values
    logical                      :: file_exists
-<<<<<<< HEAD
-=======
-   type (type_input_variable),pointer :: curvariable
-   type (type_stream),pointer   :: curstream
->>>>>>> upstream/lake
    REALTYPE, parameter          :: missing_value = huge(_ONE_)
    integer                      :: method
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
@@ -218,19 +230,6 @@
 
 !  If FABM is not used, return immediately.
    if (.not. fabm_calc) return
-
-!  Initialize empty lists of observations files.
-   nullify(first_input_variable)
-
-!  Register streams
-   curstream => first_stream
-   do while (associated(curstream))
-      call register_stream(curstream%name,curstream%QI,curstream%Q)
-      curstream => curstream%next
-   end do
-
-!  Calculate depth (used to determine whether in surface/bottom/bulk for relaxation times)
-   depth = sum(h)
 
 !  Open the file that contains zero, one or more namelists specifying input observations.
    open(namlst,file=fname,action='read',status='old',err=98)
@@ -331,128 +330,8 @@
             last_input_variable%h_bot = thicknesses_bot(i)
             last_input_variable%h_surf = thicknesses_surf(i)
          else
-<<<<<<< HEAD
             call last_input_variable%scalar_input%configure(method=method, path=trim(file), index=i, constant_value=constant_values(i))
             last_input_variable%relax_tau = relax_taus(i)
-=======
-!           This is not the first variable in the file: append to previous variable.
-            curvariable => first_input_variable
-            do while (associated(curvariable%next))
-               curvariable => curvariable%next
-            end do
-            allocate(curvariable%next)
-            curvariable => curvariable%next
-         end if
-
-!        Store variable name and index in file.
-         nullify(curvariable%next)
-         curvariable%name = variables(i)
-         curvariable%path = file
-         curvariable%index = i
-         curvariable%ncid = -1
-
-!        First search in pelagic variables
-         variabletype = type_profile
-         curvariable%id = fabm_get_bulk_variable_id(model,variables(i))
-
-!        If variable was not found, search variables defined on horizontal slice of model domain (e.g., benthos)
-         if (.not.fabm_is_variable_used(curvariable%id)) then
-            curvariable%horizontal_id = fabm_get_horizontal_variable_id(model,variables(i))
-            variabletype = type_scalar
-         end if
-
-!        If variable still was not found, search scalar [non-spatial] variables.
-         if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id))) then
-            curvariable%scalar_id = fabm_get_scalar_variable_id(model,variables(i))
-            variabletype = type_scalar
-         end if
-
-!        If variable still was not found, test whether its name matches the name of a pelagic variable,
-!        followed by an underscore, and the name of an stream. In that case, the input variable specifies the
-!        time-varying concentration of the pelagic variable in the stream.
-         if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
-            curstream => first_stream
-            do while (associated(curstream))
-               vl = len_trim(variables(i))
-               ifl = len_trim(curstream%name)
-               if (variables(i)(vl-ifl+1:vl)==curstream%name) then
-                  curvariable%id = fabm_get_bulk_variable_id(model,variables(i)(:vl-ifl-1))
-                  variabletype = type_scalar
-                  if (fabm_is_variable_used(curvariable%id)) curvariable%stream => curstream
-               end if
-               curstream => curstream%next
-            end do
-         end if
-
-!        Report an error if the variable was still not found.
-         if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
-            FATAL 'Variable '//trim(curvariable%name)//', referenced in namelist observations &
-                  &in '//trim(fname)//', was not found in model.'
-            stop 'gotm_fabm_input:init_gotm_fabm_input'
-         end if
-
-!        Make sure profile and scalar variables are not mixed in the same input file.
-         if (filetype/=type_unknown .and. filetype/=variabletype) then
-            FATAL 'Cannot mix 0d and 1d variables in one observation file, as they require different formats.'
-            stop 'gotm_fabm_input:init_gotm_fabm_input'
-         end if
-         filetype = variabletype
-
-         if (variabletype==type_scalar) then
-!           0D input variable (horizontal-only, global scalar, or stream for pelagic variable)
-            if (constant_values(i)/=missing_value) then
-                ! Variable fixed to constant value.
-                curvariable%data_0d = constant_values(i)
-            else
-                ! Variable read from file.
-                call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d,curvariable%name)
-            end if
-            curvariable%relax_tau_0d = relax_taus(i)
-            if (associated(curvariable%stream)) then
-!              Input is stream concentration for pelagic variable.
-               call register_stream_concentration(curvariable%id,curvariable%stream%name,curvariable%data_0d)
-            elseif (fabm_is_variable_used(curvariable%horizontal_id)) then
-!              Input is a variable defined on horizontal slice of model domain (e.g., benthos)
-               call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)
-            else
-!              Input is a scalar [non-spatial] variable
-               call register_observation(curvariable%scalar_id,curvariable%data_0d)
-            end if
-         else
-!           1D input variable (vertically structured variable)
-            allocate(curvariable%data_1d(0:nlev))
-            allocate(curvariable%relax_tau_1d(0:nlev))
-            curvariable%relax_tau_1d = relax_taus(i)
-            if (constant_values(i)/=missing_value) then
-                ! Variable fixed to constant value.
-                curvariable%data_1d = constant_values(i)
-            else
-                ! Variable read from file.
-                call register_input_1d(curvariable%path,curvariable%index,curvariable%data_1d,curvariable%name)
-            end if
-
-!           Apply separate relaxation times for bottom and surface layer, if specified.
-            db = _ZERO_
-            ds = depth
-            do k=1,nlev
-               db = db+0.5*h(k)
-               ds = ds-0.5*h(k)
-               if (db<=thicknesses_bot (i)) curvariable%relax_tau_1d(k) = relax_taus_bot(i)
-               if (ds<=thicknesses_surf(i)) curvariable%relax_tau_1d(k) = relax_taus_surf(i)
-               db = db+0.5*h(k)
-               ds = ds-0.5*h(k)
-            end do
-
-!           Register observed variable with the GOTM-FABM driver.
-            call register_observation(curvariable%id,curvariable%data_1d,curvariable%relax_tau_1d)
-         end if
-
-!        Report that this variable will use observations.
-         if (constant_values(i)/=missing_value) then
-            LEVEL2 'Setting variable '//trim(curvariable%name)//' to constant value',constant_values(i)
-         else
-            LEVEL2 'Reading observed values for variable '//trim(curvariable%name)//' from '//trim(file)
->>>>>>> upstream/lake
          end if
 
       end do
@@ -468,7 +347,6 @@
 
 99 FATAL 'Error reading namelist "observations" from '//trim(fname)
    stop 'gotm_fabm_input:init_gotm_fabm_input'
-#endif
 
    end subroutine configure_gotm_fabm_input_from_nml
 !EOC
@@ -494,6 +372,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   type (type_stream),         pointer :: stream
    type (type_input_variable), pointer :: curvariable
    integer                             :: k
    REALTYPE                            :: db,ds,depth
@@ -503,9 +382,19 @@
 !  Calculate depth (used to determine whether in surface/bottom/bulk for relaxation times)
    depth = sum(h)
 
+!  Register streams with GOTM-FABM coupler
+!KB   stream => first_stream
+!KB   do while (associated(stream))
+!KB      call register_stream(stream%name, stream%QI, stream%Q)
+!KB      stream => stream%next
+!KB   end do
+
    curvariable => first_input_variable
    do while (associated(curvariable))
-      if (fabm_is_variable_used(curvariable%interior_id)) then
+      if (associated(curvariable%stream)) then
+!        Input is stream concentration for pelagic variable.
+         call register_stream_concentration(curvariable%interior_id, curvariable%stream%name, curvariable%scalar_input%value)
+      elseif (fabm_is_variable_used(curvariable%interior_id)) then
          allocate(curvariable%profile_input%data(0:nlev))
          call register_input(curvariable%profile_input)
 
