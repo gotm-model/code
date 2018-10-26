@@ -151,7 +151,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
+                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf%data,S)
 
    return
    end subroutine salinity

@@ -989,13 +989,13 @@
       ta_k = airt%value
    end if
 
-   call humidity(hum_method,hum,airp%value,tw,ta)
+   call humidity(hum_method,hum%value,airp%value,tw,ta)
    if (back_radiation_method .gt. 0) then
       call back_radiation(back_radiation_method, &
-                          dlat,tw_k,ta_k,cloud%value,qb)
+                          dlat,tw_k,ta_k,cloud%value,qb%value)
    endif
    call airsea_fluxes(fluxes_method, &
-                      tw,ta,u10%value-ssu,v10%value-ssv,precip,evap,tx,ty,qe,qh)
+                      tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx%value,ty%value,qe,qh)
    heat%value = (qb%value+qe+qh)
 #endif
 

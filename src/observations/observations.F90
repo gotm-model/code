@@ -599,7 +599,7 @@
    call twig%get(SRelaxBott, 'SRelaxBott', 'height of bottom relaxation layer', 'm', &
                    minimum=0._rk,default=0._rk)
 
-   twig => settings_store%get_typed_child('light_extinction')
+   twig => settings_store%get_typed_child('light')
    call twig%get(extinct_method, 'extinct_method', 'water type', &
                    options=(/type_option(1, 'Jerlov type I'), type_option(2, 'Jerlov type 1 (upper 50 m)'), type_option(3, 'Jerlov type IA'), &
                    type_option(4, 'Jerlov type IB'), type_option(5, 'Jerlov type II'), type_option(6, 'Jerlov type III'), type_option(7, 'custom')/), default=1)

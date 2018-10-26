@@ -189,7 +189,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
+                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf%data,T)
    return
    end subroutine temperature
 !EOC

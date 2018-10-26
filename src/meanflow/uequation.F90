@@ -189,7 +189,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uprof,U)
+                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uprof%data,U)
 
 
    return
