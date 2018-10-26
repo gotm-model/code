@@ -267,6 +267,7 @@
    branch => settings_store%get_child('turbulence')
    branch => settings_store%get_child('output')
    
+   branch => settings_store%get_child('restart')
    call branch%get(restart_offline, 'restart_offline', &
                    'initialize simulation with state stored in restart.nc', &
                    default=.false.)
@@ -303,12 +304,6 @@
 
       call init_meanflow(namlst,'gotmmean.nml')
 
-#ifdef SEAGRASS
-      call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
-#endif
-#ifdef SPM
-      call init_spm(namlst,'spm.nml',unit_spm,nlev)
-#endif
       call init_observations(namlst,'obs.nml')
 
       call init_turbulence(namlst,'gotmturb.nml')
@@ -405,6 +400,13 @@
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta%value)
 
+#ifdef SEAGRASS
+      call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
+#endif
+#ifdef SPM
+      call init_spm(namlst,'spm.nml',unit_spm,nlev)
+#endif
+
 !KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
    call post_init_observations(depth,nlev,z,h,gravity,rho_0)
    call get_all_obs(julianday,secondsofday,nlev,z)
@@ -468,7 +470,7 @@
       if (restart_offline) then
          LEVEL1 'read_restart'
          call read_restart(restart_allow_missing_variable)
-         call friction(kappa,avmolu,tx%value,ty%value)
+         call friction(kappa,avmolu,tx,ty)
       end if
       if (restart_online) then
       end if
@@ -597,8 +599,8 @@
       call do_airsea(julianday,secondsofday)
 
 !     reset some quantities
-      tx%value = tx%value/rho_0
-      ty%value = ty%value/rho_0
+      tx = tx/rho_0
+      ty = ty/rho_0
 
       call integrated_fluxes(dt)
 
@@ -608,11 +610,11 @@
       call coriolis(nlev,dt)
 
 !     update velocity
-      call uequation(nlev,dt,cnpar,tx%value,num,gamu,ext_press_mode)
-      call vequation(nlev,dt,cnpar,ty%value,num,gamv,ext_press_mode)
+      call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
+      call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
       call extpressure(ext_press_mode,nlev)
       call intpressure(nlev)
-      call friction(kappa,avmolu,tx%value,ty%value)
+      call friction(kappa,avmolu,tx,ty)
 
 #ifdef SEAGRASS
       if(seagrass_calc) call do_seagrass(nlev,dt)
