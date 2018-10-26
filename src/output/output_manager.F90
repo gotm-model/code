@@ -499,8 +499,8 @@ contains
       ! Can be used for CF global attributes
       call file_settings%get(file%title, 'title', 'title', default=self%title)
       call file_settings%get(file%time_unit, 'time_unit', 'time unit', default=time_unit_day, options=(/ &
-         type_option(time_unit_second, 'second'), type_option(time_unit_hour, 'hour'), type_option(time_unit_day, 'day'), &
-         type_option(time_unit_month, 'month'), type_option(time_unit_year, 'year'), type_option(time_unit_dt, 'dt')/))
+         type_option(time_unit_second, 'second', 'second'), type_option(time_unit_hour, 'hour', 'hour'), type_option(time_unit_day, 'day', 'day'), &
+         type_option(time_unit_month, 'month', 'month'), type_option(time_unit_year, 'year', 'year'), type_option(time_unit_dt, 'model time step', 'dt')/))
 
       ! Determine time step
       call file_settings%get(file%time_step, 'time_step', 'number of time units between output', minimum=1, default=1)

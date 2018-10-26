@@ -338,8 +338,8 @@ contains
       class (type_output_variable_settings), intent(in), optional :: parent
 
       if (present(parent)) self%time_method = parent%time_method
-      call settings%get(self%time_method, 'time_method', '', options=(/type_option(time_method_mean, 'mean'), &
-         type_option(time_method_instantaneous, 'point'), type_option(time_method_integrated, 'integrated')/), default=self%time_method)
+      call settings%get(self%time_method, 'time_method', 'treatment of time dimension', options=(/type_option(time_method_mean, 'mean', 'mean'), &
+         type_option(time_method_instantaneous, 'instantaneous', 'point'), type_option(time_method_integrated, 'integrated', 'integrated')/), default=self%time_method)
    end subroutine output_variable_settings_initialize
 
 end module output_manager_core
