@@ -219,7 +219,7 @@
 
    call profile_inputs%add(input)
 
-   if (.not.allocated(input%data)) allocate(input%data(1:nlev))
+   allocate(input%data(0:nlev))
    if (input%method == input%method_constant) then
       LEVEL2 'Using constant ' // input%name // '= ', input%constant_value
       input%data = input%constant_value

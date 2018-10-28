@@ -348,7 +348,6 @@
    curvariable => first_input_variable
    do while (associated(curvariable))
       if (fabm_is_variable_used(curvariable%interior_id)) then
-         allocate(curvariable%profile_input%data(0:nlev))
          call register_input(curvariable%profile_input)
 
          allocate(curvariable%relax_tau_1d(0:nlev))
