@@ -936,6 +936,7 @@
 ! !LOCAL VARIABLES:
    integer :: i
    REALTYPE,parameter :: gravity = 9.81d0
+   REALTYPE :: p0
 !
 !EOP
 !-----------------------------------------------------------------------!
@@ -947,9 +948,9 @@
    if (allocated(pres)) then
       ! Start with air pressure (in dbar = 10 kPa)
       if (associated(airp)) then
-          pres(nlev) = airp * 1e-4_rk
+          p0 = airp * 1e-4_rk
       else
-          pres(nlev) = 10.1325_rk
+          p0 = 10.1325_rk
       end if
 
       ! Calculate local pressure in dbar (10 kPa) from layer height and density
@@ -957,7 +958,7 @@
       do i=nlev-1,1,-1
          pres(i) = pres(i+1) + (rho(i)*curh(i)+rho(i+1)*curh(i+1))/2
       end do
-      pres(1:nlev) = pres(1:nlev)*gravity/10000
+      pres(1:nlev) = p0 + pres(1:nlev)*gravity/10000
    end if
 
    ! Calculate local depth below surface from layer height
