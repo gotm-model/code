@@ -183,8 +183,6 @@
 !  Original author(s): Jorn Bruggeman
 !
 !  local variables
-!KB   integer :: i, output_level
-!KB   logical :: file_exists, in_output
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
@@ -261,8 +259,6 @@
 !  Original author(s): Jorn Bruggeman
 !
 !  local variables
-!KB   integer :: i, output_level
-!KB   logical :: file_exists, in_output
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -952,14 +948,14 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine register_stream(name,QI,Q)
+   subroutine register_stream(name,flow,Q)
 !
 ! !DESCRIPTION:
 ! TODO
 !
 ! !INPUT PARAMETERS:
    character(len=*),intent(in) :: name
-   REALTYPE,target             :: QI,Q(:)
+   REALTYPE,target             :: flow,Q(:)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -985,7 +981,7 @@
    end if
 
    stream%name = name
-   stream%QI => QI
+   stream%QI => flow
    stream%Q => Q
    allocate(stream%cc(1:size(model%state_variables)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (stream%cc)'

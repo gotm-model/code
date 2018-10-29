@@ -226,6 +226,8 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+!KB - no nml configuration
+   return
    LEVEL1 'init_gotm_fabm_input'
 
 !  If FABM is not used, return immediately.
@@ -383,11 +385,12 @@
    depth = sum(h)
 
 !  Register streams with GOTM-FABM coupler
-!KB   stream => first_stream
-!KB   do while (associated(stream))
-!KB      call register_stream(stream%name, stream%QI, stream%Q)
-!KB      stream => stream%next
-!KB   end do
+   stream => first_stream
+   do while (associated(stream))
+!KBwrite(*,*) 'AAAAA ',stream%name,' BBBBB'
+      call register_stream(stream%name, stream%flow%value, stream%Q)
+      stream => stream%next
+   end do
 
    curvariable => first_input_variable
    do while (associated(curvariable))
