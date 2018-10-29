@@ -16,6 +16,7 @@
 !
 ! !USES
    use input
+   use yaml_settings
    use settings
 
 !  !PUBLIC DATA MEMBERS:
@@ -27,25 +28,26 @@
    REALTYPE, public                      :: int_outflow=_ZERO_
 !
    interface configure_streams
-      module procedure configure_streams_nml
+!KB      module procedure configure_streams_nml
       module procedure configure_streams_yaml
    end interface
+
+   type, extends(type_dictionary_populator) :: type_stream_populator
+   contains
+      procedure :: create => register_stream
+   end type
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lennart Schueler
-!
-!EOP
 !
 ! !LOCAL VARIABLES:
    type type_stream
       character(len=64)      :: name = ''
       integer                :: method
       REALTYPE               :: zl,zu
-      character(len=PATH_MAX):: Q_file,T_file,S_file
-      integer                :: Q_col,T_col,S_col
-      type(type_scalar_input):: QI
-      type(type_scalar_input):: SI
-      type(type_scalar_input):: TI
+      type (type_scalar_input) :: flow
+      type (type_scalar_input) :: temp
+      type (type_scalar_input) :: salt
       logical                :: has_S = .false.
       logical                :: has_T = .false.
       REALTYPE, allocatable  :: weights(:), Q(:)
@@ -59,10 +61,8 @@
    integer                   :: nstreams
    type (type_stream), pointer :: first_stream
 
-   class (type_gotm_settings), pointer :: cfg           => null()
-
-! !DEFINED PARAMETERS:
-!
+   class (type_gotm_settings), pointer :: cfg => null()
+!EOP
 !-----------------------------------------------------------------------
 
    contains
@@ -166,18 +166,20 @@
 ! !INTERFACE:
    subroutine configure_streams_yaml()
 !
-!  !DESCRIPTION:
+! !DESCRIPTION:
 !  Initialises everything related to the lake model, e.g. allocating memory
 !  for arrays.
 !
+! !LOCAL VARIABLES:
+   type (type_stream_populator), pointer :: stream_populator
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'configure_streams_yaml'
    cfg => settings_store%get_typed_child('streams')
-   call cfg%populate(register_stream)
+   allocate(stream_populator)
+   call cfg%populate(stream_populator)
    LEVEL2 'done'
-
    end subroutine configure_streams_yaml
 !EOC
 
@@ -187,41 +189,43 @@
 ! !ROUTINE: configures everything related to the streams
 !
 ! !INTERFACE:
-   subroutine register_stream(settings, name)
+   subroutine register_stream(self, pair)
 !
 ! !DESCRIPTION:
 !
 ! !USES:
    use yaml_settings
 !
-   class (type_settings), intent(inout) :: settings
-   character(len=*),      intent(in)    :: name
+! !INPUT PARAMETERS:
+   class (type_stream_populator), intent(inout) :: self
+   type (type_key_value_pair), intent(inout) :: pair
+!
+! !LOCAL VARIABLES:
+   class (type_settings), pointer :: child
    type (type_stream), pointer :: stream
-   class (type_gotm_settings), pointer :: branch
+   integer, parameter :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    allocate(stream)
-
    stream%next => first_stream
-
    first_stream => stream
 
-   select type (settings)
-   class is (type_gotm_settings)
-      branch => settings%get_typed_child(name)
+   child => type_settings_create(pair,'stream configuration')
+   stream%name = pair%name
+   select type (child)
+      class is (type_gotm_settings)
+         call child%get(stream%method, 'method', 'inflow method', default=1)
+         call child%get(stream%zu, 'zu', 'upper limit','m',default=0._rk)
+         call child%get(stream%zl, 'zl', 'lower limit','m',default=0._rk)
+         call child%get(stream%flow,'flow','water flow','m^3/s',default=0._rk)
+         call child%get(stream%temp,'temp','flow temperature','Celcius',default=-1._rk)
+         stream%has_T = .true.
+         if (stream%temp%method .eq. 0 .and. stream%temp%constant_value .lt. 0._rk) stream%has_T = .false.
+         call child%get(stream%salt,'salt','flow salinity','PSU', default=-1._rk)
+         stream%has_S = .true.
+         if (stream%salt%method .eq. 0 .and. stream%salt%constant_value .lt. 0._rk) stream%has_S = .false.
    end select
-
-   ! here you can request all stream-specific parameters from “branch”
-   call branch%get(stream%method, 'method', 'egon')
-   call branch%get(stream%zu, 'zu', 'zu','-')
-   call branch%get(stream%zl, 'zl', 'zl','-')
-   call branch%get(stream%Q_file, 'Q_file', 'Stream flow file name','')
-   call branch%get(stream%Q_col, 'Q_col', 'Q column index',default=1)
-   call branch%get(stream%T_file, 'T_file', 'Stream temperature file name','')
-   call branch%get(stream%T_col, 'T_col', 'T column index',default=1)
-   call branch%get(stream%S_file, 'S_file', 'Stream salinity file name','')
-   call branch%get(stream%S_col, 'S_col', 'S column index',default=1)
    end subroutine register_stream
 !EOC
 
@@ -238,11 +242,11 @@
 ! !USES:
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in) :: nlev
+   integer, intent(in)            :: nlev
 !
 ! !LOCAL VARIABLES:
-   integer                 :: rc
-   type (type_stream), pointer :: c
+   integer                        :: rc
+   type (type_stream), pointer    :: c
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -251,26 +255,9 @@
 
    do while (associated(c))
 
-      LEVEL2 '.... ',trim(c%name),c%method,real(c%zl),real(c%zu)
-      LEVEL2 '.... ',trim(c%Q_file),c%Q_col
-      LEVEL2 '.... ',trim(c%T_file),c%T_col
-      LEVEL2 '.... ',trim(c%S_file),c%S_col
-
-      if (c%Q_file=='') then
-         FATAL 'Error: "Q_file" must be provided in namelist "stream".'
-         stop 'configure_streams'
-      end if
-      call c%QI%configure(method=2,path=c%Q_file,index=c%Q_col)
-
-      if (c%T_file/='') then
-         call c%TI%configure(method=2,path=c%T_file,index=c%T_col)
-         c%has_T = .true.
-      end if
-
-      if (c%S_file/='') then
-         call c%SI%configure(method=2,path=c%S_file,index=c%S_col)
-         c%has_S = .true.
-      end if
+      call register_input(c%flow)
+      call register_input(c%temp)
+      call register_input(c%salt)
 
       allocate(c%weights(1:nlev),stat=rc)
       if (rc /= 0) STOP 'init_observations: Error allocating (weights)'
@@ -298,7 +285,6 @@
       c => c%next
    end do
    return
-
    end subroutine post_init_streams
 !EOC
 
@@ -334,7 +320,6 @@
    REALTYPE             :: depth
    REALTYPE             :: TI,SI
    type (type_stream), pointer :: c
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -347,7 +332,7 @@
    c => first_stream
    do while (associated(c))
 
-      if (c%QI%value .eq. _ZERO_) then
+      if (c%flow%value .eq. _ZERO_) then
          c => c%next
          cycle
       end if
@@ -379,8 +364,8 @@
 
          case (interleaving)
 
-            TI = c%TI%value
-            SI = c%SI%value
+            TI = c%temp%value
+            SI = c%salt%value
 
             ! find minimal depth where the inflow will take place
             nmin = nlev
@@ -420,21 +405,21 @@
 
 
 !     weights have been found - now apply them for the flow
-      c%Q = c%weights*c%QI%value
+      c%Q = c%weights*c%flow%value
 
       ! inflow stream
-      if (c%QI%value .gt. _ZERO_) then
-         int_inflow = int_inflow + dt*c%QI%value
+      if (c%flow%value .gt. _ZERO_) then
+         int_inflow = int_inflow + dt*c%flow%value
 
          if (c%has_T) then
-            TI = c%TI%value
+            TI = c%temp%value
          else
 !KB         is there a mean !!!!
 !           KK-TODO: maybe the mean should be volume-weighted
             TI = sum(T(nmin:nmax))/(nmax-nmin+1)
          end if
          if (c%has_S) then
-            SI = c%SI%value
+            SI = c%salt%value
          else
             SI = _ZERO_
          end if
@@ -446,10 +431,10 @@
 
       else ! outflow
 
-         int_outflow = int_outflow + dt*c%QI%value
+         int_outflow = int_outflow + dt*c%flow%value
 
          if (c%has_T) then
-            TI = c%TI%value
+            TI = c%temp%value
             do n=1,nlev
                Qt(n) = Qt(n) + TI * c%Q(n)
             end do
@@ -459,7 +444,7 @@
             end do
          end if
          if (c%has_S) then
-            SI = c%SI%value
+            SI = c%salt%value
             do n=1,nlev
                Qs(n) = Qs(n) + SI * c%Q(n)
             end do
