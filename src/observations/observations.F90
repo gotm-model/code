@@ -25,8 +25,6 @@
 !
 ! !USES:
    use input
-   use streams, only: configure_streams,clean_streams
-
    IMPLICIT NONE
 
 !  default: all is private.
@@ -83,14 +81,8 @@
    type (type_scalar_input), public, target :: A_, g1_, g2_
 
 !  streams for lake model
-!KB
-#if 0
-   type (type_profile_input), public, target :: Qs, Qt, Ls, Lt
-   type (type_profile_input), public, target :: Qlayer, Qres, FQ, wq
-#else
    REALTYPE, public, dimension(:), allocatable   :: Qs, Qt, Ls, Lt
    REALTYPE, public, dimension(:), allocatable   :: Qlayer, Qres, FQ, wq
-#endif
 
 !------------------------------------------------------------------------------
 !
@@ -206,13 +198,7 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
-!KB
-#if 1
    subroutine init_observations_nml(namlst,fn)
-#else
-   subroutine init_observations(namlst,fn,julday,secs,                 &
-                                depth,nlev,z,h,gravity,rho_0,lake)
-#endif
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -227,19 +213,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-!KB
-#if 1
    integer, intent(in)                 :: namlst
    character(len=*), intent(in)        :: fn
-#else
-   integer, intent(in)                 :: julday,secs
-   REALTYPE, intent(in)                :: depth
-   integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
-   REALTYPE, intent(in)                :: gravity,rho_0
-   logical,  intent(in)                :: lake
-#endif
-!
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -749,7 +724,6 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
-!KB   subroutine post_init_observations(julday,secs,depth,nlev,z,h,gravity,rho_0)
    subroutine post_init_observations(depth,nlev,z,h,gravity,rho_0,lake)
 !
 ! !DESCRIPTION:
@@ -765,7 +739,6 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-!KB   integer, intent(in)                 :: julday,secs
    REALTYPE, intent(in)                :: depth
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
@@ -964,7 +937,6 @@
    call register_input(o2_prof)
    LEVEL2 'done.'
 
-!KB
 !  The streams
    allocate(Qs(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (Qs)'
@@ -998,8 +970,6 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (wq)'
    wq = _ZERO_
 
-!KB   call configure_streams()
-!KB
    return
 
    end subroutine post_init_observations
