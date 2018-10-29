@@ -232,14 +232,16 @@
       call fm%register('Qres', 'm3/s', 'residual water balance inflows', standard_name='??', dimensions=(/id_dim_z/), data1d=Qres(1:nlev), category='streams')
    end if
 
+#if 0
    current_stream => first_stream
    do while (associated(current_stream))
-      call fm%register('Q_'//trim(current_stream%name), 'm3/s', 'stream (Q): '//trim(current_stream%name),data0d=current_stream%QI%value, category='streams')
+      call fm%register('Q_'//trim(current_stream%name), 'm3/s', 'stream (Q): '//trim(current_stream%name),data0d=current_stream%flow%value, category='streams')
       if (current_stream%has_T) then
-         call fm%register('T_'//trim(current_stream%name), 'Celsius', 'stream (T): '//trim(current_stream%name),data0d=current_stream%TI%value, category='streams')
+         call fm%register('T_'//trim(current_stream%name), 'Celsius', 'stream (T): '//trim(current_stream%name),data0d=current_stream%temp%value, category='streams')
       end if
       current_stream => current_stream%next
    end do
+#endif
 
    call fm%register('int_inflow', 'm3', 'integrated inflow', data0d=int_inflow, category='streams')
    call fm%register('int_outflow', 'm3', 'integrated outflow', data0d=int_outflow, category='streams')
