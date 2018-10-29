@@ -136,8 +136,6 @@
 
 !  ... and from streams
    if (lake) then
-!KB
-#if 1
       do i=1,nlev
          if ( Qres(i) .gt. _ZERO_ ) then
             Qs(i) = Qs(i) + Qres(i)*S(i)
@@ -147,7 +145,6 @@
       end do
       call adv_center(nlev,dt,h,Vco,Vc,Afo,wq,flux,flux,                &
                       _ZERO_,_ZERO_,Ls,Qs,w_adv_discr,1,S)
-#endif
    end if
 
 !  do advection step
@@ -178,8 +175,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
-                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
-
+                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf%data,S)
    return
    end subroutine salinity
 !EOC

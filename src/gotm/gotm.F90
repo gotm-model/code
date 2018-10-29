@@ -212,7 +212,7 @@
    call branch%get(longitude, 'longitude', 'longitude', 'degrees East', &
                    minimum=-360._rk, maximum=360._rk, default=0._rk)
    call branch%get(depth, 'depth', 'water depth', 'm', &
-                   minimum=0._rk, default=1._rk)
+                   minimum=0._rk, default=100._rk)
 
    branch => settings_store%get_child('period')
    call branch%get(timefmt, 'timefmt', 'method to specify simulated period', default=2, &
@@ -263,6 +263,14 @@
    call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
                    minimum=0._rk, maximum=1._rk, default=1._rk, description='constant for the theta scheme used for time integration of diffusion-reaction components. cnpar=0.5 for Cranck-Nicholson (second-order accurate), cnpar=0 for Forward Euler (first-order accurate), cnpar=1 for Backward Euler (first-order accurate). Only cnpar=1 guarantees positive solutions for positive definite systems.')
 
+   branch => settings_store%get_child('temperature')
+   branch => settings_store%get_child('salinity')
+   branch => settings_store%get_child('surface')
+   branch => settings_store%get_child('bottom')
+   branch => settings_store%get_child('light')
+   branch => settings_store%get_child('turbulence')
+   branch => settings_store%get_child('output')
+   
    branch => settings_store%get_child('restart')
    call branch%get(restart_offline, 'restart_offline', &
                    'initialize simulation with state stored in restart.nc', &
@@ -270,7 +278,7 @@
    call branch%get(restart_allow_missing_variable, 'restart_allow_missing_variable', &
                    'warning or error when variable is missing in restart file', &
                    default=.false.)
-
+  
    LEVEL2 'configuring modules ....'
    call init_airsea()
    call init_observations()
@@ -301,12 +309,6 @@
 
       call init_meanflow(namlst,'gotmmean.nml')
 
-#ifdef SEAGRASS
-      call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
-#endif
-#ifdef SPM
-      call init_spm(namlst,'spm.nml',unit_spm,nlev)
-#endif
       call init_observations(namlst,'obs.nml')
 
       call init_turbulence(namlst,'gotmturb.nml')
@@ -402,7 +404,14 @@
    call post_init_meanflow(nlev,latitude)
    call init_hypsograph(nlev)
    call init_tridiagonal(nlev)
-   call updategrid(nlev,dt,zeta)
+   call updategrid(nlev,dt,zeta%value)
+
+#ifdef SEAGRASS
+      call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
+#endif
+#ifdef SPM
+      call init_spm(namlst,'spm.nml',unit_spm,nlev)
+#endif
 
 !KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
    call post_init_observations(depth,nlev,z,h,gravity,rho_0,lake)
@@ -413,7 +422,7 @@
    call do_input(julianday,secondsofday,nlev,z)
 
    ! Update the grid based on true initial zeta (possibly read from file by do_input).
-   call updategrid(nlev,dt,zeta)
+   call updategrid(nlev,dt,zeta%value)
 
    call post_init_turbulence(nlev)
 
@@ -598,8 +607,8 @@
       call do_airsea(julianday,secondsofday)
 
 !     reset some quantities
-      tx%value = tx%value/rho_0
-      ty%value = ty%value/rho_0
+      tx = tx/rho_0
+      ty = ty/rho_0
 
       call integrated_fluxes(dt)
       int_fwf = int_net_precip
@@ -610,7 +619,7 @@
       if (lake) then
          call water_balance(nlev,dt)
       end if
-      call updategrid(nlev,dt,zeta)
+      call updategrid(nlev,dt,zeta%value)
       call wequation(nlev,dt)
       call coriolis(nlev,dt)
 
@@ -631,7 +640,7 @@
       endif
 
       if (tprof%method .ne. 0) then
-         call temperature(nlev,dt,cnpar,I_0%value,heat,nuh,gamh,rad)
+         call temperature(nlev,dt,cnpar,I_0%value,heat%value,nuh,gamh,rad)
       endif
 
 !     update shear and stratification
@@ -657,7 +666,7 @@
                                    buoy_method,gravity,rho_0)
       case (99)
 !        update KPP model
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip%value+evap,    &
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &

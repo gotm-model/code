@@ -165,9 +165,7 @@
 
 !  ... and from streams
    if (lake) then
-!KB
-#if 0
-      net_precip = precip + evap
+      net_precip = precip%value + evap
       if ( net_precip .gt. _ZERO_ ) then
          Qt(nlev) = Qt(nlev) + net_precip*Afo(nlev)*T(nlev)
       else
@@ -182,7 +180,6 @@
       end do
       call adv_center(nlev,dt,h,Vco,Vc,Afo,wq,flux,flux,                &
                       _ZERO_,_ZERO_,Lt,Qt,w_adv_discr,1,T)
-#endif
    end if
 
 !  do advection step
@@ -219,7 +216,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
+                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf%data,T)
    return
    end subroutine temperature
 !EOC

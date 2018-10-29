@@ -145,8 +145,8 @@
    end select
 
    ! Turbulent momentum fluxes
-   taux(nlev) = -tx%value
-   tauy(nlev) = -ty%value
+   taux(nlev) = -tx
+   tauy(nlev) = -ty
    do i=nlev-1,1,-1
       taux(i)=-num(i)*(u(i+1)-u(i))/(0.5*(h(i+1)+h(i)))
       tauy(i)=-num(i)*(v(i+1)-v(i))/(0.5*(h(i+1)+h(i)))

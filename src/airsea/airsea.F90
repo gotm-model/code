@@ -81,7 +81,8 @@
    REALTYPE, public                    :: qe,qh
 
 !  surface stress components (Pa)
-   type (type_scalar_input), public, target            :: tx,ty
+   REALTYPE, public, target                 :: tx,ty
+   type (type_scalar_input), public, target :: tx_,ty_
 
 !  precipitation and  evaporation
 !  (m/s)
@@ -334,8 +335,8 @@
    call hum%configure(method=2, path=meteo_file, index=5)
    call cloud%configure(method=2, path=meteo_file, index=6)
 
-   call tx%configure(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
-   call ty%configure(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
+   call tx_%configure(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
+   call ty_%configure(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
    call heat%configure(method=heat_method, path=heatflux_file, index=1, scale_factor=shf_factor, constant_value=const_heat)
    call qb%configure(method=back_radiation_method, path=back_radiation_file, index=1)
    call sst_obs%configure(method=sst_method, path=sst_file, index=1)
@@ -698,8 +699,8 @@
       call register_input(heat)
 
 !     The momentum fluxes
-      call register_input(tx)
-      call register_input(ty)
+      call register_input(tx_)
+      call register_input(ty_)
 
    end if
 
@@ -772,10 +773,7 @@
          have_zenith_angle = .true.
          I_0%value = I_0%scale_factor*short_wave_radiation(zenith_angle,yearday,dlon,dlat,cloud%value)
       end if
-   else
-!     If using constant momentum flux, apply time-varying feedback from biogeochemistry to drag.
-      if (tx%method==CONSTVAL) tx%value = tx%value*bio_drag_scale
-      if (ty%method==CONSTVAL) ty%value = ty%value*bio_drag_scale
+      heat%value = heat%scale_factor*heat%value
    end if
 
    if (I_0%method .ne. CONSTVAL) then
@@ -787,7 +785,8 @@
       I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
    end if
 
-   heat%value = heat%scale_factor*heat%value
+   tx = tx_%value*bio_drag_scale
+   ty = ty_%value*bio_drag_scale
 
 !  If reading SST from file, overwrite current (model) SST with observed value,
 !  to be used in output.
@@ -989,20 +988,17 @@
       ta_k = airt%value
    end if
 
-   call humidity(hum_method,hum,airp%value,tw,ta)
+   call humidity(hum_method,hum%value,airp%value,tw,ta)
    if (back_radiation_method .gt. 0) then
       call back_radiation(back_radiation_method, &
-                          dlat,tw_k,ta_k,cloud%value,qb)
+                          dlat,tw_k,ta_k,cloud%value,qb%value)
    endif
    call airsea_fluxes(fluxes_method, &
-                      tw,ta,u10%value-ssu,v10%value-ssv,precip,evap,tx,ty,qe,qh)
+                      tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx_%value,ty_%value,qe,qh)
    heat%value = (qb%value+qe+qh)
 #endif
 
    w = sqrt((u10%value-ssu)*(u10%value-ssu)+(v10%value-ssv)*(v10%value-ssv))
-
-   tx%value = tx%value*bio_drag_scale
-   ty%value = ty%value*bio_drag_scale
 
    end subroutine flux_from_meteo
 !EOC

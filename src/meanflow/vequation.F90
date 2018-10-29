@@ -181,8 +181,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
-                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vprof,V)
-
+                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vprof%data,V)
    return
    end subroutine vequation
 !EOC

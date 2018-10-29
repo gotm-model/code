@@ -203,8 +203,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
-                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uprof,U)
-
+                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uprof%data,U)
    return
    end subroutine uequation
 !EOC

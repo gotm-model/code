@@ -121,6 +121,7 @@ module yaml_settings
    type type_option
       integer                   :: value
       character(:), allocatable :: long_name
+      character(:), allocatable :: key
    end type
 
    type, extends(type_value) :: type_list
@@ -491,7 +492,7 @@ contains
 
       class (type_settings_node),   pointer :: node
       class (type_integer_setting), pointer :: setting
-      integer                               :: ioption, ioption2
+      integer                               :: ioption, ioption2, ivalue
       logical                               :: found
 
       node => self%get_node(name)
@@ -522,7 +523,18 @@ contains
          end do
          if (allocated(setting%options)) deallocate(setting%options)
          allocate(setting%options(size(options)))
-         setting%options(:) = options
+
+         ! Order options according to value
+         ioption = 1
+         do ivalue = minval(options(:)%value), maxval(options(:)%value)
+            do ioption2 = 1, size(options)
+               if (options(ioption2)%value == ivalue) then
+                  setting%options(ioption) = options(ioption2)
+                  ioption = ioption + 1
+                  exit
+               end if
+            end do
+         end do
       end if
       if (present(default)) then
          if (default < setting%minimum) call report_error('Default value of setting '//setting%path//' lies below prescribed minimum.')
@@ -558,11 +570,17 @@ contains
       select type (backing_store_node)
       class is (type_yaml_scalar)
          self%pvalue = backing_store_node%to_integer(self%pvalue, success)
-         if (.not. success) then
+         if (.not. success .and. allocated(self%options)) then
             do ioption = 1, size(self%options)
                if (backing_store_node%string == self%options(ioption)%long_name) then
-                  self%pvalue = self%options(ioption)%value
+                  ! Value matches long name of option
                   success = .true.
+               elseif (allocated(self%options(ioption)%key)) then
+                  ! Option has a key; check if value matches that
+                  if (backing_store_node%string == self%options(ioption)%key) success = .true.
+               end if
+               if (success) then
+                  self%pvalue = self%options(ioption)%value
                   exit
                end if
             end do
@@ -1166,21 +1184,40 @@ contains
          target = string
       end if
    end subroutine
-   
+
    recursive subroutine integer_get_comment(self, comment)
       class (type_integer_setting), intent(in) :: self
       character(len=:),allocatable, intent(inout) :: comment
 
       integer :: ioption
-      character(len=8) :: string
 
       if (allocated(self%options)) then
          do ioption = 1, size(self%options)
-            write (string, '(i0)') self%options(ioption)%value
-            call append_string(comment, ', ', trim(string) // '=' // self%options(ioption)%long_name)
+            if (allocated(self%options(ioption)%key)) then
+               if (self%options(ioption)%key == self%options(ioption)%long_name) then
+                  call append_string(comment, ', ', self%options(ioption)%key)
+               else
+                  call append_string(comment, ', ', self%options(ioption)%key // '=' // self%options(ioption)%long_name)
+               end if
+            else
+               call append_string(comment, ', ', format_integer(self%options(ioption)%value) // '=' // self%options(ioption)%long_name)
+            end if
          end do
+      else
+         if (self%minimum /= default_minimum_integer) call append_string(comment, '; ', 'min=' // format_integer(self%minimum))
+         if (self%maximum /= default_maximum_integer) call append_string(comment, '; ', 'max=' // format_integer(self%maximum))
       end if
    end subroutine
+
+   function format_integer(value) result(string)
+      integer, intent(in) :: value
+      character(len=:), allocatable :: string
+
+      character(len=8) :: tmp
+
+      write (tmp, '(i0)') value
+      string = trim(tmp)
+   end function
 
    function integer_as_string(self, use_default) result(string)
       class (type_integer_setting), intent(in) :: self
@@ -1188,12 +1225,19 @@ contains
       character(len=:), allocatable :: string
 
       integer :: value
-      character(len=8) :: tmp
+      integer :: ioption
 
       value = self%pvalue
       if (use_default) value = self%default
-      write (tmp, '(i0)') value
-      string = trim(tmp)
+      if (allocated(self%options)) then
+         do ioption = 1, size(self%options)
+            if (self%options(ioption)%value == value .and. allocated(self%options(ioption)%key)) then
+               string = self%options(ioption)%key
+               return
+            end if
+         end do
+      end if
+      string = format_integer(value)
    end function integer_as_string
 
    function logical_as_string(self, use_default) result(string)
