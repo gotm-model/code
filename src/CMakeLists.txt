@@ -81,7 +81,7 @@ endif()
 option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
 if(GOTM_USE_NetCDF)
   find_package(NetCDF REQUIRED)
-  add_definitions(-DNETCDF_FMT -DREAL_4B=real\(4\))
+  add_definitions(-DNETCDF_FMT)
   include_directories("${NetCDF_INCLUDE_DIRS}")
   if (NetCDF_STATIC_MSVC_BUILD)
     # On Windows with a statically-compiled NetCDF library - compile all code against static runtime.
