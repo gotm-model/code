@@ -93,6 +93,8 @@
       type (type_stream),                 pointer :: stream
       type (type_stream_input_populator), pointer :: stream_populator
 
+      if (.not. fabm_calc) return
+
       allocate(fabm_input_populator)
       cfg => settings_store%get_child('fabm/input', populator=fabm_input_populator)
 

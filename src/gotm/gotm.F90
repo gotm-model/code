@@ -318,7 +318,7 @@
    end if
 
 #ifdef _FABM_
-   if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
+   if (fabm_calc .and. read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
 
    ! Allow FABM to cretae its model tree. After this we know all biogeochemical variables
    ! This must be done before gotm_fabm_input configuration.
