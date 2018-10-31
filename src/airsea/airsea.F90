@@ -486,9 +486,9 @@
                 minimum=0._rk,maximum=1._rk,default=0._rk)
    call branch%get(heat, 'heat', 'surface heat flux', 'W/m2', &
                 default=0._rk)
-   call branch%get(tx, 'tx', 'surface momentum flux: x-direction', 'Pa', &
+   call branch%get(tx_, 'tx', 'surface momentum flux: x-direction', 'Pa', &
                 default=0._rk)
-   call branch%get(ty, 'ty', 'surface momentum flux: y-direction', 'Pa', &
+   call branch%get(ty_, 'ty', 'surface momentum flux: y-direction', 'Pa', &
                 default=0._rk)
    call branch%get(precip, 'precip', 'precipitation', 'm/s', &
                 default=0._rk)
