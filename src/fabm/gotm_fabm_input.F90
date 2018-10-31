@@ -31,7 +31,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
+   public configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, post_init_gotm_fabm_input
    public type_input_variable,first_input_variable
 !
 ! !REVISION HISTORY:
@@ -359,7 +359,7 @@
 ! !IROUTINE: Initialize input
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm_input(nlev,h)
+   subroutine post_init_gotm_fabm_input(nlev,h)
 !
 ! !DESCRIPTION:
 !  Initialize files with observations on FABM variables.
@@ -431,7 +431,7 @@
       curvariable => curvariable%next
    end do
 
-   end subroutine init_gotm_fabm_input
+   end subroutine post_init_gotm_fabm_input
 !EOC
 
 !-----------------------------------------------------------------------

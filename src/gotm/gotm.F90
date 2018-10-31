@@ -77,7 +77,7 @@
 #ifdef _FABM_
    use gotm_fabm,only:configure_gotm_fabm,configure_gotm_fabm_from_nml,gotm_fabm_create_model,init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
-   use gotm_fabm_input,only: configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
+   use gotm_fabm_input,only: configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, post_init_gotm_fabm_input
 #endif
 
    use hypsograph, only: lake,init_hypsograph,clean_hypsograph
@@ -461,7 +461,7 @@
                              Af,Afo,Vc,Vco,wq,Qres)
 
       ! Initialize FABM input (data files with observations)
-      call init_gotm_fabm_input(nlev,h(1:nlev))
+      call post_init_gotm_fabm_input(nlev,h(1:nlev))
    end if
 #endif
 
