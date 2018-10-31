@@ -134,6 +134,9 @@
       case ('--write_schema')
          i = i+1
          call get_command_argument(i, write_schema_path)
+      case ('--output_id')
+         i = i+1
+         call get_command_argument(i, output_id)
       case default
          yaml_file = arg
       end select
@@ -167,6 +170,7 @@
       print '(a)', '  -v, --version         print version information'
       print '(a)', '  -c, --compiler        print compilation options'
       print '(a)', '  <yaml_file>           read configuration from file (default gotm.yaml)'
+      print '(a)', '  --output_id <string>  append to output file names - before extension'
       print '(a)', '  --read_nml            read configuration from namelist files'
       print '(a)', '  --write_yaml <file>   save yaml configuration to file'
       print '(a)', '  --write_schema <file> save configuration schema in xml format to file'
