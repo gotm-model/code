@@ -114,6 +114,7 @@
    character(len=1024), public :: yaml_file = 'gotm.yaml'
    character(len=1024), public :: write_yaml_path = ''
    character(len=1024), public :: write_schema_path = ''
+   character(len=1024), public :: output_id = ''
    logical, public             :: read_nml = .false.
 
    type,extends(type_output_manager_host) :: type_gotm_host
@@ -334,7 +335,7 @@
 
    allocate(type_gotm_host::output_manager_host)
    branch => settings_store%get_child('output')
-   call output_manager_init(fm,title,settings=branch)
+   call output_manager_init(fm,title,settings=branch,postfix=output_id)
 
    inquire(file='output.yaml',exist=file_exists)
    if (.not.file_exists) then
