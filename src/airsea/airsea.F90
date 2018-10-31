@@ -476,9 +476,9 @@
    call branch%get(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
                extra_options=(/type_option(1, 'Clark'), type_option(2, 'Hastenrath'), type_option(3, 'Bignami'), type_option(4, 'Berliand')/))
-   call branch%get(rain_impact, 'rain_impact', '', &
+   call branch%get(rain_impact, 'rain_impact', 'include effect of rain fall on fluxes of sensible heat and momentum', &
                 default=.false.)
-   call branch%get(calc_evaporation, 'calc_evaporation', '', &
+   call branch%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
                 default=.false.)
    call branch%get(albedo_method, 'albedo_method', '', &
                 minimum=0,maximum=2,default=1)

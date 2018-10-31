@@ -142,19 +142,19 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_eqstate_yaml'
-   call branch%get(eq_state_mode, 'eq_state_mode', '', &
+   call branch%get(eq_state_mode, 'eq_state_mode', 'choice for empirical formula for equation of state', &
                    minimum=1,maximum=2,default=2)
-   call branch%get(eq_state_method, 'eq_state_method', '', &
+   call branch%get(eq_state_method, 'eq_state_method', 'equation of state implementation', &
                    minimum=1,maximum=4,default=1)
-   call branch%get(T0, 'T0', '', 'Celsius', &
+   call branch%get(T0, 'T0', 'reference temperature', 'Celsius', &
                    minimum=-2._rk, default=10._rk)
-   call branch%get(S0, 'S0', '', 'PSU', &
+   call branch%get(S0, 'S0', 'reference salinity', 'PSU', &
                    minimum=0._rk, default=35._rk)
-   call branch%get(p0, 'p0', '', 'Pa', &
+   call branch%get(p0, 'p0', 'reference pressure', 'Pa', &
                    default=0._rk)
-   call branch%get(dtr0, 'dtr0', '', '-', &
+   call branch%get(dtr0, 'dtr0', 'thermal expansion coefficient', 'kg/m^3/K', &
                    default=-0.17_rk)
-   call branch%get(dsr0, 'dsr0', '', '-', &
+   call branch%get(dsr0, 'dsr0', 'saline expansion coefficient', 'kg/m^3/psu', &
                    default=0.78_rk)
 
    init_linearised = .true.
