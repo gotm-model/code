@@ -154,13 +154,14 @@
 !
 ! !LOCAL VARIABLES:
    namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
-                          cnpar,buoy_method
+                          restart_allow_perpetual,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
    logical          ::    list_fields=.false.
    logical          ::    restart_online=.false.
    logical          ::    restart_offline = .false.
    logical          ::    restart_allow_missing_variable = .false.
+   logical          ::    restart_allow_perpetual = .true.
    integer          ::    rc
    logical          ::    file_exists
 !-----------------------------------------------------------------------
@@ -316,6 +317,11 @@
    if (restart) then
       if (restart_offline) then
          LEVEL1 'read_restart'
+         if (.not. restart_allow_perpetual) then
+            call check_restart_time('time')
+         else
+            LEVEL2 'allow perpetual restarts'
+         end if
          call read_restart(restart_allow_missing_variable)
          call friction(kappa,avmolu,tx,ty)
       end if
