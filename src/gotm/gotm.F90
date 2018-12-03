@@ -440,6 +440,7 @@
 
 !     prepare time and output
       call update_time(n)
+      call output_manager_prepare_save(julianday, int(fsecondsofday), int(mod(fsecondsofday,_ONE_)*1000000), int(n))
 
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)

@@ -10,7 +10,7 @@ module output_manager
 
    implicit none
 
-   public output_manager_init, output_manager_save, output_manager_clean, output_manager_add_file
+   public output_manager_init, output_manager_prepare_save, output_manager_save, output_manager_clean, output_manager_add_file
 
    private
 
@@ -179,11 +179,10 @@ contains
          end do
 
          ! If we do not have a start time yet, use current.
-         if (file%first_julian<=0) then
+         if (file%first_julian <= 0) then
             file%first_julian = julianday
             file%first_seconds = secondsofday
          end if
-         file%first_index = n
 
          ! Initialize fields based on time integrals
          output_field => file%first_field
@@ -266,24 +265,78 @@ contains
       call output_manager_save2(julianday,secondsofday,0,n)
    end subroutine
 
+   subroutine output_manager_prepare_save(julianday, secondsofday, microseconds, n)
+      integer,intent(in) :: julianday, secondsofday, microseconds, n
+
+      class (type_file),         pointer :: file
+      class (type_output_field), pointer :: output_field
+      logical                            :: required
+
+      if (.not. files_initialized) call initialize_files(julianday, secondsofday, microseconds, n)
+
+      ! Start by marking all fields as not needing computation
+      file => first_file
+      do while (associated(file))
+         output_field => file%first_field
+         do while (associated(output_field))
+            if (associated(output_field%source%used_now)) output_field%source%used_now = .false.
+            output_field => output_field%next
+         end do
+         file => file%next
+      end do
+
+      file => first_file
+      do while (associated(file))
+         if (in_window(file, julianday, secondsofday, microseconds, n)) then
+            output_field => file%first_field
+            do while (associated(output_field))
+               if (associated(output_field%source%used_now)) then
+                  select case (output_field%settings%time_method)
+                  case (time_method_mean)
+                     ! Time average - this field will be incremented at every model time step and therefore always needs to be computed.
+                     required = .true.
+                  case (time_method_integrated)
+                     ! Time integral - this field will be incremented at every model time step except the first.
+                     required = file%next_julian /= -1
+                  case default
+                     ! Instantaneous - this field needs to be computed only if it is to be output during the upcoming save call.
+                     select case (file%time_unit)
+                     case (time_unit_dt)
+                        required = file%first_index == -1 .or. mod(n - file%first_index, file%time_step) == 0
+                     case default
+                        required = file%next_julian == -1 .or. (julianday == file%next_julian .and. secondsofday >= file%next_seconds) .or. julianday > file%next_julian
+                     end select
+                  end select
+                  output_field%source%used_now = output_field%source%used_now .or. required
+               end if
+               output_field => output_field%next
+            end do
+         end if
+         file => file%next
+      end do
+   end subroutine
+
+   logical function in_window(self, julianday, secondsofday, microseconds, n)
+      class (type_file), intent(in) :: self
+      integer,           intent(in) :: julianday, secondsofday, microseconds, n
+
+      in_window = ((julianday == self%first_julian .and. secondsofday >= self%first_seconds) .or. julianday > self%first_julian) &
+            .and. ((julianday == self%last_julian .and. secondsofday <= self%last_seconds)  .or. julianday < self%last_julian)
+   end function
+
    subroutine output_manager_save2(julianday,secondsofday,microseconds,n)
       integer,intent(in) :: julianday,secondsofday,microseconds,n
 
       class (type_file),            pointer :: file
       class (type_output_field),    pointer :: output_field
       integer                               :: yyyy,mm,dd
-      logical                               :: in_window
-      logical                               :: output_based_on_time, output_based_on_index
+      logical                               :: output_required
 
       if (.not.files_initialized) call initialize_files(julianday,secondsofday,microseconds,n)
 
       file => first_file
       do while (associated(file))
-
-         ! Continue only if in output time window.
-         in_window = ((julianday==file%first_julian.and.secondsofday>=file%first_seconds) .or. julianday>file%first_julian) &
-               .and. ((julianday==file%last_julian .and.secondsofday<=file%last_seconds)  .or. julianday<file%last_julian)
-         if (in_window) then
+         if (in_window(file, julianday, secondsofday, microseconds, n)) then
 
          ! Increment time-integrated fields
          output_field => file%first_field
@@ -308,25 +361,22 @@ contains
             ! Store current time step so next time step can be computed correctly.
             file%next_julian = file%first_julian
             file%next_seconds = file%first_seconds
-            file%next_index = file%first_index
          end if
 
          ! Determine whether output is required
-         if (file%time_unit .ne. time_unit_dt) then
-            output_based_on_time  = (julianday==file%next_julian.and.secondsofday>=file%next_seconds) .or. julianday>file%next_julian
-            output_based_on_index = .false.
+         if (file%time_unit /= time_unit_dt) then
+            output_required  = (julianday == file%next_julian .and. secondsofday >= file%next_seconds) .or. julianday > file%next_julian
          else
-            output_based_on_time  = .false.
-            output_based_on_index = file%next_index >= file%first_index .and. mod(n,file%time_step) .eq. 0
+            if (file%first_index == -1) file%first_index = n
+            output_required = mod(n - file%first_index, file%time_step) == 0
          end if
-         if (output_based_on_time .or. output_based_on_index) then
-            ! Output required
 
+         if (output_required) then
             ! Perform temporal averaging where required.
             output_field => file%first_field
             do while (associated(output_field))
                if (output_field%settings%time_method==time_method_mean) then
-                  ! This is a time-integrated field that needs to be incremented.
+                  ! This is a time-averaged field that has previously been incremented and now needs averaging
                   if (associated(output_field%source_3d)) then
                      output_field%work_3d(:,:,:) = output_field%work_3d/file%n
                   elseif (associated(output_field%source_2d)) then
@@ -340,7 +390,7 @@ contains
                output_field => output_field%next
             end do
 
-            ! Do NetCDF output
+            ! Do output
             call file%save(julianday,secondsofday,microseconds)
 
             ! Determine time (julian day, seconds of day) for next output.
@@ -365,8 +415,6 @@ contains
                   call host%calendar_date(julianday,yyyy,mm,dd)
                   yyyy = yyyy + file%time_step
                   call host%julian_day(yyyy,mm,dd,file%next_julian)
-               case (time_unit_dt)
-                  file%next_index = file%next_index + file%time_step
             end select
 
             ! Reset time step counter
