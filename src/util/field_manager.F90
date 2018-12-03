@@ -86,6 +86,7 @@ module field_manager
       real(rk)                     :: maximum        = default_maximum
       integer                      :: output_level   = output_level_default
       logical                      :: in_output      = .false.
+      logical, pointer             :: used_now       => null()
       integer                      :: status         = status_not_registered
       type (type_dimension_pointer),allocatable :: dimensions(:)
       class (type_attribute), pointer :: first_attribute => null()
@@ -504,7 +505,7 @@ contains
       end if
    end function find
 
-   subroutine register(self, name, units, long_name, standard_name, fill_value, minimum, maximum, dimensions, data0d, data1d, data2d, data3d, no_default_dimensions, category, output_level, coordinate_dimension, part_of_state, used, field)
+   subroutine register(self, name, units, long_name, standard_name, fill_value, minimum, maximum, dimensions, data0d, data1d, data2d, data3d, no_default_dimensions, category, output_level, coordinate_dimension, part_of_state, used, used_now, field)
       class (type_field_manager),intent(inout) :: self
       character(len=*),          intent(in)    :: name, units, long_name
       character(len=*),optional, intent(in)    :: standard_name
@@ -517,6 +518,7 @@ contains
       integer,         optional, intent(in)    :: coordinate_dimension
       logical,         optional, intent(in)    :: part_of_state
       logical,         optional, intent(out)   :: used
+      logical, target, optional                :: used_now
       type (type_field),optional,pointer       :: field
 
       type (type_field),     pointer :: field_
@@ -603,6 +605,10 @@ contains
       ! Note: the "in_output" flag can have been set by a call to select_for_output (typically from the output manager),
       ! even before the actual variable is registered with the field_ manager.
       if (present(used)) used = field_%in_output
+      if (present(used_now)) then
+         field_%used_now => used_now
+         used_now = field_%in_output
+      end if
 
       if (present(data0d)) call self%send_data_0d(field_,data0d)
       if (present(data1d)) call self%send_data_1d(field_,data1d)
