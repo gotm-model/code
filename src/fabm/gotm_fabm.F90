@@ -279,6 +279,8 @@
    call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
                 minimum=0._rk,default=1._rk)
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
+   call branch%get(bottom_everywhere, 'bottom_everywhere', 'apply benthic/pelagic coupling at every layer', &
+                default=.false.)
    call branch%get(bioshade_feedback, 'bioshade_feedback', 'interior light absorption', &
                 default=.false.)
    call branch%get(bioalbedo_feedback, 'bioalbedo_feedback', 'surface albedo', &
@@ -502,7 +504,11 @@
             call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i), part_of_state=.true.)
          end do
          do i=1,size(model%bottom_state_variables)
-            call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i), part_of_state=.true.)
+            if (bottom_everywhere) then
+               call register_field(field_manager, model%bottom_state_variables(i), data1d=cc(1:,size(model%state_variables)+i), dimensions=(/id_dim_z/), part_of_state=.true.)
+            else
+               call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i), part_of_state=.true.)
+            end if
          end do
          do i=1,size(model%surface_state_variables)
             call register_field(field_manager, model%surface_state_variables(i), data0d=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i), part_of_state=.true.)
