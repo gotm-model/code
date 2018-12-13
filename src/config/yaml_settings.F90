@@ -287,7 +287,7 @@ contains
       integer :: ios
       integer :: comment_depth
 
-      open(unit=unit, file=path, action='write', status='replace', iostat=ios)
+      open(unit=unit, file=path, action='write', encoding='UTF-8', status='replace', iostat=ios)
       if (ios /= 0) then
          write (*,*) 'Failed to open '//path//' for writing.'
          stop 1
