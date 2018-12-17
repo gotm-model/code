@@ -46,7 +46,7 @@
 !
 ! !PUBLIC DATA MEMBERS:
 !  The one and only model
-   class (type_model), pointer, save, public :: model => null()
+   class (type_model), pointer, public :: model => null()
 
    type,extends(type_base_driver) :: type_gotm_driver
    contains
@@ -141,7 +141,7 @@
    REALTYPE, target :: decimal_yearday
    logical          :: fabm_ready
 
-   type (type_stream),pointer :: first_stream
+   type (type_stream), pointer :: first_stream => null()
 
    logical              :: check_conservation
    REALTYPE,allocatable :: local(:,:)
@@ -192,11 +192,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_gotm_fabm_nml'
-
-!KB   nullify(model)
-
-   nullify(first_stream)
+   LEVEL1 'configure_gotm_fabm_from_nml'
 
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
@@ -231,7 +227,7 @@
    return
 
 99 FATAL 'I could not read '//trim(fname)
-   stop 'init_gotm_fabm_nml'
+   stop 'configure_gotm_fabm_from_nml'
    return
 
    end subroutine configure_gotm_fabm_from_nml
@@ -262,7 +258,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_gotm_fabm_yaml'
+   LEVEL1 'configure_gotm_fabm'
 
    ! Initialize all namelist variables to reasonable default values.
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
@@ -390,7 +386,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'post_init_gotm_fabm'
+   LEVEL1 'init_gotm_fabm'
 
    if (fabm_calc) then
       clock_adv    = 0
@@ -400,6 +396,22 @@
       repair_interior_count = 0
       repair_surface_count = 0
       repair_bottom_count = 0
+
+      ! Inform field manager about available diagnostics
+      if (present(field_manager)) then
+         do i=1,size(model%diagnostic_variables)
+            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
+            if (in_output) model%diagnostic_variables(i)%save = .true.
+         end do
+         do i=1,size(model%horizontal_diagnostic_variables)
+            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
+            else
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=in_output)
+            end if
+            if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
+         end do
+      end if
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call fabm_set_domain(model,nlev,dt)
@@ -491,6 +503,7 @@
       ! Initialize spatially explicit variables
       call init_var_gotm_fabm(nlev)
 
+      ! Inform the fields manager about all variables
       if (present(field_manager)) then
          do i=1,size(model%conserved_quantities)
             call field_manager%register(trim(model%conserved_quantities(i)%name)//'_ini',  model%conserved_quantities(i)%units, &
@@ -525,15 +538,6 @@
          ! Inform field manager about available diagnostics
          ! This also tells FABM which diagnostics need computing (through setting of the "save" attribute).
          ! This MUST be done before fabm_check_ready is called.
-!KB
-#if 0
-         do i=1,size(model%diagnostic_variables)
-            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=model%diagnostic_variables(i)%save)
-         end do
-         do i=1,size(model%horizontal_diagnostic_variables)
-            call register_field(field_manager, model%horizontal_diagnostic_variables(i), used= model%horizontal_diagnostic_variables(i)%save)
-         end do
-#else
          do i=1,size(model%diagnostic_variables)
             call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
             if (in_output) model%diagnostic_variables(i)%save = .true.
@@ -546,8 +550,6 @@
             end if
             if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
          end do
-
-#endif
       end if
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
@@ -579,7 +581,6 @@
 ! !LOCAL VARIABLES:
    integer :: i,rc,output_level
    logical :: used
-   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -612,64 +613,7 @@
    total0 = huge(_ZERO_)
    allocate(change_in_total(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (change_in_total)'
-   change_in_total = 0
-
-!KB
-#if 0
-   do i=1,size(model%conserved_quantities)
-      call field_manager%register(trim(model%conserved_quantities(i)%name)//'_ini',  model%conserved_quantities(i)%units, &
-          trim(model%conserved_quantities(i)%long_name)//' at simulation start', minimum=model%conserved_quantities(i)%minimum, &
-          maximum=model%conserved_quantities(i)%maximum, fill_value= model%conserved_quantities(i)%missing_value, &
-          no_default_dimensions=.true., dimensions=(/id_dim_lon, id_dim_lat/), data0d=total0(i), category='fabm', &
-          output_level=output_level_debug, part_of_state=.true.)
-   end do
-
-   if (present(field_manager)) then
-      do i=1,size(model%state_variables)
-         call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i), part_of_state=.true.)
-      end do
-      do i=1,size(model%bottom_state_variables)
-         if (bottom_everywhere) then
-            call register_field(field_manager, model%bottom_state_variables(i), data1d=cc(1:,size(model%state_variables)+i), dimensions=(/id_dim_z/), part_of_state=.true.)
-         else
-            call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i), part_of_state=.true.)
-         end if
-      end do
-      do i=1,size(model%surface_state_variables)
-         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i), part_of_state=.true.)
-      end do
-
-      check_conservation = .false.
-      do i=1,size(model%conserved_quantities)
-         call field_manager%register('int_change_in_'//trim(model%conserved_quantities(i)%name), trim(model%conserved_quantities(i)%units)//'*m', &
-            'integrated change in '//trim(model%conserved_quantities(i)%long_name), fill_value=-1d20, &
-            data0d=change_in_total(i), category='fabm', output_level=output_level_debug, used=used)
-         if (used) check_conservation = .true.
-      end do
-
-      ! Send pointers to diagnostic data to output manager.
-      do i=1,size(model%diagnostic_variables)
-         if (model%diagnostic_variables(i)%save) &
-            call field_manager%send_data(model%diagnostic_variables(i)%name, fabm_get_bulk_diagnostic_data(model,i))
-      end do
-      do i=1,size(model%horizontal_diagnostic_variables)
-         if (model%horizontal_diagnostic_variables(i)%save) then
-            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
-               allocate(bottom_diagnostic_data)
-               allocate(bottom_diagnostic_data%column(nlev))
-               bottom_diagnostic_data%local => fabm_get_horizontal_diagnostic_data(model,i)
-               bottom_diagnostic_data%column(:) = model%horizontal_diagnostic_variables(i)%missing_value
-               bottom_diagnostic_data%next => first_bottom_diagnostic
-               first_bottom_diagnostic => bottom_diagnostic_data
-               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, bottom_diagnostic_data%column)
-            else
-               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, fabm_get_horizontal_diagnostic_data(model,i))
-            end if
-         end if
-      end do
-   end if
-#endif
-!KB
+   change_in_total = 0._rk
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indices to -1 (no external observations provided)
@@ -1111,6 +1055,7 @@
    integer :: i
    REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
    REALTYPE :: total(size(model%conserved_quantities))
+   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
 !EOP
 
 !-----------------------------------------------------------------------
@@ -1132,8 +1077,19 @@
             call field_manager%send_data(model%diagnostic_variables(i)%name, fabm_get_interior_diagnostic_data(model,i))
       end do
       do i=1,size(model%horizontal_diagnostic_variables)
-         if (model%horizontal_diagnostic_variables(i)%save) &
-            call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, fabm_get_horizontal_diagnostic_data(model,i))
+         if (model%horizontal_diagnostic_variables(i)%save) then
+            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
+               allocate(bottom_diagnostic_data)
+               allocate(bottom_diagnostic_data%column(nlev))
+               bottom_diagnostic_data%local => fabm_get_horizontal_diagnostic_data(model,i)
+               bottom_diagnostic_data%column(:) = model%horizontal_diagnostic_variables(i)%missing_value
+               bottom_diagnostic_data%next => first_bottom_diagnostic
+               first_bottom_diagnostic => bottom_diagnostic_data
+               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, bottom_diagnostic_data%column)
+            else
+               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, fabm_get_horizontal_diagnostic_data(model,i))
+            end if
+         end if
       end do
    end if
 
@@ -2091,6 +2047,7 @@
    nullify(yearday)
    nullify(secondsofday)
    nullify(model)
+   nullify(first_stream)
 
    LEVEL1 'done.'
 
