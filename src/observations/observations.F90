@@ -563,7 +563,7 @@
                    minimum=0._rk,default=0._rk)
    call twig%get(t_2, 't_2', 'lower layer temperature', 'Celsius', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(t_obs_NN, 't_obs_NN', 'constant N²', '/s²', &
+   call twig%get(t_obs_NN, 't_obs_NN', 'constant N^2', '/s^2', &
                    minimum=0._rk,default=0._rk)
    twig => branch%get_typed_child('relaxation')
    call twig%get(TRelaxTauM, 'TRelaxTauM', 'time scale for interior layer', 's', &
@@ -590,7 +590,7 @@
                    minimum=0._rk,default=0._rk)
    call twig%get(s_2, 's_2', 'lower layer salinity', 'PSU', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(s_obs_NN, 's_obs_NN', 'constant N²', 's^-2', &
+   call twig%get(s_obs_NN, 's_obs_NN', 'constant N^2', '/s^2', &
                    minimum=0._rk,default=0._rk)
    twig => branch%get_typed_child('relaxation')
    call twig%get(SRelaxTauM, 'SRelaxTauM', 'time scale for interior layer', 's', &
