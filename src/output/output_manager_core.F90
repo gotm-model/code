@@ -121,7 +121,7 @@ module output_manager_core
       integer                               :: time_unit       = time_unit_none
       integer                               :: time_step       = 0
       integer                               :: n               = 0  ! Number of model time steps processed so far for next output
-      integer                               :: first_index     = -1
+      integer                               :: first_index     = 0
       integer                               :: next_julian     = -1
       integer                               :: next_seconds    = -1
       integer                               :: first_julian    = -1
