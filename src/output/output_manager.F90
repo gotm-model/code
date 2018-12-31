@@ -4,6 +4,7 @@ module output_manager
    use output_manager_core
    use netcdf_output
    use text_output
+   use output_filters
 
    use yaml_types
    use yaml,yaml_parse=>parse,yaml_error_length=>error_length
@@ -47,12 +48,66 @@ contains
       end do
    end subroutine
 
+   function create_field(file, settings, field) result(generic_field)
+      class (type_file), intent(inout) :: file
+      class (type_output_variable_settings), target :: settings
+      type (type_field), target :: field
+      class (type_base_output_field), pointer :: generic_field
+
+      class (type_output_field),pointer :: output_field
+      class (type_time_filter), pointer :: time_filter
+
+      generic_field => file%find(field)
+      if (associated(generic_field)) return
+
+      allocate(output_field)
+      output_field%settings => settings
+      output_field%source => field
+      output_field%output_name = trim(field%name)
+      generic_field => output_field
+
+      if (associated(settings%first_operator)) then
+         select type (op=>settings%first_operator)
+         class is (type_filter)
+            call apply_operator(op)
+         end select
+      end if
+
+      if (settings%time_method /= time_method_instantaneous .and. settings%time_method /= time_method_none) then
+         ! We are not storing the instantaneous value. Create a work array that will be stored instead.
+         allocate(time_filter)
+         time_filter%source => generic_field
+         time_filter%method = settings%time_method
+         time_filter%output_name = generic_field%output_name
+         time_filter%settings => settings
+         generic_field => time_filter
+      end if
+   contains
+      recursive subroutine apply_operator(op)
+         class (type_filter), intent(in) :: op
+         class (type_filter), pointer :: new_op
+         if (associated(op%source)) then
+            select type (nested_op=>op%source)
+            class is (type_filter)
+               call apply_operator(nested_op)
+            end select
+         end if
+         allocate(new_op, source=op)
+         new_op%source => generic_field
+         new_op%output_name = generic_field%output_name
+         new_op%settings => settings
+         generic_field => new_op
+      end subroutine
+   end function
+
    subroutine collect_from_categories(file)
       class (type_file), intent(inout) :: file
       class (type_output_category), pointer :: output_category
-      class (type_output_field),pointer  :: output_field
+      class (type_base_output_field),pointer :: output_field
       type (type_field_set) :: set
       class (type_field_set_member), pointer :: member, next_member
+      class (type_output_variable_settings), pointer :: settings
+      type (type_dictionary) :: mapping
 
       output_category => file%first_category
       do while (associated(output_category))
@@ -63,12 +118,11 @@ contains
          if (.not.associated(member)) call host%log_message('WARNING: output category "'//trim(output_category%name)//'" does not contain any variables with requested output level.')
          do while (associated(member))
             call host%log_message('  - '//trim(member%field%name))
-            output_field => file%create_field()
-            output_field%settings => output_category%settings
-            output_field%source => member%field
-            output_field%output_name = trim(output_category%prefix)//trim(member%field%name)//trim(output_category%postfix)
+            settings => file%create_settings()
+            call settings%initialize(mapping, output_category%settings)
+            output_field => create_field(file, settings, member%field)
+            output_field%output_name = trim(output_category%prefix) // trim(output_field%output_name) // trim(output_category%postfix)
             call file%append(output_field)
-
             next_member => member%next
             deallocate(member)
             member => next_member
@@ -82,7 +136,8 @@ contains
       class (type_file), intent(inout) :: file
 
       integer :: i
-      class (type_output_field),    pointer :: output_field, next_field, previous_field
+      type (type_dimension_pointer), allocatable :: dimensions(:)
+      class (type_base_output_field), pointer :: output_field, next_field, previous_field
       type (type_output_dimension), pointer :: output_dim
       logical :: empty
 
@@ -93,9 +148,10 @@ contains
 
          ! Determine whether the field is empty (one or more zero-length dimensions)
          empty = .false.
-         do i=1,size(output_field%source%dimensions)
-            if (output_field%source%dimensions(i)%p%id/=id_dim_time) then
-               output_dim => file%get_dimension(output_field%source%dimensions(i)%p)
+         call output_field%get_metadata(dimensions=dimensions)
+         do i=1,size(dimensions)
+            if (dimensions(i)%p%id/=id_dim_time) then
+               output_dim => file%get_dimension(dimensions(i)%p)
                if (output_dim%stop<output_dim%start) empty = .true.
             end if
          end do
@@ -120,25 +176,22 @@ contains
    subroutine add_coordinate_variables(file)
       class (type_file), intent(inout) :: file
 
-      class (type_output_field),  pointer :: output_field
-      class (type_output_field),  pointer :: coordinate_field
+      class (type_base_output_field),  pointer :: output_field, existing_coordinate_field
+      class (type_base_output_field),  pointer :: coordinate_field
+      class (type_output_variable_settings), pointer :: settings
       integer :: i
+      type (type_dimension_pointer), allocatable :: dimensions(:)
 
       output_field => file%first_field
       do while (associated(output_field))
-         allocate(output_field%coordinates(size(output_field%source%dimensions)))
-         do i=1,size(output_field%source%dimensions)
-            if (.not.associated(output_field%source%dimensions(i)%p%coordinate)) cycle
-            coordinate_field => file%find(output_field%source%dimensions(i)%p%coordinate)
-            if (.not.associated(coordinate_field)) then
-               coordinate_field => file%create_field()
-               coordinate_field%settings => file%create_settings()
-               coordinate_field%settings%time_method = time_method_instantaneous
-               coordinate_field%source => output_field%source%dimensions(i)%p%coordinate
-               coordinate_field%output_name = trim(coordinate_field%source%name)
-               call file%append(coordinate_field)
-            end if
-            output_field%coordinates(i)%p => coordinate_field
+         call output_field%get_metadata(dimensions=dimensions)
+         allocate(output_field%coordinates(size(dimensions)))
+         do i=1,size(dimensions)
+            if (.not.associated(dimensions(i)%p%coordinate)) cycle
+            settings => file%create_settings()
+            settings%time_method = time_method_instantaneous
+            output_field%coordinates(i)%p => create_field(file, settings, dimensions(i)%p%coordinate)
+            call file%append(output_field%coordinates(i)%p)
          end do
          output_field => output_field%next
       end do
@@ -147,11 +200,12 @@ contains
    subroutine initialize_files(julianday,secondsofday,microseconds,n)
       integer, intent(in) :: julianday,secondsofday,microseconds,n
 
-      class (type_file),            pointer :: file
-      class (type_output_field),    pointer :: output_field
-      type (type_output_dimension), pointer :: output_dim
-      integer, allocatable, dimension(:)    :: starts, stops, strides
-      integer                               :: i,j
+      class (type_file),              pointer    :: file
+      class (type_base_output_field), pointer    :: output_field
+      type (type_output_dimension),   pointer    :: output_dim
+      integer, allocatable, dimension(:)         :: starts, stops, strides
+      integer                                    :: i,j
+      type (type_dimension_pointer), allocatable :: dimensions(:)
 
       file => first_file
       do while (associated(file))
@@ -167,14 +221,7 @@ contains
          ! First check whether all fields included in this file have been registered.
          output_field => file%first_field
          do while (associated(output_field))
-            select case (output_field%source%status)
-               case (status_not_registered)
-                  call host%fatal_error('output_manager_save', 'File '//trim(file%path)//': &
-                     requested field "'//trim(output_field%source%name)//'" has not been registered with field manager.')
-               case (status_registered_no_data)
-                  call host%fatal_error('output_manager_save', 'File '//trim(file%path)//': &
-                     data for requested field "'//trim(output_field%source%name)//'" have not been provided.')
-            end select
+            call output_field%initialize(file%field_manager)
             output_field => output_field%next
          end do
 
@@ -188,15 +235,16 @@ contains
          output_field => file%first_field
          do while (associated(output_field))
             ! Determine effective dimension range
-            allocate(starts(1:size(output_field%source%dimensions)))
-            allocate(stops(1:size(output_field%source%dimensions)))
-            allocate(strides(1:size(output_field%source%dimensions)))
+            call output_field%get_metadata(dimensions=dimensions)
+            allocate(starts(1:size(dimensions)))
+            allocate(stops(1:size(dimensions)))
+            allocate(strides(1:size(dimensions)))
             j = 0
-            do i=1,size(output_field%source%dimensions)
-               if (output_field%source%dimensions(i)%p%length>1) then
+            do i=1,size(dimensions)
+               if (dimensions(i)%p%length>1) then
                   ! Not a singleton dimension - create the slice spec
                   j = j + 1
-                  output_dim => file%get_dimension(output_field%source%dimensions(i)%p)
+                  output_dim => file%get_dimension(dimensions(i)%p)
                   starts(j) = output_dim%start
                   stops(j) = output_dim%stop
                   strides(j) = output_dim%stride
@@ -205,49 +253,22 @@ contains
 
             if (all(stops(1:j)>=starts(1:j))) then
                ! Select appropriate data slice
-               if (associated(output_field%source%data_3d)) then
-                  if (j/=3) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                  output_field%source_3d => output_field%source%data_3d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2),starts(3):stops(3):strides(3))
-               elseif (associated(output_field%source%data_2d)) then
-                  if (j/=2) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                  output_field%source_2d => output_field%source%data_2d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2))
-               elseif (associated(output_field%source%data_1d)) then
-                  if (j/=1) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                  output_field%source_1d => output_field%source%data_1d(starts(1):stops(1):strides(1))
+               if (associated(output_field%data_3d)) then
+                  if (j/=3) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%output_name)//' contains one or more singleton dimensions.')
+                  output_field%data_3d => output_field%data_3d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2),starts(3):stops(3):strides(3))
+               elseif (associated(output_field%data_2d)) then
+                  if (j/=2) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%output_name)//' contains one or more singleton dimensions.')
+                  output_field%data_2d => output_field%data_2d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2))
+               elseif (associated(output_field%data_1d)) then
+                  if (j/=1) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%output_name)//' contains one or more singleton dimensions.')
+                  output_field%data_1d => output_field%data_1d(starts(1):stops(1):strides(1))
                else
-                  if (j/=0) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                  output_field%source_0d => output_field%source%data_0d
+                  if (j/=0) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%output_name)//' contains one or more singleton dimensions.')
                end if
             end if
 
             ! Deallocate dimension range specifyers.
             deallocate(starts,stops,strides)
-
-            ! Store instantaneous data by default.
-            output_field%data_0d => output_field%source_0d
-            output_field%data_1d => output_field%source_1d
-            output_field%data_2d => output_field%source_2d
-            output_field%data_3d => output_field%source_3d
-
-            if (output_field%settings%time_method/=time_method_instantaneous.and.output_field%settings%time_method/=time_method_none) then
-               ! We are not storing the instantaneous value. Create a work array that will be stored instead.
-               if (associated(output_field%source_3d)) then
-                  allocate(output_field%work_3d(size(output_field%source_3d,1),size(output_field%source_3d,2),size(output_field%source_3d,3)))
-                  output_field%work_3d(:,:,:) = 0.0_rk
-                  output_field%data_3d => output_field%work_3d
-               elseif (associated(output_field%source_2d)) then
-                  allocate(output_field%work_2d(size(output_field%source_2d,1),size(output_field%source_2d,2)))
-                  output_field%work_2d(:,:) = 0.0_rk
-                  output_field%data_2d => output_field%work_2d
-               elseif (associated(output_field%source_1d)) then
-                  allocate(output_field%work_1d(size(output_field%source_1d)))
-                  output_field%work_1d(:) = 0.0_rk
-                  output_field%data_1d => output_field%work_1d
-               elseif (associated(output_field%source_0d)) then
-                  output_field%work_0d = 0.0_rk
-                  output_field%data_0d => output_field%work_0d
-               end if
-            end if
 
             output_field => output_field%next
          end do
@@ -268,47 +289,27 @@ contains
    subroutine output_manager_prepare_save(julianday, secondsofday, microseconds, n)
       integer,intent(in) :: julianday, secondsofday, microseconds, n
 
-      class (type_file),         pointer :: file
-      class (type_output_field), pointer :: output_field
-      logical                            :: required
+      class (type_file),              pointer :: file
+      class (type_base_output_field), pointer :: output_field
+      logical                                 :: required
 
       if (.not. files_initialized) call initialize_files(julianday, secondsofday, microseconds, n)
 
       ! Start by marking all fields as not needing computation
-      file => first_file
-      do while (associated(file))
-         output_field => file%first_field
-         do while (associated(output_field))
-            if (associated(output_field%source%used_now)) output_field%source%used_now = .false.
-            output_field => output_field%next
-         end do
-         file => file%next
-      end do
+      if (associated(first_file)) call first_file%field_manager%reset_used()
 
       file => first_file
       do while (associated(file))
          if (in_window(file, julianday, secondsofday, microseconds, n)) then
             output_field => file%first_field
             do while (associated(output_field))
-               if (associated(output_field%source%used_now)) then
-                  select case (output_field%settings%time_method)
-                  case (time_method_mean)
-                     ! Time average - this field will be incremented at every model time step and therefore always needs to be computed.
-                     required = .true.
-                  case (time_method_integrated)
-                     ! Time integral - this field will be incremented at every model time step except the first.
-                     required = file%next_julian /= -1
-                  case default
-                     ! Instantaneous - this field needs to be computed only if it is to be output during the upcoming save call.
-                     select case (file%time_unit)
-                     case (time_unit_dt)
-                        required = file%first_index == -1 .or. mod(n - file%first_index, file%time_step) == 0
-                     case default
-                        required = file%next_julian == -1 .or. (julianday == file%next_julian .and. secondsofday >= file%next_seconds) .or. julianday > file%next_julian
-                     end select
-                  end select
-                  output_field%source%used_now = output_field%source%used_now .or. required
-               end if
+               select case (file%time_unit)
+               case (time_unit_dt)
+                  required = file%first_index == -1 .or. mod(n - file%first_index, file%time_step) == 0
+               case default
+                  required = file%next_julian == -1 .or. (julianday == file%next_julian .and. secondsofday >= file%next_seconds) .or. julianday > file%next_julian
+               end select
+               call output_field%flag_as_required(required)
                output_field => output_field%next
             end do
          end if
@@ -327,10 +328,11 @@ contains
    subroutine output_manager_save2(julianday,secondsofday,microseconds,n)
       integer,intent(in) :: julianday,secondsofday,microseconds,n
 
-      class (type_file),            pointer :: file
-      class (type_output_field),    pointer :: output_field
-      integer                               :: yyyy,mm,dd
-      logical                               :: output_required
+      class (type_file),              pointer :: file
+      class (type_base_output_field), pointer :: output_field
+      integer                                 :: yyyy,mm,dd
+      logical                                 :: output_required
+      class (type_filter),            pointer :: filter
 
       if (.not.files_initialized) call initialize_files(julianday,secondsofday,microseconds,n)
 
@@ -341,21 +343,9 @@ contains
          ! Increment time-integrated fields
          output_field => file%first_field
          do while (associated(output_field))
-            if (output_field%settings%time_method==time_method_mean .or. (output_field%settings%time_method==time_method_integrated.and.file%next_julian/=-1)) then
-               ! This is a time-integrated field that needs to be incremented.
-               if (associated(output_field%source_3d)) then
-                  output_field%work_3d(:,:,:) = output_field%work_3d + output_field%source_3d
-               elseif (associated(output_field%source_2d)) then
-                  output_field%work_2d(:,:) = output_field%work_2d + output_field%source_2d
-               elseif (associated(output_field%source_1d)) then
-                  output_field%work_1d(:) = output_field%work_1d + output_field%source_1d
-               elseif (associated(output_field%source_0d)) then
-                  output_field%work_0d = output_field%work_0d + output_field%source_0d
-               end if
-            end if
+            call output_field%new_data()
             output_field => output_field%next
          end do
-         file%n = file%n + 1
 
          if (file%next_julian==-1) then
             ! Store current time step so next time step can be computed correctly.
@@ -372,21 +362,9 @@ contains
          end if
 
          if (output_required) then
-            ! Perform temporal averaging where required.
             output_field => file%first_field
             do while (associated(output_field))
-               if (output_field%settings%time_method==time_method_mean) then
-                  ! This is a time-averaged field that has previously been incremented and now needs averaging
-                  if (associated(output_field%source_3d)) then
-                     output_field%work_3d(:,:,:) = output_field%work_3d/file%n
-                  elseif (associated(output_field%source_2d)) then
-                     output_field%work_2d(:,:) = output_field%work_2d/file%n
-                  elseif (associated(output_field%source_1d)) then
-                     output_field%work_1d(:) = output_field%work_1d/file%n
-                  elseif (associated(output_field%source_0d)) then
-                     output_field%work_0d = output_field%work_0d/file%n
-                  end if
-               end if
+               call output_field%before_save()
                output_field => output_field%next
             end do
 
@@ -416,26 +394,6 @@ contains
                   yyyy = yyyy + file%time_step
                   call host%julian_day(yyyy,mm,dd,file%next_julian)
             end select
-
-            ! Reset time step counter
-            file%n = 0
-
-            ! Zero out time-step averaged fields (start of new time step)
-            output_field => file%first_field
-            do while (associated(output_field))
-               if (output_field%settings%time_method==time_method_mean) then
-                  if (associated(output_field%source_3d)) then
-                     output_field%work_3d(:,:,:) = 0.0_rk
-                  elseif (associated(output_field%source_2d)) then
-                     output_field%work_2d(:,:) = 0.0_rk
-                  elseif (associated(output_field%source_1d)) then
-                     output_field%work_1d(:) = 0.0_rk
-                  elseif (associated(output_field%source_0d)) then
-                     output_field%work_0d = 0.0_rk
-                  end if
-               end if
-               output_field => output_field%next
-            end do
          end if
 
          end if ! in output time window
@@ -695,6 +653,22 @@ contains
          item => item%next
       end do
 
+      ! Get operators
+      list => mapping%get_list('operators',required=.false.,error=config_error)
+      if (associated(config_error)) call host%fatal_error('process_group', config_error%message)
+      if (associated(list)) then
+         item => list%first
+         do while (associated(item))
+            select type (node=>item%node)
+               class is (type_dictionary)
+                  call process_operator(node, settings, file%field_manager)
+               class default
+                  call host%fatal_error('process_group','Elements below '//trim(list%path)//' must be dictionaries.')
+            end select
+            item => item%next
+         end do
+      end if
+
       ! Raise error if any keys are left unused.
       pair => mapping%first
       do while (associated(pair))
@@ -710,12 +684,13 @@ contains
       class (type_dictionary),              intent(in)    :: mapping
       class (type_output_variable_settings),intent(in)    :: default_settings
 
-      character(len=string_length) :: source_name
-      type (type_error),        pointer :: config_error
-      class (type_output_category),pointer  :: output_category
-      class (type_output_field),pointer :: output_field
-      integer                           :: n
-      type (type_key_value_pair),pointer :: pair
+      character(len=string_length)            :: source_name
+      type (type_error),              pointer :: config_error
+      class (type_output_category),   pointer :: output_category
+      class (type_base_output_field), pointer :: output_field
+      type (type_field),              pointer :: field
+      integer                                 :: n
+      type (type_key_value_pair),     pointer :: pair
 
       ! Name of source variable
       source_name = mapping%get_string('source',error=config_error)
@@ -748,18 +723,16 @@ contains
 
          call file%append_category(output_category)
       else
-         output_field => file%create_field()
+         allocate(output_field)
          output_field%settings => file%create_settings()
          call output_field%settings%initialize(mapping, default_settings)
-
-         ! Select this variable for output in the field manager.
-         output_field%source => file%field_manager%select_for_output(source_name)
+         field => file%field_manager%select_for_output(source_name)
+         output_field => create_field(file, output_field%settings, field)
+         call file%append(output_field)
 
          ! Name of output variable (may differ from source name)
          output_field%output_name = mapping%get_string('name',default=source_name,error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
-
-         call file%append(output_field)
       end if
 
       ! Raise error if any keys are left unused.
@@ -770,5 +743,61 @@ contains
       end do
 
    end subroutine process_variable
+
+   subroutine process_operator(mapping, settings, field_manager)
+      class (type_dictionary), intent(in) :: mapping
+      class (type_output_variable_settings),intent(inout) :: settings
+      type (type_field_manager), intent(inout) :: field_manager
+
+      type (type_error),          pointer :: config_error
+      character(len=string_length)        :: operator_type, variable_name
+      class (type_interp_filter), pointer :: interp
+      class (type_list),          pointer :: list
+      type (type_list_item),      pointer :: list_item
+      integer :: i, n
+      logical :: success
+
+      operator_type = mapping%get_string('type', error=config_error)
+      if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
+      select case (operator_type)
+      case ('interp')
+         allocate(interp)
+         interp%dimension = mapping%get_string('dimension', error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
+         variable_name = mapping%get_string('offset', default='', error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
+         if (variable_name /= '') interp%offset => field_manager%select_for_output(trim(variable_name))
+         variable_name = mapping%get_string('source_coordinate', default='', error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
+         if (variable_name /= '') interp%source_coordinate => field_manager%select_for_output(trim(variable_name))
+         list => mapping%get_list('coordinates', required=.true., error=config_error)
+         if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
+         n = 0
+         list_item => list%first
+         do while (associated(list_item))
+            n = n + 1
+            list_item => list_item%next
+         end do
+         allocate(interp%target_coordinates(n))
+         list_item => list%first
+         do i=1,n
+            select type (node => list_item%node)
+            class is (type_scalar)
+               interp%target_coordinates(i) = node%to_real(0._rk, success)
+               if (.not. success) call host%fatal_error('process_operator', trim(node%path)//': unable to convert '//trim(node%string)//' to real.')
+               if (i > 1) then
+                  if (interp%target_coordinates(i) < interp%target_coordinates(i - 1)) call host%fatal_error('process_operator', trim(list%path)//' should be monotonically increasing.')
+               end if
+            class default
+               call host%fatal_error('process_operator', trim(node%path)//' should be a real number.')
+            end select
+            list_item => list_item%next
+         end do
+         interp%source => settings%first_operator
+         settings%first_operator => interp
+      case default
+         call host%fatal_error('process_operator', trim(mapping%path)//': operator type '//trim(operator_type)//' not recognized.')
+      end select
+   end subroutine
 
 end module

@@ -38,8 +38,8 @@ module text_output
    end interface
 
    type type_scalar
-      class (type_output_field), pointer :: field => null()
-      real(rk),                  pointer :: value => null()
+      class (type_base_output_field), pointer :: field => null()
+      real(rk),                       pointer :: value => null()
    end type
 
    type,extends(type_single_text_file) :: type_single_text_file_with_scalars
@@ -51,9 +51,9 @@ module text_output
    end type
 
    type,extends(type_single_text_file) :: type_single_text_file_with_1d_variable
-      class (type_output_field),   pointer :: field      => null()
+      class (type_base_output_field),   pointer :: field      => null()
       type (type_output_dimension),pointer :: dimension  => null()
-      class (type_output_field),   pointer :: coordinate => null()
+      class (type_base_output_field),   pointer :: coordinate => null()
       real(rk),                    pointer :: values(:)  => null()
    contains
       procedure :: write_header => single_text_file_with_1d_variable_write_header
@@ -76,10 +76,11 @@ contains
       integer                                                 :: ios
       integer                                                 :: i
       integer                                                 :: nscalar, nconstants
-      class (type_output_field),                      pointer :: output_field
+      class (type_base_output_field),                 pointer :: output_field
       class (type_single_text_file_with_scalars),     pointer :: scalar_file
       class (type_single_text_file),                  pointer :: current_file
       class (type_single_text_file_with_1d_variable), pointer :: file_with_1d_data
+      type (type_dimension_pointer), allocatable              :: dimensions(:)
 
       nscalar = 0
       nconstants = 0
@@ -92,9 +93,10 @@ contains
             file_with_1d_data%values => output_field%data_1d
             file_with_1d_data%path = trim(self%path)//'_'//trim(file_with_1d_data%field%output_name)//trim(self%postfix)//extension
             file_with_1d_data%title = self%title
-            do i=1,size(output_field%source%dimensions)
-               if (output_field%source%dimensions(i)%p%length>1) then
-                  file_with_1d_data%dimension => self%get_dimension(output_field%source%dimensions(i)%p)
+            call output_field%get_metadata(dimensions=dimensions)
+            do i=1,size(dimensions)
+               if (dimensions(i)%p%length>1) then
+                  file_with_1d_data%dimension => self%get_dimension(dimensions(i)%p)
                   file_with_1d_data%coordinate => output_field%coordinates(i)%p
                   exit
                end if
@@ -103,7 +105,7 @@ contains
             self%first_file => file_with_1d_data
          elseif (associated(output_field%data_0d)) then
             ! 0D variable - just count these variables for now.
-            if (output_field%source%has_dimension(id_dim_time)) then
+            if (has_dimension(dimensions, id_dim_time)) then
                nscalar = nscalar + 1
             else
                nconstants = nconstants + 1
@@ -127,7 +129,7 @@ contains
          output_field => self%first_field
          do while (associated(output_field))
             if (associated(output_field%data_0d)) then
-               if (output_field%source%has_dimension(id_dim_time)) then
+               if (has_dimension(dimensions, id_dim_time)) then
                   nscalar = nscalar + 1
                   scalar_file%variables(nscalar)%field => output_field
                   scalar_file%variables(nscalar)%value => output_field%data_0d
@@ -193,16 +195,19 @@ contains
       class (type_single_text_file_with_scalars),intent(in) :: self
 
       integer :: i
+      character(len=:), allocatable :: long_name, units
 
       ! Header (three lines: simulation title, variable short names, variable long names + units)
       write(self%unit,fmt='("# title: ",A)') trim(self%title)
       do i=1,size(self%constants)
-         write(self%unit,fmt='("# ",A,": ",G0.8,X,A)') trim(self%constants(i)%field%source%long_name),self%constants(i)%value,trim(self%constants(i)%field%source%units)
+         call self%constants(i)%field%get_metadata(long_name=long_name, units=units)
+         write(self%unit,fmt='("# ",A,": ",G0.8,X,A)') trim(long_name),self%constants(i)%value,trim(units)
       end do
       write(self%unit,fmt='("# ",A,*(:,"'//trim(separator)//'",A))') 'time',(trim(self%variables(i)%field%output_name),i=1,size(self%variables))
       write(self%unit,fmt='("# ",A)',advance='NO') 'time'
       do i=1,size(self%variables)
-         write(self%unit,fmt='("'//trim(separator)//'",A," (",A,")")',advance='NO') trim(self%variables(i)%field%source%long_name),trim(self%variables(i)%field%source%units)
+         call self%variables(i)%field%get_metadata(long_name=long_name, units=units)
+         write(self%unit,fmt='("'//trim(separator)//'",A," (",A,")")',advance='NO') trim(long_name),trim(units)
       end do
       write(self%unit,*)
    end subroutine single_text_file_with_scalars_write_header
@@ -219,25 +224,28 @@ contains
    subroutine single_text_file_with_1d_variable_write_header(self)
       class (type_single_text_file_with_1d_variable),intent(in) :: self
 
+      character(len=:),              allocatable :: long_name, units
+      type (type_dimension_pointer), allocatable :: dimensions(:)
       integer :: i
       logical :: first, has_singleton, real_x
-      class (type_output_field),pointer :: coordinate
+      class (type_base_output_field),pointer :: coordinate
 
       ! Simulation title
       write(self%unit,fmt='("# title: ",A)') trim(self%title)
 
       ! Variable name and units
-      write(self%unit,fmt='("# variable: ",A," (",A,")")') trim(self%field%source%long_name),trim(self%field%source%units)
+      call self%field%get_metadata(long_name=long_name, units=units, dimensions=dimensions)
+      write(self%unit,fmt='("# variable: ",A," (",A,")")') trim(long_name),trim(units)
 
       ! Dimensions
       write(self%unit,fmt='("# dimensions: ")',advance='NO')
       first = .true.
       has_singleton = .false.
-      do i=1,size(self%field%source%dimensions)
-         if (self%field%source%dimensions(i)%p%id==id_dim_time) cycle
+      do i=1,size(dimensions)
+         if (dimensions(i)%p%id==id_dim_time) cycle
          if (.not.first) write(self%unit,fmt='(A)',advance='NO') ','
-         write(self%unit,fmt='(A,"=")',advance='NO') trim(self%field%source%dimensions(i)%p%name)
-         if (self%field%source%dimensions(i)%p%length>1) then
+         write(self%unit,fmt='(A,"=")',advance='NO') trim(dimensions(i)%p%name)
+         if (dimensions(i)%p%length>1) then
             ! This is the only non-singleton dimension (length>1).
             write(self%unit,fmt='(I0,":",I0)',advance='NO') self%dimension%global_start,self%dimension%global_stop
             if (self%dimension%stride/=1) write(self%unit,fmt='(":",I0)',advance='NO') self%dimension%stride
@@ -253,10 +261,13 @@ contains
       ! Coordinates associated with singleton dimensions (length=1).
       if (has_singleton) then
          write(self%unit,fmt='("# fixed coordinates:")')
-         do i=1,size(self%field%source%dimensions)
-            if (self%field%source%dimensions(i)%p%id/=id_dim_time .and. self%field%source%dimensions(i)%p%length==1) then
+         do i=1,size(dimensions)
+            if (dimensions(i)%p%id/=id_dim_time .and. dimensions(i)%p%length==1) then
                coordinate => self%field%coordinates(i)%p
-               if (associated(coordinate)) write(self%unit,fmt='("#   ",A,": ",G0.8,X,A)') trim(coordinate%source%long_name),coordinate%data_0d,trim(coordinate%source%units)
+               if (associated(coordinate)) then
+                  call coordinate%get_metadata(long_name=long_name, units=units)
+                  write(self%unit,fmt='("#   ",A,": ",G0.8,X,A)') trim(long_name),coordinate%data_0d,trim(units)
+               end if
             end if
          end do
       end if
@@ -267,16 +278,17 @@ contains
       ! Column dimension
       real_x = .false.
       if (associated(self%coordinate)) then
+         call self%coordinate%get_metadata(long_name=long_name, units=units, dimensions=dimensions)
          if (associated(self%coordinate,self%field)) then
             ! The variable being saved is itself the coordinate variable.
-            write(self%unit,fmt='("# columns: ",A)') trim(self%coordinate%source%long_name)
-         elseif (associated(self%coordinate%data_1d).and..not.self%coordinate%source%has_dimension(id_dim_time)) then
+            write(self%unit,fmt='("# columns: ",A)') trim(long_name)
+         elseif (associated(self%coordinate%data_1d).and..not.has_dimension(dimensions, id_dim_time)) then
             ! The coordinate variable is 1D and time-invariant. We will use it as column header.
             real_x = .true.
-            write(self%unit,fmt='("# columns: ",A," (",A,")")') trim(self%coordinate%source%long_name),trim(self%coordinate%source%units)
+            write(self%unit,fmt='("# columns: ",A," (",A,")")') trim(long_name),trim(units)
          else
             ! The coordinate variable is multidimensional (possibly because it is time-varying). It'll be included in a separate file.
-            write(self%unit,fmt='("# columns: ",A," (for values see ",A,")")') trim(self%coordinate%source%long_name),self%path(1:len_trim(self%path)-len(extension)-len_trim(self%field%output_name))//trim(self%coordinate%output_name)//extension
+            write(self%unit,fmt='("# columns: ",A," (for values see ",A,")")') trim(long_name),self%path(1:len_trim(self%path)-len(extension)-len_trim(self%field%output_name))//trim(self%coordinate%output_name)//extension
          end if
       else
          ! No coordinate variable specified. Just use the dimension name.

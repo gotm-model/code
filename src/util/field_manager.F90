@@ -10,8 +10,8 @@ module field_manager
    ! Public data types and variables
    public type_field
    public type_category_node
-   public type_dimension
-   public type_attribute, type_real_attribute, type_integer_attribute, type_string_attribute
+   public type_dimension, type_dimension_pointer, has_dimension
+   public type_attribute, type_real_attribute, type_integer_attribute, type_string_attribute, type_attributes
    public type_field_set, type_field_set_member
 
    ! Public parameters
@@ -75,6 +75,10 @@ module field_manager
       character(len=string_length) :: value = ''
    end type
 
+   type type_attributes
+      class (type_attribute), pointer :: first => null()
+   end type
+
    type type_field
       integer                      :: id             = 0
       character(len=string_length) :: name           = ''
@@ -89,7 +93,7 @@ module field_manager
       logical, pointer             :: used_now       => null()
       integer                      :: status         = status_not_registered
       type (type_dimension_pointer),allocatable :: dimensions(:)
-      class (type_attribute), pointer :: first_attribute => null()
+      type (type_attributes)       :: attributes
       integer,allocatable          :: extents(:)
       real(rk),pointer             :: data_0d        => null()
       real(rk),pointer             :: data_1d(:)     => null()
@@ -174,6 +178,7 @@ module field_manager
       procedure :: find_dimension
       procedure :: find_category
       procedure :: get_state
+      procedure :: reset_used
       generic :: send_data => send_data_0d,send_data_1d,send_data_2d,send_data_3d,send_data_by_name_0d,send_data_by_name_1d,send_data_by_name_2d,send_data_by_name_3d
    end type type_field_manager
 
@@ -359,6 +364,21 @@ contains
 
       self%nregistered = 0
    end subroutine finalize
+
+   subroutine reset_used(self)
+      class (type_field_manager), intent(inout) :: self
+
+      integer                    :: ibin
+      type (type_field), pointer :: field
+
+      do ibin=1,hash_table_size
+         field => self%field_table(ibin)%first_field
+         do while (associated(field))
+            if (associated(field%used_now)) field%used_now = .false.
+            field => field%next
+         end do
+      end do
+   end subroutine reset_used
 
    function find_dimension(self,dimid) result(dim)
       class (type_field_manager), intent(in) :: self
@@ -618,17 +638,23 @@ contains
       if (present(field)) field => field_
    end subroutine register
 
-   logical function field_has_dimension(self,id)
-      class (type_field),intent(in) :: self
-      integer,           intent(in) :: id
+   logical function has_dimension(dimensions,id)
+      type (type_dimension_pointer), intent(in) :: dimensions(:)
+      integer,                       intent(in) :: id
 
       integer :: i
 
-      field_has_dimension = .true.
-      do i=1,size(self%dimensions)
-         if (self%dimensions(i)%p%id==id) return
+      has_dimension = .true.
+      do i=1,size(dimensions)
+         if (dimensions(i)%p%id==id) return
       end do
-      field_has_dimension = .false.
+      has_dimension = .false.
+   end function has_dimension
+
+   logical function field_has_dimension(self,id)
+      class (type_field),intent(in) :: self
+      integer,           intent(in) :: id
+      field_has_dimension = has_dimension(self%dimensions, id)
    end function field_has_dimension
 
    subroutine field_delete_attribute(self,name)
@@ -638,13 +664,13 @@ contains
       class (type_attribute),pointer :: attribute, previous_attribute
 
       previous_attribute => null()
-      attribute => self%first_attribute
+      attribute => self%attributes%first
       do while (associated(attribute))
          if (attribute%name==name) then
             if (associated(previous_attribute)) then
                previous_attribute%next => attribute%next
             else
-               self%first_attribute => attribute%next
+               self%attributes%first => attribute%next
             end if
             deallocate(attribute)
             return
@@ -661,8 +687,8 @@ contains
 
       call self%delete_attribute(name)
       attribute%name = name
-      attribute%next => self%first_attribute
-      self%first_attribute => attribute
+      attribute%next => self%attributes%first
+      self%attributes%first => attribute
    end subroutine field_set_attribute
 
    subroutine field_set_real_attribute(self,name,value)
@@ -709,13 +735,13 @@ contains
       deallocate(self%dimensions)
       deallocate(self%extents)
 
-      attribute => self%first_attribute
+      attribute => self%attributes%first
       do while (associated(attribute))
          next_attribute => attribute%next
          deallocate(attribute)
          attribute => next_attribute
       end do
-      self%first_attribute => null()
+      self%attributes%first => null()
    end subroutine field_finalize
 
    subroutine add_field_to_tree(self,field,category)

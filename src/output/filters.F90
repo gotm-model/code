@@ -1,0 +1,260 @@
+module output_filters
+
+   use output_manager_core
+   use field_manager
+
+   implicit none
+
+   private
+
+   public type_filter, type_time_filter, type_interp_filter
+
+   type, extends(type_base_output_field) :: type_filter
+      class (type_base_output_field), pointer :: source => null()
+      real(rk)              :: result_0d
+      real(rk), allocatable :: result_1d(:)
+      real(rk), allocatable :: result_2d(:,:)
+      real(rk), allocatable :: result_3d(:,:,:)
+   contains
+      procedure :: initialize  => filter_initialize
+      procedure :: new_data    => filter_new_data
+      procedure :: before_save => filter_before_save
+      procedure :: get_metadata => filter_get_metadata
+      procedure :: fill        => filter_fill
+   end type
+
+   type, extends(type_filter) :: type_time_filter
+      integer :: method = time_method_mean
+      integer :: n = 0
+   contains
+      procedure :: initialize  => time_filter_initialize
+      procedure :: flag_as_required => time_filter_flag_as_required
+      procedure :: new_data    => time_filter_new_data
+      procedure :: before_save => time_filter_before_save
+   end type
+
+   type, extends(type_filter) :: type_interp_filter
+      integer :: idim = -1
+      character(len=string_length) :: dimension
+      real(rk), allocatable        :: target_coordinates(:)
+      type (type_field), pointer   :: source_coordinate => null()
+      type (type_field), pointer   :: offset => null()
+      real(rk) :: out_of_bounds_value
+   contains
+      procedure :: initialize  => interp_initialize
+      procedure :: flag_as_required => interp_flag_as_required
+      procedure :: before_save => interp_before_save
+   end type
+
+contains
+
+   recursive subroutine filter_initialize(self, field_manager)
+      class (type_filter),       intent(inout), target :: self
+      type (type_field_manager), intent(in)            :: field_manager
+
+      if (.not. associated(self%source)) call host%fatal_error('filter_initialize', 'BUG: source has not been set.')
+      call self%source%initialize(field_manager)
+   end subroutine
+
+   recursive subroutine filter_new_data(self)
+      class (type_filter), intent(inout) :: self
+      call self%source%new_data()
+   end subroutine
+
+   recursive subroutine filter_before_save(self)
+      class (type_filter), intent(inout) :: self
+      call self%source%before_save()
+   end subroutine
+
+   recursive subroutine filter_get_metadata(self, long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
+      class (type_filter), intent(inout) :: self
+      character(len=:), allocatable, optional :: long_name, units, standard_name, path
+      type (type_dimension_pointer), allocatable, intent(out), optional :: dimensions(:)
+      real(rk), intent(out), optional :: minimum, maximum, fill_value
+      type (type_attributes), optional :: attributes
+      call self%source%get_metadata(long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
+   end subroutine
+
+   subroutine filter_fill(self, value)
+      class (type_filter), intent(inout) :: self
+      real(rk),            intent(in)    :: value
+
+      if (allocated(self%result_3d)) then
+         self%result_3d(:,:,:) = value
+      elseif (allocated(self%result_2d)) then
+         self%result_2d(:,:) = value
+      elseif (allocated(self%result_1d)) then
+         self%result_1d(:) = value
+      else
+         self%result_0d = value
+      end if
+   end subroutine
+
+   recursive subroutine time_filter_initialize(self, field_manager)
+      class (type_time_filter), intent(inout), target :: self
+      type (type_field_manager), intent(in)           :: field_manager
+
+      real(rk) :: fill_value
+
+      call self%type_filter%initialize(field_manager)
+      if (associated(self%source%data_3d)) then
+         allocate(self%result_3d(size(self%source%data_3d,1), size(self%source%data_3d,2), size(self%source%data_3d,3)))
+         self%data_3d => self%result_3d
+      elseif (associated(self%source%data_2d)) then
+         allocate(self%result_2d(size(self%source%data_2d,1), size(self%source%data_2d,2)))
+         self%data_2d => self%result_2d
+      elseif (associated(self%source%data_1d)) then
+         allocate(self%result_1d(size(self%source%data_1d)))
+         self%data_1d => self%result_1d
+      elseif (associated(self%source%data_0d)) then
+         self%data_0d => self%result_0d
+      end if
+      call self%get_metadata(fill_value=fill_value)
+      if (self%method == time_method_mean) call self%fill(fill_value)
+   end subroutine
+
+   recursive subroutine time_filter_flag_as_required(self, required)
+      class (type_time_filter), intent(inout) :: self
+      logical, intent(in) :: required
+      call self%source%flag_as_required(.true.)
+   end subroutine
+   
+   recursive subroutine time_filter_new_data(self)
+      class (type_time_filter), intent(inout) :: self
+
+      call self%source%before_save()
+      if (self%n == 0) call self%fill(0.0_rk)
+      if (allocated(self%result_3d)) then
+         self%result_3d(:,:,:) = self%result_3d + self%source%data_3d
+      elseif (allocated(self%result_2d)) then
+         self%result_2d(:,:) = self%result_2d + self%source%data_2d
+      elseif (allocated(self%result_1d)) then
+         self%result_1d(:) = self%result_1d + self%source%data_1d
+      else
+         self%result_0d = self%result_0d + self%source%data_0d
+      end if
+      self%n = self%n + 1
+   end subroutine
+  
+   recursive subroutine time_filter_before_save(self)
+      class (type_time_filter), intent(inout) :: self
+
+      if (self%method == time_method_mean) then
+         if (allocated(self%result_3d)) then
+            self%result_3d(:,:,:) = self%result_3d/self%n
+         elseif (allocated(self%result_2d)) then
+            self%result_2d(:,:) = self%result_2d/self%n
+         elseif (allocated(self%result_1d)) then
+            self%result_1d(:) = self%result_1d/self%n
+         else
+            self%result_0d = self%result_0d/self%n
+         end if
+      end if
+      self%n = 0
+   end subroutine
+
+   recursive subroutine interp_initialize(self, field_manager)
+      class (type_interp_filter), intent(inout), target :: self
+      type (type_field_manager),  intent(in)            :: field_manager
+
+      type (type_dimension), pointer :: dim
+      type (type_dimension_pointer), allocatable :: dimensions(:)
+      integer :: shape(3)
+      integer :: i
+
+      call self%type_filter%initialize(field_manager)
+      dim => field_manager%first_dimension
+      do while (associated(dim))
+         if (dim%name==self%dimension) exit
+         dim => dim%next
+      end do
+      if (.not. associated(dim)) call host%fatal_error('interp_initialize', 'Dimension '//trim(self%dimension)//' not found.')
+      call self%source%get_metadata(dimensions=dimensions, fill_value=self%out_of_bounds_value)
+      do i = 1, size(dimensions)
+         if (associated(dimensions(i)%p, dim)) self%idim = i
+      end do
+      if (self%idim == -1) then
+         self%data_3d => self%source%data_3d
+         self%data_2d => self%source%data_2d
+         self%data_1d => self%source%data_1d
+         self%data_0d => self%source%data_0d
+      else
+         if (associated(self%source%data_3d)) then
+            shape(1:3) = size(self%source%data_3d)
+            shape(self%idim) = size(self%coordinates)
+            allocate(self%result_3d(shape(1), shape(2), shape(3)))
+            self%data_3d => self%result_3d
+         elseif (associated(self%source%data_2d)) then
+            shape(1:2) = size(self%source%data_2d)
+            shape(self%idim) = size(self%coordinates)
+            allocate(self%result_2d(shape(1), shape(2)))
+            self%data_2d => self%result_2d
+         elseif (associated(self%source%data_1d)) then
+            allocate(self%result_1d(size(self%coordinates)))
+            self%data_1d => self%result_1d
+         end if
+         call self%fill(self%out_of_bounds_value)
+      end if
+      if (.not.associated(self%source_coordinate)) then
+         if (.not. associated(dim%coordinate)) call host%fatal_error('interp_initialize', 'Dimension '//trim(self%dimension)//' does not have a default coordinate. &
+            &You need to explicitly specify the source coordinate with the source_coordinate attribute to the interp operator.')
+         self%source_coordinate => dim%coordinate
+      end if
+   end subroutine
+
+   recursive subroutine interp_flag_as_required(self, required)
+      class (type_interp_filter), intent(inout) :: self
+      logical, intent(in) :: required
+      call self%source%flag_as_required(required)
+      if (associated(self%source_coordinate%used_now) .and. required) self%source_coordinate%used_now = .true.
+      if (associated(self%offset)) then
+         if (associated(self%offset%used_now) .and. required) self%offset%used_now = .true.
+      end if
+   end subroutine
+
+   recursive subroutine interp_before_save(self)
+      class (type_interp_filter), intent(inout) :: self
+      integer :: i, j
+      real(rk) :: offset
+      real(rk), allocatable :: source_coordinate(:)
+
+      call self%type_filter%before_save()
+      if (self%idim == -1) return
+      if (associated(self%source%data_3d)) then
+         allocate(source_coordinate(size(self%source%data_3d, self%idim)))
+         if (associated(self%source_coordinate%data_1d)) source_coordinate(:) = self%source_coordinate%data_1d
+         do j=1,size(self%source_coordinate%data_3d, 2)
+            do i=1, size(self%source_coordinate%data_3d, 1)
+               offset = 0._rk
+               if (associated(self%offset)) offset = self%offset%data_2d(i,j)
+               if (associated(self%source_coordinate%data_3d)) source_coordinate(:) = self%source_coordinate%data_3d(i,j,:)
+               call interp(self%target_coordinates(:) + offset, source_coordinate, self%source%data_3d(i,j,:), self%data_3d(i,j,:), self%out_of_bounds_value)
+            end do
+         end do
+      elseif (associated(self%source%data_2d)) then
+      elseif (associated(self%source%data_1d)) then
+         offset = 0._rk
+         if (associated(self%offset)) offset = self%offset%data_0d
+         call interp(self%target_coordinates(:) + offset, self%source_coordinate%data_1d, self%source%data_1d, self%data_1d, self%out_of_bounds_value)
+      end if
+   end subroutine
+
+   subroutine interp(x, xp, fp, f, out_of_bounds_value)
+      real(rk), intent(in) :: x(:), xp(:), fp(:)
+      real(rk), intent(out) :: f(:)
+      real(rk), intent(in) :: out_of_bounds_value
+
+      integer :: i, j
+      real(rk) :: slope
+
+      i = 1
+      do j = 1,size(x)
+         do while (i + 1 < size(xp))
+            if (xp(i + 1) >= x(j)) exit
+            i = i + 1
+         end do
+         slope = (fp(i + 1) - fp(i)) / (xp(i + 1) - xp(i))
+         f(j) = fp(i) + (x(j) - xp(i)) * slope
+      end do
+   end subroutine
+end module

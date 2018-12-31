@@ -222,6 +222,7 @@ add_library(output_manager
             output/output_manager_core.F90
             output/netcdf_output.F90
             output/text_output.F90
+            output/filters.F90
             )
 target_link_libraries(output_manager util)
 if(GOTM_USE_FABM)
