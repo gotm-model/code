@@ -239,6 +239,21 @@ contains
          first_interp_dimension => interp_dimension
       end if
 
+      select case (self%source_coordinate%status)
+      case (status_not_registered)
+         call host%fatal_error('interp_initialize', 'Source coordinate "'//trim(self%source_coordinate%name)//'" has not been registered with field manager.')
+      case (status_registered_no_data)
+         call host%fatal_error('interp_initialize', 'Data for source coordinate "'//trim(self%source_coordinate%name)//'" have not been sent to field manager.')
+      end select
+      if (associated(self%offset)) then
+         select case (self%offset%status)
+         case (status_not_registered)
+            call host%fatal_error('interp_initialize', 'Offset "'//trim(self%offset%name)//'" has not been registered with field manager.')
+         case (status_registered_no_data)
+            call host%fatal_error('interp_initialize', 'Data for offset "'//trim(self%offset%name)//'" have not been sent to field manager.')
+         end select
+      end if
+
       if (associated(self%source%data_3d)) then
          extents(1:3) = shape(self%source%data_3d)
          extents(self%idim) = size(self%target_coordinates)
