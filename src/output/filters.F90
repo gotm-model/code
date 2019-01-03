@@ -40,6 +40,7 @@ module output_filters
       real(rk), allocatable        :: target_coordinates(:)
       type (type_field), pointer   :: source_coordinate => null()
       type (type_field), pointer   :: offset => null()
+      integer                      :: out_of_bounds_treatment = 1
       real(rk)                     :: out_of_bounds_value
       real(rk)                     :: offset_scale = 1._rk
       type (type_dimension), pointer :: target_dimension => null()
@@ -221,6 +222,8 @@ contains
       logical                             :: success
 
       self%dimension = mapping%get_string('dimension', error=config_error)
+      if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
+      self%out_of_bounds_treatment = mapping%get_integer('out_of_bounds_treatment', default=1, error=config_error)
       if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
       variable_name = mapping%get_string('offset', default='', error=config_error)
       if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
@@ -426,28 +429,49 @@ contains
                offset = 0._rk
                if (associated(self%offset)) offset = self%offset_scale * self%offset%data_2d(i,j)
                if (associated(self%source_coordinate%data_3d)) source_coordinate(:) = self%source_coordinate%data_3d(i,j,:)
-               call interp(self%target_coordinates(:) + offset, source_coordinate, self%source%data_3d(i,j,:), self%result_3d(i,j,:), self%out_of_bounds_value)
+               call interp(self%target_coordinates(:) + offset, source_coordinate, self%source%data_3d(i,j,:), self%result_3d(i,j,:), self%out_of_bounds_treatment, self%out_of_bounds_value)
             end do
          end do
       elseif (associated(self%source%data_2d)) then
       elseif (associated(self%source%data_1d)) then
          offset = 0._rk
          if (associated(self%offset)) offset = self%offset_scale * self%offset%data_0d
-         call interp(self%target_coordinates(:) + offset, self%source_coordinate%data_1d, self%source%data_1d, self%result_1d, self%out_of_bounds_value)
+         call interp(self%target_coordinates(:) + offset, self%source_coordinate%data_1d, self%source%data_1d, self%result_1d, self%out_of_bounds_treatment, self%out_of_bounds_value)
       end if
    end subroutine
 
-   subroutine interp(x, xp, fp, f, out_of_bounds_value)
+   subroutine interp(x, xp, fp, f, out_of_bounds_treatment, out_of_bounds_value)
       real(rk), intent(in) :: x(:), xp(:), fp(:)
       real(rk), intent(out) :: f(:)
+      integer,  intent(in) :: out_of_bounds_treatment
       real(rk), intent(in) :: out_of_bounds_value
 
-      integer :: i, j
-      real(rk) :: slope
+      integer :: i, j, n, jstart, jstop
+      real(rk) :: extreme_value, slope
+
+      n = size(xp)
+      if (out_of_bounds_treatment == 3) then
+         ! Extrapolate
+         jstart = 1
+         jstop = size(x)
+      else
+         ! Use specified out-of-bounds value (out_of_bounds_treatment = 1) or nearest (out_of_bounds_treatment = 2)
+         extreme_value = out_of_bounds_value
+         if (out_of_bounds_treatment == 2) extreme_value = fp(1)
+         do jstart = 1, size(x)
+            if (x(jstart) >= xp(1)) exit
+            f(jstart) = extreme_value
+         end do
+         if (out_of_bounds_treatment == 2) extreme_value = fp(n)
+         do jstop = size(x), jstart, -1
+            if (x(jstop) <= xp(n)) exit
+            f(jstop) = extreme_value
+         end do
+      end if
 
       i = 1
-      do j = 1,size(x)
-         do while (i + 1 < size(xp))
+      do j = jstart, jstop
+         do while (i + 1 < n)
             if (xp(i + 1) >= x(j)) exit
             i = i + 1
          end do
