@@ -4,7 +4,9 @@ module output_manager
    use output_manager_core
    use netcdf_output
    use text_output
-   use output_filters
+   use output_operators_library
+   use output_operators_base
+   use output_operators_time_average
 
    use yaml_types
    use yaml,yaml_parse=>parse,yaml_error_length=>error_length
@@ -55,7 +57,7 @@ contains
       class (type_base_output_field), pointer :: generic_field
 
       class (type_output_field),pointer :: output_field
-      class (type_time_filter), pointer :: time_filter
+      class (type_time_average_operator), pointer :: time_filter
 
       generic_field => file%find(field)
       if (associated(generic_field)) return
@@ -68,7 +70,7 @@ contains
 
       if (associated(settings%first_operator)) then
          select type (op=>settings%first_operator)
-         class is (type_filter)
+         class is (type_base_operator)
             call apply_operator(op)
          end select
       end if
@@ -84,11 +86,11 @@ contains
       end if
    contains
       recursive subroutine apply_operator(op)
-         class (type_filter), intent(in) :: op
-         class (type_filter), pointer :: new_op
+         class (type_base_operator), intent(in) :: op
+         class (type_base_operator), pointer :: new_op
          if (associated(op%source)) then
             select type (nested_op=>op%source)
-            class is (type_filter)
+            class is (type_base_operator)
                call apply_operator(nested_op)
             end select
          end if
@@ -334,7 +336,7 @@ contains
       class (type_base_output_field), pointer :: output_field
       integer                                 :: yyyy,mm,dd
       logical                                 :: output_required
-      class (type_filter),            pointer :: filter
+      class (type_base_operator),     pointer :: filter
 
       if (.not.files_initialized) call initialize_files(julianday,secondsofday,microseconds,n)
 
