@@ -16,21 +16,21 @@ module output_filters
       real(rk), allocatable :: result_2d(:,:)
       real(rk), allocatable :: result_3d(:,:,:)
    contains
-      procedure :: initialize  => filter_initialize
-      procedure :: new_data    => filter_new_data
-      procedure :: before_save => filter_before_save
+      procedure :: initialize   => filter_initialize
+      procedure :: new_data     => filter_new_data
+      procedure :: before_save  => filter_before_save
       procedure :: get_metadata => filter_get_metadata
-      procedure :: fill        => filter_fill
+      procedure :: fill         => filter_fill
    end type
 
    type, extends(type_filter) :: type_time_filter
       integer :: method = time_method_mean
       integer :: n = 0
    contains
-      procedure :: initialize  => time_filter_initialize
+      procedure :: initialize       => time_filter_initialize
       procedure :: flag_as_required => time_filter_flag_as_required
-      procedure :: new_data    => time_filter_new_data
-      procedure :: before_save => time_filter_before_save
+      procedure :: new_data         => time_filter_new_data
+      procedure :: before_save      => time_filter_before_save
    end type
 
    type, extends(type_filter) :: type_interp_filter
@@ -40,11 +40,19 @@ module output_filters
       type (type_field), pointer   :: source_coordinate => null()
       type (type_field), pointer   :: offset => null()
       real(rk) :: out_of_bounds_value
+      type (type_dimension), pointer :: target_dimension => null()
    contains
-      procedure :: initialize  => interp_initialize
+      procedure :: initialize       => interp_initialize
+      procedure :: get_metadata     => interp_get_metadata
       procedure :: flag_as_required => interp_flag_as_required
-      procedure :: before_save => interp_before_save
+      procedure :: before_save      => interp_before_save
    end type
+
+   type type_interp_dimension
+      class (type_interp_filter),   pointer :: settings => null()
+      type (type_interp_dimension), pointer :: next => null()
+   end type
+   type (type_interp_dimension), pointer, save :: first_interp_dimension => null()
 
 contains
 
@@ -67,7 +75,7 @@ contains
    end subroutine
 
    recursive subroutine filter_get_metadata(self, long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
-      class (type_filter), intent(inout) :: self
+      class (type_filter), intent(in) :: self
       character(len=:), allocatable, optional :: long_name, units, standard_name, path
       type (type_dimension_pointer), allocatable, intent(out), optional :: dimensions(:)
       real(rk), intent(out), optional :: minimum, maximum, fill_value
@@ -118,7 +126,7 @@ contains
       logical, intent(in) :: required
       call self%source%flag_as_required(.true.)
    end subroutine
-   
+
    recursive subroutine time_filter_new_data(self)
       class (type_time_filter), intent(inout) :: self
 
@@ -135,7 +143,7 @@ contains
       end if
       self%n = self%n + 1
    end subroutine
-  
+
    recursive subroutine time_filter_before_save(self)
       class (type_time_filter), intent(inout) :: self
 
@@ -153,52 +161,139 @@ contains
       self%n = 0
    end subroutine
 
+   logical function compare_interp_settings(settings1, settings2)
+      class (type_interp_filter), intent(in) :: settings1, settings2
+
+      compare_interp_settings = .false.
+      if (settings1%dimension /= settings2%dimension) return
+      if ((associated(settings1%source_coordinate) .or. associated(settings2%source_coordinate)) .and. .not. associated(settings1%source_coordinate, settings2%source_coordinate)) return
+      if ((associated(settings1%offset) .or. associated(settings2%offset)) .and. .not. associated(settings1%offset, settings2%offset)) return
+      if (size(settings1%target_coordinates) /= size(settings2%target_coordinates)) return
+      if (any(settings1%target_coordinates(:) /= settings2%target_coordinates(:))) return
+      compare_interp_settings = .true.
+   end function
+
    recursive subroutine interp_initialize(self, field_manager)
       class (type_interp_filter), intent(inout), target :: self
       type (type_field_manager),  intent(in)            :: field_manager
 
       type (type_dimension), pointer :: dim
       type (type_dimension_pointer), allocatable :: dimensions(:)
-      integer :: shape(3)
+      type (type_interp_dimension), pointer :: interp_dimension
+      integer :: extents(3)
       integer :: i
+      character(len=string_length) :: name
 
       call self%type_filter%initialize(field_manager)
-      dim => field_manager%first_dimension
-      do while (associated(dim))
-         if (dim%name==self%dimension) exit
-         dim => dim%next
-      end do
-      if (.not. associated(dim)) call host%fatal_error('interp_initialize', 'Dimension '//trim(self%dimension)//' not found.')
+
       call self%source%get_metadata(dimensions=dimensions, fill_value=self%out_of_bounds_value)
       do i = 1, size(dimensions)
-         if (associated(dimensions(i)%p, dim)) self%idim = i
+         if (dimensions(i)%p%name == self%dimension) self%idim = i
       end do
       if (self%idim == -1) then
          self%data_3d => self%source%data_3d
          self%data_2d => self%source%data_2d
          self%data_1d => self%source%data_1d
          self%data_0d => self%source%data_0d
+         return
+      end if
+
+      if (.not. associated(self%source_coordinate)) then
+         if (.not. associated(dimensions(self%idim)%p%coordinate)) call host%fatal_error('interp_initialize', &
+            'Dimension ' // trim(self%dimension) // ' does not have a default coordinate. &
+            &You need to explicitly specify the source coordinate with the source_coordinate attribute to the interp operator.')
+         self%source_coordinate => dimensions(self%idim)%p%coordinate
+      end if
+
+      interp_dimension => first_interp_dimension
+      do while (associated(interp_dimension))
+         if (compare_interp_settings(self, interp_dimension%settings)) exit
+         interp_dimension => interp_dimension%next
+      end do
+      if (associated(interp_dimension)) then
+         self%target_dimension => interp_dimension%settings%target_dimension
       else
-         if (associated(self%source%data_3d)) then
-            shape(1:3) = size(self%source%data_3d)
-            shape(self%idim) = size(self%coordinates)
-            allocate(self%result_3d(shape(1), shape(2), shape(3)))
+         i = 0
+         do
+            i = i + 1
+            write (name, '(a,i0)') trim(self%dimension), i
+            dim => field_manager%first_dimension
+            do while (associated(dim))
+               if (dim%name==name) exit
+               dim => dim%next
+            end do
+            if (associated(dim)) cycle
+            interp_dimension => first_interp_dimension
+            do while (associated(interp_dimension))
+               if (interp_dimension%settings%target_dimension%name==name) exit
+               interp_dimension => interp_dimension%next
+            end do
+            if (.not. associated(interp_dimension)) exit
+         end do
+         allocate(self%target_dimension)
+         self%target_dimension%name = name
+         self%target_dimension%length = size(self%target_coordinates)
+         allocate(interp_dimension)
+         interp_dimension%settings => self
+         interp_dimension%next => first_interp_dimension
+         first_interp_dimension => interp_dimension
+      end if
+
+      if (associated(self%source%data_3d)) then
+         extents(1:3) = shape(self%source%data_3d)
+         extents(self%idim) = size(self%target_coordinates)
+         allocate(self%result_3d(extents(1), extents(2), extents(3)))
+         if (size(self%target_coordinates) == 1) then
+            select case (self%idim)
+            case (1)
+               self%data_2d => self%result_3d(1,:,:)
+            case (2)
+               self%data_2d => self%result_3d(:,1,:)
+            case (3)
+               self%data_2d => self%result_3d(:,:,1)
+            end select
+         else
             self%data_3d => self%result_3d
-         elseif (associated(self%source%data_2d)) then
-            shape(1:2) = size(self%source%data_2d)
-            shape(self%idim) = size(self%coordinates)
-            allocate(self%result_2d(shape(1), shape(2)))
+         end if
+      elseif (associated(self%source%data_2d)) then
+         extents(1:2) = shape(self%source%data_2d)
+         extents(self%idim) = size(self%target_coordinates)
+         allocate(self%result_2d(extents(1), extents(2)))
+         if (size(self%target_coordinates) == 1) then
+            select case (self%idim)
+            case (1)
+               self%data_1d => self%result_2d(1,:)
+            case (2)
+               self%data_1d => self%result_2d(:,1)
+            end select
+         else
             self%data_2d => self%result_2d
-         elseif (associated(self%source%data_1d)) then
-            allocate(self%result_1d(size(self%coordinates)))
+         end if
+      elseif (associated(self%source%data_1d)) then
+         allocate(self%result_1d(size(self%target_coordinates)))
+         if (size(self%target_coordinates) == 1) then
+            self%data_0d => self%result_1d(1)
+         else
             self%data_1d => self%result_1d
          end if
-         call self%fill(self%out_of_bounds_value)
       end if
-      if (.not.associated(self%source_coordinate)) then
-         if (.not. associated(dim%coordinate)) call host%fatal_error('interp_initialize', 'Dimension '//trim(self%dimension)//' does not have a default coordinate. &
-            &You need to explicitly specify the source coordinate with the source_coordinate attribute to the interp operator.')
-         self%source_coordinate => dim%coordinate
+      call self%fill(self%out_of_bounds_value)
+   end subroutine
+
+   recursive subroutine interp_get_metadata(self, long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
+      class (type_interp_filter), intent(in) :: self
+      character(len=:), allocatable, optional :: long_name, units, standard_name, path
+      type (type_dimension_pointer), allocatable, intent(out), optional :: dimensions(:)
+      real(rk), intent(out), optional :: minimum, maximum, fill_value
+      type (type_attributes), optional :: attributes
+
+      integer :: idim
+
+      call self%type_filter%get_metadata(long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
+      if (present(dimensions)) then
+         do idim = 1, size(dimensions)
+            if (dimensions(idim)%p%name == self%dimension) dimensions(idim)%p => self%target_dimension
+         end do
       end if
    end subroutine
 
@@ -206,7 +301,9 @@ contains
       class (type_interp_filter), intent(inout) :: self
       logical, intent(in) :: required
       call self%source%flag_as_required(required)
-      if (associated(self%source_coordinate%used_now) .and. required) self%source_coordinate%used_now = .true.
+      if (associated(self%source_coordinate)) then
+         if (associated(self%source_coordinate%used_now) .and. required) self%source_coordinate%used_now = .true.
+      end if
       if (associated(self%offset)) then
          if (associated(self%offset%used_now) .and. required) self%offset%used_now = .true.
       end if
@@ -228,14 +325,14 @@ contains
                offset = 0._rk
                if (associated(self%offset)) offset = self%offset%data_2d(i,j)
                if (associated(self%source_coordinate%data_3d)) source_coordinate(:) = self%source_coordinate%data_3d(i,j,:)
-               call interp(self%target_coordinates(:) + offset, source_coordinate, self%source%data_3d(i,j,:), self%data_3d(i,j,:), self%out_of_bounds_value)
+               call interp(self%target_coordinates(:) + offset, source_coordinate, self%source%data_3d(i,j,:), self%result_3d(i,j,:), self%out_of_bounds_value)
             end do
          end do
       elseif (associated(self%source%data_2d)) then
       elseif (associated(self%source%data_1d)) then
          offset = 0._rk
          if (associated(self%offset)) offset = self%offset%data_0d
-         call interp(self%target_coordinates(:) + offset, self%source_coordinate%data_1d, self%source%data_1d, self%data_1d, self%out_of_bounds_value)
+         call interp(self%target_coordinates(:) + offset, self%source_coordinate%data_1d, self%source%data_1d, self%result_1d, self%out_of_bounds_value)
       end if
    end subroutine
 
@@ -257,4 +354,5 @@ contains
          f(j) = fp(i) + (x(j) - xp(i)) * slope
       end do
    end subroutine
+
 end module

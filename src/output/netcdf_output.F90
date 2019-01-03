@@ -96,27 +96,10 @@ contains
          self%reference_seconds = self%first_seconds
       end if
 
+      first_dim_id => null()
+
       ! Create NetCDF file
       iret = nf90_create(trim(self%path)//trim(self%postfix)//'.nc',NF90_CLOBBER,self%ncid); call check_err(iret)
-
-      ! Create dimensions
-      dim => self%field_manager%first_dimension
-      first_dim_id => null()
-      do while (associated(dim))
-         if (self%is_dimension_used(dim)) then
-            allocate(dim_id)
-            dim_id%output_dimension => self%get_dimension(dim)
-            dim_id%next => first_dim_id
-            first_dim_id => dim_id
-            if (dim%id==id_dim_time) then
-               length = NF90_UNLIMITED
-            else
-               length = (dim_id%output_dimension%stop-dim_id%output_dimension%start)/dim_id%output_dimension%stride+1
-            end if
-            iret = nf90_def_dim(self%ncid, trim(dim%name), length, dim_id%netcdf_dimid); call check_err(iret)
-         end if
-         dim => dim%next
-      end do
 
       ! Create recommended CF global attributes
       if ( len(trim(self%title)) .gt. 0) then
@@ -214,14 +197,26 @@ contains
       iret = nf90_enddef(self%ncid); call check_err(iret)
    contains
       integer function get_dim_id(dim)
-         type (type_dimension), target      :: dim
+         type (type_dimension), pointer     :: dim
          type (type_dimension_ids), pointer :: dim_id
-         get_dim_id = -1
          dim_id => first_dim_id
          do while (associated(dim_id))
-            if (associated(dim_id%output_dimension%source,dim)) get_dim_id = dim_id%netcdf_dimid
+            if (associated(dim_id%output_dimension%source,dim)) exit
             dim_id => dim_id%next
          end do
+         if (.not. associated(dim_id)) then
+            allocate(dim_id)
+            dim_id%output_dimension => self%get_dimension(dim)
+            dim_id%next => first_dim_id
+            first_dim_id => dim_id
+            if (dim%id==id_dim_time) then
+               length = NF90_UNLIMITED
+            else
+               length = (dim_id%output_dimension%stop-dim_id%output_dimension%start)/dim_id%output_dimension%stride+1
+            end if
+            iret = nf90_def_dim(self%ncid, trim(dim%name), length, dim_id%netcdf_dimid); call check_err(iret)
+         end if
+         get_dim_id = dim_id%netcdf_dimid
       end function
    end subroutine initialize
 

@@ -150,6 +150,7 @@ contains
          empty = .false.
          call output_field%get_metadata(dimensions=dimensions)
          do i=1,size(dimensions)
+            if (.not.associated(dimensions(i)%p)) cycle
             if (dimensions(i)%p%id/=id_dim_time) then
                output_dim => file%get_dimension(dimensions(i)%p)
                if (output_dim%stop<output_dim%start) empty = .true.
@@ -187,6 +188,7 @@ contains
          call output_field%get_metadata(dimensions=dimensions)
          allocate(output_field%coordinates(size(dimensions)))
          do i=1,size(dimensions)
+            if (.not.associated(dimensions(i)%p)) cycle
             if (.not.associated(dimensions(i)%p%coordinate)) cycle
             settings => file%create_settings()
             settings%time_method = time_method_instantaneous
@@ -639,20 +641,6 @@ contains
          end do
       end if
 
-      ! Get list with variables
-      list => mapping%get_list('variables',required=.true.,error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_group',config_error%message)
-      item => list%first
-      do while (associated(item))
-         select type (node=>item%node)
-            class is (type_dictionary)
-               call process_variable(file, node, settings)
-            class default
-               call host%fatal_error('process_group','Elements below '//trim(list%path)//' must be dictionaries.')
-         end select
-         item => item%next
-      end do
-
       ! Get operators
       list => mapping%get_list('operators',required=.false.,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_group', config_error%message)
@@ -668,6 +656,20 @@ contains
             item => item%next
          end do
       end if
+
+      ! Get list with variables
+      list => mapping%get_list('variables',required=.true.,error=config_error)
+      if (associated(config_error)) call host%fatal_error('process_group',config_error%message)
+      item => list%first
+      do while (associated(item))
+         select type (node=>item%node)
+            class is (type_dictionary)
+               call process_variable(file, node, settings)
+            class default
+               call host%fatal_error('process_group','Elements below '//trim(list%path)//' must be dictionaries.')
+         end select
+         item => item%next
+      end do
 
       ! Raise error if any keys are left unused.
       pair => mapping%first
