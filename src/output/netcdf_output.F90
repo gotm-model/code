@@ -116,7 +116,7 @@ contains
       ! Create time coordinate
       dim => self%field_manager%find_dimension(id_dim_time)
       if (self%is_dimension_used(dim)) then
-         iret = nf90_def_var(self%ncid,'time',NF90_DOUBLE,(/get_dim_id(dim)/),self%time_id); call check_err(iret)
+         iret = nf90_def_var(self%ncid,trim(dim%name),NF90_DOUBLE,(/get_dim_id(dim)/),self%time_id); call check_err(iret)
          call write_time_string(self%reference_julian,self%reference_seconds,time_string)
          iret = nf90_put_att(self%ncid,self%time_id,'long_name','time'); call check_err(iret)
          iret = nf90_put_att(self%ncid,self%time_id,'units','seconds since '//trim(time_string)); call check_err(iret)
@@ -137,9 +137,9 @@ contains
             iret = nf90_def_var(self%ncid, trim(output_field%output_name), settings%xtype, current_dim_ids, settings%varid); call check_err(iret)
             deallocate(current_dim_ids)
 
-            iret = nf90_put_att(self%ncid,settings%varid,'units',trim(units)); call check_err(iret)
-            iret = nf90_put_att(self%ncid,settings%varid,'long_name',trim(long_name)); call check_err(iret)
-            if (allocated(standard_name)) iret = nf90_put_att(self%ncid,settings%varid,'standard_name',trim(standard_name)); call check_err(iret)
+            iret = nf90_put_att(self%ncid,settings%varid,'units',units); call check_err(iret)
+            iret = nf90_put_att(self%ncid,settings%varid,'long_name',long_name); call check_err(iret)
+            if (allocated(standard_name)) iret = nf90_put_att(self%ncid,settings%varid,'standard_name',standard_name); call check_err(iret)
             if (minimum/=default_minimum) iret = put_att_typed_real(self%ncid,settings%varid,'valid_min',minimum,settings%xtype); call check_err(iret)
             if (maximum/=default_maximum) iret = put_att_typed_real(self%ncid,settings%varid,'valid_max',maximum,settings%xtype); call check_err(iret)
             if (fill_value/=default_fill_value) iret = put_att_typed_real(self%ncid,settings%varid,'_FillValue',fill_value,settings%xtype); call check_err(iret)
