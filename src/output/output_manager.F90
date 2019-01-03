@@ -644,18 +644,7 @@ contains
       ! Get operators
       list => mapping%get_list('operators',required=.false.,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_group', config_error%message)
-      if (associated(list)) then
-         item => list%first
-         do while (associated(item))
-            select type (node=>item%node)
-               class is (type_dictionary)
-                  call process_operator(node, settings, file%field_manager)
-               class default
-                  call host%fatal_error('process_group','Elements below '//trim(list%path)//' must be dictionaries.')
-            end select
-            item => item%next
-         end do
-      end if
+      if (associated(list)) call apply_operators(settings%first_operator, list, file%field_manager)
 
       ! Get list with variables
       list => mapping%get_list('variables',required=.true.,error=config_error)
@@ -745,61 +734,5 @@ contains
       end do
 
    end subroutine process_variable
-
-   subroutine process_operator(mapping, settings, field_manager)
-      class (type_dictionary), intent(in) :: mapping
-      class (type_output_variable_settings),intent(inout) :: settings
-      type (type_field_manager), intent(inout) :: field_manager
-
-      type (type_error),          pointer :: config_error
-      character(len=string_length)        :: operator_type, variable_name
-      class (type_interp_filter), pointer :: interp
-      class (type_list),          pointer :: list
-      type (type_list_item),      pointer :: list_item
-      integer :: i, n
-      logical :: success
-
-      operator_type = mapping%get_string('type', error=config_error)
-      if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
-      select case (operator_type)
-      case ('interp')
-         allocate(interp)
-         interp%dimension = mapping%get_string('dimension', error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
-         variable_name = mapping%get_string('offset', default='', error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
-         if (variable_name /= '') interp%offset => field_manager%select_for_output(trim(variable_name))
-         variable_name = mapping%get_string('source_coordinate', default='', error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
-         if (variable_name /= '') interp%source_coordinate => field_manager%select_for_output(trim(variable_name))
-         list => mapping%get_list('coordinates', required=.true., error=config_error)
-         if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
-         n = 0
-         list_item => list%first
-         do while (associated(list_item))
-            n = n + 1
-            list_item => list_item%next
-         end do
-         allocate(interp%target_coordinates(n))
-         list_item => list%first
-         do i=1,n
-            select type (node => list_item%node)
-            class is (type_scalar)
-               interp%target_coordinates(i) = node%to_real(0._rk, success)
-               if (.not. success) call host%fatal_error('process_operator', trim(node%path)//': unable to convert '//trim(node%string)//' to real.')
-               if (i > 1) then
-                  if (interp%target_coordinates(i) < interp%target_coordinates(i - 1)) call host%fatal_error('process_operator', trim(list%path)//' should be monotonically increasing.')
-               end if
-            class default
-               call host%fatal_error('process_operator', trim(node%path)//' should be a real number.')
-            end select
-            list_item => list_item%next
-         end do
-         interp%source => settings%first_operator
-         settings%first_operator => interp
-      case default
-         call host%fatal_error('process_operator', trim(mapping%path)//': operator type '//trim(operator_type)//' not recognized.')
-      end select
-   end subroutine
 
 end module

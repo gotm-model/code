@@ -2,12 +2,13 @@ module output_filters
 
    use output_manager_core
    use field_manager
+   use yaml_types
 
    implicit none
 
    private
 
-   public type_filter, type_time_filter, type_interp_filter
+   public apply_operators, type_filter, type_time_filter
 
    type, extends(type_base_output_field) :: type_filter
       class (type_base_output_field), pointer :: source => null()
@@ -42,6 +43,7 @@ module output_filters
       real(rk) :: out_of_bounds_value
       type (type_dimension), pointer :: target_dimension => null()
    contains
+      procedure :: configure        => interp_configure
       procedure :: initialize       => interp_initialize
       procedure :: get_metadata     => interp_get_metadata
       procedure :: flag_as_required => interp_flag_as_required
@@ -55,6 +57,38 @@ module output_filters
    type (type_interp_dimension), pointer, save :: first_interp_dimension => null()
 
 contains
+
+   subroutine apply_operators(field, list, field_manager)
+      class (type_base_output_field), pointer  :: field
+      class (type_list),         intent(in)    :: list
+      type (type_field_manager), intent(inout) :: field_manager
+
+      type (type_list_item),      pointer :: item
+      character(len=string_length)        :: operator_type
+      type (type_error),          pointer :: config_error
+      class (type_interp_filter), pointer :: interp
+
+      item => list%first
+      do while (associated(item))
+         select type (mapping=>item%node)
+         class is (type_dictionary)
+            operator_type = mapping%get_string('type', error=config_error)
+            if (associated(config_error)) call host%fatal_error('process_operator', config_error%message)
+            select case (operator_type)
+            case ('interp')
+               allocate(interp)
+               call interp%configure(mapping, field_manager)
+               interp%source => field
+               field => interp
+            case default
+               call host%fatal_error('apply_operators', trim(mapping%path)//': operator type '//trim(operator_type)//' not recognized.')
+            end select
+         class default
+            call host%fatal_error('apply_operators','Elements below '//trim(list%path)//' must be dictionaries.')
+         end select
+         item => item%next
+      end do
+   end subroutine
 
    recursive subroutine filter_initialize(self, field_manager)
       class (type_filter),       intent(inout), target :: self
@@ -172,6 +206,51 @@ contains
       if (any(settings1%target_coordinates(:) /= settings2%target_coordinates(:))) return
       compare_interp_settings = .true.
    end function
+
+   recursive subroutine interp_configure(self, mapping, field_manager)
+      class (type_interp_filter), intent(inout) :: self
+      class (type_dictionary),    intent(in)    :: mapping
+      type (type_field_manager),  intent(inout) :: field_manager
+
+      type (type_error),          pointer :: config_error
+      character(len=string_length)        :: variable_name
+      class (type_list),          pointer :: list
+      type (type_list_item),      pointer :: list_item
+      integer                             :: i, n
+      logical                             :: success
+
+      self%dimension = mapping%get_string('dimension', error=config_error)
+      if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
+      variable_name = mapping%get_string('offset', default='', error=config_error)
+      if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
+      if (variable_name /= '') self%offset => field_manager%select_for_output(trim(variable_name))
+      variable_name = mapping%get_string('source_coordinate', default='', error=config_error)
+      if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
+      if (variable_name /= '') self%source_coordinate => field_manager%select_for_output(trim(variable_name))
+      list => mapping%get_list('coordinates', required=.true., error=config_error)
+      if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
+      n = 0
+      list_item => list%first
+      do while (associated(list_item))
+         n = n + 1
+         list_item => list_item%next
+      end do
+      allocate(self%target_coordinates(n))
+      list_item => list%first
+      do i=1,n
+         select type (node => list_item%node)
+         class is (type_scalar)
+            self%target_coordinates(i) = node%to_real(0._rk, success)
+            if (.not. success) call host%fatal_error('interp_configure', trim(node%path)//': unable to convert '//trim(node%string)//' to real.')
+            if (i > 1) then
+               if (self%target_coordinates(i) < self%target_coordinates(i - 1)) call host%fatal_error('interp_configure', trim(list%path)//' should be monotonically increasing.')
+            end if
+         class default
+            call host%fatal_error('interp_configure', trim(node%path)//' should be a real number.')
+         end select
+         list_item => list_item%next
+      end do
+   end subroutine
 
    recursive subroutine interp_initialize(self, field_manager)
       class (type_interp_filter), intent(inout), target :: self
