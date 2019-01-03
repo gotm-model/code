@@ -91,8 +91,8 @@ module output_manager_core
       class (type_base_output_field), pointer :: next => null()
    contains
       procedure :: initialize       => base_field_initialize
-      procedure :: new_data         => field_new_data
-      procedure :: before_save      => field_before_save
+      procedure :: new_data         => base_field_new_data
+      procedure :: before_save      => base_field_before_save
       procedure :: flag_as_required => base_field_flag_as_required
       procedure :: get_metadata     => base_field_get_metadata
    end type type_base_output_field
@@ -175,6 +175,14 @@ contains
       if (present(dimensions)) allocate(dimensions(0))
    end subroutine
 
+   recursive subroutine base_field_new_data(self)
+      class (type_base_output_field), intent(inout) :: self
+   end subroutine
+
+   recursive subroutine base_field_before_save(self)
+      class (type_base_output_field), intent(inout) :: self
+   end subroutine
+
    recursive subroutine field_flag_as_required(self, required)
       class (type_output_field), intent(inout) :: self
       logical, intent(in) :: required
@@ -219,18 +227,6 @@ contains
       if (present(fill_value)) fill_value = self%source%fill_value
       if (present(standard_name) .and. self%source%standard_name /= '') standard_name = trim(self%source%standard_name)
       if (present(path) .and. associated(self%source%category)) path = trim(self%source%category%get_path())
-   end subroutine
-
-   recursive subroutine field_new_data(self)
-      class (type_base_output_field), intent(inout) :: self
-   end subroutine
-
-   recursive subroutine field_before_save(self)
-      class (type_base_output_field), intent(inout) :: self
-   end subroutine
-
-   recursive subroutine field_after_save(self)
-      class (type_base_output_field), intent(inout) :: self
    end subroutine
 
    subroutine configure(self,mapping)
