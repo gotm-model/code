@@ -12,7 +12,7 @@ module output_operators_interp
    public type_interp_operator
 
    type, extends(type_base_operator) :: type_interp_operator
-      integer :: idim = -1
+      integer                      :: idim = -1
       character(len=string_length) :: dimension
       real(rk), allocatable        :: target_coordinates(:)
       type (type_field), pointer   :: source_coordinate => null()
@@ -30,8 +30,8 @@ module output_operators_interp
    end type
 
    type type_interp_dimension
-      class (type_interp_operator),   pointer :: settings => null()
-      type (type_interp_dimension), pointer :: next => null()
+      class (type_interp_operator), pointer :: settings => null()
+      type (type_interp_dimension), pointer :: next     => null()
    end type
    type (type_interp_dimension), pointer, save :: first_interp_dimension => null()
 

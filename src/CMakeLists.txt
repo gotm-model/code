@@ -227,6 +227,7 @@ add_library(output_manager
             output/operators/time_average.F90
             output/operators/interp.F90
             )
+source_group(operators REGULAR_EXPRESSION output/operators)
 target_link_libraries(output_manager util)
 if(GOTM_USE_FABM)
   target_link_libraries(output_manager ${FABM_LIBRARIES})
