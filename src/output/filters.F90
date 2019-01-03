@@ -40,7 +40,8 @@ module output_filters
       real(rk), allocatable        :: target_coordinates(:)
       type (type_field), pointer   :: source_coordinate => null()
       type (type_field), pointer   :: offset => null()
-      real(rk) :: out_of_bounds_value
+      real(rk)                     :: out_of_bounds_value
+      real(rk)                     :: offset_scale = 1._rk
       type (type_dimension), pointer :: target_dimension => null()
    contains
       procedure :: configure        => interp_configure
@@ -223,7 +224,13 @@ contains
       if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
       variable_name = mapping%get_string('offset', default='', error=config_error)
       if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
-      if (variable_name /= '') self%offset => field_manager%select_for_output(trim(variable_name))
+      if (variable_name /= '') then
+         if (variable_name(1:1) == '-') then
+            self%offset_scale = -1._rk
+            variable_name = variable_name(2:)
+         end if
+         self%offset => field_manager%select_for_output(trim(variable_name))
+      end if
       variable_name = mapping%get_string('source_coordinate', default='', error=config_error)
       if (associated(config_error)) call host%fatal_error('interp_configure', config_error%message)
       if (variable_name /= '') self%source_coordinate => field_manager%select_for_output(trim(variable_name))
@@ -417,7 +424,7 @@ contains
          do j=1,size(self%source_coordinate%data_3d, 2)
             do i=1, size(self%source_coordinate%data_3d, 1)
                offset = 0._rk
-               if (associated(self%offset)) offset = self%offset%data_2d(i,j)
+               if (associated(self%offset)) offset = self%offset_scale * self%offset%data_2d(i,j)
                if (associated(self%source_coordinate%data_3d)) source_coordinate(:) = self%source_coordinate%data_3d(i,j,:)
                call interp(self%target_coordinates(:) + offset, source_coordinate, self%source%data_3d(i,j,:), self%result_3d(i,j,:), self%out_of_bounds_value)
             end do
@@ -425,7 +432,7 @@ contains
       elseif (associated(self%source%data_2d)) then
       elseif (associated(self%source%data_1d)) then
          offset = 0._rk
-         if (associated(self%offset)) offset = self%offset%data_0d
+         if (associated(self%offset)) offset = self%offset_scale * self%offset%data_0d
          call interp(self%target_coordinates(:) + offset, self%source_coordinate%data_1d, self%source%data_1d, self%result_1d, self%out_of_bounds_value)
       end if
    end subroutine
