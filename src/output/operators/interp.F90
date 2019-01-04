@@ -55,6 +55,7 @@ contains
       type (type_field_manager),    intent(inout) :: field_manager
 
       type (type_error),          pointer :: config_error
+      type (type_dimension),      pointer :: dim
       character(len=string_length)        :: variable_name
       class (type_list),          pointer :: list
       type (type_list_item),      pointer :: list_item
@@ -63,6 +64,16 @@ contains
 
       self%dimension = mapping%get_string('dimension', error=config_error)
       if (associated(config_error)) call host%fatal_error('type_interp_operator%configure', config_error%message)
+
+      ! Verify target dimension has been registered with field manager
+      dim => field_manager%first_dimension
+      do while (associated(dim))
+         if (dim%name==self%dimension) exit
+         dim => dim%next
+      end do
+      if (.not. associated(dim)) call host%fatal_error('type_interp_operator%initialize', &
+         'Dimension "'//trim(self%dimension)//'" has not been registered with the field manager.')
+
       self%out_of_bounds_treatment = mapping%get_integer('out_of_bounds_treatment', default=1, error=config_error)
       if (associated(config_error)) call host%fatal_error('type_interp_operator%configure', config_error%message)
       variable_name = mapping%get_string('offset', default='', error=config_error)
@@ -114,14 +125,6 @@ contains
       character(len=string_length) :: name
 
       call self%type_base_operator%initialize(field_manager)
-
-      dim => field_manager%first_dimension
-      do while (associated(dim))
-         if (dim%name==self%dimension) exit
-         dim => dim%next
-      end do
-      if (.not. associated(dim)) call host%fatal_error('type_interp_operator%initialize', &
-         'Dimension "'//trim(self%dimension)//'" has not been registered with the field manager.')
 
       call self%source%get_metadata(dimensions=dimensions, fill_value=self%out_of_bounds_value)
       do i = 1, size(dimensions)
