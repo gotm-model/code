@@ -48,7 +48,7 @@ contains
 
    recursive subroutine flag_as_required(self, required)
       class (type_time_average_operator), intent(inout) :: self
-      logical,                            intent(in) :: required
+      logical,                            intent(in)    :: required
 
       call self%source%flag_as_required(.true.)
    end subroutine

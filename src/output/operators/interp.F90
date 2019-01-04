@@ -49,7 +49,7 @@ contains
       compare_interp_settings = .true.
    end function
 
-   recursive subroutine configure(self, mapping, field_manager)
+   subroutine configure(self, mapping, field_manager)
       class (type_interp_operator), intent(inout) :: self
       class (type_dictionary),      intent(in)    :: mapping
       type (type_field_manager),    intent(inout) :: field_manager
@@ -114,6 +114,14 @@ contains
       character(len=string_length) :: name
 
       call self%type_base_operator%initialize(field_manager)
+
+      dim => field_manager%first_dimension
+      do while (associated(dim))
+         if (dim%name==self%dimension) exit
+         dim => dim%next
+      end do
+      if (.not. associated(dim)) call host%fatal_error('type_interp_operator%initialize', &
+         'Dimension "'//trim(self%dimension)//'" has not been registered with the field manager.')
 
       call self%source%get_metadata(dimensions=dimensions, fill_value=self%out_of_bounds_value)
       do i = 1, size(dimensions)
@@ -243,8 +251,9 @@ contains
 
    recursive subroutine flag_as_required(self, required)
       class (type_interp_operator), intent(inout) :: self
-      logical, intent(in) :: required
-      call self%source%flag_as_required(required)
+      logical,                      intent(in)    :: required
+
+      call self%type_base_operator%flag_as_required(required)
       if (associated(self%source_coordinate)) then
          if (associated(self%source_coordinate%used_now) .and. required) self%source_coordinate%used_now = .true.
       end if

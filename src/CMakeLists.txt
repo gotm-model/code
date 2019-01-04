@@ -226,6 +226,7 @@ add_library(output_manager
             output/operators/base.F90
             output/operators/time_average.F90
             output/operators/interp.F90
+            output/operators/slice.F90
             )
 source_group(operators REGULAR_EXPRESSION output/operators)
 target_link_libraries(output_manager util)

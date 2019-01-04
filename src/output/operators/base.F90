@@ -17,14 +17,22 @@ module output_operators_base
       real(rk), allocatable :: result_2d(:,:)
       real(rk), allocatable :: result_3d(:,:,:)
    contains
+      procedure :: configure
       procedure :: initialize
       procedure :: new_data
       procedure :: before_save
       procedure :: get_metadata
+      procedure :: flag_as_required
       procedure :: fill
    end type
 
-contains
+   contains
+
+   subroutine configure(self, mapping, field_manager)
+      class (type_base_operator), intent(inout) :: self
+      class (type_dictionary),    intent(in)    :: mapping
+      type (type_field_manager),  intent(inout) :: field_manager
+   end subroutine
 
    recursive subroutine initialize(self, field_manager)
       class (type_base_operator), intent(inout), target :: self
@@ -51,6 +59,13 @@ contains
       real(rk), intent(out), optional :: minimum, maximum, fill_value
       type (type_attributes), optional :: attributes
       call self%source%get_metadata(long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
+   end subroutine
+
+   recursive subroutine flag_as_required(self, required)
+      class (type_base_operator), intent(inout) :: self
+      logical,                    intent(in)    :: required
+
+      call self%source%flag_as_required(required)
    end subroutine
 
    subroutine fill(self, value)
