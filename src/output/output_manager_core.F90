@@ -146,7 +146,6 @@ module output_manager_core
       procedure :: finalize
       procedure :: create_settings
       procedure :: is_dimension_used
-      procedure :: find
       procedure :: append
       procedure :: get_dimension
       procedure :: append_category
@@ -324,33 +323,23 @@ contains
       is_dimension_used = .false.
    end function is_dimension_used
 
-   function find(self,field) result(output_field)
-      class (type_file),intent(inout) :: self
-      type (type_field), target       :: field
-      class (type_base_output_field),pointer :: output_field
+   subroutine append(self, output_field, ignore_if_exists, initialize)
+      class (type_file), intent(inout)        :: self
+      class (type_base_output_field), pointer :: output_field
+      logical,           intent(in)           :: ignore_if_exists, initialize
 
-      output_field => self%first_field
-      do while (associated(output_field))
-         !if (associated(output_field%source,field)) return
-         output_field => output_field%next
-      end do
-   end function find
-
-   subroutine append(self,output_field)
-      class (type_file),intent(inout)    :: self
-      class (type_base_output_field), target :: output_field
-      class (type_base_output_field),pointer  :: current
+      class (type_base_output_field), pointer :: current
 
       current => self%first_field
       do while (associated(current))
-         if (current%output_name==output_field%output_name) then
-            !if (current%settings%time_method==output_field%settings%time_method .and. associated(current%source,output_field%source)) then
-               ! The exact same output field already exists. Deallocate the new field and return a pointer to the old.
-               !deallocate(output_field)
-               !output_field => current
-               return
-            !end if
-            call host%fatal_error('append','A different output field with name "'//trim(output_field%output_name)//'" already exists.')
+         if (current%output_name == output_field%output_name) then
+            if (ignore_if_exists) then
+               deallocate(output_field)
+               output_field => current
+            else
+               call host%fatal_error('append', 'A different output field with name "'//trim(output_field%output_name)//'" already exists.')
+            end if
+            return
          end if
          current => current%next
       end do
@@ -365,6 +354,7 @@ contains
          self%first_field => output_field
       end if
       output_field%next => null()
+      if (initialize) call output_field%initialize(self%field_manager)
    end subroutine append
 
    subroutine append_category(self,output_category)

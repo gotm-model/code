@@ -59,9 +59,6 @@ contains
       class (type_output_field),pointer :: output_field
       class (type_time_average_operator), pointer :: time_filter
 
-      generic_field => file%find(field)
-      if (associated(generic_field)) return
-
       allocate(output_field)
       output_field%settings => settings
       output_field%source => field
@@ -104,12 +101,13 @@ contains
 
    subroutine collect_from_categories(file)
       class (type_file), intent(inout) :: file
-      class (type_output_category), pointer :: output_category
-      class (type_base_output_field),pointer :: output_field
-      type (type_field_set) :: set
-      class (type_field_set_member), pointer :: member, next_member
+
+      class (type_output_category),          pointer :: output_category
+      class (type_base_output_field),        pointer :: output_field, output_field2
+      type (type_field_set)                          :: set
+      class (type_field_set_member),         pointer :: member, next_member
       class (type_output_variable_settings), pointer :: settings
-      type (type_dictionary) :: mapping
+      type (type_dictionary)                         :: mapping
 
       output_category => file%first_category
       do while (associated(output_category))
@@ -124,7 +122,7 @@ contains
             call settings%initialize(mapping, output_category%settings)
             output_field => create_field(file, settings, member%field)
             output_field%output_name = trim(output_category%prefix) // trim(output_field%output_name) // trim(output_category%postfix)
-            call file%append(output_field)
+            call file%append(output_field, ignore_if_exists=.true., initialize=.false.)
             next_member => member%next
             deallocate(member)
             member => next_member
@@ -195,7 +193,7 @@ contains
             settings => file%create_settings()
             settings%time_method = time_method_instantaneous
             output_field%coordinates(i)%p => create_field(file, settings, dimensions(i)%p%coordinate)
-            call file%append(output_field%coordinates(i)%p)
+            call file%append(output_field%coordinates(i)%p, ignore_if_exists=.true., initialize=.true.)
          end do
          output_field => output_field%next
       end do
@@ -219,15 +217,15 @@ contains
          ! Remove empty variables (with one or more zero-length dimensions)
          call filter_variables(file)
 
-         ! Add any missing coordinate variables
-         call add_coordinate_variables(file)
-
          ! First check whether all fields included in this file have been registered.
          output_field => file%first_field
          do while (associated(output_field))
             call output_field%initialize(file%field_manager)
             output_field => output_field%next
          end do
+
+         ! Add any missing coordinate variables
+         call add_coordinate_variables(file)
 
          ! If we do not have a start time yet, use current.
          if (file%first_julian <= 0) then
@@ -721,7 +719,7 @@ contains
          call output_field%settings%initialize(mapping, default_settings)
          field => file%field_manager%select_for_output(source_name)
          output_field => create_field(file, output_field%settings, field)
-         call file%append(output_field)
+         call file%append(output_field, ignore_if_exists=.false., initialize=.false.)
 
          ! Name of output variable (may differ from source name)
          output_field%output_name = mapping%get_string('name',default=source_name,error=config_error)

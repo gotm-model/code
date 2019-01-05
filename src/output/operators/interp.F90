@@ -14,6 +14,7 @@ module output_operators_interp
    type, extends(type_base_operator) :: type_interp_operator
       integer                      :: idim = -1
       character(len=string_length) :: dimension
+      character(len=string_length) :: target_dimension_name
       real(rk), allocatable        :: target_coordinates(:)
       type (type_field), pointer   :: source_coordinate => null()
       type (type_field), pointer   :: offset => null()
@@ -111,6 +112,8 @@ contains
          end select
          list_item => list_item%next
       end do
+      self%target_dimension_name = mapping%get_string('target_dimension', default='', error=config_error)
+      if (associated(config_error)) call host%fatal_error('type_interp_operator%configure', config_error%message)
    end subroutine
 
    recursive subroutine initialize(self, field_manager)
@@ -122,7 +125,6 @@ contains
       type (type_interp_dimension), pointer :: interp_dimension
       integer :: extents(3)
       integer :: i
-      character(len=string_length) :: name
 
       call self%type_base_operator%initialize(field_manager)
 
@@ -153,26 +155,40 @@ contains
       if (associated(interp_dimension)) then
          self%target_dimension => interp_dimension%settings%target_dimension
       else
-         i = 0
-         do
-            i = i + 1
-            write (name, '(a,i0)') trim(self%dimension), i
-            dim => field_manager%first_dimension
-            do while (associated(dim))
-               if (dim%name==name) exit
-               dim => dim%next
+         if (self%target_dimension_name == '') then
+            i = 0
+            do
+               i = i + 1
+               write (self%target_dimension_name, '(a,i0)') trim(self%dimension), i
+               dim => field_manager%first_dimension
+               do while (associated(dim))
+                  if (dim%name == self%target_dimension_name) exit
+                  dim => dim%next
+               end do
+               if (associated(dim)) cycle
+               interp_dimension => first_interp_dimension
+               do while (associated(interp_dimension))
+                  if (interp_dimension%settings%target_dimension%name == self%target_dimension_name) exit
+                  interp_dimension => interp_dimension%next
+               end do
+               if (.not. associated(interp_dimension)) exit
             end do
-            if (associated(dim)) cycle
-            interp_dimension => first_interp_dimension
-            do while (associated(interp_dimension))
-               if (interp_dimension%settings%target_dimension%name==name) exit
-               interp_dimension => interp_dimension%next
-            end do
-            if (.not. associated(interp_dimension)) exit
-         end do
+         end if
          allocate(self%target_dimension)
-         self%target_dimension%name = name
+         self%target_dimension%name = self%target_dimension_name
          self%target_dimension%length = size(self%target_coordinates)
+         allocate(self%target_dimension%coordinate)
+         if (self%target_dimension%length > 1) then
+            self%target_dimension%coordinate%data_1d => self%target_coordinates
+         else
+            self%target_dimension%coordinate%data_0d => self%target_coordinates(1)
+         end if
+         self%target_dimension%coordinate%status = status_registered_with_data
+         self%target_dimension%coordinate%name = self%target_dimension_name
+         self%target_dimension%coordinate%long_name = trim(self%source_coordinate%long_name) // ' created by interp'
+         self%target_dimension%coordinate%units = self%source_coordinate%units
+         allocate(self%target_dimension%coordinate%dimensions(1))
+         self%target_dimension%coordinate%dimensions(1)%p => self%target_dimension
          allocate(interp_dimension)
          interp_dimension%settings => self
          interp_dimension%next => first_interp_dimension
