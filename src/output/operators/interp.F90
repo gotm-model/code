@@ -333,10 +333,10 @@ contains
          end do
          if (out_of_bounds_treatment == 1) then
             f(1:jstart-1) = out_of_bounds_value
-            f(1:jstop+1) = out_of_bounds_value
+            f(jstop+1:n) = out_of_bounds_value
          else
             f(1:jstart-1) = fp(jstart)
-            f(1:jstop+1) = fp(jstop)
+            f(jstop+1:n) = fp(jstop)
          end if
       end if
 
