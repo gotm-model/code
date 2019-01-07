@@ -15,6 +15,8 @@ module output_operators_interp
       integer                      :: idim = -1
       character(len=string_length) :: dimension
       character(len=string_length) :: target_dimension_name
+      character(len=string_length) :: target_long_name
+      character(len=string_length) :: target_standard_name
       real(rk), allocatable        :: target_coordinates(:)
       type (type_field), pointer   :: source_coordinate => null()
       type (type_field), pointer   :: offset => null()
@@ -114,6 +116,10 @@ contains
       end do
       self%target_dimension_name = mapping%get_string('target_dimension', default='', error=config_error)
       if (associated(config_error)) call host%fatal_error('type_interp_operator%configure', config_error%message)
+      self%target_long_name = mapping%get_string('target_long_name', default='', error=config_error)
+      if (associated(config_error)) call host%fatal_error('type_interp_operator%configure', config_error%message)
+      self%target_standard_name = mapping%get_string('target_standard_name', default='', error=config_error)
+      if (associated(config_error)) call host%fatal_error('type_interp_operator%configure', config_error%message)
    end subroutine
 
    recursive subroutine initialize(self, field_manager)
@@ -139,6 +145,8 @@ contains
          self%data_0d => self%source%data_0d
          return
       end if
+      if (self%out_of_bounds_treatment == 1 .and. self%out_of_bounds_value == default_fill_value) &
+         call host%fatal_error('type_interp_operator%initialize', 'Cannot use out_of_bounds_value=1 because ' // trim(self%source%output_name) // ' does not have fill_value set.')
 
       if (.not. associated(self%source_coordinate)) then
          if (.not. associated(dimensions(self%idim)%p%coordinate)) call host%fatal_error('type_interp_operator%initialize', &
@@ -185,7 +193,18 @@ contains
          end if
          self%target_dimension%coordinate%status = status_registered_with_data
          self%target_dimension%coordinate%name = self%target_dimension_name
-         self%target_dimension%coordinate%long_name = trim(self%source_coordinate%long_name) // ' created by interp'
+         if (self%target_long_name /= '') then
+            self%target_dimension%coordinate%long_name = trim(self%target_long_name)
+         elseif (.not. associated(self%offset)) then
+            self%target_dimension%coordinate%long_name = trim(self%source_coordinate%long_name)
+         else
+            self%target_dimension%coordinate%long_name = trim(self%source_coordinate%long_name) //  ' relative to ' // trim(self%offset%long_name)
+         end if
+         if (self%target_standard_name /= '') then
+            self%target_dimension%coordinate%standard_name = trim(self%target_standard_name)
+         elseif (.not. associated(self%offset)) then
+            self%target_dimension%coordinate%standard_name = trim(self%source_coordinate%standard_name)
+         end if
          self%target_dimension%coordinate%units = self%source_coordinate%units
          allocate(self%target_dimension%coordinate%dimensions(1))
          self%target_dimension%coordinate%dimensions(1)%p => self%target_dimension
@@ -315,39 +334,51 @@ contains
       integer,  intent(in) :: out_of_bounds_treatment
       real(rk), intent(in) :: out_of_bounds_value
 
-      integer :: i, j, n, jstart, jstop
+      integer :: i, j, istart, istop
       real(rk) :: slope
 
-      n = size(xp)
-      if (out_of_bounds_treatment == 3) then
-         ! Extrapolate
-         jstart = 1
-         jstop = size(x)
-      else
-         ! Use specified out-of-bounds value (out_of_bounds_treatment = 1) or nearest (out_of_bounds_treatment = 2)
-         do jstart = 1, size(x)
-            if (x(jstart) >= xp(1)) exit
-         end do
-         do jstop = size(x), jstart, -1
-            if (x(jstop) <= xp(n)) exit
-         end do
-         if (out_of_bounds_treatment == 1) then
-            f(1:jstart-1) = out_of_bounds_value
-            f(jstop+1:) = out_of_bounds_value
-         else
-            f(1:jstart-1) = fp(jstart)
-            f(jstop+1:) = fp(jstop)
+      ! Find first non-masked source value
+      istart = 0
+      do i = 1, size(xp)
+         if (fp(i) /= out_of_bounds_value) then
+            istart = i
+            exit
          end if
+      end do
+
+      ! If all source values are masked, return missing value
+      if (istart == 0) then
+         f(:) = out_of_bounds_value
+         return
       end if
 
-      i = 1
-      do j = jstart, jstop
-         do while (i + 1 < n)
-            if (xp(i + 1) >= x(j)) exit
-            i = i + 1
-         end do
-         slope = (fp(i + 1) - fp(i)) / (xp(i + 1) - xp(i))
-         f(j) = fp(i) + (x(j) - xp(i)) * slope
+      ! Find last non-masked source value
+      do istop = size(xp), istart, -1
+         if (fp(istop) /= out_of_bounds_value) exit
+      end do
+
+      i = istart
+      do j = 1, size(x)
+         if (out_of_bounds_treatment /= 3 .and. (x(j) < xp(istart) .or. x(j) > xp(istop))) then
+            if (out_of_bounds_treatment == 1) then
+               ! Use missing value
+               f(j) = out_of_bounds_value
+            else
+               ! Use nearest valid value
+               if (x(j) < xp(istart)) then
+                  f(j) = fp(istart)
+               else
+                  f(j) = fp(istop)
+               end if
+            end if
+         else
+            do while (i + 1 < istop)
+               if (xp(i + 1) >= x(j)) exit
+               i = i + 1
+            end do
+            slope = (fp(i + 1) - fp(i)) / (xp(i + 1) - xp(i))
+            f(j) = fp(i) + (x(j) - xp(i)) * slope
+         end if
       end do
    end subroutine
 
