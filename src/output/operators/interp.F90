@@ -316,7 +316,7 @@ contains
       real(rk), intent(in) :: out_of_bounds_value
 
       integer :: i, j, n, jstart, jstop
-      real(rk) :: extreme_value, slope
+      real(rk) :: slope
 
       n = size(xp)
       if (out_of_bounds_treatment == 3) then
@@ -325,17 +325,19 @@ contains
          jstop = size(x)
       else
          ! Use specified out-of-bounds value (out_of_bounds_treatment = 1) or nearest (out_of_bounds_treatment = 2)
-         extreme_value = out_of_bounds_value
-         if (out_of_bounds_treatment == 2) extreme_value = fp(1)
          do jstart = 1, size(x)
             if (x(jstart) >= xp(1)) exit
-            f(jstart) = extreme_value
          end do
-         if (out_of_bounds_treatment == 2) extreme_value = fp(n)
          do jstop = size(x), jstart, -1
             if (x(jstop) <= xp(n)) exit
-            f(jstop) = extreme_value
          end do
+         if (out_of_bounds_treatment == 1) then
+            f(1:jstart-1) = out_of_bounds_value
+            f(1:jstop+1) = out_of_bounds_value
+         else
+            f(1:jstart-1) = fp(jstart)
+            f(1:jstop+1) = fp(jstop)
+         end if
       end if
 
       i = 1
