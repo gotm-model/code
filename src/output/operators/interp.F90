@@ -13,13 +13,16 @@ module output_operators_interp
 
    type, extends(type_base_operator) :: type_interp_operator
       integer                      :: idim = -1
+      integer                      :: idatadim = -1
       character(len=string_length) :: dimension
       character(len=string_length) :: target_dimension_name
       character(len=string_length) :: target_long_name
       character(len=string_length) :: target_standard_name
       real(rk), allocatable        :: target_coordinates(:)
-      type (type_field), pointer   :: source_coordinate => null()
-      type (type_field), pointer   :: offset => null()
+      type (type_field), pointer   :: source_field => null()
+      type (type_field), pointer   :: offset_field => null()
+      class (type_base_output_field), pointer :: source_coordinate => null()
+      class (type_base_output_field), pointer :: offset => null()
       integer                      :: out_of_bounds_treatment = 1
       real(rk)                     :: out_of_bounds_value
       real(rk)                     :: offset_scale = 1._rk
@@ -27,7 +30,6 @@ module output_operators_interp
    contains
       procedure :: configure
       procedure :: initialize
-      procedure :: get_metadata
       procedure :: flag_as_required
       procedure :: before_save
    end type
@@ -86,11 +88,11 @@ contains
             self%offset_scale = -1._rk
             variable_name = variable_name(2:)
          end if
-         self%offset => field_manager%select_for_output(trim(variable_name))
+         self%offset_field => field_manager%select_for_output(trim(variable_name))
       end if
       variable_name = mapping%get_string('source_coordinate', default='', error=config_error)
       if (associated(config_error)) call host%fatal_error('type_interp_operator%configure', config_error%message)
-      if (variable_name /= '') self%source_coordinate => field_manager%select_for_output(trim(variable_name))
+      if (variable_name /= '') self%source_field => field_manager%select_for_output(trim(variable_name))
       list => mapping%get_list('coordinates', required=.true., error=config_error)
       if (associated(config_error)) call host%fatal_error('type_interp_operator%configure', config_error%message)
       n = 0
@@ -129,30 +131,43 @@ contains
       type (type_dimension), pointer :: dim
       type (type_dimension_pointer), allocatable :: dimensions(:)
       type (type_interp_dimension), pointer :: interp_dimension
-      integer :: extents(3)
+      character(len=:), allocatable :: long_name, units, standard_name, long_name2
+      integer, allocatable :: extents(:)
       integer :: i
 
       call self%type_base_operator%initialize(field_manager)
+      if (self%source%data%is_empty()) return
 
       call self%source%get_metadata(dimensions=dimensions, fill_value=self%out_of_bounds_value)
       do i = 1, size(dimensions)
          if (dimensions(i)%p%name == self%dimension) self%idim = i
       end do
       if (self%idim == -1) then
-         self%data_3d => self%source%data_3d
-         self%data_2d => self%source%data_2d
-         self%data_1d => self%source%data_1d
-         self%data_0d => self%source%data_0d
+         self%data = self%source%data
          return
       end if
+      if (dimensions(self%idim)%p%length == 1) call host%fatal_error('type_interp_operator%initialize', &
+         'Cannot use interp on dimension ' // trim(self%dimension) // ' because it has length 1.')
       if (self%out_of_bounds_treatment == 1 .and. self%out_of_bounds_value == default_fill_value) &
          call host%fatal_error('type_interp_operator%initialize', 'Cannot use out_of_bounds_value=1 because ' // trim(self%source%output_name) // ' does not have fill_value set.')
 
-      if (.not. associated(self%source_coordinate)) then
+      ! Data dim is idim with singletons removed
+      self%idatadim = 0
+      do i = 1, self%idim
+         if (dimensions(i)%p%length > 1) self%idatadim = self%idatadim + 1
+      end do
+
+      if (.not. associated(self%source_field)) then
          if (.not. associated(dimensions(self%idim)%p%coordinate)) call host%fatal_error('type_interp_operator%initialize', &
             'Dimension ' // trim(self%dimension) // ' does not have a default coordinate. &
             &You need to explicitly specify the source coordinate with the source_coordinate attribute to the interp operator.')
-         self%source_coordinate => dimensions(self%idim)%p%coordinate
+         self%source_field => dimensions(self%idim)%p%coordinate
+      end if
+      self%source_coordinate => self%source%get_field(self%source_field)
+      call self%source_coordinate%initialize(field_manager)
+      if (associated(self%offset_field)) then
+         self%offset => self%source%get_field(self%offset_field)
+         call self%offset%initialize(field_manager)
       end if
 
       interp_dimension => first_interp_dimension
@@ -186,26 +201,24 @@ contains
          self%target_dimension%name = self%target_dimension_name
          self%target_dimension%length = size(self%target_coordinates)
          allocate(self%target_dimension%coordinate)
-         if (self%target_dimension%length > 1) then
-            self%target_dimension%coordinate%data_1d => self%target_coordinates
-         else
-            self%target_dimension%coordinate%data_0d => self%target_coordinates(1)
-         end if
+         call self%target_dimension%coordinate%data%set(self%target_coordinates)
          self%target_dimension%coordinate%status = status_registered_with_data
          self%target_dimension%coordinate%name = self%target_dimension_name
+         call self%source_coordinate%get_metadata(long_name=long_name, units=units, standard_name=standard_name)
          if (self%target_long_name /= '') then
             self%target_dimension%coordinate%long_name = trim(self%target_long_name)
          elseif (.not. associated(self%offset)) then
-            self%target_dimension%coordinate%long_name = trim(self%source_coordinate%long_name)
+            self%target_dimension%coordinate%long_name = long_name
          else
-            self%target_dimension%coordinate%long_name = trim(self%source_coordinate%long_name) //  ' relative to ' // trim(self%offset%long_name)
+            call self%offset%get_metadata(long_name=long_name2)
+            self%target_dimension%coordinate%long_name = long_name // ' relative to ' // long_name2
          end if
          if (self%target_standard_name /= '') then
             self%target_dimension%coordinate%standard_name = trim(self%target_standard_name)
          elseif (.not. associated(self%offset)) then
-            self%target_dimension%coordinate%standard_name = trim(self%source_coordinate%standard_name)
+            self%target_dimension%coordinate%standard_name = standard_name
          end if
-         self%target_dimension%coordinate%units = self%source_coordinate%units
+         self%target_dimension%coordinate%units = units
          allocate(self%target_dimension%coordinate%dimensions(1))
          self%target_dimension%coordinate%dimensions(1)%p => self%target_dimension
          allocate(interp_dimension)
@@ -214,77 +227,26 @@ contains
          first_interp_dimension => interp_dimension
       end if
 
-      select case (self%source_coordinate%status)
-      case (status_not_registered)
-         call host%fatal_error('type_interp_operator%initialize', 'Source coordinate "'//trim(self%source_coordinate%name)//'" has not been registered with field manager.')
-      case (status_registered_no_data)
-         call host%fatal_error('type_interp_operator%initialize', 'Data for source coordinate "'//trim(self%source_coordinate%name)//'" have not been sent to field manager.')
-      end select
-      if (associated(self%offset)) then
-         select case (self%offset%status)
-         case (status_not_registered)
-            call host%fatal_error('type_interp_operator%initialize', 'Offset "'//trim(self%offset%name)//'" has not been registered with field manager.')
-         case (status_registered_no_data)
-            call host%fatal_error('type_interp_operator%initialize', 'Data for offset "'//trim(self%offset%name)//'" have not been sent to field manager.')
-         end select
-      end if
+      allocate(self%dimensions(size(dimensions)))
+      self%dimensions(:) = dimensions
+      self%dimensions(self%idim)%p => self%target_dimension
 
-      if (associated(self%source%data_3d)) then
-         extents(1:3) = shape(self%source%data_3d)
-         extents(self%idim) = size(self%target_coordinates)
+      call self%source%data%get_extents(extents)
+      extents(self%idatadim) = size(self%target_coordinates)
+      select case (size(extents))
+      case (3)
+         if (self%idatadim /= 3) call host%fatal_error('type_interp_operator%initialize', 'interp can currently only operate along 3rd dimension of 3D arrays.')
          allocate(self%result_3d(extents(1), extents(2), extents(3)))
-         if (size(self%target_coordinates) == 1) then
-            select case (self%idim)
-            case (1)
-               self%data_2d => self%result_3d(1,:,:)
-            case (2)
-               self%data_2d => self%result_3d(:,1,:)
-            case (3)
-               self%data_2d => self%result_3d(:,:,1)
-            end select
-         else
-            self%data_3d => self%result_3d
-         end if
-      elseif (associated(self%source%data_2d)) then
-         extents(1:2) = shape(self%source%data_2d)
-         extents(self%idim) = size(self%target_coordinates)
+         call self%data%set(self%result_3d)
+      case (2)
+         if (self%idatadim /= 2) call host%fatal_error('type_interp_operator%initialize', 'interp can currently only operate along 2nd dimension of 2D arrays.')
          allocate(self%result_2d(extents(1), extents(2)))
-         if (size(self%target_coordinates) == 1) then
-            select case (self%idim)
-            case (1)
-               self%data_1d => self%result_2d(1,:)
-            case (2)
-               self%data_1d => self%result_2d(:,1)
-            end select
-         else
-            self%data_2d => self%result_2d
-         end if
-      elseif (associated(self%source%data_1d)) then
+         call self%data%set(self%result_2d)
+      case (1)
          allocate(self%result_1d(size(self%target_coordinates)))
-         if (size(self%target_coordinates) == 1) then
-            self%data_0d => self%result_1d(1)
-         else
-            self%data_1d => self%result_1d
-         end if
-      end if
+         call self%data%set(self%result_1d)
+      end select
       call self%fill(self%out_of_bounds_value)
-   end subroutine
-
-   recursive subroutine get_metadata(self, long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
-      class (type_interp_operator),               intent(in) :: self
-      character(len=:),              allocatable, optional :: long_name, units, standard_name, path
-      type (type_dimension_pointer), allocatable, intent(out), optional :: dimensions(:)
-      real(rk), intent(out), optional :: minimum, maximum, fill_value
-      type (type_attributes), optional :: attributes
-
-      integer :: idim
-
-      call self%type_base_operator%get_metadata(long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
-      if (present(dimensions)) then
-         do idim = 1, size(dimensions)
-            if (dimensions(idim)%p%name == self%dimension) dimensions(idim)%p => self%target_dimension
-         end do
-      end if
    end subroutine
 
    recursive subroutine flag_as_required(self, required)
@@ -292,12 +254,8 @@ contains
       logical,                      intent(in)    :: required
 
       call self%type_base_operator%flag_as_required(required)
-      if (associated(self%source_coordinate)) then
-         if (associated(self%source_coordinate%used_now) .and. required) self%source_coordinate%used_now = .true.
-      end if
-      if (associated(self%offset)) then
-         if (associated(self%offset%used_now) .and. required) self%offset%used_now = .true.
-      end if
+      if (associated(self%source_coordinate)) call self%source_coordinate%flag_as_required(required)
+      if (associated(self%offset)) call self%offset%flag_as_required(required)
    end subroutine
 
    recursive subroutine before_save(self)
@@ -309,22 +267,30 @@ contains
 
       call self%type_base_operator%before_save()
       if (self%idim == -1) return
-      if (associated(self%source%data_3d)) then
-         allocate(source_coordinate(size(self%source%data_3d, self%idim)))
-         if (associated(self%source_coordinate%data_1d)) source_coordinate(:) = self%source_coordinate%data_1d
-         do j=1,size(self%source_coordinate%data_3d, 2)
-            do i=1, size(self%source_coordinate%data_3d, 1)
+      if (associated(self%source%data%p3d)) then
+         allocate(source_coordinate(size(self%source%data%p3d, self%idatadim)))
+         if (associated(self%source_coordinate%data%p1d)) source_coordinate(:) = self%source_coordinate%data%p1d
+         do j=1,size(self%source%data%p3d, 2)
+            do i=1, size(self%source%data%p3d, 1)
                offset = 0._rk
-               if (associated(self%offset)) offset = self%offset_scale * self%offset%data_2d(i,j)
-               if (associated(self%source_coordinate%data_3d)) source_coordinate(:) = self%source_coordinate%data_3d(i,j,:)
-               call interp(self%target_coordinates(:) + offset, source_coordinate, self%source%data_3d(i,j,:), self%result_3d(i,j,:), self%out_of_bounds_treatment, self%out_of_bounds_value)
+               if (associated(self%offset)) offset = self%offset_scale * self%offset%data%p2d(i,j)
+               if (associated(self%source_coordinate%data%p3d)) source_coordinate(:) = self%source_coordinate%data%p3d(i,j,:)
+               call interp(self%target_coordinates(:) + offset, source_coordinate, self%source%data%p3d(i,j,:), self%result_3d(i,j,:), self%out_of_bounds_treatment, self%out_of_bounds_value)
             end do
          end do
-      elseif (associated(self%source%data_2d)) then
-      elseif (associated(self%source%data_1d)) then
+      elseif (associated(self%source%data%p2d)) then
+         allocate(source_coordinate(size(self%source%data%p2d, self%idatadim)))
+         if (associated(self%source_coordinate%data%p1d)) source_coordinate(:) = self%source_coordinate%data%p1d
+         do i=1, size(self%source%data%p2d, 1)
+            offset = 0._rk
+            if (associated(self%offset)) offset = self%offset_scale * self%offset%data%p1d(i)
+            if (associated(self%source_coordinate%data%p2d)) source_coordinate(:) = self%source_coordinate%data%p2d(i,:)
+            call interp(self%target_coordinates(:) + offset, source_coordinate, self%source%data%p2d(i,:), self%result_2d(i,:), self%out_of_bounds_treatment, self%out_of_bounds_value)
+         end do
+      elseif (associated(self%source%data%p1d)) then
          offset = 0._rk
-         if (associated(self%offset)) offset = self%offset_scale * self%offset%data_0d
-         call interp(self%target_coordinates(:) + offset, self%source_coordinate%data_1d, self%source%data_1d, self%result_1d, self%out_of_bounds_treatment, self%out_of_bounds_value)
+         if (associated(self%offset)) offset = self%offset_scale * self%offset%data%p0d
+         call interp(self%target_coordinates(:) + offset, self%source_coordinate%data%p1d, self%source%data%p1d, self%result_1d, self%out_of_bounds_treatment, self%out_of_bounds_value)
       end if
    end subroutine
 

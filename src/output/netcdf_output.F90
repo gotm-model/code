@@ -71,7 +71,6 @@ contains
       character(len=19)                  :: time_string
       character(len=256)                 :: coordinates
       type (type_dimension), pointer     :: dim
-      type (type_output_dimension), pointer :: output_dimension
       class (type_attribute), pointer    :: attribute
       character(len=:), allocatable :: long_name, units, standard_name, path
       type (type_dimension_pointer), allocatable :: dimensions(:)
@@ -79,11 +78,11 @@ contains
       type (type_attributes) :: attributes
 
       type type_dimension_ids
-         type (type_output_dimension),pointer :: output_dimension => null()
-         integer :: netcdf_dimid
-         type (type_dimension_ids), pointer :: next => null()
+         type (type_dimension),     pointer :: dimension    => null()
+         integer                            :: netcdf_dimid = -1
+         type (type_dimension_ids), pointer :: next         => null()
       end type
-      type (type_dimension_ids), pointer :: first_dim_id, dim_id
+      type (type_dimension_ids), pointer :: first_dim_id
 
       if (.not.associated(self%first_field)) then
          call host%log_message('NOTE: "'//trim(self%path)//trim(self%postfix)//'.nc" will not be created because it would contain no data.')
@@ -166,15 +165,6 @@ contains
                iret = nf90_put_att(self%ncid,settings%varid,'coordinates',trim(coordinates(2:))); call check_err(iret)
             end if
 
-            select case (output_field%settings%time_method)
-               case (time_method_instantaneous)
-                  iret = nf90_put_att(self%ncid,settings%varid,'cell_methods','time: point'); call check_err(iret)
-               case (time_method_mean)
-                  iret = nf90_put_att(self%ncid,settings%varid,'cell_methods','time: mean'); call check_err(iret)
-               case (time_method_integrated)
-                  iret = nf90_put_att(self%ncid,settings%varid,'cell_methods','time: sum'); call check_err(iret)
-            end select
-
             ! Fill arrays with start index and count per dimension
             allocate(settings%start(size(dimensions)))
             allocate(settings%edges(size(dimensions)))
@@ -184,9 +174,8 @@ contains
                   settings%edges(i) = 1
                   settings%itimedim = i
                else
-                  output_dimension => self%get_dimension(dimensions(i)%p)
                   settings%start(i) = 1
-                  settings%edges(i) = (output_dimension%stop-output_dimension%start)/output_dimension%stride+1
+                  settings%edges(i) = dimensions(i)%p%length
                end if
             end do
          end select
@@ -201,18 +190,18 @@ contains
          type (type_dimension_ids), pointer :: dim_id
          dim_id => first_dim_id
          do while (associated(dim_id))
-            if (associated(dim_id%output_dimension%source,dim)) exit
+            if (dim_id%dimension%name == dim%name .and. dim_id%dimension%length == dim%length) exit
             dim_id => dim_id%next
          end do
          if (.not. associated(dim_id)) then
             allocate(dim_id)
-            dim_id%output_dimension => self%get_dimension(dim)
+            dim_id%dimension => dim
             dim_id%next => first_dim_id
             first_dim_id => dim_id
             if (dim%id==id_dim_time) then
                length = NF90_UNLIMITED
             else
-               length = (dim_id%output_dimension%stop-dim_id%output_dimension%start)/dim_id%output_dimension%stride+1
+               length = dim%length
             end if
             iret = nf90_def_dim(self%ncid, trim(dim%name), length, dim_id%netcdf_dimid); call check_err(iret)
          end if
@@ -267,14 +256,14 @@ contains
          select type (settings=>output_field%settings)
          class is (type_netcdf_variable_settings)
             if (settings%itimedim/=-1) settings%start(settings%itimedim) = self%itime
-            if (associated(output_field%data_3d)) then
-               iret = nf90_put_var(self%ncid,settings%varid,output_field%data_3d,settings%start,settings%edges)
-            elseif (associated(output_field%data_2d)) then
-               iret = nf90_put_var(self%ncid,settings%varid,output_field%data_2d,settings%start,settings%edges)
-            elseif (associated(output_field%data_1d)) then
-               iret = nf90_put_var(self%ncid,settings%varid,output_field%data_1d,settings%start,settings%edges)
-            elseif (associated(output_field%data_0d)) then
-               iret = nf90_put_var(self%ncid,settings%varid,output_field%data_0d,settings%start)
+            if (associated(output_field%data%p3d)) then
+               iret = nf90_put_var(self%ncid,settings%varid,output_field%data%p3d,settings%start,settings%edges)
+            elseif (associated(output_field%data%p2d)) then
+               iret = nf90_put_var(self%ncid,settings%varid,output_field%data%p2d,settings%start,settings%edges)
+            elseif (associated(output_field%data%p1d)) then
+               iret = nf90_put_var(self%ncid,settings%varid,output_field%data%p1d,settings%start,settings%edges)
+            elseif (associated(output_field%data%p0d)) then
+               iret = nf90_put_var(self%ncid,settings%varid,output_field%data%p0d,settings%start)
             end if
             if (iret/=NF90_NOERR) call host%fatal_error('netcdf_output:save','error saving variable "'//trim(output_field%output_name)//'" to '//trim(self%path)//trim(self%postfix)//'.nc: '//nf90_strerror(iret))
          end select
@@ -297,7 +286,8 @@ contains
 
    subroutine check_err(iret)
       integer,intent(in) :: iret
-      if (iret/=NF90_NOERR) call host%fatal_error('check_err',nf90_strerror(iret))
+      if (iret/=NF90_NOERR) &
+         call host%fatal_error('check_err',nf90_strerror(iret))
    end subroutine
 
    subroutine netcdf_variable_settings_initialize(self,mapping,parent)

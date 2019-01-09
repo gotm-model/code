@@ -7,7 +7,7 @@ module output_manager_core
 
    implicit none
 
-   public type_output_variable_settings,type_output_category,type_output_field, type_file, write_time_string, read_time_string, host, type_host, type_output_dimension
+   public type_output_variable_settings,type_output_category,type_output_field, type_file, write_time_string, read_time_string, host, type_host
    public type_base_output_field
 
    private
@@ -80,14 +80,8 @@ module output_manager_core
    type type_base_output_field
       class (type_output_variable_settings), pointer :: settings => null()
       character(len=string_length) :: output_name = ''
-
-      real(rk), pointer :: data_0d        => null()
-      real(rk), pointer :: data_1d(:)     => null()
-      real(rk), pointer :: data_2d(:,:)   => null()
-      real(rk), pointer :: data_3d(:,:,:) => null()
-
+      type (type_nd_data_pointer) :: data
       type (type_output_field_pointer), allocatable :: coordinates(:)
-
       class (type_base_output_field), pointer :: next => null()
    contains
       procedure :: initialize       => base_field_initialize
@@ -95,31 +89,16 @@ module output_manager_core
       procedure :: before_save      => base_field_before_save
       procedure :: flag_as_required => base_field_flag_as_required
       procedure :: get_metadata     => base_field_get_metadata
+      procedure :: get_field        => base_field_get_field
    end type type_base_output_field
 
    type, extends(type_base_output_field) :: type_output_field
       type (type_field), pointer :: source => null()
-
-      ! Pointers to source data
-      real(rk), pointer :: source_0d        => null()
-      real(rk), pointer :: source_1d(:)     => null()
-      real(rk), pointer :: source_2d(:,:)   => null()
-      real(rk), pointer :: source_3d(:,:,:) => null()
    contains
       procedure :: initialize       => field_initialize
       procedure :: flag_as_required => field_flag_as_required
       procedure :: get_metadata     => field_get_metadata
    end type type_output_field
-
-   type type_output_dimension
-      type (type_dimension), pointer :: source => null()
-      integer :: start        = 1
-      integer :: stop         = -1
-      integer :: stride       = 1
-      integer :: global_start = 1
-      integer :: global_stop  = -1
-      type (type_output_dimension), pointer :: next => null()
-   end type type_output_dimension
 
    type type_file
       type (type_field_manager),    pointer :: field_manager   => null()
@@ -135,10 +114,9 @@ module output_manager_core
       integer                               :: first_seconds   = -1
       integer                               :: last_julian     = huge(1)
       integer                               :: last_seconds    = 0
-      type (type_output_dimension), pointer :: first_dimension => null()
-      class (type_output_category), pointer :: first_category  => null()
-      class (type_base_output_field),    pointer :: first_field     => null()
-      class (type_file),            pointer :: next            => null()
+      class (type_output_category),  pointer :: first_category  => null()
+      class (type_base_output_field),pointer :: first_field     => null()
+      class (type_file),             pointer :: next            => null()
    contains
       procedure :: configure
       procedure :: initialize
@@ -147,7 +125,6 @@ module output_manager_core
       procedure :: create_settings
       procedure :: is_dimension_used
       procedure :: append
-      procedure :: get_dimension
       procedure :: append_category
    end type type_file
 
@@ -182,6 +159,17 @@ contains
       class (type_base_output_field), intent(inout) :: self
    end subroutine
 
+   recursive function base_field_get_field(self, field) result(output_field)
+      class (type_base_output_field), intent(inout) :: self
+      type (type_field), target                     :: field
+      class (type_base_output_field), pointer       :: output_field
+      class (type_output_field), pointer :: fld
+      allocate(fld)
+      fld%source => field
+      fld%output_name = trim(field%name)
+      output_field => fld
+   end function
+
    recursive subroutine field_flag_as_required(self, required)
       class (type_output_field), intent(inout) :: self
       logical, intent(in) :: required
@@ -198,10 +186,7 @@ contains
       case (status_registered_no_data)
          call host%fatal_error('field_initialize', 'Data for requested field "'//trim(self%source%name)//'" have not been provided.')
       end select
-      self%data_0d => self%source%data_0d
-      self%data_1d => self%source%data_1d
-      self%data_2d => self%source%data_2d
-      self%data_3d => self%source%data_3d
+      self%data = self%source%data
    end subroutine
 
    recursive subroutine field_get_metadata(self, long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
@@ -226,6 +211,7 @@ contains
       if (present(fill_value)) fill_value = self%source%fill_value
       if (present(standard_name) .and. self%source%standard_name /= '') standard_name = trim(self%source%standard_name)
       if (present(path) .and. associated(self%source%category)) path = trim(self%source%category%get_path())
+      if (present(attributes)) call attributes%update(self%source%attributes)
    end subroutine
 
    subroutine configure(self,mapping)
@@ -323,10 +309,10 @@ contains
       is_dimension_used = .false.
    end function is_dimension_used
 
-   subroutine append(self, output_field, ignore_if_exists, initialize)
+   subroutine append(self, output_field, ignore_if_exists)
       class (type_file), intent(inout)        :: self
       class (type_base_output_field), pointer :: output_field
-      logical,           intent(in)           :: ignore_if_exists, initialize
+      logical,           intent(in)           :: ignore_if_exists
 
       class (type_base_output_field), pointer :: current
 
@@ -354,7 +340,6 @@ contains
          self%first_field => output_field
       end if
       output_field%next => null()
-      if (initialize) call output_field%initialize(self%field_manager)
    end subroutine append
 
    subroutine append_category(self,output_category)
@@ -369,27 +354,6 @@ contains
       output_category%next => self%first_category
       self%first_category => output_category
    end subroutine append_category
-
-   function get_dimension(self,dim) result(output_dimension)
-      class (type_file),intent(inout) :: self
-      type (type_dimension),pointer   :: dim
-      type (type_output_dimension), pointer :: output_dimension
-
-      ! First try to find existing dimension entry.
-      output_dimension => self%first_dimension
-      do while (associated(output_dimension))
-         if (associated(output_dimension%source,dim)) return
-         output_dimension => output_dimension%next
-      end do
-
-      ! Create new dimension entry.
-      allocate(output_dimension)
-      output_dimension%next => self%first_dimension
-      self%first_dimension => output_dimension
-      output_dimension%source => dim
-      output_dimension%stop = dim%length
-      output_dimension%global_stop = dim%global_length
-   end function get_dimension
 
    subroutine output_variable_settings_initialize(self,mapping,parent)
       use yaml_types

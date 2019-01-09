@@ -16,6 +16,7 @@ module output_operators_base
       real(rk), allocatable :: result_1d(:)
       real(rk), allocatable :: result_2d(:,:)
       real(rk), allocatable :: result_3d(:,:,:)
+      type (type_dimension_pointer), allocatable :: dimensions(:)
    contains
       procedure :: configure
       procedure :: initialize
@@ -24,6 +25,8 @@ module output_operators_base
       procedure :: get_metadata
       procedure :: flag_as_required
       procedure :: fill
+      procedure :: apply
+      procedure :: get_field
    end type
 
    contains
@@ -59,6 +62,7 @@ module output_operators_base
       real(rk), intent(out), optional :: minimum, maximum, fill_value
       type (type_attributes), optional :: attributes
       call self%source%get_metadata(long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
+      if (present(dimensions) .and. allocated(self%dimensions)) dimensions(:) = self%dimensions(:)
    end subroutine
 
    recursive subroutine flag_as_required(self, required)
@@ -82,5 +86,29 @@ module output_operators_base
          self%result_0d = value
       end if
    end subroutine
+
+   recursive function get_field(self, field) result(output_field)
+      class (type_base_operator), intent(inout) :: self
+      type (type_field), target                 :: field
+      class (type_base_output_field), pointer   :: output_field
+      output_field => self%source%get_field(field)
+   end function
+
+   recursive function apply(self, source) result(new_operator)
+      class (type_base_operator), intent(in) :: self
+      class (type_base_output_field), target :: source
+      class (type_base_operator), pointer :: new_operator
+
+      allocate(new_operator, source=self)
+      new_operator%source => source
+
+      if (associated(new_operator%source)) then
+         select type (nested_op=>self%source)
+         class is (type_base_operator)
+            new_operator%source => nested_op%apply(new_operator%source)
+         end select
+      end if
+      new_operator%output_name = source%output_name
+   end function
 
 end module

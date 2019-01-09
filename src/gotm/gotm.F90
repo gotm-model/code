@@ -692,14 +692,14 @@
       member => field_set%first
       do while (associated(member))
          ! This field is part of the model state. Its name is member%field%name.
-         if (associated(member%field%data_0d)) then
-            ! Depth-independent variable with data pointed to by child%field%data_0d
-            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data_0d.
-            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data_0d)
-         elseif (associated(member%field%data_1d)) then
-            ! Depth-dependent variable with data pointed to by child%field%data_1d
-            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data_1d.
-            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data_1d)
+         if (associated(member%field%data%p0d)) then
+            ! Depth-independent variable with data pointed to by member%field%data%p0d
+            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data%p0d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data%p0d)
+         elseif (associated(member%field%data%p1d)) then
+            ! Depth-dependent variable with data pointed to by member%field%data%p1d
+            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data%p1d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data%p1d)
          else
             stop 'no data assigned to state field'
          end if

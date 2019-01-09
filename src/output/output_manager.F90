@@ -7,6 +7,7 @@ module output_manager
    use output_operators_library
    use output_operators_base
    use output_operators_time_average
+   use output_operators_slice
 
    use yaml_types
    use yaml,yaml_parse=>parse,yaml_error_length=>error_length
@@ -68,12 +69,13 @@ contains
       if (associated(settings%first_operator)) then
          select type (op=>settings%first_operator)
          class is (type_base_operator)
-            call apply_operator(op)
+            generic_field => op%apply(generic_field)
+            generic_field%settings => settings
          end select
       end if
 
       if (settings%time_method /= time_method_instantaneous .and. settings%time_method /= time_method_none) then
-         ! We are not storing the instantaneous value. Create a work array that will be stored instead.
+         ! Apply time averaging/integration operator
          allocate(time_filter)
          time_filter%source => generic_field
          time_filter%method = settings%time_method
@@ -81,29 +83,13 @@ contains
          time_filter%settings => settings
          generic_field => time_filter
       end if
-   contains
-      recursive subroutine apply_operator(op)
-         class (type_base_operator), intent(in) :: op
-         class (type_base_operator), pointer :: new_op
-         if (associated(op%source)) then
-            select type (nested_op=>op%source)
-            class is (type_base_operator)
-               call apply_operator(nested_op)
-            end select
-         end if
-         allocate(new_op, source=op)
-         new_op%source => generic_field
-         new_op%output_name = generic_field%output_name
-         new_op%settings => settings
-         generic_field => new_op
-      end subroutine
    end function
 
    subroutine collect_from_categories(file)
       class (type_file), intent(inout) :: file
 
       class (type_output_category),          pointer :: output_category
-      class (type_base_output_field),        pointer :: output_field, output_field2
+      class (type_base_output_field),        pointer :: output_field
       type (type_field_set)                          :: set
       class (type_field_set_member),         pointer :: member, next_member
       class (type_output_variable_settings), pointer :: settings
@@ -122,7 +108,7 @@ contains
             call settings%initialize(mapping, output_category%settings)
             output_field => create_field(file, settings, member%field)
             output_field%output_name = trim(output_category%prefix) // trim(output_field%output_name) // trim(output_category%postfix)
-            call file%append(output_field, ignore_if_exists=.true., initialize=.false.)
+            call file%append(output_field, ignore_if_exists=.true.)
             next_member => member%next
             deallocate(member)
             member => next_member
@@ -132,55 +118,11 @@ contains
       end do
    end subroutine collect_from_categories
 
-   subroutine filter_variables(file)
-      class (type_file), intent(inout) :: file
-
-      integer :: i
-      type (type_dimension_pointer), allocatable :: dimensions(:)
-      class (type_base_output_field), pointer :: output_field, next_field, previous_field
-      type (type_output_dimension), pointer :: output_dim
-      logical :: empty
-
-      previous_field => null()
-      output_field => file%first_field
-      do while (associated(output_field))
-         next_field => output_field%next
-
-         ! Determine whether the field is empty (one or more zero-length dimensions)
-         empty = .false.
-         call output_field%get_metadata(dimensions=dimensions)
-         do i=1,size(dimensions)
-            if (.not.associated(dimensions(i)%p)) cycle
-            if (dimensions(i)%p%id/=id_dim_time) then
-               output_dim => file%get_dimension(dimensions(i)%p)
-               if (output_dim%stop<output_dim%start) empty = .true.
-            end if
-         end do
-
-         if (empty) then
-            ! Empty field - deallocate and remove from list.
-            deallocate(output_field)
-            if (.not.associated(previous_field)) then
-               file%first_field => next_field
-            else
-               previous_field%next => next_field
-            end if
-         else
-            ! Non-empty field - keep it.
-            previous_field => output_field
-         end if
-
-         output_field => next_field
-      end do
-   end subroutine filter_variables
-
    subroutine add_coordinate_variables(file)
       class (type_file), intent(inout) :: file
 
-      class (type_base_output_field),  pointer :: output_field, existing_coordinate_field
-      class (type_base_output_field),  pointer :: coordinate_field
-      class (type_output_variable_settings), pointer :: settings
-      integer :: i
+      class (type_base_output_field), pointer    :: output_field
+      integer                                    :: i
       type (type_dimension_pointer), allocatable :: dimensions(:)
 
       output_field => file%first_field
@@ -190,10 +132,10 @@ contains
          do i=1,size(dimensions)
             if (.not.associated(dimensions(i)%p)) cycle
             if (.not.associated(dimensions(i)%p%coordinate)) cycle
-            settings => file%create_settings()
-            settings%time_method = time_method_instantaneous
-            output_field%coordinates(i)%p => create_field(file, settings, dimensions(i)%p%coordinate)
-            call file%append(output_field%coordinates(i)%p, ignore_if_exists=.true., initialize=.true.)
+            output_field%coordinates(i)%p => output_field%get_field(dimensions(i)%p%coordinate)
+            call output_field%coordinates(i)%p%initialize(file%field_manager)
+            output_field%coordinates(i)%p%settings => file%create_settings()
+            call file%append(output_field%coordinates(i)%p, ignore_if_exists=.true.)
          end do
          output_field => output_field%next
       end do
@@ -202,27 +144,30 @@ contains
    subroutine initialize_files(julianday,secondsofday,microseconds,n)
       integer, intent(in) :: julianday,secondsofday,microseconds,n
 
-      class (type_file),              pointer    :: file
-      class (type_base_output_field), pointer    :: output_field
-      type (type_output_dimension),   pointer    :: output_dim
-      integer, allocatable, dimension(:)         :: starts, stops, strides
-      integer                                    :: i,j
-      type (type_dimension_pointer), allocatable :: dimensions(:)
+      class (type_file),              pointer :: file
+      class (type_base_output_field), pointer :: output_field, last_field
 
       file => first_file
       do while (associated(file))
          ! Add variables below selected categories to output
          call collect_from_categories(file)
 
-         ! Remove empty variables (with one or more zero-length dimensions)
-         call filter_variables(file)
-
          ! First check whether all fields included in this file have been registered.
          output_field => file%first_field
+         last_field => null()
          do while (associated(output_field))
             call output_field%initialize(file%field_manager)
+            if (.not. output_field%data%is_empty()) then
+               if (.not. associated(last_field)) then
+                  file%first_field => output_field
+               else
+                  last_field%next => output_field
+               end if
+               last_field => output_field
+            end if
             output_field => output_field%next
          end do
+         last_field%next => null()
 
          ! Add any missing coordinate variables
          call add_coordinate_variables(file)
@@ -232,48 +177,6 @@ contains
             file%first_julian = julianday
             file%first_seconds = secondsofday
          end if
-
-         ! Initialize fields based on time integrals
-         output_field => file%first_field
-         do while (associated(output_field))
-            ! Determine effective dimension range
-            call output_field%get_metadata(dimensions=dimensions)
-            allocate(starts(1:size(dimensions)))
-            allocate(stops(1:size(dimensions)))
-            allocate(strides(1:size(dimensions)))
-            j = 0
-            do i=1,size(dimensions)
-               if (dimensions(i)%p%length>1) then
-                  ! Not a singleton dimension - create the slice spec
-                  j = j + 1
-                  output_dim => file%get_dimension(dimensions(i)%p)
-                  starts(j) = output_dim%start
-                  stops(j) = output_dim%stop
-                  strides(j) = output_dim%stride
-               end if
-            end do
-
-            if (all(stops(1:j)>=starts(1:j))) then
-               ! Select appropriate data slice
-               if (associated(output_field%data_3d)) then
-                  if (j/=3) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%output_name)//' contains one or more singleton dimensions.')
-                  output_field%data_3d => output_field%data_3d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2),starts(3):stops(3):strides(3))
-               elseif (associated(output_field%data_2d)) then
-                  if (j/=2) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%output_name)//' contains one or more singleton dimensions.')
-                  output_field%data_2d => output_field%data_2d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2))
-               elseif (associated(output_field%data_1d)) then
-                  if (j/=1) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%output_name)//' contains one or more singleton dimensions.')
-                  output_field%data_1d => output_field%data_1d(starts(1):stops(1):strides(1))
-               else
-                  if (j/=0) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%output_name)//' contains one or more singleton dimensions.')
-               end if
-            end if
-
-            ! Deallocate dimension range specifyers.
-            deallocate(starts,stops,strides)
-
-            output_field => output_field%next
-         end do
 
          ! Create output file
          call file%initialize()
@@ -334,7 +237,6 @@ contains
       class (type_base_output_field), pointer :: output_field
       integer                                 :: yyyy,mm,dd
       logical                                 :: output_required
-      class (type_base_operator),     pointer :: filter
 
       if (.not.files_initialized) call initialize_files(julianday,secondsofday,microseconds,n)
 
@@ -470,17 +372,18 @@ contains
       class (type_file),   pointer :: file
       character(len=string_length) :: string
       logical                      :: success
+      class (type_output_variable_settings), pointer :: file_settings
 
       type (type_dimension),       pointer :: dim
-      type (type_output_dimension),pointer :: output_dim
+      integer                              :: global_start, global_stop, stride
       character(len=8)                     :: strmax
-      integer                              :: distance
 #ifdef NETCDF_FMT
       character(len=*), parameter :: default_format = 'netcdf'
 #else
       character(len=*), parameter :: default_format = 'text'
 #endif
       logical                              :: is_active
+      class (type_slice_operator), pointer :: slice_operator
 
       is_active = mapping%get_logical('is_active',default=.true.,error=config_error)
       if (is_active) then
@@ -549,65 +452,33 @@ contains
          end if
 
          ! Determine dimension ranges
+         allocate(slice_operator)
          dim => field_manager%first_dimension
          do while (associated(dim))
             if (dim%iterator/='') then
                write (strmax,'(i0)') dim%global_length
-               output_dim => file%get_dimension(dim)
-               output_dim%global_start = mapping%get_integer(trim(dim%iterator)//'_start',default=1,error=config_error)
+               global_start = mapping%get_integer(trim(dim%iterator)//'_start',default=1,error=config_error)
                if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-               if (output_dim%global_start<0.or.output_dim%global_start>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 0 and '//trim(strmax))
-               output_dim%global_stop = mapping%get_integer(trim(dim%iterator)//'_stop',default=dim%global_length,error=config_error)
+               if (global_start < 0 .or. global_start > dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 0 and '//trim(strmax))
+               global_stop = mapping%get_integer(trim(dim%iterator)//'_stop',default=dim%global_length,error=config_error)
                if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-               if (output_dim%global_stop<1.or.output_dim%global_stop>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))
-               if (output_dim%global_start>output_dim%global_stop) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
-               output_dim%stride = mapping%get_integer(trim(dim%iterator)//'_stride',default=1,error=config_error)
+               if (global_stop < 1 .or. global_stop > dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))
+               if (global_start > global_stop) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
+               stride = mapping%get_integer(trim(dim%iterator)//'_stride',default=1,error=config_error)
                if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-               if (output_dim%stride<1) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stride must be larger than 0.')
-
-               ! Reduce stop to last point that is actually included (due to stride>1)
-               output_dim%global_stop = output_dim%global_stop - mod(output_dim%global_stop-output_dim%global_start,output_dim%stride)
-
-               ! Compute local [i.e., within-subdomain] start and stop positons from global positions and local offset.
-               if (output_dim%global_start>dim%offset+dim%length) then
-                  ! Start point lies beyond our subdomain
-                  output_dim%start = 1
-                  output_dim%stop = output_dim%start - output_dim%stride
-               else
-                  if (output_dim%global_start>dim%offset) then
-                     ! Starting point lies within our subdomain
-                     output_dim%start = output_dim%global_start - dim%offset
-                  else
-                     ! Starting point lies before our subdomain: we start immediately but have to account for stride
-
-                     ! Determine distance between subdomain start and nearest included point outside the domain.
-                     distance = mod(dim%offset + 1 - output_dim%global_start, output_dim%stride)
-
-                     ! Convert to distance to next point within the domain
-                     if (distance>0) distance = output_dim%stride - distance
-                     output_dim%start = 1 + distance
-                  end if
-
-                  ! Determine local stop by subtracting subdomain offset [maximum is subdomain length)
-                  output_dim%stop = min(output_dim%global_stop - dim%offset, dim%length)
-
-                  if (output_dim%stop<output_dim%start) then
-                     ! stop precedes start, so we have 0 length, i.e.,
-                     ! length = (output_dimension%stop-output_dimension%start)/output_dimension%stride + 1 = 0
-                     output_dim%stop = output_dim%start - output_dim%stride
-                  else
-                     ! Reduce stop to last point that is actually included (due to stride>1)
-                     output_dim%stop = output_dim%stop - mod(output_dim%stop-output_dim%start,output_dim%stride)
-                  end if
-               end if
+               if (stride < 1) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stride must be larger than 0.')
+               call slice_operator%add(trim(dim%name), global_start, global_stop, stride)
             end if
             dim => dim%next
          end do
+         file_settings => file%create_settings()
+         call file_settings%initialize(mapping, default_settings)
+         file_settings%first_operator => slice_operator
 
          ! Allow specific file implementation to parse additional settings from yaml file.
          call file%configure(mapping)
 
-         call process_group(file,mapping,default_settings)
+         call process_group(file, mapping, file_settings)
       end if
    end subroutine process_file
 
@@ -719,7 +590,7 @@ contains
          call output_field%settings%initialize(mapping, default_settings)
          field => file%field_manager%select_for_output(source_name)
          output_field => create_field(file, output_field%settings, field)
-         call file%append(output_field, ignore_if_exists=.false., initialize=.false.)
+         call file%append(output_field, ignore_if_exists=.false.)
 
          ! Name of output variable (may differ from source name)
          output_field%output_name = mapping%get_string('name',default=source_name,error=config_error)
