@@ -97,17 +97,15 @@ module output_operators_base
    recursive function apply(self, source) result(new_operator)
       class (type_base_operator), intent(in) :: self
       class (type_base_output_field), target :: source
-      class (type_base_operator), pointer :: new_operator
+      class (type_base_operator), pointer    :: new_operator
 
       allocate(new_operator, source=self)
-      new_operator%source => source
-
-      if (associated(new_operator%source)) then
-         select type (nested_op=>self%source)
-         class is (type_base_operator)
-            new_operator%source => nested_op%apply(new_operator%source)
-         end select
-      end if
+      select type (nested_op=>self%source)
+      class is (type_base_operator)
+         new_operator%source => nested_op%apply(source)
+      class default
+         new_operator%source => source
+      end select
       new_operator%output_name = source%output_name
    end function
 
