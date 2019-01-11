@@ -51,79 +51,47 @@ contains
       end do
    end subroutine
 
-   function create_field(file, settings, field) result(generic_field)
-      class (type_file), intent(inout) :: file
-      class (type_output_variable_settings), target :: settings
-      type (type_field), target :: field
-      class (type_base_output_field), pointer :: generic_field
-
-      class (type_output_field),pointer :: output_field
-      class (type_time_average_operator), pointer :: time_filter
-
-      allocate(output_field)
-      output_field%settings => settings
-      output_field%source => field
-      output_field%output_name = trim(field%name)
-      generic_field => output_field
-
-      if (associated(settings%first_operator)) then
-         select type (op=>settings%first_operator)
-         class is (type_base_operator)
-            generic_field => op%apply(generic_field)
-            generic_field%settings => settings
-         end select
-      end if
-
-      if (settings%time_method /= time_method_instantaneous .and. settings%time_method /= time_method_none) then
-         ! Apply time averaging/integration operator
-         allocate(time_filter)
-         time_filter%source => generic_field
-         time_filter%method = settings%time_method
-         time_filter%output_name = generic_field%output_name
-         time_filter%settings => settings
-         generic_field => time_filter
-      end if
-   end function
-
-   subroutine collect_from_categories(file)
+   subroutine populate(file)
       class (type_file), intent(inout) :: file
 
-      class (type_output_category),          pointer :: output_category
-      class (type_base_output_field),        pointer :: output_field
+      type (type_output_item),               pointer :: item
       type (type_field_set)                          :: set
       class (type_field_set_member),         pointer :: member, next_member
       class (type_output_variable_settings), pointer :: settings
       type (type_dictionary)                         :: mapping
+      class (type_base_output_field),        pointer :: output_field, coordinate_field
+      type (type_dimension_pointer), allocatable     :: dimensions(:)
+      integer                                        :: i
 
-      output_category => file%first_category
-      do while (associated(output_category))
-         call host%log_message('Processing output category /'//trim(output_category%name)//':')
-         if (.not.output_category%source%has_fields()) call host%fatal_error('collect_from_categories','No variables have been registered under output category "'//trim(output_category%name)//'".')
-         call output_category%source%get_all_fields(set,output_category%output_level)
-         member => set%first
-         if (.not.associated(member)) call host%log_message('WARNING: output category "'//trim(output_category%name)//'" does not contain any variables with requested output level.')
-         do while (associated(member))
-            call host%log_message('  - '//trim(member%field%name))
-            settings => file%create_settings()
-            call settings%initialize(mapping, output_category%settings)
-            output_field => create_field(file, settings, member%field)
-            output_field%output_name = trim(output_category%prefix) // trim(output_field%output_name) // trim(output_category%postfix)
-            call file%append(output_field, ignore_if_exists=.true.)
-            next_member => member%next
-            deallocate(member)
-            member => next_member
-         end do
-         nullify(set%first)
-         output_category => output_category%next
+      ! First add fields selected by name
+      ! (they take priority over fields included with wildcard expressions)
+      item => file%first_item
+      do while (associated(item))
+         if (associated(item%field)) call create_field(item%settings, item%field, trim(item%name), .false.)
+         item => item%next
       end do
-   end subroutine collect_from_categories
 
-   subroutine add_coordinate_variables(file)
-      class (type_file), intent(inout) :: file
-
-      class (type_base_output_field), pointer    :: output_field
-      integer                                    :: i
-      type (type_dimension_pointer), allocatable :: dimensions(:)
+      item => file%first_item
+      do while (associated(item))
+         if (associated(item%category)) then
+            call host%log_message('Processing output category /'//trim(item%name)//':')
+            if (.not.item%category%has_fields()) call host%fatal_error('collect_from_categories','No variables have been registered under output category "'//trim(item%name)//'".')
+            call item%category%get_all_fields(set, item%output_level)
+            member => set%first
+            if (.not.associated(member)) call host%log_message('WARNING: output category "'//trim(item%name)//'" does not contain any variables with requested output level.')
+            do while (associated(member))
+               call host%log_message('  - '//trim(member%field%name))
+               settings => file%create_settings()
+               call settings%initialize(mapping, item%settings)
+               call create_field(settings, member%field, trim(item%prefix) // trim(member%field%name) // trim(item%postfix), .true.)
+               next_member => member%next
+               deallocate(member)
+               member => next_member
+            end do
+            set%first => null()
+         end if
+         item => item%next
+      end do
 
       output_field => file%first_field
       do while (associated(output_field))
@@ -132,46 +100,90 @@ contains
          do i=1,size(dimensions)
             if (.not.associated(dimensions(i)%p)) cycle
             if (.not.associated(dimensions(i)%p%coordinate)) cycle
-            output_field%coordinates(i)%p => output_field%get_field(dimensions(i)%p%coordinate)
-            call output_field%coordinates(i)%p%initialize(file%field_manager)
-            output_field%coordinates(i)%p%settings => file%create_settings()
-            call file%append(output_field%coordinates(i)%p, ignore_if_exists=.true.)
+            coordinate_field => find_field(dimensions(i)%p%coordinate%name)
+            if (.not. associated(coordinate_field)) then
+               coordinate_field => output_field%get_field(dimensions(i)%p%coordinate)
+               if (associated(coordinate_field)) call append_field(trim(dimensions(i)%p%coordinate%name), coordinate_field, file%create_settings())
+            end if
+            output_field%coordinates(i)%p => coordinate_field
          end do
          output_field => output_field%next
       end do
-   end subroutine add_coordinate_variables
+
+   contains
+
+      function find_field(output_name) result(field)
+         character(len=*), intent(in)            :: output_name
+         class (type_base_output_field), pointer :: field
+         field => file%first_field
+         do while (associated(field))
+            if (field%output_name == output_name) return
+            field => field%next
+         end do
+      end function
+
+      subroutine create_field(settings, field, output_name, ignore_if_exists)
+         class (type_output_variable_settings), target :: settings
+         type (type_field),                     target :: field
+         character(len=*), intent(in)                  :: output_name
+         logical,          intent(in)                  :: ignore_if_exists
+
+         class (type_base_operator),         pointer :: final_operator
+         class (type_base_output_field),     pointer :: output_field
+         class (type_time_average_operator), pointer :: time_filter
+         
+         output_field => find_field(output_name)
+         if (associated(output_field)) then
+            if (.not. ignore_if_exists) call host%fatal_error('create_field', 'A different output field with name "'//output_name//'" already exists.')
+            return
+         end if
+
+         final_operator => settings%final_operator
+         if (settings%time_method /= time_method_instantaneous .and. settings%time_method /= time_method_none) then
+            ! Apply time averaging/integration operator
+            allocate(time_filter)
+            time_filter%method = settings%time_method
+            time_filter%previous => final_operator
+            final_operator => time_filter
+         end if
+
+         output_field => wrap_field(field)
+
+         if (associated(final_operator)) output_field => final_operator%apply(output_field)
+         if (associated(output_field)) call append_field(output_name, output_field, settings)
+      end subroutine
+
+      subroutine append_field(output_name, output_field, settings)
+         character(len=*),               intent(in)            :: output_name
+         class (type_base_output_field), intent(inout), target :: output_field
+         class (type_output_variable_settings), target         :: settings
+
+         class (type_base_output_field), pointer :: last_field
+
+         output_field%settings => settings
+         output_field%output_name = trim(output_name)
+
+         if (associated(file%first_field)) then
+            last_field => file%first_field
+            do while (associated(last_field%next))
+               last_field => last_field%next
+            end do
+            last_field%next => output_field
+         else
+            file%first_field => output_field
+         end if
+      end subroutine
+
+   end subroutine populate
 
    subroutine initialize_files(julianday,secondsofday,microseconds,n)
       integer, intent(in) :: julianday,secondsofday,microseconds,n
 
-      class (type_file),              pointer :: file
-      class (type_base_output_field), pointer :: output_field, last_field
+      class (type_file), pointer :: file
 
       file => first_file
       do while (associated(file))
-         ! Add variables below selected categories to output
-         call collect_from_categories(file)
-
-         ! First check whether all fields included in this file have been registered.
-         output_field => file%first_field
-         file%first_field => null()
-         last_field => null()
-         do while (associated(output_field))
-            call output_field%initialize(file%field_manager)
-            if (.not. output_field%data%is_empty()) then
-               if (.not. associated(last_field)) then
-                  file%first_field => output_field
-               else
-                  last_field%next => output_field
-               end if
-               last_field => output_field
-            end if
-            output_field => output_field%next
-         end do
-         if (associated(last_field)) last_field%next => null()
-
-         ! Add any missing coordinate variables
-         call add_coordinate_variables(file)
+         call populate(file)
 
          ! If we do not have a start time yet, use current.
          if (file%first_julian <= 0) then
@@ -474,7 +486,7 @@ contains
          end do
          file_settings => file%create_settings()
          call file_settings%initialize(mapping, default_settings)
-         file_settings%first_operator => slice_operator
+         file_settings%final_operator => slice_operator
 
          ! Allow specific file implementation to parse additional settings from yaml file.
          call file%configure(mapping)
@@ -516,7 +528,7 @@ contains
       ! Get operators
       list => mapping%get_list('operators',required=.false.,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_group', config_error%message)
-      if (associated(list)) call apply_operators(settings%first_operator, list, file%field_manager)
+      if (associated(list)) call apply_operators(settings%final_operator, list, file%field_manager)
 
       ! Get list with variables
       list => mapping%get_list('variables',required=.true.,error=config_error)
@@ -547,56 +559,48 @@ contains
       class (type_dictionary),              intent(in)    :: mapping
       class (type_output_variable_settings),intent(in)    :: default_settings
 
-      character(len=string_length)            :: source_name
-      type (type_error),              pointer :: config_error
-      class (type_output_category),   pointer :: output_category
-      class (type_base_output_field), pointer :: output_field
-      type (type_field),              pointer :: field
-      integer                                 :: n
-      type (type_key_value_pair),     pointer :: pair
+      character(len=string_length)        :: source_name
+      type (type_error),          pointer :: config_error
+      type (type_output_item),    pointer :: output_item
+      integer                             :: n
+      type (type_key_value_pair), pointer :: pair
 
       ! Name of source variable
       source_name = mapping%get_string('source',error=config_error)
       if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
+      allocate(output_item)
+      output_item%settings => file%create_settings()
+      call output_item%settings%initialize(mapping, default_settings)
+
       ! Determine whether to create an output field or an output category
       n = len_trim(source_name)
       if (source_name(n:n)=='*') then
-         allocate(output_category)
-         output_category%settings => file%create_settings()
-         call output_category%settings%initialize(mapping, default_settings)
-
          if (n==1) then
-            output_category%name = ''
+            output_item%name = ''
          else
-            output_category%name = source_name(:n-2)
+            output_item%name = source_name(:n-2)
          end if
 
          ! Prefix for output name
-         output_category%prefix = mapping%get_string('prefix',default='',error=config_error)
+         output_item%prefix = mapping%get_string('prefix',default='',error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
          ! Postfix for output name
-         output_category%postfix = mapping%get_string('postfix',default='',error=config_error)
+         output_item%postfix = mapping%get_string('postfix',default='',error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
          ! Output level
-         output_category%output_level = mapping%get_integer('output_level',default=output_level_default,error=config_error)
+         output_item%output_level = mapping%get_integer('output_level',default=output_level_default,error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
-
-         call file%append_category(output_category)
       else
-         allocate(output_field)
-         output_field%settings => file%create_settings()
-         call output_field%settings%initialize(mapping, default_settings)
-         field => file%field_manager%select_for_output(source_name)
-         output_field => create_field(file, output_field%settings, field)
-         call file%append(output_field, ignore_if_exists=.false.)
+         output_item%field => file%field_manager%select_for_output(source_name)
 
          ! Name of output variable (may differ from source name)
-         output_field%output_name = mapping%get_string('name',default=source_name,error=config_error)
+         output_item%name = mapping%get_string('name',default=source_name,error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
       end if
+      call file%append_item(output_item)
 
       ! Raise error if any keys are left unused.
       pair => mapping%first

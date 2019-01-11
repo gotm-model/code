@@ -35,7 +35,7 @@
 ! !USES:
    use field_manager
    use register_all_variables, only: do_register_all_variables, fm
-   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_category
+   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
    use output_manager
    use diagnostics
 
@@ -659,8 +659,8 @@
       use output_manager_core
       use time, only: jul2,secs2
 
-      class (type_netcdf_file),     pointer :: file
-      class (type_output_category), pointer :: category
+      class (type_netcdf_file), pointer :: file
+      type (type_output_item),  pointer :: item
 
       allocate(file)
       file%path = 'restart'
@@ -670,15 +670,15 @@
       file%first_seconds = secs2
       call output_manager_add_file(fm,file)
 
-      allocate(category)
-      category%name = 'state'
-      category%output_level = output_level_debug
-      category%settings => file%create_settings()
-      select type (settings=>category%settings)
-         class is (type_netcdf_variable_settings)
-            settings%xtype = NF90_DOUBLE
+      allocate(item)
+      item%name = 'state'
+      item%output_level = output_level_debug
+      item%settings => file%create_settings()
+      select type (settings=>item%settings)
+      class is (type_netcdf_variable_settings)
+         settings%xtype = NF90_DOUBLE
       end select
-      call file%append_category(category)
+      call file%append_item(item)
 #endif
    end subroutine setup_restart
 

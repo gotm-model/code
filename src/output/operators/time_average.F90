@@ -12,51 +12,72 @@ module output_operators_time_average
 
    type, extends(type_base_operator) :: type_time_average_operator
       integer :: method = time_method_mean
+   contains
+      procedure :: apply
+   end type
+
+   type, extends(type_universal_operator_result) :: type_result
+      integer :: method = time_method_mean
       integer :: n = 0
    contains
-      procedure :: initialize
       procedure :: flag_as_required
       procedure :: new_data
       procedure :: before_save
-      procedure :: get_field
       procedure :: get_metadata
    end type
-
+   
 contains
 
-   recursive subroutine initialize(self, field_manager)
+   recursive function apply(self, source) result(output_field)
       class (type_time_average_operator), intent(inout), target :: self
-      type (type_field_manager),          intent(in)            :: field_manager
+      class (type_base_output_field), target                    :: source
+      class (type_base_output_field), pointer                   :: output_field
 
-      real(rk) :: fill_value
+      real(rk)                                   :: fill_value
+      type (type_dimension_pointer), allocatable :: dimensions(:)
+      integer                                    :: itimedim
+      class (type_result), pointer               :: result
 
-      call self%type_base_operator%initialize(field_manager)
+      output_field => self%type_base_operator%apply(source)
+      if (.not. associated(output_field)) return
 
-      if (associated(self%source%data%p3d)) then
-         allocate(self%result_3d(size(self%source%data%p3d,1), size(self%source%data%p3d,2), size(self%source%data%p3d,3)))
-         self%data%p3d => self%result_3d
-      elseif (associated(self%source%data%p2d)) then
-         allocate(self%result_2d(size(self%source%data%p2d,1), size(self%source%data%p2d,2)))
-         self%data%p2d => self%result_2d
-      elseif (associated(self%source%data%p1d)) then
-         allocate(self%result_1d(size(self%source%data%p1d)))
-         self%data%p1d => self%result_1d
-      elseif (associated(self%source%data%p0d)) then
-         self%data%p0d => self%result_0d
+      call output_field%get_metadata(dimensions=dimensions, fill_value=fill_value)
+      do itimedim=1,size(dimensions)
+         if (dimensions(itimedim)%p%id == id_dim_time) exit
+      end do
+      if (itimedim > size(dimensions)) return
+
+      allocate(result)
+      result%operator => self
+      result%source => output_field
+      result%output_name = 'time_average('//trim(result%source%output_name)//')'
+      output_field => result
+      result%method = self%method
+
+      if (associated(result%source%data%p3d)) then
+         allocate(result%result_3d(size(result%source%data%p3d,1), size(result%source%data%p3d,2), size(result%source%data%p3d,3)))
+         result%data%p3d => result%result_3d
+      elseif (associated(result%source%data%p2d)) then
+         allocate(result%result_2d(size(result%source%data%p2d,1), size(result%source%data%p2d,2)))
+         result%data%p2d => result%result_2d
+      elseif (associated(result%source%data%p1d)) then
+         allocate(result%result_1d(size(result%source%data%p1d)))
+         result%data%p1d => result%result_1d
+      elseif (associated(result%source%data%p0d)) then
+         result%data%p0d => result%result_0d
       end if
-      call self%get_metadata(fill_value=fill_value)
-      if (self%method == time_method_mean) call self%fill(fill_value)
-   end subroutine
+      if (self%method == time_method_mean) call result%fill(fill_value)
+   end function
 
    recursive subroutine flag_as_required(self, required)
-      class (type_time_average_operator), intent(inout) :: self
-      logical,                            intent(in)    :: required
+      class (type_result), intent(inout) :: self
+      logical,             intent(in)    :: required
 
       call self%source%flag_as_required(.true.)
    end subroutine
 
    recursive subroutine new_data(self)
-      class (type_time_average_operator), intent(inout) :: self
+      class (type_result), intent(inout) :: self
 
       call self%source%before_save()
       if (self%n == 0) call self%fill(0.0_rk)
@@ -73,7 +94,7 @@ contains
    end subroutine
 
    recursive subroutine before_save(self)
-      class (type_time_average_operator), intent(inout) :: self
+      class (type_result), intent(inout) :: self
 
       if (self%method == time_method_mean) then
          if (allocated(self%result_3d)) then
@@ -89,25 +110,13 @@ contains
       self%n = 0
    end subroutine
 
-   recursive function get_field(self, field) result(output_field)
-      class (type_time_average_operator), intent(inout) :: self
-      type (type_field), target                         :: field
-      class (type_base_output_field), pointer           :: output_field
-      class (type_time_average_operator), pointer :: time_average
-      allocate(time_average)
-      time_average%method = self%method
-      time_average%source => self%source%get_field(field)
-      time_average%output_name = time_average%source%output_name
-      output_field => time_average
-   end function
-
    recursive subroutine get_metadata(self, long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
-      class (type_time_average_operator), intent(in) :: self
+      class (type_result), intent(in) :: self
       character(len=:), allocatable, optional :: long_name, units, standard_name, path
       type (type_dimension_pointer), allocatable, intent(out), optional :: dimensions(:)
       real(rk), intent(out), optional :: minimum, maximum, fill_value
-      type (type_attributes), optional :: attributes
-      call self%type_base_operator%get_metadata(long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
+      type (type_attributes), intent(out), optional :: attributes
+      call self%type_universal_operator_result%get_metadata(long_name, units, dimensions, minimum, maximum, fill_value, standard_name, path, attributes)
       if (present(attributes)) then
          select case (self%method)
          case (time_method_mean)

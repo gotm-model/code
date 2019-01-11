@@ -17,8 +17,8 @@ module output_operators_library
 
 contains
 
-   subroutine apply_operators(field, list, field_manager)
-      class (type_base_output_field), pointer  :: field
+   subroutine apply_operators(final_operator, list, field_manager)
+      class (type_base_operator),     pointer  :: final_operator
       class (type_list),         intent(in)    :: list
       type (type_field_manager), intent(inout) :: field_manager
 
@@ -40,8 +40,8 @@ contains
                call host%fatal_error('apply_operators', trim(mapping%path)//': operator type '//trim(operator_type)//' not recognized.')
             end select
             call op%configure(mapping, field_manager)
-            op%source => field
-            field => op
+            op%previous => final_operator
+            final_operator => op
          class default
             call host%fatal_error('apply_operators','Elements below '//trim(list%path)//' must be dictionaries.')
          end select

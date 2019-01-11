@@ -2,7 +2,7 @@
    subroutine deprecated_output(namlst,title,dt,list_fields)
 
    use register_all_variables, only: fm
-   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_category
+   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
    use output_manager
    use netcdf_output
    use text_output
@@ -15,7 +15,7 @@
    logical, intent(inout) :: list_fields
 
    class (type_output_manager_file), pointer :: outfile
-   class (type_output_category),     pointer :: output_category
+   type (type_output_item),          pointer :: output_item
 
    integer                             :: out_fmt
    character(len=PATH_MAX)             :: out_dir
@@ -74,8 +74,8 @@
    outfile%time_unit = time_unit_second
    outfile%time_step = dt*nsave
    call output_manager_add_file(fm,outfile)
-   allocate(output_category)
-   call outfile%append_category(output_category)
+   allocate(output_item)
+   call outfile%append_item(output_item)
 
    return
 
