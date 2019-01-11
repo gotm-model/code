@@ -167,7 +167,7 @@ contains
             end if
             output_field => output_field%next
          end do
-         last_field%next => null()
+         if (associated(last_field)) last_field%next => null()
 
          ! Add any missing coordinate variables
          call add_coordinate_variables(file)
