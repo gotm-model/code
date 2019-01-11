@@ -130,8 +130,8 @@ module output_manager_core
       class (type_base_operator), pointer :: previous => null()
    contains
       procedure :: configure => operator_configure
-      procedure :: initialize => operator_initialize
-      procedure :: apply => operator_apply
+      procedure :: apply     => operator_apply
+      procedure :: apply_all => operator_apply_all
    end type
 
    class (type_host),pointer,save :: host => null()
@@ -161,9 +161,9 @@ contains
    end subroutine
 
    recursive function base_field_get_field(self, field) result(output_field)
-      class (type_base_output_field), intent(inout) :: self
-      type (type_field), target                     :: field
-      class (type_base_output_field), pointer       :: output_field
+      class (type_base_output_field), intent(in) :: self
+      type (type_field), target                  :: field
+      class (type_base_output_field), pointer    :: output_field
       output_field => wrap_field(field)
    end function
 
@@ -361,20 +361,20 @@ contains
       type (type_field_manager),  intent(inout) :: field_manager
    end subroutine
 
-   subroutine operator_initialize(self,  field_manager)
-      class (type_base_operator), intent(inout) :: self
-      type (type_field_manager),  intent(inout) :: field_manager
-   end subroutine
-
-   recursive function operator_apply(self, source) result(output_field)
+   function operator_apply(self, source) result(output_field)
       class (type_base_operator), intent(inout), target :: self
       class (type_base_output_field), target            :: source
       class (type_base_output_field), pointer           :: output_field
-      if (associated(self%previous)) then
-         output_field => self%previous%apply(source)
-      else
-         output_field => source
-      end if
+      output_field => source
+   end function
+
+   recursive function operator_apply_all(self, source) result(output_field)
+      class (type_base_operator), intent(inout), target :: self
+      class (type_base_output_field), target            :: source
+      class (type_base_output_field), pointer           :: output_field
+      output_field => source
+      if (associated(self%previous)) output_field => self%previous%apply_all(output_field)
+      if (associated(output_field)) output_field => self%apply(output_field)
    end function
 
 end module output_manager_core

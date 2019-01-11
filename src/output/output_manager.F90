@@ -5,7 +5,6 @@ module output_manager
    use netcdf_output
    use text_output
    use output_operators_library
-   use output_operators_base
    use output_operators_time_average
    use output_operators_slice
 
@@ -149,7 +148,7 @@ contains
 
          output_field => wrap_field(field)
 
-         if (associated(final_operator)) output_field => final_operator%apply(output_field)
+         if (associated(final_operator)) output_field => final_operator%apply_all(output_field)
          if (associated(output_field)) call append_field(output_name, output_field, settings)
       end subroutine
 

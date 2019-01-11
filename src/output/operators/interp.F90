@@ -39,6 +39,7 @@ module output_operators_interp
    contains
       procedure :: flag_as_required
       procedure :: before_save
+      procedure :: get_field
    end type
 
 contains
@@ -113,7 +114,7 @@ contains
       if (associated(config_error)) call host%fatal_error('type_interp_operator%configure', config_error%message)
    end subroutine
 
-   recursive function apply(self, source) result(output_field)
+   function apply(self, source) result(output_field)
       class (type_interp_operator), intent(inout), target :: self
       class (type_base_output_field), target              :: source
       class (type_base_output_field), pointer             :: output_field
@@ -125,10 +126,7 @@ contains
       character(len=:), allocatable :: long_name, units, standard_name, long_name2
       integer, allocatable :: extents(:)
 
-      output_field => self%type_base_operator%apply(source)
-      if (.not. associated(output_field)) return
-
-      call output_field%get_metadata(dimensions=dimensions, fill_value=out_of_bounds_value)
+      call source%get_metadata(dimensions=dimensions, fill_value=out_of_bounds_value)
       do idim = 1, size(dimensions)
          if (dimensions(idim)%p%name == self%dimension) exit
       end do
@@ -139,11 +137,11 @@ contains
       if (dimensions(idim)%p%length == 1) call host%fatal_error('type_interp_operator%initialize', &
          'Cannot use interp on dimension ' // trim(self%dimension) // ' because it has length 1.')
       if (self%out_of_bounds_treatment == 1 .and. out_of_bounds_value == default_fill_value) &
-         call host%fatal_error('type_interp_operator%initialize', 'Cannot use out_of_bounds_value=1 because ' // trim(output_field%output_name) // ' does not have fill_value set.')
+         call host%fatal_error('type_interp_operator%initialize', 'Cannot use out_of_bounds_value=1 because ' // trim(source%output_name) // ' does not have fill_value set.')
 
       allocate(result)
       result%operator => self
-      result%source => output_field
+      result%source => source
       result%output_name = 'interp('//trim(result%source%output_name)//')'
       output_field => result
       result%idim = idim
@@ -262,6 +260,17 @@ contains
          call interp(self%target_coordinates(:) + offset, self%source_coordinate%data%p1d, self%source%data%p1d, self%result_1d, self%out_of_bounds_treatment, self%out_of_bounds_value)
       end if
    end subroutine
+
+   recursive function get_field(self, field) result(output_field)
+      class (type_result), intent(in)         :: self
+      type (type_field), target               :: field
+      class (type_base_output_field), pointer :: output_field
+      if (associated(self%dimensions(self%idim)%p%coordinate, field)) then
+         output_field => self%type_base_output_field%get_field(field)
+      else
+         output_field => self%type_operator_result%get_field(field)
+      end if
+   end function
 
    subroutine interp(x, xp, fp, f, out_of_bounds_treatment, out_of_bounds_value)
       real(rk), intent(in) :: x(:), xp(:), fp(:)

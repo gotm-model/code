@@ -48,7 +48,7 @@ module output_operators_slice
       self%first => single_dimension_slice
    end subroutine
 
-   recursive function apply(self, source) result(output_field)
+   function apply(self, source) result(output_field)
       class (type_slice_operator), intent(inout), target :: self
       class (type_base_output_field), target             :: source
       class (type_base_output_field), pointer            :: output_field
@@ -61,14 +61,9 @@ module output_operators_slice
       type (type_single_dimension_slice), pointer   :: single_dimension_slice
       integer                                       :: i, j, global_start, global_stop
 
-      output_field => self%type_base_operator%apply(source)
-      if (.not. associated(output_field)) return
-
-      call output_field%get_metadata(dimensions=dimensions)
-
-      allocate(starts(1:size(dimensions)))
-      allocate(stops(1:size(dimensions)))
-      allocate(strides(1:size(dimensions)))
+      output_field => null()
+      call source%get_metadata(dimensions=dimensions)
+      allocate(starts(1:size(dimensions)), stops(1:size(dimensions)), strides(1:size(dimensions)))
       starts(:) = 1
       strides(:) = 1
       j = 0
@@ -92,10 +87,7 @@ module output_operators_slice
             stride = single_dimension_slice%stride
          end if
          call find_local_range(global_start, global_stop, dimensions(i)%p%offset, dimensions(i)%p%length, stride, local_start, local_stop)            
-         if (local_stop < local_start) then
-            output_field => null()
-            return
-         end if
+         if (local_stop < local_start) return
          if (dimensions(i)%p%length > 1) then
             j = j + 1
             starts(j) = local_start
@@ -115,7 +107,7 @@ module output_operators_slice
 
       allocate(result)
       result%operator => self
-      result%source => output_field
+      result%source => source
       result%output_name = 'slice('//trim(result%source%output_name)//')'
       output_field => result
       allocate(result%dimensions(1:size(dimensions)))

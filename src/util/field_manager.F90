@@ -79,8 +79,8 @@ module field_manager
    type type_attributes
       class (type_attribute), pointer :: first => null()
    contains
-      procedure :: set_object => attributes_set_object
-      procedure :: delete => attributes_delete
+      procedure :: set_object  => attributes_set_object
+      procedure :: delete      => attributes_delete
       procedure :: set_real    => attributes_set_real
       procedure :: set_integer => attributes_set_integer
       procedure :: set_string  => attributes_set_string

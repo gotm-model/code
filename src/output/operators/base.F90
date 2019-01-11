@@ -77,16 +77,16 @@ module output_operators_base
    end subroutine
 
    recursive function get_field(self, field) result(output_field)
-      class (type_operator_result), intent(inout) :: self
-      type (type_field), target                   :: field
-      class (type_base_output_field), pointer     :: output_field
+      class (type_operator_result), intent(in) :: self
+      type (type_field), target                :: field
+      class (type_base_output_field), pointer  :: output_field
       output_field => self%source%get_field(field)
    end function
 
    recursive function universal_get_field(self, field) result(output_field)
-      class (type_universal_operator_result), intent(inout) :: self
-      type (type_field), target                   :: field
-      class (type_base_output_field), pointer     :: output_field
+      class (type_universal_operator_result), intent(in) :: self
+      type (type_field), target                          :: field
+      class (type_base_output_field), pointer            :: output_field
       output_field => self%type_operator_result%get_field(field)
       if (associated(output_field)) output_field => self%operator%apply(output_field)
    end function

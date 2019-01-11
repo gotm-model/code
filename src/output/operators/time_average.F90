@@ -28,7 +28,7 @@ module output_operators_time_average
    
 contains
 
-   recursive function apply(self, source) result(output_field)
+   function apply(self, source) result(output_field)
       class (type_time_average_operator), intent(inout), target :: self
       class (type_base_output_field), target                    :: source
       class (type_base_output_field), pointer                   :: output_field
@@ -38,18 +38,18 @@ contains
       integer                                    :: itimedim
       class (type_result), pointer               :: result
 
-      output_field => self%type_base_operator%apply(source)
-      if (.not. associated(output_field)) return
-
-      call output_field%get_metadata(dimensions=dimensions, fill_value=fill_value)
+      call source%get_metadata(dimensions=dimensions, fill_value=fill_value)
       do itimedim=1,size(dimensions)
          if (dimensions(itimedim)%p%id == id_dim_time) exit
       end do
-      if (itimedim > size(dimensions)) return
+      if (itimedim > size(dimensions)) then
+         output_field => source
+         return
+      end if
 
       allocate(result)
       result%operator => self
-      result%source => output_field
+      result%source => source
       result%output_name = 'time_average('//trim(result%source%output_name)//')'
       output_field => result
       result%method = self%method
