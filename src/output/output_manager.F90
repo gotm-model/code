@@ -154,6 +154,7 @@ contains
 
          ! First check whether all fields included in this file have been registered.
          output_field => file%first_field
+         file%first_field => null()
          last_field => null()
          do while (associated(output_field))
             call output_field%initialize(file%field_manager)
