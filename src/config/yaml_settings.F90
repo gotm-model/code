@@ -780,6 +780,8 @@ contains
       class (type_dictionary_populator), optional, target        :: populator
       class (type_settings),  pointer :: child
 
+      logical :: create
+
       child => null()
       if (present(node)) then
          select type (value => node%value)
@@ -787,14 +789,16 @@ contains
             child => value
          end select
       end if
-      if (.not. associated(child)) then
+      create = .not. associated(child)
+      if (create) then
          child => node%value%parent%create_child()
          call node%set_value(child)
       end if
 
       if (present(long_name)) child%long_name = long_name
       if (present(populator)) child%populator => populator
-      if (associated(child%backing_store_node)) call settings_set_data(child, child%backing_store_node)
+      if ((create .or. present(populator)) .and. associated(child%backing_store_node)) &
+         call settings_set_data(child, child%backing_store_node)
    end function
 
    subroutine settings_populate(self, populator)
