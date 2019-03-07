@@ -296,6 +296,14 @@
 
    call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
                            options=(/type_option(1, 'equation of state'), type_option(2, 'prognostic equation')/), default=1)
+#if 0
+   branch => settings_store%get_child('streams')
+   call branch%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', &
+                           options=(/type_option(0, 'none'), type_option(1, 'surface'), type_option(2, 'all layers'), type_option(3, 'free surface')/), default=0)
+#else
+   call settings_store%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', &
+                           options=(/type_option(0, 'none'), type_option(1, 'surface'), type_option(2, 'all layers'), type_option(3, 'free surface')/), default=0)
+#endif
 
 !  open the namelist file.
    if (read_nml) then
@@ -318,6 +326,8 @@
       call init_airsea(namlst)
    end if
 
+!KB must be moved down to have e.g. init_hypsograph() called - testing for side effects.
+#if 0
 #ifdef _FABM_
    if (fabm_calc .and. read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
 
@@ -327,6 +337,7 @@
 
    call configure_gotm_fabm_input()
    if (read_nml) call configure_gotm_fabm_input_from_nml(namlst, 'fabm_input.nml')
+#endif
 #endif
 
    ! Initialize field manager
@@ -347,11 +358,14 @@
       call deprecated_output(namlst,title,dt,list_fields)
    end if
 
+!KB must be moved down to have FABM initialised() called - testing for side effects.
+#if 0
    ! Make sure all elements in the YAML configuration file were recognized
    if (.not. settings_store%check_all_used()) then
       FATAL trim(yaml_file) // ' is invalid.'
       stop 1
    end if
+#endif
 
    if (write_yaml_path /= '') then
       call settings_store%save(trim(write_yaml_path), namlst)
@@ -406,6 +420,16 @@
    call init_hypsograph(nlev)
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta%value)
+!KB - moved down code I
+#ifdef _FABM_
+   if (fabm_calc .and. read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
+
+   ! Allow FABM to create its model tree. After this we know all biogeochemical variables
+   ! This must be done before gotm_fabm_input configuration.
+   call gotm_fabm_create_model(namlst,nlev,lake)
+
+   call configure_gotm_fabm_input()
+#endif
 
 #ifdef SEAGRASS
       call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
@@ -465,6 +489,13 @@
       call post_init_gotm_fabm_input(nlev,h(1:nlev))
    end if
 #endif
+
+!KB - moved down code II
+   ! Make sure all elements in the YAML configuration file were recognized
+   if (.not. settings_store%check_all_used()) then
+      FATAL trim(yaml_file) // ' is invalid.'
+      stop 1
+   end if
 
    ! Now that all inputs have been registered (FABM added some), update them all by reading from file.
    call do_input(julianday,secondsofday,nlev,z)
