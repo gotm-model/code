@@ -535,6 +535,8 @@
             if (in_output) check_conservation = .true.
          end do
 
+!KB - this code occurs twice
+#if 0
          ! Inform field manager about available diagnostics
          ! This also tells FABM which diagnostics need computing (through setting of the "save" attribute).
          ! This MUST be done before fabm_check_ready is called.
@@ -550,6 +552,7 @@
             end if
             if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
          end do
+#endif
       end if
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
