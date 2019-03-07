@@ -140,6 +140,7 @@
    integer,  public, parameter                   :: WATER_BALANCE_ALLLAYERS=2
    integer,  public, parameter                   :: WATER_BALANCE_ZETA=3
    integer,  public                              :: water_balance_method=WATER_BALANCE_SURFACE
+!   integer,  public                              :: water_balance_method
    REALTYPE, public                              :: net_water_balance, int_water_balance=_ZERO_
    REALTYPE, public                              :: int_flows
    REALTYPE, public                              :: int_fwf
@@ -213,7 +214,7 @@
 
    branch => settings_store%get_typed_child('location')
    call branch%get(hypsograph_file, 'hypsograph', 'hypsograph', default="")
-!KB   call branch%get(hypsograph_file,water_balance_method, 'gravity', 'gravitational acceleration', 'm/s^2', &
+
    LEVEL2 'done'
    return
    end subroutine init_meanflow_yaml

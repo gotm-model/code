@@ -672,6 +672,7 @@
    call twig%get(w_adv_discr, 'w_adv_discr', '', &
                    minimum=0,maximum=6,default=6)
 
+#if 1
    call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, pchild=twig)
    call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
                    default=44714._rk)
@@ -685,6 +686,25 @@
                    default=0._rk)
    call twig%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
                    minimum=0._rk, default=0._rk)
+#else
+
+   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, pchild=twig)
+!   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, &
+!                   extra_options=(/type_option(ANALYTICAL, 'analytical'), type_option(3, 'calculated')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
+   twig => branch%get_typed_child('analytical')
+   call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
+                   default=44714._rk)
+   call twig%get(amp_1, 'amp_1', 'amplitude of 1st harmonic', 'm', &
+                   default=0._rk)
+   call twig%get(phase_1, 'phase_1', 'phase of 1st harmonic', 's', &
+                   minimum=0._rk, default=0._rk)
+   call twig%get(period_2, 'period_2', 'period of 2nd harmonic (eg. S2-tide)', 's', &
+                   default=43200._rk)
+   call twig%get(amp_2, 'amp_2', 'amplitude of 2nd harmonic', 'm', &
+                   default=0._rk)
+   call twig%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
+                   minimum=0._rk, default=0._rk)
+#endif
 
    twig => branch%get_typed_child('velprofile', 'horizontal velocities')
    call twig%get(uprof, 'uprof', 'velocity in x direction', 'm/s', default=0._rk, &

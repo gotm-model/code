@@ -172,11 +172,23 @@
 !
 ! !LOCAL VARIABLES:
    type (type_stream_populator), pointer :: stream_populator
+#if 0
+   class (type_gotm_settings), pointer :: branch, twig, leaf
+   integer water_balance_method
+#endif
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'configure_streams_yaml'
    cfg => settings_store%get_typed_child('streams')
+#if 0
+#if 1
+   call cfg%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', default=0)
+#else
+   call cfg%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', &
+                           options=(/type_option(0, 'none'), type_option(1, 'surface'), type_option(2, 'all layers'), type_option(3, 'free surface')/), default=0)
+#endif
+#endif
    allocate(stream_populator)
    call cfg%populate(stream_populator)
    LEVEL2 'done'
