@@ -389,7 +389,6 @@
 !  Register streams with GOTM-FABM coupler
    stream => first_stream
    do while (associated(stream))
-!KBwrite(*,*) 'AAAAA ',stream%name,' BBBBB'
       call register_stream(stream%name, stream%flow%value, stream%Q)
       stream => stream%next
    end do
@@ -398,6 +397,7 @@
    do while (associated(curvariable))
       if (associated(curvariable%stream)) then
 !        Input is stream concentration for pelagic variable.
+         call register_input(curvariable%scalar_input)
          call register_stream_concentration(curvariable%interior_id, curvariable%stream%name, curvariable%scalar_input%value)
       elseif (fabm_is_variable_used(curvariable%interior_id)) then
          allocate(curvariable%profile_input%data(0:nlev))
