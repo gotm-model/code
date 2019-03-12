@@ -156,15 +156,15 @@
 !KB - will replace this logic using strip_string() for the simple reading
 !     an do the re-ordering after data has been read.
    select case (up_down)
-      case(1)  ! surface ref, read from bottom
+      case(1)  ! surface ref, read from bottom => deepest z-level adjusts depth
          do i=0,nlev_input
             read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
-      case(2)  ! surface ref, read from surface
+      case(2)  ! surface ref, read from surface => deepest z-level adjusts depth
          do i=nlev_input,0,-1
             read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
-      case(3)  ! bottom ref, read from bottom
+      case(3)  ! bottom ref, read from bottom => shifts z-levels according to depth from nml
          do i=0,nlev_input
             read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
@@ -176,7 +176,7 @@
          do i=nlev_input,0,-1
             zi_input(i) = zi_input(i)-zi_input(0)-depth0
          end do
-      case(4)  ! bottom ref, read from surface
+      case(4)  ! bottom ref, read from surface => shifts z-levels according to depth from nml
          do i=nlev_input,0,-1
             read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
