@@ -299,7 +299,7 @@
    call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
-                          bio_albedo,bio_drag_scale)
+                          bio_albedo,bio_drag_scale,swr_abs_method,swr_abs(1:nlev))
 
 !  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
@@ -481,7 +481,8 @@
       endif
 
       if (t_prof_method .ne. 0) then
-         call temperature(nlev,dt,cnpar,I_0,heat,nuh,gamh,rad)
+         if (swr_abs_method .eq. 0) call light(nlev,I_0,rad,swr_abs)
+         call temperature(nlev,dt,cnpar,heat,nuh,gamh,swr_abs)
       endif
 
 !     update shear and stratification

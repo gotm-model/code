@@ -81,7 +81,7 @@
       module procedure register_scalar_observation
    end interface
 
-   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id,pres_id
+   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id,pres_id,swr_abs_id
    type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id,swr_sf_id
 
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
@@ -92,7 +92,7 @@
    REALTYPE                  :: cnpar
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor,configuration_method
    logical                   :: fabm_calc,repair_state, &
-                                bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
+                                bioshade_feedback,bioalbedo_feedback,biodrag_feedback, light_absorption_feedback, &
                                 no_precipitation_dilution,salinity_relaxation_to_freshwater_flux, &
                                 save_inputs, no_surface
 
@@ -108,7 +108,7 @@
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(:) :: nuh,h,bioshade,w,rho
+   REALTYPE,pointer,dimension(:) :: nuh,h,bioshade,swr_abs,w,rho
    REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
@@ -161,6 +161,7 @@
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
+                            light_absorption_feedback,                               &
                             repair_state,no_precipitation_dilution,                  &
                             salinity_relaxation_to_freshwater_flux,save_inputs, &
                             no_surface,configuration_method
@@ -180,6 +181,7 @@
    bioshade_feedback = .true.
    bioalbedo_feedback = .true.
    biodrag_feedback  = .true.
+   light_absorption_feedback = .false.
    repair_state      = .false.
    salinity_relaxation_to_freshwater_flux = .false.
    no_precipitation_dilution = .false.              ! useful to check mass conservation
@@ -224,7 +226,9 @@
          case (1)
             ! From YAML file fabm.yaml
             allocate(model)
-            call fabm_create_model_from_yaml_file(model)
+            call fabm_create_model_from_yaml_file(model,do_not_initialize=.true.)
+            if (light_absorption_feedback) call model%require_data(standard_variables%net_rate_of_absorption_of_shortwave_energy_in_layer)
+            call fabm_initialize(model)
       end select
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
@@ -306,6 +310,7 @@
       par_id  = model%get_bulk_variable_id(standard_variables%downwelling_photosynthetic_radiative_flux)
       swr_id  = model%get_bulk_variable_id(standard_variables%downwelling_shortwave_flux)
       pres_id = model%get_bulk_variable_id(standard_variables%pressure)
+      swr_abs_id = model%get_bulk_variable_id(standard_variables%net_rate_of_absorption_of_shortwave_energy_in_layer)
       lon_id       = model%get_horizontal_variable_id(standard_variables%longitude)
       lat_id       = model%get_horizontal_variable_id(standard_variables%latitude)
       windspeed_id = model%get_horizontal_variable_id(standard_variables%wind_speed)
@@ -826,7 +831,7 @@
 ! !INTERFACE:
    subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
                                 bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
-                                yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
+                                yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_,swr_abs_method,swr_abs_)
 !
 ! !DESCRIPTION:
 ! This routine is called once from GOTM to provide pointers to the arrays that describe
@@ -842,6 +847,8 @@
    integer,  intent(in),target :: yearday_,secondsofday_
    REALTYPE, intent(in),optional,target,dimension(:) :: SRelaxTau_,sProf_
    REALTYPE, intent(in),optional,target :: bio_albedo_,bio_drag_scale_
+   integer, intent(inout), optional :: swr_abs_method
+   REALTYPE, intent(in), optional, target :: swr_abs_(:)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -869,6 +876,7 @@
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
    w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
+   swr_abs  => swr_abs_    ! shortwave absorption per layer (W/m2), input for physics if swr_abs_method == 1
    precip   => precip_     ! precipitation [scalar] - used to calculate dilution due to increased water volume
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
@@ -913,6 +921,7 @@
    yearday => yearday_
    secondsofday => secondsofday_
 
+   if (light_absorption_feedback) swr_abs_method = 1
    end subroutine set_env_gotm_fabm
 !EOC
 
@@ -1480,6 +1489,7 @@
 
       if (bioshade_feedback) bioshade(i)=exp(-bioext)
    end do
+   if (light_absorption_feedback) swr_abs(:) = model%get_data(swr_abs_id)
    end subroutine light
 !EOC
 

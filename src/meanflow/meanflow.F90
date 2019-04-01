@@ -58,6 +58,8 @@
    REALTYPE, public, dimension(:), allocatable  :: fric,drag
 
 !  shading in the water column
+   integer, public :: swr_abs_method
+   REALTYPE, public, dimension(:), allocatable, target  :: swr_abs
    REALTYPE, public, dimension(:), allocatable, target  :: bioshade
 
 # ifdef EXTRA_OUTPUT
@@ -230,6 +232,9 @@
    runtimeu = _ZERO_
    runtimev = _ZERO_
 
+!  Initialize shortwave absorption method to use built-in light model
+   swr_abs_method = 0
+
    LEVEL2 'allocation meanflow memory..'
 
    allocate(ga(0:nlev),stat=rc)
@@ -335,6 +340,10 @@
    allocate(bioshade(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (bioshade)'
    bioshade = _ONE_
+
+   allocate(swr_abs(1:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (swr_abs)'
+   swr_abs = _ZERO_
 
 # ifdef EXTRA_OUTPUT
 

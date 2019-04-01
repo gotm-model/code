@@ -275,6 +275,7 @@ add_library(meanflow
             meanflow/salinity.F90
             meanflow/shear.F90
             meanflow/stratification.F90
+            meanflow/light.F90
             meanflow/temperature.F90
             meanflow/uequation.F90
             meanflow/updategrid.F90

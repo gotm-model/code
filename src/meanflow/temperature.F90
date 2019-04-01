@@ -5,7 +5,7 @@
 ! !ROUTINE: The temperature equation \label{sec:temperature}
 !
 ! !INTERFACE:
-   subroutine temperature(nlev,dt,cnpar,I_0,heat,nuh,gamh,rad)
+   subroutine temperature(nlev,dt,cnpar,heat,nuh,gamh,swr_abs)
 !
 ! !DESCRIPTION:
 ! This subroutine computes the balance of heat in the form
@@ -67,11 +67,9 @@
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: h,u,v,w,T,S,avh
-   use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
-   use observations, only: A,g1,g2
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -88,9 +86,6 @@
 !  numerical "implicitness" parameter
    REALTYPE, intent(in)                :: cnpar
 
-!  surface short waves radiation  (W/m^2)
-   REALTYPE, intent(in)                :: I_0
-
 !  surface heat flux (W/m^2)
 !  (negative for heat loss)
    REALTYPE, intent(in)                :: heat
@@ -100,10 +95,9 @@
 
 !  non-local heat flux (Km/s)
    REALTYPE, intent(in)                :: gamh(0:nlev)
-!
-! !OUTPUT PARAMETERS:
-!  shortwave radiation profile (W/m^2)
-   REALTYPE                            :: rad(0:nlev)
+
+!  shortwave absorption per layer (W/m^2)
+   REALTYPE                            :: swr_abs(1:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -141,17 +135,7 @@
    AdvTup         = _ZERO_
    AdvTdw         = _ZERO_
 
-!  initalize radiation
-   rad(nlev)  = I_0
-   z          =_ZERO_
-
-   do i=nlev-1,0,-1
-
-      z=z+h(i+1)
-
-!     compute short wave radiation
-      rad(i)=I_0*(A*exp(-z/g1)+(1.-A)*exp(-z/g2)*bioshade(i+1))
-
+   do i=0,nlev
 !     compute total diffusivity
       avh(i)=nuh(i)+avmolT
    end do
@@ -161,10 +145,9 @@
    Lsour=_ZERO_
    Qsour=_ZERO_
 
-   Qsour(nlev)=(I_0-rad(nlev-1))/(rho_0*cp*h(nlev))
-   do i=1,nlev-1
+   do i=1,nlev
 !     from radiation
-      Qsour(i) = (rad(i)-rad(i-1))/(rho_0*cp*h(i))
+      Qsour(i) = swr_abs(i)/(rho_0*cp*h(i))
    enddo
 
    do i=1,nlev
