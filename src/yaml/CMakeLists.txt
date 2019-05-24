@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.8)
+#KBcmake_minimum_required(VERSION 2.8.8)
 
 # Create main project.
 project(yaml Fortran)
