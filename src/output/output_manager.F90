@@ -11,6 +11,7 @@ module output_manager
    implicit none
 
    public output_manager_init, output_manager_prepare_save, output_manager_save, output_manager_clean, output_manager_add_file
+   public output_manager_initialize_files
 
    private
 
@@ -144,14 +145,21 @@ contains
       end do
    end subroutine add_coordinate_variables
 
-   subroutine initialize_files(julianday,secondsofday,microseconds,n)
+   subroutine output_manager_initialize_files(julianday,secondsofday,microseconds,n,save_first)
       integer, intent(in) :: julianday,secondsofday,microseconds,n
+      logical, intent(in), optional :: save_first
 
       class (type_file),            pointer :: file
       class (type_output_field),    pointer :: output_field
       type (type_output_dimension), pointer :: output_dim
       integer, allocatable, dimension(:)    :: starts, stops, strides
       integer                               :: i,j
+      integer                               :: yyyy,mm,dd,yyyy0,mm0
+      integer(kind=timestepkind)            :: offset
+      logical                               :: save_first_
+
+      save_first_ = .true.
+      if (present(save_first)) save_first_ = save_first
 
       file => first_file
       do while (associated(file))
@@ -255,6 +263,70 @@ contains
          ! Create output file
          call file%initialize()
 
+         ! Determine time (julian day, seconds of day) for first output.
+         file%next_julian = file%first_julian
+         file%next_seconds = file%first_seconds
+         offset = 86400*(julianday-file%first_julian) + (secondsofday-file%first_seconds)
+         if (offset.gt.0 .or. .not.save_first_) then
+            select case (file%time_unit)
+               case (time_unit_second)
+                  file%next_seconds = file%next_seconds + ((offset+file%time_step-1)/file%time_step)*file%time_step
+                  file%next_julian = file%next_julian + file%next_seconds/86400
+                  file%next_seconds = mod(file%next_seconds,86400)
+                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
+                     file%next_seconds = file%next_seconds + file%time_step
+                     file%next_julian = file%next_julian + file%next_seconds/86400
+                     file%next_seconds = mod(file%next_seconds,86400)
+                  end if
+               case (time_unit_hour)
+                  file%next_seconds = file%next_seconds + ((offset+file%time_step*3600-1)/(file%time_step*3600))*file%time_step*3600
+                  file%next_julian = file%next_julian + file%next_seconds/86400
+                  file%next_seconds = mod(file%next_seconds,86400)
+                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
+                     file%next_seconds = file%next_seconds + file%time_step*3600
+                     file%next_julian = file%next_julian + file%next_seconds/86400
+                     file%next_seconds = mod(file%next_seconds,86400)
+                  end if
+               case (time_unit_day)
+                  file%next_julian = file%next_julian + ((offset+file%time_step*86400-1)/(file%time_step*86400))*file%time_step
+                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
+                     file%next_julian = file%next_julian + file%time_step
+                  end if
+               case (time_unit_month)
+                  call host%calendar_date(julianday,yyyy,mm,dd)
+                  call host%calendar_date(file%first_julian,yyyy,mm0,dd)
+                  mm = mm0 + ((mm-mm0+file%time_step-1)/file%time_step)*file%time_step
+                  yyyy = yyyy + (mm-1)/12
+                  mm = mod(mm-1,12)+1
+                  call host%julian_day(yyyy,mm,dd,file%next_julian)
+                  if (file%next_julian.eq.julianday .and. secondsofday.gt.file%next_seconds) then
+                     mm = mm + file%time_step
+                     yyyy = yyyy + (mm-1)/12
+                     mm = mod(mm-1,12)+1
+                     call host%julian_day(yyyy,mm,dd,file%next_julian)
+                  end if
+                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
+                     mm = mm + file%time_step
+                     yyyy = yyyy + (mm-1)/12
+                     mm = mod(mm-1,12)+1
+                     call host%julian_day(yyyy,mm,dd,file%next_julian)
+                  end if
+               case (time_unit_year)
+                  call host%calendar_date(julianday,yyyy,mm,dd)
+                  call host%calendar_date(file%first_julian,yyyy0,mm,dd)
+                  yyyy = yyyy0 + ((yyyy-yyyy0+file%time_step-1)/file%time_step)*file%time_step
+                  call host%julian_day(yyyy,mm,dd,file%next_julian)
+                  if (file%next_julian.eq.julianday .and. secondsofday.gt.file%next_seconds) then
+                     yyyy = yyyy + file%time_step
+                     call host%julian_day(yyyy,mm,dd,file%next_julian)
+                  end if
+                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
+                     yyyy = yyyy + file%time_step
+                     call host%julian_day(yyyy,mm,dd,file%next_julian)
+                  end if
+            end select
+         end if
+
          file => file%next
       end do
       files_initialized = .true.
@@ -272,7 +344,7 @@ contains
       class (type_output_field), pointer :: output_field
       logical                            :: required
 
-      if (.not. files_initialized) call initialize_files(julianday, secondsofday, microseconds, n)
+      if (.not. files_initialized) call output_manager_initialize_files(julianday, secondsofday, microseconds, n)
 
       ! Start by marking all fields as not needing computation
       file => first_file
@@ -332,7 +404,7 @@ contains
       integer                               :: yyyy,mm,dd
       logical                               :: output_required
 
-      if (.not.files_initialized) call initialize_files(julianday,secondsofday,microseconds,n)
+      if (.not.files_initialized) call output_manager_initialize_files(julianday,secondsofday,microseconds,n)
 
       file => first_file
       do while (associated(file))

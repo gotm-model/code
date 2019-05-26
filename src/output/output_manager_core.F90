@@ -28,6 +28,7 @@ module output_manager_core
    integer,parameter,public :: time_from_list   = 7
 
    integer,parameter,public :: rk = kind(_ONE_)
+   integer,parameter,public :: timestepkind = selected_int_kind(12)
 
    type,abstract :: type_host
    contains
