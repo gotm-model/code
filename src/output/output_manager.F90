@@ -145,21 +145,14 @@ contains
       end do
    end subroutine add_coordinate_variables
 
-   subroutine output_manager_initialize_files(julianday,secondsofday,microseconds,n,save_first)
+   subroutine output_manager_initialize_files(julianday,secondsofday,microseconds,n)
       integer, intent(in) :: julianday,secondsofday,microseconds,n
-      logical, intent(in), optional :: save_first
 
       class (type_file),            pointer :: file
       class (type_output_field),    pointer :: output_field
       type (type_output_dimension), pointer :: output_dim
       integer, allocatable, dimension(:)    :: starts, stops, strides
       integer                               :: i,j
-      integer                               :: yyyy,mm,dd,yyyy0,mm0
-      integer(kind=timestepkind)            :: offset
-      logical                               :: save_first_
-
-      save_first_ = .true.
-      if (present(save_first)) save_first_ = save_first
 
       file => first_file
       do while (associated(file))
@@ -263,70 +256,6 @@ contains
          ! Create output file
          call file%initialize()
 
-         ! Determine time (julian day, seconds of day) for first output.
-         file%next_julian = file%first_julian
-         file%next_seconds = file%first_seconds
-         offset = 86400*(julianday-file%first_julian) + (secondsofday-file%first_seconds)
-         if (offset.gt.0 .or. .not.save_first_) then
-            select case (file%time_unit)
-               case (time_unit_second)
-                  file%next_seconds = file%next_seconds + ((offset+file%time_step-1)/file%time_step)*file%time_step
-                  file%next_julian = file%next_julian + file%next_seconds/86400
-                  file%next_seconds = mod(file%next_seconds,86400)
-                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
-                     file%next_seconds = file%next_seconds + file%time_step
-                     file%next_julian = file%next_julian + file%next_seconds/86400
-                     file%next_seconds = mod(file%next_seconds,86400)
-                  end if
-               case (time_unit_hour)
-                  file%next_seconds = file%next_seconds + ((offset+file%time_step*3600-1)/(file%time_step*3600))*file%time_step*3600
-                  file%next_julian = file%next_julian + file%next_seconds/86400
-                  file%next_seconds = mod(file%next_seconds,86400)
-                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
-                     file%next_seconds = file%next_seconds + file%time_step*3600
-                     file%next_julian = file%next_julian + file%next_seconds/86400
-                     file%next_seconds = mod(file%next_seconds,86400)
-                  end if
-               case (time_unit_day)
-                  file%next_julian = file%next_julian + ((offset+file%time_step*86400-1)/(file%time_step*86400))*file%time_step
-                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
-                     file%next_julian = file%next_julian + file%time_step
-                  end if
-               case (time_unit_month)
-                  call host%calendar_date(julianday,yyyy,mm,dd)
-                  call host%calendar_date(file%first_julian,yyyy,mm0,dd)
-                  mm = mm0 + ((mm-mm0+file%time_step-1)/file%time_step)*file%time_step
-                  yyyy = yyyy + (mm-1)/12
-                  mm = mod(mm-1,12)+1
-                  call host%julian_day(yyyy,mm,dd,file%next_julian)
-                  if (file%next_julian.eq.julianday .and. secondsofday.gt.file%next_seconds) then
-                     mm = mm + file%time_step
-                     yyyy = yyyy + (mm-1)/12
-                     mm = mod(mm-1,12)+1
-                     call host%julian_day(yyyy,mm,dd,file%next_julian)
-                  end if
-                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
-                     mm = mm + file%time_step
-                     yyyy = yyyy + (mm-1)/12
-                     mm = mod(mm-1,12)+1
-                     call host%julian_day(yyyy,mm,dd,file%next_julian)
-                  end if
-               case (time_unit_year)
-                  call host%calendar_date(julianday,yyyy,mm,dd)
-                  call host%calendar_date(file%first_julian,yyyy0,mm,dd)
-                  yyyy = yyyy0 + ((yyyy-yyyy0+file%time_step-1)/file%time_step)*file%time_step
-                  call host%julian_day(yyyy,mm,dd,file%next_julian)
-                  if (file%next_julian.eq.julianday .and. secondsofday.gt.file%next_seconds) then
-                     yyyy = yyyy + file%time_step
-                     call host%julian_day(yyyy,mm,dd,file%next_julian)
-                  end if
-                  if (file%next_julian.eq.julianday .and. secondsofday.eq.file%next_seconds .and. .not.save_first_) then
-                     yyyy = yyyy + file%time_step
-                     call host%julian_day(yyyy,mm,dd,file%next_julian)
-                  end if
-            end select
-         end if
-
          file => file%next
       end do
       files_initialized = .true.
@@ -360,6 +289,7 @@ contains
       file => first_file
       do while (associated(file))
          if (in_window(file, julianday, secondsofday, microseconds, n)) then
+            if (file%next_julian .eq. -1) call set_next_output(file, julianday, secondsofday, microseconds, n)
             output_field => file%first_field
             do while (associated(output_field))
                if (associated(output_field%source%used_now)) then
@@ -396,12 +326,86 @@ contains
             .and. ((julianday == self%last_julian .and. secondsofday <= self%last_seconds)  .or. julianday < self%last_julian)
    end function
 
+   subroutine set_next_output(self, julianday, secondsofday, microseconds, n)
+      class (type_file), intent(inout) :: self
+      integer,           intent(in)    :: julianday, secondsofday, microseconds, n
+
+      integer                          :: yyyy,mm,dd,yyyy0,mm0
+      integer(kind=timestepkind)       :: offset
+
+
+      if (self%next_julian == -1) then
+         ! Determine time (julian day, seconds of day) for first output.
+         self%next_julian = self%first_julian
+         self%next_seconds = self%first_seconds
+         offset = 86400*(julianday-self%first_julian) + (secondsofday-self%first_seconds)
+         if (offset .gt. 0) then
+            select case (self%time_unit)
+               case (time_unit_second)
+                  self%next_seconds = self%next_seconds + ((offset+self%time_step-1)/self%time_step)*self%time_step
+                  self%next_julian = self%next_julian + self%next_seconds/86400
+                  self%next_seconds = mod(self%next_seconds,86400)
+               case (time_unit_hour)
+                  self%next_seconds = self%next_seconds + ((offset+self%time_step*3600-1)/(self%time_step*3600))*self%time_step*3600
+                  self%next_julian = self%next_julian + self%next_seconds/86400
+                  self%next_seconds = mod(self%next_seconds,86400)
+               case (time_unit_day)
+                  self%next_julian = self%next_julian + ((offset+self%time_step*86400-1)/(self%time_step*86400))*self%time_step
+               case (time_unit_month)
+                  call host%calendar_date(julianday,yyyy,mm,dd)
+                  call host%calendar_date(self%first_julian,yyyy,mm0,dd)
+                  mm = mm0 + ((mm-mm0+self%time_step-1)/self%time_step)*self%time_step
+                  yyyy = yyyy + (mm-1)/12
+                  mm = mod(mm-1,12)+1
+                  call host%julian_day(yyyy,mm,dd,self%next_julian)
+                  if (self%next_julian.eq.julianday .and. secondsofday.gt.self%next_seconds) then
+                     mm = mm + self%time_step
+                     yyyy = yyyy + (mm-1)/12
+                     mm = mod(mm-1,12)+1
+                     call host%julian_day(yyyy,mm,dd,self%next_julian)
+                  end if
+               case (time_unit_year)
+                  call host%calendar_date(julianday,yyyy,mm,dd)
+                  call host%calendar_date(self%first_julian,yyyy0,mm,dd)
+                  yyyy = yyyy0 + ((yyyy-yyyy0+self%time_step-1)/self%time_step)*self%time_step
+                  call host%julian_day(yyyy,mm,dd,self%next_julian)
+                  if (self%next_julian.eq.julianday .and. secondsofday.gt.self%next_seconds) then
+                     yyyy = yyyy + self%time_step
+                     call host%julian_day(yyyy,mm,dd,self%next_julian)
+                  end if
+            end select
+         end if
+      else
+         select case (self%time_unit)
+            case (time_unit_second)
+               self%next_seconds = self%next_seconds + self%time_step
+               self%next_julian = self%next_julian + self%next_seconds/86400
+               self%next_seconds = mod(self%next_seconds,86400)
+            case (time_unit_hour)
+               self%next_seconds = self%next_seconds + self%time_step*3600
+               self%next_julian = self%next_julian + self%next_seconds/86400
+               self%next_seconds = mod(self%next_seconds,86400)
+            case (time_unit_day)
+               self%next_julian = self%next_julian + self%time_step
+            case (time_unit_month)
+               call host%calendar_date(julianday,yyyy,mm,dd)
+               mm = mm + self%time_step
+               yyyy = yyyy + (mm-1)/12
+               mm = mod(mm-1,12)+1
+               call host%julian_day(yyyy,mm,dd,self%next_julian)
+            case (time_unit_year)
+               call host%calendar_date(julianday,yyyy,mm,dd)
+               yyyy = yyyy + self%time_step
+               call host%julian_day(yyyy,mm,dd,self%next_julian)
+         end select
+      end if
+   end subroutine
+
    subroutine output_manager_save2(julianday,secondsofday,microseconds,n)
       integer,intent(in) :: julianday,secondsofday,microseconds,n
 
       class (type_file),            pointer :: file
       class (type_output_field),    pointer :: output_field
-      integer                               :: yyyy,mm,dd
       logical                               :: output_required
 
       if (.not.files_initialized) call output_manager_initialize_files(julianday,secondsofday,microseconds,n)
@@ -409,6 +413,7 @@ contains
       file => first_file
       do while (associated(file))
          if (in_window(file, julianday, secondsofday, microseconds, n)) then
+         if (file%next_julian .eq. -1) call set_next_output(file, julianday, secondsofday, microseconds, n)
 
          ! Increment time-integrated fields
          output_field => file%first_field
@@ -428,12 +433,6 @@ contains
             output_field => output_field%next
          end do
          file%n = file%n + 1
-
-         if (file%next_julian==-1) then
-            ! Store current time step so next time step can be computed correctly.
-            file%next_julian = file%first_julian
-            file%next_seconds = file%first_seconds
-         end if
 
          ! Determine whether output is required
          if (file%time_unit /= time_unit_dt) then
@@ -466,28 +465,7 @@ contains
             call file%save(julianday,secondsofday,microseconds)
 
             ! Determine time (julian day, seconds of day) for next output.
-            select case (file%time_unit)
-               case (time_unit_second)
-                  file%next_seconds = file%next_seconds + file%time_step
-                  file%next_julian = file%next_julian + file%next_seconds/86400
-                  file%next_seconds = mod(file%next_seconds,86400)
-               case (time_unit_hour)
-                  file%next_seconds = file%next_seconds + file%time_step*3600
-                  file%next_julian = file%next_julian + file%next_seconds/86400
-                  file%next_seconds = mod(file%next_seconds,86400)
-               case (time_unit_day)
-                  file%next_julian = file%next_julian + file%time_step
-               case (time_unit_month)
-                  call host%calendar_date(julianday,yyyy,mm,dd)
-                  mm = mm + file%time_step
-                  yyyy = yyyy + (mm-1)/12
-                  mm = mod(mm-1,12)+1
-                  call host%julian_day(yyyy,mm,dd,file%next_julian)
-               case (time_unit_year)
-                  call host%calendar_date(julianday,yyyy,mm,dd)
-                  yyyy = yyyy + file%time_step
-                  call host%julian_day(yyyy,mm,dd,file%next_julian)
-            end select
+            call set_next_output(file, julianday, secondsofday, microseconds, n)
 
             ! Reset time step counter
             file%n = 0
