@@ -1,4 +1,61 @@
-# Make sure all module files (*.mod) are written to one single "modules" directory.
+# Start by adding external dependencies
+
+# add YAML
+if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/yaml/CMakeLists.txt")
+else()
+   add_subdirectory("${PROJECT_SOURCE_DIR}/extern/yaml" 
+                    "${PROJECT_BINARY_DIR}/extern/yaml"
+   )
+   target_include_directories(yaml PUBLIC 
+         ${PROJECT_BINARY_DIR}/extern/yaml/modules
+   )
+   set(YAML_IS_CONFIGURED ON)
+endif()
+
+# shall be used in the future when flexout output_manager is compatible 
+# with the old GOTM based .../src/output/
+set(USE_EXTERN_OUTPUT_MANAGER OFF)
+if (USE_EXTERN_OUTPUT_MANAGER)
+if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/flexout/src/CMakeLists.txt")
+else()
+   add_subdirectory("${PROJECT_SOURCE_DIR}/extern/flexout" 
+                    "${PROJECT_BINARY_DIR}/extern/flexout")
+   target_include_directories(output_manager PUBLIC 
+         ${PROJECT_BINARY_DIR}/extern/flexout/modules
+   )
+endif()
+endif (USE_EXTERN_OUTPUT_MANAGER)
+
+# add FABM
+if(GOTM_USE_FABM)
+  set(FABM_SUBMODULE ON)
+  if(FABM_SUBMODULE)
+     if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/fabm/src/CMakeLists.txt")
+        find_package(Git QUIET)
+        if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/../.git")
+           execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+        endif()
+     endif()
+     set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
+     set(FABM_FORCED_HOST gotm)
+     add_subdirectory("${PROJECT_SOURCE_DIR}/extern/fabm/src" 
+                      "${PROJECT_BINARY_DIR}/extern/fabm"
+     )
+     target_include_directories(fabm PUBLIC 
+           ${PROJECT_BINARY_DIR}/extern/fabm/modules
+     )
+     target_include_directories(fabm PUBLIC 
+           ${PROJECT_BINARY_DIR}/extern/fabm/modules
+     )
+     target_include_directories(fabm PUBLIC 
+           ${PROJECT_BINARY_DIR}/extern/yaml/modules
+     )
+  endif(FABM_SUBMODULE)
+endif(GOTM_USE_FABM)
+
+# All external dependencies added
+
+# From now on - use common directory for Fortran modules
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
 # Generate source file with compilation information
@@ -48,9 +105,6 @@ if(GOTM_EXTRA_OUTPUT)
 endif(GOTM_EXTRA_OUTPUT)
 
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
-if(GOTM_USE_FABM)
-  add_definitions(-D_FABM_)
-endif(GOTM_USE_FABM)
 ---]]
 
 # Directory wide settings and preprocessor definitions
@@ -58,6 +112,9 @@ include_directories(BEFORE ${PROJECT_SOURCE_DIR}/include)
 if(GOTM_USE_NetCDF)
    add_compile_definitions(NETCDF_FMT)
 endif(GOTM_USE_NetCDF)
+if(GOTM_USE_FABM)
+  add_compile_definitions(_FABM_)
+endif(GOTM_USE_FABM)
 
 # Configure all libraries
 
@@ -147,58 +204,59 @@ target_sources(turbulence PRIVATE
 )
 target_link_libraries(turbulence PRIVATE util)
 
-#[[--
 if(GOTM_USE_FABM)
-  find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
-  mark_as_advanced(CLEAR FABM_BASE)
-  if(FABM_BASE)
-    # Build FABM from source by including its CMakeLists.txt directory.
-    set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
-    set(FABM_FORCED_HOST gotm)
-    add_subdirectory(${FABM_BASE}/src ${CMAKE_CURRENT_BINARY_DIR}/fabm_src)
-    set(FABM_LIBRARIES fabm)
-    set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
-    mark_as_advanced(FORCE FABM_PREFIX FABM_EMBED_VERSION)
-  else()
-    # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
-    find_package(FABM REQUIRED)
-    mark_as_advanced(CLEAR FABM_PREFIX)
-  endif()
-  add_library(gotm_fabm
-              fabm/gotm_fabm.F90
-             )
-  target_link_libraries(gotm_fabm util ${FABM_LIBRARIES})
-  set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm)
-  set(EXTERNAL_LIBS ${FABM_LIBRARIES})
-else()
-  mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
-endif(GOTM_USE_FABM)
---]]
+   if (NOT FABM_SUBMODULE) 
+   find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
+   mark_as_advanced(CLEAR FABM_BASE)
+   if(FABM_BASE)
+      # Build FABM from source by including its CMakeLists.txt directory.
+      set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
+      set(FABM_FORCED_HOST gotm)
+      add_subdirectory(${FABM_BASE}/src ${CMAKE_CURRENT_BINARY_DIR}/fabm_src)
+      set(FABM_LIBRARIES fabm)
+      set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
+      mark_as_advanced(FORCE FABM_PREFIX FABM_EMBED_VERSION)
+   else()
+      # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
+      find_package(FABM REQUIRED)
+      mark_as_advanced(CLEAR FABM_PREFIX)
+   endif(FABM_BASE)
+   endif() 
+#KB   endif (NOT FABM_SUBMODULE) 
 
-if(NOT GOTM_USE_FABM)
-  add_subdirectory(yaml)
-  set_property(TARGET yaml test_yaml PROPERTY FOLDER yaml)
-  set(YAML_SOURCES $<TARGET_OBJECTS:yaml>)
-endif()
+   add_library(gotm_fabm)
+   target_sources(gotm_fabm PRIVATE
+               fabm/gotm_fabm.F90
+   )
+
+   if(FABM_SUBMODULE)
+      target_link_libraries(gotm_fabm PRIVATE util fabm)
+   else()
+      target_link_libraries(gotm_fabm util fabm)
+      set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+      set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+      set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm)
+      set(EXTERNAL_LIBS ${FABM_LIBRARIES})
+      mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
+   endif(FABM_SUBMODULE)
+endif(GOTM_USE_FABM)
+
+if (NOT USE_EXTERN_OUTPUT_MANAGER)
 add_library(output_manager)
 target_sources(output_manager PRIVATE
-            ${YAML_SOURCES}
             output/output_manager.F90
             output/output_manager_core.F90
             output/netcdf_output.F90
             output/text_output.F90
-            )
-target_include_directories(output_manager PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/yaml)
-
-#[[---
-if(GOTM_USE_FABM)
-  target_link_libraries(output_manager ${FABM_LIBRARIES})
-  set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+)
 endif()
----]]
-#KBset(GOTM_LIBS ${GOTM_LIBS} output_manager)
+
+if(NOT GOTM_USE_FABM)
+   target_link_libraries(output_manager PUBLIC yaml)
+else()
+   target_link_libraries(output_manager PUBLIC yaml)
+#KB   target_link_libraries(output_manager PRIVATE fabm)
+endif()
 
 #KBif(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
@@ -264,10 +322,10 @@ if(GOTM_USE_SEAGRASS)
 endif()
 
 if(GOTM_USE_FABM)
-  add_library(gotm_fabm_io
-              fabm/gotm_fabm_input.F90
-              )
-  target_link_libraries(gotm_fabm_io input gotm_fabm)
+   add_library(gotm_fabm_io
+               fabm/gotm_fabm_input.F90
+   )
+   target_link_libraries(gotm_fabm_io PRIVATE input gotm_fabm fabm)
 endif(GOTM_USE_FABM)
 
 add_library(gotm)
@@ -278,7 +336,11 @@ target_sources(gotm PRIVATE
    gotm/deprecated_output.F90
    gotm/print_version.F90
 )
-target_link_libraries(gotm PRIVATE util airsea input meanflow turbulence)
+target_link_libraries(gotm PUBLIC output_manager yaml)
+if(GOTM_USE_FABM)
+   target_link_libraries(gotm PUBLIC gotm_fabm_io fabm)
+endif()
+target_link_libraries(gotm PRIVATE util airsea input output_manager yaml meanflow turbulence output_manager)
 
 # All libraries configured
 
@@ -290,9 +352,13 @@ add_executable(gotm_exe)
 target_sources(gotm_exe PRIVATE
    gotm/main.F90
 )
+set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 target_link_libraries(gotm_exe PRIVATE 
-   gotm meanflow observations airsea input output_manager turbulence util
+   gotm meanflow observations airsea input output_manager yaml turbulence util
 )
+if(GOTM_USE_FABM)
+   target_link_libraries(gotm_exe PRIVATE gotm_fabm gotm_fabm_io)
+endif()
 if(GOTM_USE_SEAGRASS)
    target_link_libraries(gotm_exe PRIVATE seagrass)
 endif(GOTM_USE_SEAGRASS)
@@ -300,7 +366,6 @@ if(GOTM_USE_NetCDF)
   target_include_directories(gotm_exe PRIVATE "${NetCDF_INCLUDE_DIRS}")
   target_link_libraries(gotm_exe PRIVATE "${NetCDF_LIBRARIES}")
 endif(GOTM_USE_NetCDF)
-set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 
 # rename during install set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 
