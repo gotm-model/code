@@ -1,7 +1,6 @@
 bin/
 lib/
 modules/
-extern/
 timestamp
 VERSION
 include/version.h

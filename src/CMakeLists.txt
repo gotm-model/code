@@ -6,19 +6,15 @@ else()
    add_subdirectory("${PROJECT_SOURCE_DIR}/extern/yaml" 
                     "${PROJECT_BINARY_DIR}/extern/yaml"
    )
-   set(YAML_IS_CONFIGURED ON)
 endif()
 
-# shall be used in the future when flexout output_manager is compatible 
-# with the old GOTM based .../src/output/
-set(USE_EXTERN_OUTPUT_MANAGER OFF)
-if (USE_EXTERN_OUTPUT_MANAGER)
 if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/flexout/src/CMakeLists.txt")
 else()
+   set(FLEXOUT_USE_NetCDF ${GOTM_USE_NetCDF} CACHE BOOL "Enable output in NetCDF format" FORCE)
+   mark_as_advanced(FLEXOUT_USE_NetCDF)
    add_subdirectory("${PROJECT_SOURCE_DIR}/extern/flexout" 
                     "${PROJECT_BINARY_DIR}/extern/flexout")
 endif()
-endif (USE_EXTERN_OUTPUT_MANAGER)
 
 # add FABM
 if(GOTM_USE_FABM)
@@ -31,6 +27,7 @@ if(GOTM_USE_FABM)
         endif()
      endif()
      set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
+     mark_as_advanced(FABM_EMBED_VERSION)
      set(FABM_FORCED_HOST gotm)
      add_subdirectory("${PROJECT_SOURCE_DIR}/extern/fabm/src" 
                       "${PROJECT_BINARY_DIR}/extern/fabm"
@@ -58,7 +55,7 @@ else(MSVC)
   option(GOTM_EMBED_VERSION "Embed GOTM version information" ON)
 endif(MSVC)
 if(GOTM_EMBED_VERSION)
-   add_custom_target(version ALL
+   add_custom_target(version
       ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/src/util/gotm_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Retrieving description of last GOTM commit..."
@@ -103,8 +100,7 @@ endif(GOTM_USE_FABM)
 
 # Configure all libraries
 
-add_library(util)
-target_sources(util PRIVATE
+add_library(util
    util/adv_center.F90
    util/convert_fluxes.F90
    util/diff_center.F90
@@ -125,8 +121,7 @@ if(GOTM_EMBED_VERSION)
    add_dependencies(util version)
 endif(GOTM_EMBED_VERSION)
 
-add_library(turbulence)
-target_sources(turbulence PRIVATE
+add_library(turbulence
    turbulence/algebraiclength.F90
    turbulence/alpha_mnb.F90
    turbulence/cmue_a.F90
@@ -226,40 +221,15 @@ if(GOTM_USE_FABM)
    endif(FABM_SUBMODULE)
 endif(GOTM_USE_FABM)
 
-if (NOT USE_EXTERN_OUTPUT_MANAGER)
-add_library(output_manager)
-target_sources(output_manager PRIVATE
-            output/output_manager.F90
-            output/output_manager_core.F90
-            output/netcdf_output.F90
-            output/text_output.F90
-            output/operators/library.F90
-            output/operators/base.F90
-            output/operators/time_average.F90
-            output/operators/interp.F90
-            output/operators/slice.F90
-)
-source_group(operators REGULAR_EXPRESSION output/operators)
-endif()
+if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
-if(NOT GOTM_USE_FABM)
-   target_link_libraries(output_manager PUBLIC yaml)
-else()
-   target_link_libraries(output_manager PUBLIC yaml)
-#KB   target_link_libraries(output_manager PRIVATE fabm)
-endif()
-
-#KBif(NOT GOTM_BUILD_LIBRARIES_ONLY)
-
-add_library(input)
-target_sources(input PRIVATE
+add_library(input
    input/input.F90
    input/input_netcdf.F90
 )
 target_link_libraries(input PRIVATE util)
 
-add_library(airsea)
-target_sources(airsea PRIVATE
+add_library(airsea
    airsea/airsea.F90
    airsea/airsea_fluxes.F90
    airsea/airsea_variables.F90
@@ -274,8 +244,7 @@ target_sources(airsea PRIVATE
 target_compile_definitions(airsea PRIVATE GUSTINESS)
 target_link_libraries(airsea PRIVATE input)
 
-add_library(observations)
-target_sources(observations PRIVATE
+add_library(observations
    observations/analytical_profile.F90
    observations/const_NNS.F90
    observations/const_NNT.F90
@@ -283,8 +252,7 @@ target_sources(observations PRIVATE
 )
 target_link_libraries(observations PRIVATE input)
 
-add_library(meanflow)
-target_sources(meanflow PRIVATE
+add_library(meanflow
    meanflow/buoyancy.F90
    meanflow/convectiveadjustment.F90
    meanflow/coriolis.F90
@@ -302,14 +270,13 @@ target_sources(meanflow PRIVATE
    meanflow/wequation.F90
 )
 target_link_libraries(meanflow PRIVATE observations airsea)
-
 option(GOTM_USE_SEAGRASS "Enable seagrass module" OFF)
 if(GOTM_USE_SEAGRASS)
-  add_definitions(-DSEAGRASS)
-  add_library(seagrass
-              extras/seagrass/seagrass.F90
-             )
-  target_link_libraries(seagrass PRIVATE meanflow)
+   add_definitions(-DSEAGRASS)
+   add_library(seagrass
+      extras/seagrass/seagrass.F90
+   )
+   target_link_libraries(seagrass PRIVATE meanflow)
 endif()
 
 if(GOTM_USE_FABM)
@@ -319,8 +286,7 @@ if(GOTM_USE_FABM)
    target_link_libraries(gotm_fabm_io PRIVATE input gotm_fabm fabm)
 endif(GOTM_USE_FABM)
 
-add_library(gotm)
-target_sources(gotm PRIVATE
+add_library(gotm
    gotm/gotm.F90
    gotm/diagnostics.F90
    gotm/register_all_variables.F90
@@ -331,6 +297,9 @@ target_link_libraries(gotm PUBLIC output_manager yaml)
 if(GOTM_USE_FABM)
    target_link_libraries(gotm PUBLIC gotm_fabm_io fabm)
 endif()
+if(GOTM_USE_SEAGRASS)
+   target_link_libraries(gotm PUBLIC seagrass)
+endif()
 target_link_libraries(gotm PRIVATE util airsea input output_manager yaml meanflow turbulence output_manager)
 
 # All libraries configured
@@ -338,8 +307,7 @@ target_link_libraries(gotm PRIVATE util airsea input output_manager yaml meanflo
 if(NOT GOTM_BUILD_LIBRARY)
 
 # Build GOTM executable.
-add_executable(gotm_exe)
-target_sources(gotm_exe PRIVATE
+add_executable(gotm_exe
    gotm/main.F90
 )
 set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
@@ -399,4 +367,4 @@ install(FILES
 #KBinstall(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
 
 endif(NOT GOTM_BUILD_LIBRARY)
-#KBendif(NOT GOTM_BUILD_LIBRARIES_ONLY)
+endif(NOT GOTM_BUILD_LIBRARIES_ONLY)

@@ -22,7 +22,7 @@ mark_as_advanced(NetCDF_INCLUDE_DIRS NetCDF_LIBRARIES)
 
 elseif (WIN32)
 
-set(GOTMDIR "${CMAKE_CURRENT_LIST_DIR}/../../..")
+set(GOTMDIR "${CMAKE_CURRENT_LIST_DIR}/../..")
 
 # On Windows: use CMake to locate paths; default to NetCDF static library provided with GOTM.
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
