@@ -211,7 +211,7 @@ add_library(airsea
    airsea/albedo_water.F90
 )
 target_compile_definitions(airsea PRIVATE GUSTINESS)
-target_link_libraries(airsea PRIVATE input)
+target_link_libraries(airsea PRIVATE util input)
 
 add_library(observations
    observations/analytical_profile.F90
@@ -219,7 +219,7 @@ add_library(observations
    observations/const_NNT.F90
    observations/observations.F90
 )
-target_link_libraries(observations PRIVATE input)
+target_link_libraries(observations PRIVATE util input)
 
 add_library(meanflow
    meanflow/buoyancy.F90
