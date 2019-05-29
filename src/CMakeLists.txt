@@ -1,7 +1,7 @@
 # Start by adding external dependencies
 
 if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/flexout/src/CMakeLists.txt")
-   message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first with \"git submodule update --init\".")
+   message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
 else()
    set(FLEXOUT_USE_NetCDF ${GOTM_USE_NetCDF} CACHE BOOL "Enable output in NetCDF format" FORCE)
    mark_as_advanced(FLEXOUT_USE_NetCDF)
@@ -10,26 +10,6 @@ else()
                     EXCLUDE_FROM_ALL
    )
 endif()
-
-# add FABM
-if(GOTM_USE_FABM)
-  set(FABM_SUBMODULE ON)
-  if(FABM_SUBMODULE)
-     if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/fabm/src/CMakeLists.txt")
-        find_package(Git QUIET)
-        if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/../.git")
-           execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-        endif()
-     endif()
-     set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
-     mark_as_advanced(FABM_EMBED_VERSION)
-     set(FABM_FORCED_HOST gotm)
-     add_subdirectory("${PROJECT_SOURCE_DIR}/extern/fabm/src" 
-                      "${PROJECT_BINARY_DIR}/extern/fabm"
-                      EXCLUDE_FROM_ALL
-     )
-  endif(FABM_SUBMODULE)
-endif(GOTM_USE_FABM)
 
 # All external dependencies added
 
@@ -179,35 +159,24 @@ add_library(turbulence
 target_link_libraries(turbulence PRIVATE util)
 
 if(GOTM_USE_FABM)
-   if (NOT FABM_SUBMODULE) 
-   find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
-   mark_as_advanced(CLEAR FABM_BASE)
-   if(FABM_BASE)
-      # Build FABM from source by including its CMakeLists.txt directory.
-      set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
-      set(FABM_FORCED_HOST gotm)
-      add_subdirectory(${FABM_BASE}/src ${CMAKE_CURRENT_BINARY_DIR}/fabm_src)
-      set(FABM_LIBRARIES fabm)
-      set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
-      mark_as_advanced(FORCE FABM_PREFIX FABM_EMBED_VERSION)
-   else()
+   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
+   if (NOT FABM_BASE AND FABM_PREFIX)
       # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
       find_package(FABM REQUIRED)
       mark_as_advanced(CLEAR FABM_PREFIX)
-   endif(FABM_BASE)
-   endif() 
-#KB   endif (NOT FABM_SUBMODULE) 
+   else()
+      find_path(FABM_BASE src/fabm.F90 HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../extern/fabm DOC "Path to FABM source directory.")
+      set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
+      set(FABM_FORCED_HOST gotm)
+      add_subdirectory("${FABM_BASE}/src" "${CMAKE_CURRENT_BINARY_DIR}/extern/fabm" EXCLUDE_FROM_ALL)
+      mark_as_advanced(CLEAR FABM_BASE)
+   endif()
 
    add_library(gotm_fabm
       fabm/gotm_fabm.F90
    )
-
    target_link_libraries(gotm_fabm PRIVATE util field_manager)
    target_link_libraries(gotm_fabm PUBLIC fabm)
-   if(NOT FABM_SUBMODULE)
-      set(EXTERNAL_LIBS ${FABM_LIBRARIES})
-      mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
-   endif(NOT FABM_SUBMODULE)
 endif(GOTM_USE_FABM)
 
 if(GOTM_BUILD_LIBRARIES_ONLY)
