@@ -206,13 +206,9 @@ if(GOTM_USE_FABM)
       fabm/gotm_fabm.F90
    )
 
-   if(FABM_SUBMODULE)
-      target_link_libraries(gotm_fabm PRIVATE util fabm)
-   else()
-      target_link_libraries(gotm_fabm util fabm)
-      set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-      set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-      set(GOTM_LIBS ${GOTM_LIBS} gotm_fabm)
+   target_link_libraries(gotm_fabm PRIVATE util field_manager)
+   target_link_libraries(gotm_fabm PUBLIC fabm)
+   if(NOT FABM_SUBMODULE)
       set(EXTERNAL_LIBS ${FABM_LIBRARIES})
       mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
    endif(FABM_SUBMODULE)
@@ -290,14 +286,13 @@ add_library(gotm
    gotm/deprecated_output.F90
    gotm/print_version.F90
 )
-target_link_libraries(gotm PUBLIC output_manager yaml)
+target_link_libraries(gotm PUBLIC util airsea input output_manager yaml meanflow turbulence output_manager input)
 if(GOTM_USE_FABM)
    target_link_libraries(gotm PUBLIC gotm_fabm_io fabm)
 endif()
 if(GOTM_USE_SEAGRASS)
    target_link_libraries(gotm PUBLIC seagrass)
 endif()
-target_link_libraries(gotm PRIVATE util airsea input output_manager yaml meanflow turbulence output_manager input)
 
 # All libraries configured
 
@@ -308,19 +303,7 @@ add_executable(gotm_exe
    gotm/main.F90
 )
 set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
-target_link_libraries(gotm_exe PRIVATE 
-   gotm meanflow observations airsea input output_manager yaml turbulence util
-)
-if(GOTM_USE_FABM)
-   target_link_libraries(gotm_exe PRIVATE gotm_fabm gotm_fabm_io)
-endif()
-if(GOTM_USE_SEAGRASS)
-   target_link_libraries(gotm_exe PRIVATE seagrass)
-endif(GOTM_USE_SEAGRASS)
-if(GOTM_USE_NetCDF)
-  target_include_directories(gotm_exe PRIVATE "${NetCDF_INCLUDE_DIRS}")
-  target_link_libraries(gotm_exe PRIVATE "${NetCDF_LIBRARIES}")
-endif(GOTM_USE_NetCDF)
+target_link_libraries(gotm_exe PRIVATE gotm)
 
 # rename during install set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 
