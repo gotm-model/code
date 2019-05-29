@@ -5,6 +5,7 @@ if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/yaml/CMakeLists.txt")
 else()
    add_subdirectory("${PROJECT_SOURCE_DIR}/extern/yaml" 
                     "${PROJECT_BINARY_DIR}/extern/yaml"
+                    EXCLUDE_FROM_ALL
    )
 endif()
 
@@ -13,7 +14,9 @@ else()
    set(FLEXOUT_USE_NetCDF ${GOTM_USE_NetCDF} CACHE BOOL "Enable output in NetCDF format" FORCE)
    mark_as_advanced(FLEXOUT_USE_NetCDF)
    add_subdirectory("${PROJECT_SOURCE_DIR}/extern/flexout" 
-                    "${PROJECT_BINARY_DIR}/extern/flexout")
+                    "${PROJECT_BINARY_DIR}/extern/flexout"
+                    EXCLUDE_FROM_ALL
+   )
 endif()
 
 # add FABM
@@ -31,6 +34,7 @@ if(GOTM_USE_FABM)
      set(FABM_FORCED_HOST gotm)
      add_subdirectory("${PROJECT_SOURCE_DIR}/extern/fabm/src" 
                       "${PROJECT_BINARY_DIR}/extern/fabm"
+                      EXCLUDE_FROM_ALL
      )
   endif(FABM_SUBMODULE)
 endif(GOTM_USE_FABM)
