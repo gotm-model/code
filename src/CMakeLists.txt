@@ -64,18 +64,16 @@ if(GOTM_EMBED_VERSION)
   )
 endif(GOTM_EMBED_VERSION)
 
-#[[--
 # Customize compiler flags
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
-  set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffree-line-length-none")
+  add_compile_options(-ffree-line-length-none)
 elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
-  set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -N 1023")
+  add_compile_options(-N 1023)
 elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
   if(WIN32)
-    set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} /Od")
+    add_compile_options("$<$<CONFIG:DEBUG>:/Od>")
   endif()
 endif()
---]]
 
 #[[---
 add_definitions(-DFORTRAN95)
