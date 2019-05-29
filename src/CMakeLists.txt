@@ -269,7 +269,7 @@ if(GOTM_USE_SEAGRASS)
    add_library(seagrass
       extras/seagrass/seagrass.F90
    )
-   target_link_libraries(seagrass PRIVATE meanflow)
+   target_link_libraries(seagrass PRIVATE meanflow field_manager)
 endif()
 
 if(GOTM_USE_FABM)
