@@ -205,8 +205,7 @@ if(GOTM_USE_FABM)
 #KB   endif (NOT FABM_SUBMODULE) 
 
    add_library(gotm_fabm)
-   target_sources(gotm_fabm PRIVATE
-               fabm/gotm_fabm.F90
+      fabm/gotm_fabm.F90
    )
 
    if(FABM_SUBMODULE)
