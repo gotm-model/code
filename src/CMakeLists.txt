@@ -218,7 +218,15 @@ if(GOTM_USE_FABM)
    endif(NOT FABM_SUBMODULE)
 endif(GOTM_USE_FABM)
 
-if(NOT GOTM_BUILD_LIBRARIES_ONLY)
+if(GOTM_BUILD_LIBRARIES_ONLY)
+
+add_library(gotm_libs INTERFACE)
+target_link_libraries(gotm_libs INTERFACE util turbulence field_manager output_manager)
+if(GOTM_USE_FABM)
+   target_link_libraries(gotm_libs INTERFACE gotm_fabm)
+endif(GOTM_USE_FABM)
+
+else(GOTM_BUILD_LIBRARIES_ONLY)
 
 add_library(input
    input/input.F90
@@ -351,4 +359,4 @@ install(FILES
 #KBinstall(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
 
 endif(NOT GOTM_BUILD_LIBRARY)
-endif(NOT GOTM_BUILD_LIBRARIES_ONLY)
+endif(GOTM_BUILD_LIBRARIES_ONLY)
