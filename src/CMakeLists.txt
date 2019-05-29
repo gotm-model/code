@@ -5,7 +5,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/util/compilation.F90.in" compilation.F90)
 
 # Create placeholder file with version information, used when GOTM_EMBED_VERSION is off.
-set(GIT_COMMIT_ID ${VERSION})
+set(GIT_COMMIT_ID ${gotm_VERSION})
 set(GIT_BRANCH_NAME unknown)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in" ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90)
 
