@@ -112,7 +112,6 @@ add_library(util
    util/time.F90
    util/tridiagonal.F90
    util/util.F90
-   util/field_manager.F90
    ../include/cppdefs.h
    ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90
    ${CMAKE_CURRENT_BINARY_DIR}/compilation.F90
@@ -120,6 +119,7 @@ add_library(util
 if(GOTM_EMBED_VERSION)
    add_dependencies(util version)
 endif(GOTM_EMBED_VERSION)
+target_link_libraries(util PRIVATE field_manager)
 
 add_library(turbulence
    turbulence/algebraiclength.F90
@@ -227,7 +227,7 @@ add_library(input
    input/input.F90
    input/input_netcdf.F90
 )
-target_link_libraries(input PRIVATE util)
+target_link_libraries(input PRIVATE util output_manager)
 
 add_library(airsea
    airsea/airsea.F90
@@ -300,7 +300,7 @@ endif()
 if(GOTM_USE_SEAGRASS)
    target_link_libraries(gotm PUBLIC seagrass)
 endif()
-target_link_libraries(gotm PRIVATE util airsea input output_manager yaml meanflow turbulence output_manager)
+target_link_libraries(gotm PRIVATE util airsea input output_manager yaml meanflow turbulence output_manager input)
 
 # All libraries configured
 
