@@ -6,9 +6,6 @@ else()
    add_subdirectory("${PROJECT_SOURCE_DIR}/extern/yaml" 
                     "${PROJECT_BINARY_DIR}/extern/yaml"
    )
-   target_include_directories(yaml PUBLIC 
-         ${PROJECT_BINARY_DIR}/extern/yaml/modules
-   )
    set(YAML_IS_CONFIGURED ON)
 endif()
 
@@ -20,9 +17,6 @@ if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/flexout/src/CMakeLists.txt")
 else()
    add_subdirectory("${PROJECT_SOURCE_DIR}/extern/flexout" 
                     "${PROJECT_BINARY_DIR}/extern/flexout")
-   target_include_directories(output_manager PUBLIC 
-         ${PROJECT_BINARY_DIR}/extern/flexout/modules
-   )
 endif()
 endif (USE_EXTERN_OUTPUT_MANAGER)
 
@@ -40,15 +34,6 @@ if(GOTM_USE_FABM)
      set(FABM_FORCED_HOST gotm)
      add_subdirectory("${PROJECT_SOURCE_DIR}/extern/fabm/src" 
                       "${PROJECT_BINARY_DIR}/extern/fabm"
-     )
-     target_include_directories(fabm PUBLIC 
-           ${PROJECT_BINARY_DIR}/extern/fabm/modules
-     )
-     target_include_directories(fabm PUBLIC 
-           ${PROJECT_BINARY_DIR}/extern/fabm/modules
-     )
-     target_include_directories(fabm PUBLIC 
-           ${PROJECT_BINARY_DIR}/extern/yaml/modules
      )
   endif(FABM_SUBMODULE)
 endif(GOTM_USE_FABM)
@@ -348,7 +333,6 @@ if(NOT GOTM_BUILD_LIBRARY)
 
 # Build GOTM executable.
 add_executable(gotm_exe)
-#KBadd_executable(gotm_exe EXCLUDE_FROM_ALL)
 target_sources(gotm_exe PRIVATE
    gotm/main.F90
 )
