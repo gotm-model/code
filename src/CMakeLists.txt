@@ -94,6 +94,7 @@ if(GOTM_EMBED_VERSION)
    add_dependencies(util version)
 endif(GOTM_EMBED_VERSION)
 target_link_libraries(util PRIVATE field_manager)
+target_include_directories(util PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 add_library(turbulence
    turbulence/algebraiclength.F90
