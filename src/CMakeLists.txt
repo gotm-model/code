@@ -92,10 +92,10 @@ option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical M
 # Directory wide settings and preprocessor definitions
 include_directories(BEFORE ${PROJECT_SOURCE_DIR}/include)
 if(GOTM_USE_NetCDF)
-   add_compile_definitions(NETCDF_FMT)
+   add_definitions(NETCDF_FMT)
 endif(GOTM_USE_NetCDF)
 if(GOTM_USE_FABM)
-  add_compile_definitions(_FABM_)
+  add_definitions(_FABM_)
 endif(GOTM_USE_FABM)
 
 # Configure all libraries
