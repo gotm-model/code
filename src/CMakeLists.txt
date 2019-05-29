@@ -177,7 +177,10 @@ if(GOTM_USE_FABM)
    )
    target_link_libraries(gotm_fabm PRIVATE util field_manager)
    target_link_libraries(gotm_fabm PUBLIC fabm)
+   set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
 endif(GOTM_USE_FABM)
+
+set_property(TARGET version util turbulence PROPERTY FOLDER gotm)
 
 if(GOTM_BUILD_LIBRARIES_ONLY)
 
@@ -243,6 +246,7 @@ if(GOTM_USE_SEAGRASS)
       extras/seagrass/seagrass.F90
    )
    target_link_libraries(seagrass PRIVATE meanflow field_manager)
+   set_property(TARGET seagrass PROPERTY FOLDER gotm)
 endif()
 
 if(GOTM_USE_FABM)
@@ -250,6 +254,7 @@ if(GOTM_USE_FABM)
                fabm/gotm_fabm_input.F90
    )
    target_link_libraries(gotm_fabm_io PRIVATE input gotm_fabm fabm)
+   set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
 endif(GOTM_USE_FABM)
 
 add_library(gotm
@@ -260,6 +265,7 @@ add_library(gotm
    gotm/print_version.F90
 )
 target_link_libraries(gotm PUBLIC util airsea input output_manager yaml meanflow turbulence output_manager input)
+set_property(TARGET gotm input airsea observations meanflow PROPERTY FOLDER gotm)
 if(GOTM_USE_FABM)
    target_link_libraries(gotm PUBLIC gotm_fabm_io fabm)
 endif()
