@@ -204,7 +204,7 @@ if(GOTM_USE_FABM)
    endif() 
 #KB   endif (NOT FABM_SUBMODULE) 
 
-   add_library(gotm_fabm)
+   add_library(gotm_fabm
       fabm/gotm_fabm.F90
    )
 
