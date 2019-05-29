@@ -1,15 +1,7 @@
 # Start by adding external dependencies
 
-# add YAML
-if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/yaml/CMakeLists.txt")
-else()
-   add_subdirectory("${PROJECT_SOURCE_DIR}/extern/yaml" 
-                    "${PROJECT_BINARY_DIR}/extern/yaml"
-                    EXCLUDE_FROM_ALL
-   )
-endif()
-
 if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/flexout/src/CMakeLists.txt")
+   message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first with \"git submodule update --init\".")
 else()
    set(FLEXOUT_USE_NetCDF ${GOTM_USE_NetCDF} CACHE BOOL "Enable output in NetCDF format" FORCE)
    mark_as_advanced(FLEXOUT_USE_NetCDF)
