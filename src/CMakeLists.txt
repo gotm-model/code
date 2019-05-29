@@ -1,9 +1,4 @@
-# Start by adding external dependencies
-
-
-# All external dependencies added
-
-# From now on - use common directory for Fortran modules
+# Use common directory for Fortran modules
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
 # Generate source file with compilation information
@@ -49,8 +44,6 @@ mark_as_advanced(GOTM_EXTRA_OUTPUT)
 if(GOTM_EXTRA_OUTPUT)
   add_definitions(-DEXTRA_OUTPUT)
 endif(GOTM_EXTRA_OUTPUT)
-
-option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 ---]]
 
 # Directory wide settings and preprocessor definitions
@@ -150,19 +143,6 @@ add_library(turbulence
 target_link_libraries(turbulence PRIVATE util)
 
 if(GOTM_USE_FABM)
-   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
-   if (NOT FABM_BASE AND FABM_PREFIX)
-      # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
-      find_package(FABM REQUIRED)
-      mark_as_advanced(CLEAR FABM_PREFIX)
-   else()
-      find_path(FABM_BASE src/fabm.F90 HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../extern/fabm DOC "Path to FABM source directory.")
-      set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
-      set(FABM_FORCED_HOST gotm)
-      add_subdirectory("${FABM_BASE}/src" "${CMAKE_CURRENT_BINARY_DIR}/extern/fabm" EXCLUDE_FROM_ALL)
-      mark_as_advanced(CLEAR FABM_BASE)
-   endif()
-
    add_library(gotm_fabm
       fabm/gotm_fabm.F90
    )

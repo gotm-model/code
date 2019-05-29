@@ -55,6 +55,21 @@ else()
    )
 endif()
 
+if(GOTM_USE_FABM)
+   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
+   if (NOT FABM_BASE AND FABM_PREFIX)
+      # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
+      find_package(FABM REQUIRED)
+      mark_as_advanced(CLEAR FABM_PREFIX)
+   else()
+      find_path(FABM_BASE src/fabm.F90 HINTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/fabm DOC "Path to FABM source directory.")
+      set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
+      set(FABM_FORCED_HOST gotm)
+      add_subdirectory("${FABM_BASE}/src" "${CMAKE_CURRENT_BINARY_DIR}/extern/fabm" EXCLUDE_FROM_ALL)
+      mark_as_advanced(CLEAR FABM_BASE)
+   endif()
+endif(GOTM_USE_FABM)
+
 add_subdirectory(src)
 add_subdirectory(tests EXCLUDE_FROM_ALL)
 
