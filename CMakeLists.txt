@@ -44,6 +44,17 @@ if(GOTM_USE_NetCDF)
    endif()
 endif(GOTM_USE_NetCDF)
 
+if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/extern/flexout/src/CMakeLists.txt")
+   message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
+else()
+   set(FLEXOUT_USE_NetCDF ${GOTM_USE_NetCDF} CACHE BOOL "Enable output in NetCDF format" FORCE)
+   mark_as_advanced(FLEXOUT_USE_NetCDF)
+   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/extern/flexout" 
+                    "${CMAKE_CURRENT_BINARY_DIR}/extern/flexout"
+                    EXCLUDE_FROM_ALL
+   )
+endif()
+
 add_subdirectory(src)
 add_subdirectory(tests EXCLUDE_FROM_ALL)
 

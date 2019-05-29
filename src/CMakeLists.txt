@@ -1,15 +1,5 @@
 # Start by adding external dependencies
 
-if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/flexout/src/CMakeLists.txt")
-   message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
-else()
-   set(FLEXOUT_USE_NetCDF ${GOTM_USE_NetCDF} CACHE BOOL "Enable output in NetCDF format" FORCE)
-   mark_as_advanced(FLEXOUT_USE_NetCDF)
-   add_subdirectory("${PROJECT_SOURCE_DIR}/extern/flexout" 
-                    "${PROJECT_BINARY_DIR}/extern/flexout"
-                    EXCLUDE_FROM_ALL
-   )
-endif()
 
 # All external dependencies added
 
@@ -32,10 +22,10 @@ else(MSVC)
 endif(MSVC)
 if(GOTM_EMBED_VERSION)
    add_custom_target(version
-      ${CMAKE_COMMAND} -DINFILE=${PROJECT_SOURCE_DIR}/src/util/gotm_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90 -P "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
+      ${CMAKE_COMMAND} -DINFILE=${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90 -P "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Modules/GetGitInfo.cmake"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Retrieving description of last GOTM commit..."
-      SOURCES ${PROJECT_SOURCE_DIR}/src/util/gotm_version.F90.in "${PROJECT_SOURCE_DIR}/cmake/Modules/GetGitInfo.cmake"
+      SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Modules/GetGitInfo.cmake"
       VERBATIM
   )
 endif(GOTM_EMBED_VERSION)
@@ -64,7 +54,7 @@ option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical M
 ---]]
 
 # Directory wide settings and preprocessor definitions
-include_directories(BEFORE ${PROJECT_SOURCE_DIR}/include)
+include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 if(GOTM_USE_NetCDF)
    add_definitions(-DNETCDF_FMT)
 endif(GOTM_USE_NetCDF)
@@ -275,8 +265,6 @@ endif()
 
 # All libraries configured
 
-if(NOT GOTM_BUILD_LIBRARY)
-
 # Build GOTM executable.
 add_executable(gotm_exe
    gotm/main.F90
@@ -323,5 +311,4 @@ install(FILES
 )
 #KBinstall(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
 
-endif(NOT GOTM_BUILD_LIBRARY)
 endif(GOTM_BUILD_LIBRARIES_ONLY)
