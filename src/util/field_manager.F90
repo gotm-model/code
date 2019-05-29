@@ -10,9 +10,10 @@ module field_manager
    ! Public data types and variables
    public type_field
    public type_category_node
-   public type_dimension
-   public type_attribute, type_real_attribute, type_integer_attribute, type_string_attribute
+   public type_dimension, type_dimension_pointer, has_dimension
+   public type_attribute, type_real_attribute, type_integer_attribute, type_string_attribute, type_attributes
    public type_field_set, type_field_set_member
+   public type_nd_data_pointer
 
    ! Public parameters
    public string_length,default_fill_value,default_minimum,default_maximum
@@ -75,6 +76,33 @@ module field_manager
       character(len=string_length) :: value = ''
    end type
 
+   type type_attributes
+      class (type_attribute), pointer :: first => null()
+   contains
+      procedure :: set_object  => attributes_set_object
+      procedure :: delete      => attributes_delete
+      procedure :: set_real    => attributes_set_real
+      procedure :: set_integer => attributes_set_integer
+      procedure :: set_string  => attributes_set_string
+      generic :: set => set_real, set_integer, set_string, set_object
+      procedure :: update  => attributes_update
+   end type
+
+   type type_nd_data_pointer
+      real(rk),pointer :: p0d        => null()
+      real(rk),pointer :: p1d(:)     => null()
+      real(rk),pointer :: p2d(:,:)   => null()
+      real(rk),pointer :: p3d(:,:,:) => null()
+   contains
+      procedure :: set_0d => data_set_0d
+      procedure :: set_1d => data_set_1d
+      procedure :: set_2d => data_set_2d
+      procedure :: set_3d => data_set_3d
+      generic :: set => set_0d, set_1d, set_2d, set_3d
+      procedure :: get_extents => data_get_extents
+      procedure :: is_empty => data_is_empty
+   end type
+
    type type_field
       integer                      :: id             = 0
       character(len=string_length) :: name           = ''
@@ -89,22 +117,14 @@ module field_manager
       logical, pointer             :: used_now       => null()
       integer                      :: status         = status_not_registered
       type (type_dimension_pointer),allocatable :: dimensions(:)
-      class (type_attribute), pointer :: first_attribute => null()
+      type (type_attributes)       :: attributes
       integer,allocatable          :: extents(:)
-      real(rk),pointer             :: data_0d        => null()
-      real(rk),pointer             :: data_1d(:)     => null()
-      real(rk),pointer             :: data_2d(:,:)   => null()
-      real(rk),pointer             :: data_3d(:,:,:) => null()
+      type (type_nd_data_pointer)  :: data
       class (type_category_node),pointer :: category => null()
       type (type_field),pointer    :: next           => null()
    contains
-      procedure :: has_dimension         => field_has_dimension
-      procedure :: set_real_attribute    => field_set_real_attribute
-      procedure :: set_integer_attribute => field_set_integer_attribute
-      procedure :: set_string_attribute  => field_set_string_attribute
-      procedure :: delete_attribute      => field_delete_attribute
-      generic :: set_attribute           => set_real_attribute, set_integer_attribute, set_string_attribute
-      procedure :: finalize              => field_finalize
+      procedure :: has_dimension => field_has_dimension
+      procedure :: finalize      => field_finalize
    end type type_field
 
    type,abstract :: type_node
@@ -174,6 +194,7 @@ module field_manager
       procedure :: find_dimension
       procedure :: find_category
       procedure :: get_state
+      procedure :: reset_used
       generic :: send_data => send_data_0d,send_data_1d,send_data_2d,send_data_3d,send_data_by_name_0d,send_data_by_name_1d,send_data_by_name_2d,send_data_by_name_3d
    end type type_field_manager
 
@@ -359,6 +380,21 @@ contains
 
       self%nregistered = 0
    end subroutine finalize
+
+   subroutine reset_used(self)
+      class (type_field_manager), intent(inout) :: self
+
+      integer                    :: ibin
+      type (type_field), pointer :: field
+
+      do ibin=1,hash_table_size
+         field => self%field_table(ibin)%first_field
+         do while (associated(field))
+            if (associated(field%used_now)) field%used_now = .false.
+            field => field%next
+         end do
+      end do
+   end subroutine reset_used
 
    function find_dimension(self,dimid) result(dim)
       class (type_field_manager), intent(in) :: self
@@ -618,33 +654,39 @@ contains
       if (present(field)) field => field_
    end subroutine register
 
-   logical function field_has_dimension(self,id)
-      class (type_field),intent(in) :: self
-      integer,           intent(in) :: id
+   logical function has_dimension(dimensions,id)
+      type (type_dimension_pointer), intent(in) :: dimensions(:)
+      integer,                       intent(in) :: id
 
       integer :: i
 
-      field_has_dimension = .true.
-      do i=1,size(self%dimensions)
-         if (self%dimensions(i)%p%id==id) return
+      has_dimension = .true.
+      do i=1,size(dimensions)
+         if (dimensions(i)%p%id==id) return
       end do
-      field_has_dimension = .false.
+      has_dimension = .false.
+   end function has_dimension
+
+   logical function field_has_dimension(self,id)
+      class (type_field),intent(in) :: self
+      integer,           intent(in) :: id
+      field_has_dimension = has_dimension(self%dimensions, id)
    end function field_has_dimension
 
-   subroutine field_delete_attribute(self,name)
-      class (type_field),intent(inout) :: self
-      character(len=*),  intent(in)    :: name
+   subroutine attributes_delete(self, name)
+      class (type_attributes), intent(inout) :: self
+      character(len=*),        intent(in)    :: name
 
       class (type_attribute),pointer :: attribute, previous_attribute
 
       previous_attribute => null()
-      attribute => self%first_attribute
+      attribute => self%first
       do while (associated(attribute))
          if (attribute%name==name) then
             if (associated(previous_attribute)) then
                previous_attribute%next => attribute%next
             else
-               self%first_attribute => attribute%next
+               self%first => attribute%next
             end if
             deallocate(attribute)
             return
@@ -652,54 +694,68 @@ contains
          previous_attribute => attribute
          attribute => attribute%next
       end do
-   end subroutine field_delete_attribute
+   end subroutine attributes_delete
 
-   subroutine field_set_attribute(self,name,attribute)
-      class (type_field),    intent(inout)        :: self
-      character(len=*),      intent(in)           :: name
-      class (type_attribute),intent(inout),target :: attribute
+   subroutine attributes_set_object(self,name,attribute)
+      class (type_attributes), intent(inout)        :: self
+      character(len=*),        intent(in)           :: name
+      class (type_attribute),  intent(inout),target :: attribute
 
-      call self%delete_attribute(name)
+      call self%delete(name)
       attribute%name = name
-      attribute%next => self%first_attribute
-      self%first_attribute => attribute
-   end subroutine field_set_attribute
+      attribute%next => self%first
+      self%first => attribute
+   end subroutine attributes_set_object
 
-   subroutine field_set_real_attribute(self,name,value)
-      class (type_field),intent(inout) :: self
-      character(len=*),  intent(in)    :: name
-      real(rk),          intent(in)    :: value
+   subroutine attributes_set_real(self, name, value)
+      class (type_attributes), intent(inout) :: self
+      character(len=*),        intent(in)    :: name
+      real(rk),                intent(in)    :: value
 
       class (type_real_attribute),pointer :: attribute
 
       allocate(attribute)
       attribute%value = value
-      call field_set_attribute(self,name,attribute)
-   end subroutine field_set_real_attribute
+      call self%set(name, attribute)
+   end subroutine attributes_set_real
 
-   subroutine field_set_integer_attribute(self,name,value)
-      class (type_field),intent(inout) :: self
-      character(len=*),  intent(in)    :: name
-      integer,           intent(in)    :: value
+   subroutine attributes_set_integer(self, name, value)
+      class (type_attributes), intent(inout) :: self
+      character(len=*),        intent(in)    :: name
+      integer,                 intent(in)    :: value
 
       class (type_integer_attribute),pointer :: attribute
 
       allocate(attribute)
       attribute%value = value
-      call field_set_attribute(self,name,attribute)
-   end subroutine field_set_integer_attribute
+      call self%set(name, attribute)
+   end subroutine attributes_set_integer
 
-   subroutine field_set_string_attribute(self,name,value)
-      class (type_field),intent(inout) :: self
-      character(len=*),  intent(in)    :: name
-      character(len=*),  intent(in)    :: value
+   subroutine attributes_set_string(self, name, value)
+      class (type_attributes), intent(inout) :: self
+      character(len=*),        intent(in)    :: name
+      character(len=*),        intent(in)    :: value
 
       class (type_string_attribute),pointer :: attribute
 
       allocate(attribute)
       attribute%value = value
-      call field_set_attribute(self,name,attribute)
-   end subroutine field_set_string_attribute
+      call self%set(name, attribute)
+   end subroutine attributes_set_string
+
+   subroutine attributes_update(self, other)
+      class (type_attributes), intent(inout) :: self
+      class (type_attributes), intent(in)    :: other
+
+      class (type_attribute),pointer :: attribute, copy
+
+      attribute => other%first
+      do while (associated(attribute))
+         allocate(copy, source=attribute)
+         call self%set(attribute%name, copy)
+         attribute => attribute%next
+      end do
+   end subroutine attributes_update
 
    subroutine field_finalize(self)
       class (type_field),intent(inout) :: self
@@ -709,13 +765,13 @@ contains
       deallocate(self%dimensions)
       deallocate(self%extents)
 
-      attribute => self%first_attribute
+      attribute => self%attributes%first
       do while (associated(attribute))
          next_attribute => attribute%next
          deallocate(attribute)
          attribute => next_attribute
       end do
-      self%first_attribute => null()
+      self%attributes%first => null()
    end subroutine field_finalize
 
    subroutine add_field_to_tree(self,field,category)
@@ -867,12 +923,14 @@ contains
       call self%send_data_3d(field,data)
    end subroutine send_data_by_name_3d
 
-   subroutine check_sent_data(field,extents)
+   subroutine check_sent_data(field)
       type (type_field), intent(inout) :: field
-      integer,           intent(in)    :: extents(:)
 
+      integer, allocatable             :: extents(:)
       integer                          :: i
       character(len=8)                 :: str1,str2,str3
+
+      call field%data%get_extents(extents)
 
       ! Check array rank
       if (size(extents)/=size(field%extents)) then
@@ -900,52 +958,104 @@ contains
       class (type_field_manager),intent(inout) :: self
       type (type_field),         intent(inout) :: field
       real(rk),target                          :: data
-      call check_sent_data(field,shape(data))
-      field%data_0d => data
+      call field%data%set(data)
+      call check_sent_data(field)
    end subroutine send_data_0d
 
    subroutine send_data_1d(self, field, data)
       class (type_field_manager),intent(inout) :: self
       type (type_field),         intent(inout) :: field
       real(rk),target                          :: data(:)
-      if (size(data,1)==1) then
-         ! Singleton dimension - send scalar value instead
-         call send_data_0d(self,field,data(1))
-      else
-         call check_sent_data(field,shape(data))
-         field%data_1d => data
-      end if
+      call field%data%set(data)
+      call check_sent_data(field)
    end subroutine send_data_1d
 
    subroutine send_data_2d(self, field, data)
       class (type_field_manager),intent(inout) :: self
       type (type_field),         intent(inout) :: field
       real(rk),target                          :: data(:,:)
-      if (size(data,1)==1) then
-         call send_data_1d(self,field,data(1,:))
-      elseif (size(data,2)==1) then
-         call send_data_1d(self,field,data(:,1))
-      else
-         call check_sent_data(field,shape(data))
-         field%data_2d => data
-      end if
+      call field%data%set(data)
+      call check_sent_data(field)
    end subroutine send_data_2d
 
    subroutine send_data_3d(self, field, data)
       class (type_field_manager),intent(inout) :: self
       type (type_field),         intent(inout) :: field
       real(rk),target                          :: data(:,:,:)
-      if (size(data,1)==1) then
-         call send_data_2d(self,field,data(1,:,:))
-      elseif (size(data,2)==1) then
-         call send_data_2d(self,field,data(:,1,:))
-      elseif (size(data,3)==1) then
-         call send_data_2d(self,field,data(:,:,1))
-      else
-         call check_sent_data(field,shape(data))
-         field%data_3d => data
-      end if
+      call field%data%set(data)
+      call check_sent_data(field)
    end subroutine send_data_3d
+
+   subroutine data_set_0d(self, data)
+      class (type_nd_data_pointer), intent(inout) :: self
+      real(rk), target                            :: data
+      self%p0d => data
+   end subroutine data_set_0d
+
+   subroutine data_set_1d(self, data)
+      class (type_nd_data_pointer), intent(inout) :: self
+      real(rk),target                          :: data(:)
+      if (size(data,1)==1) then
+         call self%set(data(1))
+      else
+         self%p1d => data
+      end if
+   end subroutine data_set_1d
+
+   subroutine data_set_2d(self, data)
+      class (type_nd_data_pointer), intent(inout) :: self
+      real(rk),target                          :: data(:,:)
+      if (size(data,1)==1) then
+         call self%set(data(1,:))
+      elseif (size(data,2)==1) then
+         call self%set(data(:,1))
+      else
+         self%p2d => data
+      end if
+   end subroutine data_set_2d
+
+   subroutine data_set_3d(self, data)
+      class (type_nd_data_pointer), intent(inout) :: self
+      real(rk),target                             :: data(:,:,:)
+      if (size(data,1)==1) then
+         call self%set(data(1,:,:))
+      elseif (size(data,2)==1) then
+         call self%set(data(:,1,:))
+      elseif (size(data,3)==1) then
+         call self%set(data(:,:,1))
+      else
+         self%p3d => data
+      end if
+   end subroutine data_set_3d
+
+   subroutine data_get_extents(self, extents)
+      class (type_nd_data_pointer), intent(in)  :: self
+      integer, allocatable,         intent(out) :: extents(:)
+
+      if (associated(self%p3d)) then
+         allocate(extents(3))
+         extents(:) = shape(self%p3d)
+      elseif (associated(self%p2d)) then
+         allocate(extents(2))
+         extents(:) = shape(self%p2d)
+      elseif (associated(self%p1d)) then
+         allocate(extents(1))
+         extents(:) = shape(self%p1d)
+      elseif (associated(self%p0d)) then
+         allocate(extents(0))
+      end if
+   end subroutine
+
+   logical function data_is_empty(self)
+      class (type_nd_data_pointer), intent(in) :: self
+      integer, allocatable :: extents(:)
+      call self%get_extents(extents)
+      if (.not. allocated(extents)) then
+         data_is_empty = .true.
+      else
+         data_is_empty = any(extents == 0)
+      end if
+   end function
 
    subroutine fatal_error(location,error)
       character(len=*),intent(in) :: location,error

@@ -233,7 +233,13 @@ target_sources(output_manager PRIVATE
             output/output_manager_core.F90
             output/netcdf_output.F90
             output/text_output.F90
+            output/operators/library.F90
+            output/operators/base.F90
+            output/operators/time_average.F90
+            output/operators/interp.F90
+            output/operators/slice.F90
 )
+source_group(operators REGULAR_EXPRESSION output/operators)
 endif()
 
 if(NOT GOTM_USE_FABM)

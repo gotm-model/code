@@ -35,7 +35,7 @@
 ! !USES:
    use field_manager
    use register_all_variables, only: do_register_all_variables, fm
-   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_category
+   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
    use output_manager
    use diagnostics
 
@@ -659,8 +659,8 @@
       use output_manager_core
       use time, only: jul2,secs2
 
-      class (type_netcdf_file),     pointer :: file
-      class (type_output_category), pointer :: category
+      class (type_netcdf_file), pointer :: file
+      type (type_output_item),  pointer :: item
 
       allocate(file)
       file%path = 'restart'
@@ -670,15 +670,15 @@
       file%first_seconds = secs2
       call output_manager_add_file(fm,file)
 
-      allocate(category)
-      category%name = 'state'
-      category%output_level = output_level_debug
-      category%settings => file%create_settings()
-      select type (settings=>category%settings)
-         class is (type_netcdf_variable_settings)
-            settings%xtype = NF90_DOUBLE
+      allocate(item)
+      item%name = 'state'
+      item%output_level = output_level_debug
+      item%settings => file%create_settings()
+      select type (settings=>item%settings)
+      class is (type_netcdf_variable_settings)
+         settings%xtype = NF90_DOUBLE
       end select
-      call file%append_category(category)
+      call file%append_item(item)
 #endif
    end subroutine setup_restart
 
@@ -692,14 +692,14 @@
       member => field_set%first
       do while (associated(member))
          ! This field is part of the model state. Its name is member%field%name.
-         if (associated(member%field%data_0d)) then
-            ! Depth-independent variable with data pointed to by child%field%data_0d
-            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data_0d.
-            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data_0d)
-         elseif (associated(member%field%data_1d)) then
-            ! Depth-dependent variable with data pointed to by child%field%data_1d
-            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data_1d.
-            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data_1d)
+         if (associated(member%field%data%p0d)) then
+            ! Depth-independent variable with data pointed to by member%field%data%p0d
+            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data%p0d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data%p0d)
+         elseif (associated(member%field%data%p1d)) then
+            ! Depth-dependent variable with data pointed to by member%field%data%p1d
+            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data%p1d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data%p1d)
          else
             stop 'no data assigned to state field'
          end if

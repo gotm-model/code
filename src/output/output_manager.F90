@@ -4,6 +4,9 @@ module output_manager
    use output_manager_core
    use netcdf_output
    use text_output
+   use output_operators_library
+   use output_operators_time_average
+   use output_operators_slice
 
    use yaml_types
    use yaml,yaml_parse=>parse,yaml_error_length=>error_length
@@ -47,210 +50,145 @@ contains
       end do
    end subroutine
 
-   subroutine collect_from_categories(file)
+   subroutine populate(file)
       class (type_file), intent(inout) :: file
-      class (type_output_category), pointer :: output_category
-      class (type_output_field),pointer  :: output_field
-      type (type_field_set) :: set
-      class (type_field_set_member), pointer :: member, next_member
 
-      output_category => file%first_category
-      do while (associated(output_category))
-         call host%log_message('Processing output category /'//trim(output_category%name)//':')
-         if (.not.output_category%source%has_fields()) call host%fatal_error('collect_from_categories','No variables have been registered under output category "'//trim(output_category%name)//'".')
-         call output_category%source%get_all_fields(set,output_category%output_level)
-         member => set%first
-         if (.not.associated(member)) call host%log_message('WARNING: output category "'//trim(output_category%name)//'" does not contain any variables with requested output level.')
-         do while (associated(member))
-            call host%log_message('  - '//trim(member%field%name))
-            output_field => file%create_field()
-            output_field%settings => output_category%settings
-            output_field%source => member%field
-            output_field%output_name = trim(output_category%prefix)//trim(member%field%name)//trim(output_category%postfix)
-            call file%append(output_field)
+      type (type_output_item),               pointer :: item
+      type (type_field_set)                          :: set
+      class (type_field_set_member),         pointer :: member, next_member
+      class (type_output_variable_settings), pointer :: settings
+      type (type_dictionary)                         :: mapping
+      class (type_base_output_field),        pointer :: output_field, coordinate_field
+      type (type_dimension_pointer), allocatable     :: dimensions(:)
+      integer                                        :: i
 
-            next_member => member%next
-            deallocate(member)
-            member => next_member
-         end do
-         nullify(set%first)
-         output_category => output_category%next
+      ! First add fields selected by name
+      ! (they take priority over fields included with wildcard expressions)
+      item => file%first_item
+      do while (associated(item))
+         if (associated(item%field)) call create_field(item%settings, item%field, trim(item%name), .false.)
+         item => item%next
       end do
-   end subroutine collect_from_categories
 
-   subroutine filter_variables(file)
-      class (type_file), intent(inout) :: file
-
-      integer :: i
-      class (type_output_field),    pointer :: output_field, next_field, previous_field
-      type (type_output_dimension), pointer :: output_dim
-      logical :: empty
-
-      previous_field => null()
-      output_field => file%first_field
-      do while (associated(output_field))
-         next_field => output_field%next
-
-         ! Determine whether the field is empty (one or more zero-length dimensions)
-         empty = .false.
-         do i=1,size(output_field%source%dimensions)
-            if (output_field%source%dimensions(i)%p%id/=id_dim_time) then
-               output_dim => file%get_dimension(output_field%source%dimensions(i)%p)
-               if (output_dim%stop<output_dim%start) empty = .true.
-            end if
-         end do
-
-         if (empty) then
-            ! Empty field - deallocate and remove from list.
-            deallocate(output_field)
-            if (.not.associated(previous_field)) then
-               file%first_field => next_field
-            else
-               previous_field%next => next_field
-            end if
-         else
-            ! Non-empty field - keep it.
-            previous_field => output_field
+      item => file%first_item
+      do while (associated(item))
+         if (associated(item%category)) then
+            call host%log_message('Processing output category /'//trim(item%name)//':')
+            if (.not.item%category%has_fields()) call host%fatal_error('collect_from_categories','No variables have been registered under output category "'//trim(item%name)//'".')
+            call item%category%get_all_fields(set, item%output_level)
+            member => set%first
+            if (.not.associated(member)) call host%log_message('WARNING: output category "'//trim(item%name)//'" does not contain any variables with requested output level.')
+            do while (associated(member))
+               call host%log_message('  - '//trim(member%field%name))
+               settings => file%create_settings()
+               call settings%initialize(mapping, item%settings)
+               call create_field(settings, member%field, trim(item%prefix) // trim(member%field%name) // trim(item%postfix), .true.)
+               next_member => member%next
+               deallocate(member)
+               member => next_member
+            end do
+            set%first => null()
          end if
-
-         output_field => next_field
+         item => item%next
       end do
-   end subroutine filter_variables
-
-   subroutine add_coordinate_variables(file)
-      class (type_file), intent(inout) :: file
-
-      class (type_output_field),  pointer :: output_field
-      class (type_output_field),  pointer :: coordinate_field
-      integer :: i
 
       output_field => file%first_field
       do while (associated(output_field))
-         allocate(output_field%coordinates(size(output_field%source%dimensions)))
-         do i=1,size(output_field%source%dimensions)
-            if (.not.associated(output_field%source%dimensions(i)%p%coordinate)) cycle
-            coordinate_field => file%find(output_field%source%dimensions(i)%p%coordinate)
-            if (.not.associated(coordinate_field)) then
-               coordinate_field => file%create_field()
-               coordinate_field%settings => file%create_settings()
-               coordinate_field%settings%time_method = time_method_instantaneous
-               coordinate_field%source => output_field%source%dimensions(i)%p%coordinate
-               coordinate_field%output_name = trim(coordinate_field%source%name)
-               call file%append(coordinate_field)
+         call output_field%get_metadata(dimensions=dimensions)
+         allocate(output_field%coordinates(size(dimensions)))
+         do i=1,size(dimensions)
+            if (.not.associated(dimensions(i)%p)) cycle
+            if (.not.associated(dimensions(i)%p%coordinate)) cycle
+            coordinate_field => find_field(dimensions(i)%p%coordinate%name)
+            if (.not. associated(coordinate_field)) then
+               coordinate_field => output_field%get_field(dimensions(i)%p%coordinate)
+               if (associated(coordinate_field)) call append_field(trim(dimensions(i)%p%coordinate%name), coordinate_field, file%create_settings())
             end if
             output_field%coordinates(i)%p => coordinate_field
          end do
          output_field => output_field%next
       end do
-   end subroutine add_coordinate_variables
+
+   contains
+
+      function find_field(output_name) result(field)
+         character(len=*), intent(in)            :: output_name
+         class (type_base_output_field), pointer :: field
+         field => file%first_field
+         do while (associated(field))
+            if (field%output_name == output_name) return
+            field => field%next
+         end do
+      end function
+
+      subroutine create_field(settings, field, output_name, ignore_if_exists)
+         class (type_output_variable_settings), target :: settings
+         type (type_field),                     target :: field
+         character(len=*), intent(in)                  :: output_name
+         logical,          intent(in)                  :: ignore_if_exists
+
+         class (type_base_operator),         pointer :: final_operator
+         class (type_base_output_field),     pointer :: output_field
+         class (type_time_average_operator), pointer :: time_filter
+         
+         output_field => find_field(output_name)
+         if (associated(output_field)) then
+            if (.not. ignore_if_exists) call host%fatal_error('create_field', 'A different output field with name "'//output_name//'" already exists.')
+            return
+         end if
+
+         final_operator => settings%final_operator
+         if (settings%time_method /= time_method_instantaneous .and. settings%time_method /= time_method_none) then
+            ! Apply time averaging/integration operator
+            allocate(time_filter)
+            time_filter%method = settings%time_method
+            time_filter%previous => final_operator
+            final_operator => time_filter
+         end if
+
+         output_field => wrap_field(field)
+
+         if (associated(final_operator)) output_field => final_operator%apply_all(output_field)
+         if (associated(output_field)) call append_field(output_name, output_field, settings)
+      end subroutine
+
+      subroutine append_field(output_name, output_field, settings)
+         character(len=*),               intent(in)            :: output_name
+         class (type_base_output_field), intent(inout), target :: output_field
+         class (type_output_variable_settings), target         :: settings
+
+         class (type_base_output_field), pointer :: last_field
+
+         output_field%settings => settings
+         output_field%output_name = trim(output_name)
+
+         if (associated(file%first_field)) then
+            last_field => file%first_field
+            do while (associated(last_field%next))
+               last_field => last_field%next
+            end do
+            last_field%next => output_field
+         else
+            file%first_field => output_field
+         end if
+      end subroutine
+
+   end subroutine populate
 
    subroutine initialize_files(julianday,secondsofday,microseconds,n)
       integer, intent(in) :: julianday,secondsofday,microseconds,n
 
-      class (type_file),            pointer :: file
-      class (type_output_field),    pointer :: output_field
-      type (type_output_dimension), pointer :: output_dim
-      integer, allocatable, dimension(:)    :: starts, stops, strides
-      integer                               :: i,j
+      class (type_file), pointer :: file
 
       file => first_file
       do while (associated(file))
-         ! Add variables below selected categories to output
-         call collect_from_categories(file)
-
-         ! Remove empty variables (with one or more zero-length dimensions)
-         call filter_variables(file)
-
-         ! Add any missing coordinate variables
-         call add_coordinate_variables(file)
-
-         ! First check whether all fields included in this file have been registered.
-         output_field => file%first_field
-         do while (associated(output_field))
-            select case (output_field%source%status)
-               case (status_not_registered)
-                  call host%fatal_error('output_manager_save', 'File '//trim(file%path)//': &
-                     requested field "'//trim(output_field%source%name)//'" has not been registered with field manager.')
-               case (status_registered_no_data)
-                  call host%fatal_error('output_manager_save', 'File '//trim(file%path)//': &
-                     data for requested field "'//trim(output_field%source%name)//'" have not been provided.')
-            end select
-            output_field => output_field%next
-         end do
+         call populate(file)
 
          ! If we do not have a start time yet, use current.
          if (file%first_julian <= 0) then
             file%first_julian = julianday
             file%first_seconds = secondsofday
          end if
-
-         ! Initialize fields based on time integrals
-         output_field => file%first_field
-         do while (associated(output_field))
-            ! Determine effective dimension range
-            allocate(starts(1:size(output_field%source%dimensions)))
-            allocate(stops(1:size(output_field%source%dimensions)))
-            allocate(strides(1:size(output_field%source%dimensions)))
-            j = 0
-            do i=1,size(output_field%source%dimensions)
-               if (output_field%source%dimensions(i)%p%length>1) then
-                  ! Not a singleton dimension - create the slice spec
-                  j = j + 1
-                  output_dim => file%get_dimension(output_field%source%dimensions(i)%p)
-                  starts(j) = output_dim%start
-                  stops(j) = output_dim%stop
-                  strides(j) = output_dim%stride
-               end if
-            end do
-
-            if (all(stops(1:j)>=starts(1:j))) then
-               ! Select appropriate data slice
-               if (associated(output_field%source%data_3d)) then
-                  if (j/=3) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                  output_field%source_3d => output_field%source%data_3d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2),starts(3):stops(3):strides(3))
-               elseif (associated(output_field%source%data_2d)) then
-                  if (j/=2) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                  output_field%source_2d => output_field%source%data_2d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2))
-               elseif (associated(output_field%source%data_1d)) then
-                  if (j/=1) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                  output_field%source_1d => output_field%source%data_1d(starts(1):stops(1):strides(1))
-               else
-                  if (j/=0) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                  output_field%source_0d => output_field%source%data_0d
-               end if
-            end if
-
-            ! Deallocate dimension range specifyers.
-            deallocate(starts,stops,strides)
-
-            ! Store instantaneous data by default.
-            output_field%data_0d => output_field%source_0d
-            output_field%data_1d => output_field%source_1d
-            output_field%data_2d => output_field%source_2d
-            output_field%data_3d => output_field%source_3d
-
-            if (output_field%settings%time_method/=time_method_instantaneous.and.output_field%settings%time_method/=time_method_none) then
-               ! We are not storing the instantaneous value. Create a work array that will be stored instead.
-               if (associated(output_field%source_3d)) then
-                  allocate(output_field%work_3d(size(output_field%source_3d,1),size(output_field%source_3d,2),size(output_field%source_3d,3)))
-                  output_field%work_3d(:,:,:) = 0.0_rk
-                  output_field%data_3d => output_field%work_3d
-               elseif (associated(output_field%source_2d)) then
-                  allocate(output_field%work_2d(size(output_field%source_2d,1),size(output_field%source_2d,2)))
-                  output_field%work_2d(:,:) = 0.0_rk
-                  output_field%data_2d => output_field%work_2d
-               elseif (associated(output_field%source_1d)) then
-                  allocate(output_field%work_1d(size(output_field%source_1d)))
-                  output_field%work_1d(:) = 0.0_rk
-                  output_field%data_1d => output_field%work_1d
-               elseif (associated(output_field%source_0d)) then
-                  output_field%work_0d = 0.0_rk
-                  output_field%data_0d => output_field%work_0d
-               end if
-            end if
-
-            output_field => output_field%next
-         end do
 
          ! Create output file
          call file%initialize()
@@ -268,47 +206,27 @@ contains
    subroutine output_manager_prepare_save(julianday, secondsofday, microseconds, n)
       integer,intent(in) :: julianday, secondsofday, microseconds, n
 
-      class (type_file),         pointer :: file
-      class (type_output_field), pointer :: output_field
-      logical                            :: required
+      class (type_file),              pointer :: file
+      class (type_base_output_field), pointer :: output_field
+      logical                                 :: required
 
       if (.not. files_initialized) call initialize_files(julianday, secondsofday, microseconds, n)
 
       ! Start by marking all fields as not needing computation
-      file => first_file
-      do while (associated(file))
-         output_field => file%first_field
-         do while (associated(output_field))
-            if (associated(output_field%source%used_now)) output_field%source%used_now = .false.
-            output_field => output_field%next
-         end do
-         file => file%next
-      end do
+      if (associated(first_file)) call first_file%field_manager%reset_used()
 
       file => first_file
       do while (associated(file))
          if (in_window(file, julianday, secondsofday, microseconds, n)) then
             output_field => file%first_field
             do while (associated(output_field))
-               if (associated(output_field%source%used_now)) then
-                  select case (output_field%settings%time_method)
-                  case (time_method_mean)
-                     ! Time average - this field will be incremented at every model time step and therefore always needs to be computed.
-                     required = .true.
-                  case (time_method_integrated)
-                     ! Time integral - this field will be incremented at every model time step except the first.
-                     required = file%next_julian /= -1
-                  case default
-                     ! Instantaneous - this field needs to be computed only if it is to be output during the upcoming save call.
-                     select case (file%time_unit)
-                     case (time_unit_dt)
-                        required = file%first_index == -1 .or. mod(n - file%first_index, file%time_step) == 0
-                     case default
-                        required = file%next_julian == -1 .or. (julianday == file%next_julian .and. secondsofday >= file%next_seconds) .or. julianday > file%next_julian
-                     end select
-                  end select
-                  output_field%source%used_now = output_field%source%used_now .or. required
-               end if
+               select case (file%time_unit)
+               case (time_unit_dt)
+                  required = file%first_index == -1 .or. mod(n - file%first_index, file%time_step) == 0
+               case default
+                  required = file%next_julian == -1 .or. (julianday == file%next_julian .and. secondsofday >= file%next_seconds) .or. julianday > file%next_julian
+               end select
+               call output_field%flag_as_required(required)
                output_field => output_field%next
             end do
          end if
@@ -327,10 +245,10 @@ contains
    subroutine output_manager_save2(julianday,secondsofday,microseconds,n)
       integer,intent(in) :: julianday,secondsofday,microseconds,n
 
-      class (type_file),            pointer :: file
-      class (type_output_field),    pointer :: output_field
-      integer                               :: yyyy,mm,dd
-      logical                               :: output_required
+      class (type_file),              pointer :: file
+      class (type_base_output_field), pointer :: output_field
+      integer                                 :: yyyy,mm,dd
+      logical                                 :: output_required
 
       if (.not.files_initialized) call initialize_files(julianday,secondsofday,microseconds,n)
 
@@ -341,21 +259,9 @@ contains
          ! Increment time-integrated fields
          output_field => file%first_field
          do while (associated(output_field))
-            if (output_field%settings%time_method==time_method_mean .or. (output_field%settings%time_method==time_method_integrated.and.file%next_julian/=-1)) then
-               ! This is a time-integrated field that needs to be incremented.
-               if (associated(output_field%source_3d)) then
-                  output_field%work_3d(:,:,:) = output_field%work_3d + output_field%source_3d
-               elseif (associated(output_field%source_2d)) then
-                  output_field%work_2d(:,:) = output_field%work_2d + output_field%source_2d
-               elseif (associated(output_field%source_1d)) then
-                  output_field%work_1d(:) = output_field%work_1d + output_field%source_1d
-               elseif (associated(output_field%source_0d)) then
-                  output_field%work_0d = output_field%work_0d + output_field%source_0d
-               end if
-            end if
+            call output_field%new_data()
             output_field => output_field%next
          end do
-         file%n = file%n + 1
 
          if (file%next_julian==-1) then
             ! Store current time step so next time step can be computed correctly.
@@ -372,21 +278,9 @@ contains
          end if
 
          if (output_required) then
-            ! Perform temporal averaging where required.
             output_field => file%first_field
             do while (associated(output_field))
-               if (output_field%settings%time_method==time_method_mean) then
-                  ! This is a time-averaged field that has previously been incremented and now needs averaging
-                  if (associated(output_field%source_3d)) then
-                     output_field%work_3d(:,:,:) = output_field%work_3d/file%n
-                  elseif (associated(output_field%source_2d)) then
-                     output_field%work_2d(:,:) = output_field%work_2d/file%n
-                  elseif (associated(output_field%source_1d)) then
-                     output_field%work_1d(:) = output_field%work_1d/file%n
-                  elseif (associated(output_field%source_0d)) then
-                     output_field%work_0d = output_field%work_0d/file%n
-                  end if
-               end if
+               call output_field%before_save()
                output_field => output_field%next
             end do
 
@@ -416,26 +310,6 @@ contains
                   yyyy = yyyy + file%time_step
                   call host%julian_day(yyyy,mm,dd,file%next_julian)
             end select
-
-            ! Reset time step counter
-            file%n = 0
-
-            ! Zero out time-step averaged fields (start of new time step)
-            output_field => file%first_field
-            do while (associated(output_field))
-               if (output_field%settings%time_method==time_method_mean) then
-                  if (associated(output_field%source_3d)) then
-                     output_field%work_3d(:,:,:) = 0.0_rk
-                  elseif (associated(output_field%source_2d)) then
-                     output_field%work_2d(:,:) = 0.0_rk
-                  elseif (associated(output_field%source_1d)) then
-                     output_field%work_1d(:) = 0.0_rk
-                  elseif (associated(output_field%source_0d)) then
-                     output_field%work_0d = 0.0_rk
-                  end if
-               end if
-               output_field => output_field%next
-            end do
          end if
 
          end if ! in output time window
@@ -510,17 +384,18 @@ contains
       class (type_file),   pointer :: file
       character(len=string_length) :: string
       logical                      :: success
+      class (type_output_variable_settings), pointer :: file_settings
 
       type (type_dimension),       pointer :: dim
-      type (type_output_dimension),pointer :: output_dim
+      integer                              :: global_start, global_stop, stride
       character(len=8)                     :: strmax
-      integer                              :: distance
 #ifdef NETCDF_FMT
       character(len=*), parameter :: default_format = 'netcdf'
 #else
       character(len=*), parameter :: default_format = 'text'
 #endif
       logical                              :: is_active
+      class (type_slice_operator), pointer :: slice_operator
 
       is_active = mapping%get_logical('is_active',default=.true.,error=config_error)
       if (is_active) then
@@ -589,65 +464,33 @@ contains
          end if
 
          ! Determine dimension ranges
+         allocate(slice_operator)
          dim => field_manager%first_dimension
          do while (associated(dim))
             if (dim%iterator/='') then
                write (strmax,'(i0)') dim%global_length
-               output_dim => file%get_dimension(dim)
-               output_dim%global_start = mapping%get_integer(trim(dim%iterator)//'_start',default=1,error=config_error)
+               global_start = mapping%get_integer(trim(dim%iterator)//'_start',default=1,error=config_error)
                if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-               if (output_dim%global_start<0.or.output_dim%global_start>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 0 and '//trim(strmax))
-               output_dim%global_stop = mapping%get_integer(trim(dim%iterator)//'_stop',default=dim%global_length,error=config_error)
+               if (global_start < 0 .or. global_start > dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_start must lie between 0 and '//trim(strmax))
+               global_stop = mapping%get_integer(trim(dim%iterator)//'_stop',default=dim%global_length,error=config_error)
                if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-               if (output_dim%global_stop<1.or.output_dim%global_stop>dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))
-               if (output_dim%global_start>output_dim%global_stop) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
-               output_dim%stride = mapping%get_integer(trim(dim%iterator)//'_stride',default=1,error=config_error)
+               if (global_stop < 1 .or. global_stop > dim%global_length) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must lie between 1 and '//trim(strmax))
+               if (global_start > global_stop) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stop must equal or exceed '//trim(dim%iterator)//'_start')
+               stride = mapping%get_integer(trim(dim%iterator)//'_stride',default=1,error=config_error)
                if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
-               if (output_dim%stride<1) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stride must be larger than 0.')
-
-               ! Reduce stop to last point that is actually included (due to stride>1)
-               output_dim%global_stop = output_dim%global_stop - mod(output_dim%global_stop-output_dim%global_start,output_dim%stride)
-
-               ! Compute local [i.e., within-subdomain] start and stop positons from global positions and local offset.
-               if (output_dim%global_start>dim%offset+dim%length) then
-                  ! Start point lies beyond our subdomain
-                  output_dim%start = 1
-                  output_dim%stop = output_dim%start - output_dim%stride
-               else
-                  if (output_dim%global_start>dim%offset) then
-                     ! Starting point lies within our subdomain
-                     output_dim%start = output_dim%global_start - dim%offset
-                  else
-                     ! Starting point lies before our subdomain: we start immediately but have to account for stride
-
-                     ! Determine distance between subdomain start and nearest included point outside the domain.
-                     distance = mod(dim%offset + 1 - output_dim%global_start, output_dim%stride)
-
-                     ! Convert to distance to next point within the domain
-                     if (distance>0) distance = output_dim%stride - distance
-                     output_dim%start = 1 + distance
-                  end if
-
-                  ! Determine local stop by subtracting subdomain offset [maximum is subdomain length)
-                  output_dim%stop = min(output_dim%global_stop - dim%offset, dim%length)
-
-                  if (output_dim%stop<output_dim%start) then
-                     ! stop precedes start, so we have 0 length, i.e.,
-                     ! length = (output_dimension%stop-output_dimension%start)/output_dimension%stride + 1 = 0
-                     output_dim%stop = output_dim%start - output_dim%stride
-                  else
-                     ! Reduce stop to last point that is actually included (due to stride>1)
-                     output_dim%stop = output_dim%stop - mod(output_dim%stop-output_dim%start,output_dim%stride)
-                  end if
-               end if
+               if (stride < 1) call host%fatal_error('process_file','Error parsing output.yaml: '//trim(dim%iterator)//'_stride must be larger than 0.')
+               call slice_operator%add(trim(dim%name), global_start, global_stop, stride)
             end if
             dim => dim%next
          end do
+         file_settings => file%create_settings()
+         call file_settings%initialize(mapping, default_settings)
+         file_settings%final_operator => slice_operator
 
          ! Allow specific file implementation to parse additional settings from yaml file.
          call file%configure(mapping)
 
-         call process_group(file,mapping,default_settings)
+         call process_group(file, mapping, file_settings)
       end if
    end subroutine process_file
 
@@ -681,6 +524,11 @@ contains
          end do
       end if
 
+      ! Get operators
+      list => mapping%get_list('operators',required=.false.,error=config_error)
+      if (associated(config_error)) call host%fatal_error('process_group', config_error%message)
+      if (associated(list)) call apply_operators(settings%final_operator, list, file%field_manager)
+
       ! Get list with variables
       list => mapping%get_list('variables',required=.true.,error=config_error)
       if (associated(config_error)) call host%fatal_error('process_group',config_error%message)
@@ -710,57 +558,48 @@ contains
       class (type_dictionary),              intent(in)    :: mapping
       class (type_output_variable_settings),intent(in)    :: default_settings
 
-      character(len=string_length) :: source_name
-      type (type_error),        pointer :: config_error
-      class (type_output_category),pointer  :: output_category
-      class (type_output_field),pointer :: output_field
-      integer                           :: n
-      type (type_key_value_pair),pointer :: pair
+      character(len=string_length)        :: source_name
+      type (type_error),          pointer :: config_error
+      type (type_output_item),    pointer :: output_item
+      integer                             :: n
+      type (type_key_value_pair), pointer :: pair
 
       ! Name of source variable
       source_name = mapping%get_string('source',error=config_error)
       if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
+      allocate(output_item)
+      output_item%settings => file%create_settings()
+      call output_item%settings%initialize(mapping, default_settings)
+
       ! Determine whether to create an output field or an output category
       n = len_trim(source_name)
       if (source_name(n:n)=='*') then
-         allocate(output_category)
-         output_category%settings => file%create_settings()
-         call output_category%settings%initialize(mapping, default_settings)
-
          if (n==1) then
-            output_category%name = ''
+            output_item%name = ''
          else
-            output_category%name = source_name(:n-2)
+            output_item%name = source_name(:n-2)
          end if
 
          ! Prefix for output name
-         output_category%prefix = mapping%get_string('prefix',default='',error=config_error)
+         output_item%prefix = mapping%get_string('prefix',default='',error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
          ! Postfix for output name
-         output_category%postfix = mapping%get_string('postfix',default='',error=config_error)
+         output_item%postfix = mapping%get_string('postfix',default='',error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
 
          ! Output level
-         output_category%output_level = mapping%get_integer('output_level',default=output_level_default,error=config_error)
+         output_item%output_level = mapping%get_integer('output_level',default=output_level_default,error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
-
-         call file%append_category(output_category)
       else
-         output_field => file%create_field()
-         output_field%settings => file%create_settings()
-         call output_field%settings%initialize(mapping, default_settings)
-
-         ! Select this variable for output in the field manager.
-         output_field%source => file%field_manager%select_for_output(source_name)
+         output_item%field => file%field_manager%select_for_output(source_name)
 
          ! Name of output variable (may differ from source name)
-         output_field%output_name = mapping%get_string('name',default=source_name,error=config_error)
+         output_item%name = mapping%get_string('name',default=source_name,error=config_error)
          if (associated(config_error)) call host%fatal_error('process_variable',config_error%message)
-
-         call file%append(output_field)
       end if
+      call file%append_item(output_item)
 
       ! Raise error if any keys are left unused.
       pair => mapping%first
