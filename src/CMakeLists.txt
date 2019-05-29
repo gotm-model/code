@@ -284,8 +284,6 @@ add_executable(gotm_exe
 set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 target_link_libraries(gotm_exe PRIVATE gotm)
 
-# rename during install set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
-
 #KBif(GOTM_USE_NetCDF AND NetCDF_STATIC_MSVC_BUILD)
 #KB  set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
 #KBendif()
