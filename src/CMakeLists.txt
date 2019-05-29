@@ -176,8 +176,7 @@ if(GOTM_USE_FABM)
    add_library(gotm_fabm
       fabm/gotm_fabm.F90
    )
-   target_link_libraries(gotm_fabm PRIVATE util field_manager)
-   target_link_libraries(gotm_fabm PUBLIC fabm)
+   target_link_libraries(gotm_fabm PUBLIC fabm PRIVATE util field_manager)
    set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
 endif(GOTM_USE_FABM)
 
