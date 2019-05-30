@@ -8,6 +8,8 @@ else(MSVC)
   option(GOTM_EMBED_VERSION "Embed GOTM version information" ON)
 endif(MSVC)
 
+option(GOTM_USE_SEAGRASS "Enable seagrass module" OFF)
+
 option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
 mark_as_advanced(GOTM_EXTRA_OUTPUT)
 
@@ -36,13 +38,16 @@ include_directories(BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/../include" "${CMAKE_CUR
 add_definitions(-DFORTRAN95)
 if(GOTM_USE_NetCDF)
    add_definitions(-DNETCDF_FMT)
-endif(GOTM_USE_NetCDF)
+endif()
 if(GOTM_USE_FABM)
   add_definitions(-D_FABM_)
-endif(GOTM_USE_FABM)
+endif()
+if(GOTM_USE_SEAGRASS)
+   add_definitions(-DSEAGRASS)
+endif()
 if(GOTM_EXTRA_OUTPUT)
   add_definitions(-DEXTRA_OUTPUT)
-endif(GOTM_EXTRA_OUTPUT)
+endif()
 
 # ----------------------------
 # Targets
@@ -219,9 +224,7 @@ add_library(meanflow
    meanflow/wequation.F90
 )
 target_link_libraries(meanflow PRIVATE observations airsea)
-option(GOTM_USE_SEAGRASS "Enable seagrass module" OFF)
 if(GOTM_USE_SEAGRASS)
-   add_definitions(-DSEAGRASS)
    add_library(seagrass
       extras/seagrass/seagrass.F90
    )
