@@ -30,7 +30,7 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 endif()
 
 # Include directories
-include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+include_directories(BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/../include" "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 # Preprocessor definitions
 add_definitions(-DFORTRAN95)
@@ -87,7 +87,6 @@ if(GOTM_EMBED_VERSION)
    add_dependencies(util version)
 endif(GOTM_EMBED_VERSION)
 target_link_libraries(util PRIVATE field_manager)
-target_include_directories(util PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 add_library(turbulence
    turbulence/algebraiclength.F90
@@ -165,6 +164,7 @@ set_property(TARGET version util turbulence PROPERTY FOLDER gotm)
 if(GOTM_BUILD_LIBRARIES_ONLY)
 
 add_library(gotm_libs INTERFACE)
+target_include_directories(gotm_libs INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/modules")
 target_link_libraries(gotm_libs INTERFACE util turbulence field_manager output_manager)
 if(GOTM_USE_FABM)
    target_link_libraries(gotm_libs INTERFACE gotm_fabm)
@@ -244,14 +244,16 @@ add_library(gotm
    gotm/deprecated_output.F90
    gotm/print_version.F90
 )
-target_link_libraries(gotm PUBLIC util airsea input output_manager yaml meanflow turbulence output_manager input)
-set_property(TARGET gotm input airsea observations meanflow PROPERTY FOLDER gotm)
+target_link_libraries(gotm PRIVATE util airsea input output_manager yaml meanflow turbulence output_manager input)
 if(GOTM_USE_FABM)
-   target_link_libraries(gotm PUBLIC gotm_fabm_io fabm)
+   target_link_libraries(gotm PRIVATE gotm_fabm gotm_fabm_io)
 endif()
 if(GOTM_USE_SEAGRASS)
-   target_link_libraries(gotm PUBLIC seagrass)
+   target_link_libraries(gotm PRIVATE seagrass)
 endif()
+target_include_directories(gotm INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/modules")
+
+set_property(TARGET gotm input airsea observations meanflow PROPERTY FOLDER gotm)
 
 # All libraries configured
 
@@ -261,10 +263,6 @@ add_executable(gotm_exe
 )
 set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 target_link_libraries(gotm_exe PRIVATE gotm)
-
-#KBif(GOTM_USE_NetCDF AND NetCDF_STATIC_MSVC_BUILD)
-#KB  set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
-#KBendif()
 
 # Installation
 # Set default installation prefix.
