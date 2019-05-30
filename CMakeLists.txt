@@ -19,19 +19,6 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-# Customize compiler flags
-#[[-
-if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
-   set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffree-line-length-none")
-elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
-   set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -N 1023")
-elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
-   if(WIN32)
-      set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} /Od")
-   endif()
-endif()
--]]
-
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 
 option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
