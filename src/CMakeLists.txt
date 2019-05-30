@@ -1,31 +1,24 @@
-# Use common directory for Fortran modules
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+# ----------------------------
+# User-configurable options
+# ----------------------------
 
-# Generate source file with compilation information
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/util/compilation.F90.in" compilation.F90)
-
-# Create placeholder file with version information, used when GOTM_EMBED_VERSION is off.
-set(GIT_COMMIT_ID ${gotm_VERSION})
-set(GIT_BRANCH_NAME unknown)
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in" ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90)
-
-# Create a custom target for generating version  information (only if GOTM_EMBED_VERSION is on)
 if(MSVC)
   option(GOTM_EMBED_VERSION "Embed GOTM version information" OFF)
 else(MSVC)
   option(GOTM_EMBED_VERSION "Embed GOTM version information" ON)
 endif(MSVC)
-if(GOTM_EMBED_VERSION)
-   add_custom_target(version
-      ${CMAKE_COMMAND} -DINFILE=${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90 -P "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Modules/GetGitInfo.cmake"
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      COMMENT "Retrieving description of last GOTM commit..."
-      SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Modules/GetGitInfo.cmake"
-      VERBATIM
-  )
-endif(GOTM_EMBED_VERSION)
 
-# Customize compiler flags
+option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
+mark_as_advanced(GOTM_EXTRA_OUTPUT)
+
+# ----------------------------
+# Directory wide settings
+# ----------------------------
+
+# Common directory for Fortran modules
+set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+
+# Compiler flags
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
   add_compile_options(-ffree-line-length-none)
 elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
@@ -36,26 +29,43 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
   endif()
 endif()
 
-#[[---
-add_definitions(-DFORTRAN95)
-
-option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
-mark_as_advanced(GOTM_EXTRA_OUTPUT)
-if(GOTM_EXTRA_OUTPUT)
-  add_definitions(-DEXTRA_OUTPUT)
-endif(GOTM_EXTRA_OUTPUT)
----]]
-
-# Directory wide settings and preprocessor definitions
+# Include directories
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
+# Preprocessor definitions
+add_definitions(-DFORTRAN95)
 if(GOTM_USE_NetCDF)
    add_definitions(-DNETCDF_FMT)
 endif(GOTM_USE_NetCDF)
 if(GOTM_USE_FABM)
   add_definitions(-D_FABM_)
 endif(GOTM_USE_FABM)
+if(GOTM_EXTRA_OUTPUT)
+  add_definitions(-DEXTRA_OUTPUT)
+endif(GOTM_EXTRA_OUTPUT)
 
-# Configure all libraries
+# ----------------------------
+# Targets
+# ----------------------------
+
+# Generate source file with compilation information
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/util/compilation.F90.in" compilation.F90)
+
+# Create placeholder file with version information, used when GOTM_EMBED_VERSION is off.
+set(GIT_COMMIT_ID ${gotm_VERSION})
+set(GIT_BRANCH_NAME unknown)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in" ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90)
+
+# Create a custom target for generating version  information (only if GOTM_EMBED_VERSION is on)
+if(GOTM_EMBED_VERSION)
+   add_custom_target(version
+      ${CMAKE_COMMAND} -DINFILE=${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90 -P "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Modules/GetGitInfo.cmake"
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      COMMENT "Retrieving description of last GOTM commit..."
+      SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Modules/GetGitInfo.cmake"
+      VERBATIM
+  )
+endif(GOTM_EMBED_VERSION)
 
 add_library(util
    util/adv_center.F90
