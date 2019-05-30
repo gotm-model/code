@@ -35,14 +35,6 @@ endif()
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 
 option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
-if(GOTM_USE_NetCDF)
-   find_package(NetCDF REQUIRED)
-   if (NetCDF_STATIC_MSVC_BUILD)
-      # On Windows with a statically-compiled NetCDF library - compile all code against static runtime.
-      # This MUST be done before any targets are added.
-      add_compile_options("/libs:static")
-   endif()
-endif(GOTM_USE_NetCDF)
 
 if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/extern/flexout/src/CMakeLists.txt")
    message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
