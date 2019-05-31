@@ -192,7 +192,7 @@ if(GOTM_USE_FABM)
     set(FABM_FORCED_HOST gotm)
     add_subdirectory(${FABM_BASE}/src ${CMAKE_CURRENT_BINARY_DIR}/fabm_src)
     set(FABM_LIBRARIES fabm)
-    set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
+    set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules $<TARGET_PROPERTY:yaml,INTERFACE_INCLUDE_DIRECTORIES>)
     mark_as_advanced(FORCE FABM_PREFIX FABM_EMBED_VERSION)
   else()
     # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
