@@ -294,7 +294,7 @@ endif()
 set(INSTALL_LIBS turbulence util)
 install(TARGETS gotm_exe RUNTIME DESTINATION bin)
 install(TARGETS ${INSTALL_LIBS} 
-   EXPORT gotm-targets
+   EXPORT gotmConfig
    LIBRARY DESTINATION lib 
    ARCHIVE DESTINATION lib
 )
