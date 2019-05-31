@@ -32,7 +32,7 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 endif()
 
 # Include directories
-include_directories(BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/../include" "${CMAKE_CURRENT_BINARY_DIR}/modules")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../include")
 
 # Preprocessor definitions
 add_definitions(-DFORTRAN95)
@@ -92,6 +92,7 @@ if(GOTM_EMBED_VERSION)
    add_dependencies(util version)
 endif(GOTM_EMBED_VERSION)
 target_link_libraries(util PRIVATE field_manager)
+target_include_directories(util PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 add_library(turbulence
    turbulence/algebraiclength.F90
@@ -155,33 +156,30 @@ add_library(turbulence
    turbulence/variances.F90
 )
 target_link_libraries(turbulence PRIVATE util)
+target_include_directories(turbulence PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 if(GOTM_USE_FABM)
    add_library(gotm_fabm
       fabm/gotm_fabm.F90
    )
    target_link_libraries(gotm_fabm PUBLIC fabm PRIVATE util field_manager)
+   target_include_directories(gotm_fabm PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
    set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
 endif(GOTM_USE_FABM)
 
 set_property(TARGET version util turbulence PROPERTY FOLDER gotm)
 
 if(GOTM_BUILD_LIBRARIES_ONLY)
+   return()
+endif()
 
-add_library(gotm_libs INTERFACE)
-target_include_directories(gotm_libs INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/modules")
-target_link_libraries(gotm_libs INTERFACE util turbulence field_manager output_manager)
-if(GOTM_USE_FABM)
-   target_link_libraries(gotm_libs INTERFACE gotm_fabm)
-endif(GOTM_USE_FABM)
-
-else(GOTM_BUILD_LIBRARIES_ONLY)
 
 add_library(input
    input/input.F90
    input/input_netcdf.F90
 )
 target_link_libraries(input PRIVATE util output_manager)
+target_include_directories(input PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 add_library(airsea
    airsea/airsea.F90
@@ -197,6 +195,7 @@ add_library(airsea
 )
 target_compile_definitions(airsea PRIVATE GUSTINESS)
 target_link_libraries(airsea PRIVATE util input)
+target_include_directories(airsea PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 add_library(observations
    observations/analytical_profile.F90
@@ -205,6 +204,7 @@ add_library(observations
    observations/observations.F90
 )
 target_link_libraries(observations PRIVATE util input)
+target_include_directories(observations PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 add_library(meanflow
    meanflow/buoyancy.F90
@@ -224,11 +224,14 @@ add_library(meanflow
    meanflow/wequation.F90
 )
 target_link_libraries(meanflow PRIVATE observations airsea)
+target_include_directories(meanflow PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
+
 if(GOTM_USE_SEAGRASS)
    add_library(seagrass
       extras/seagrass/seagrass.F90
    )
    target_link_libraries(seagrass PRIVATE meanflow field_manager)
+   target_include_directories(seagrass PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
    set_property(TARGET seagrass PROPERTY FOLDER gotm)
 endif()
 
@@ -237,6 +240,7 @@ if(GOTM_USE_FABM)
                fabm/gotm_fabm_input.F90
    )
    target_link_libraries(gotm_fabm_io PRIVATE input gotm_fabm fabm)
+   target_include_directories(gotm_fabm_io PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
    set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
 endif(GOTM_USE_FABM)
 
@@ -247,14 +251,14 @@ add_library(gotm
    gotm/deprecated_output.F90
    gotm/print_version.F90
 )
-target_link_libraries(gotm PRIVATE util airsea input output_manager yaml meanflow turbulence output_manager input)
+target_link_libraries(gotm PUBLIC util airsea input output_manager yaml meanflow turbulence output_manager input)
 if(GOTM_USE_FABM)
-   target_link_libraries(gotm PRIVATE gotm_fabm gotm_fabm_io)
+   target_link_libraries(gotm PUBLIC gotm_fabm gotm_fabm_io)
 endif()
 if(GOTM_USE_SEAGRASS)
-   target_link_libraries(gotm PRIVATE seagrass)
+   target_link_libraries(gotm PUBLIC seagrass)
 endif()
-target_include_directories(gotm INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/modules")
+target_include_directories(gotm PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 set_property(TARGET gotm input airsea observations meanflow PROPERTY FOLDER gotm)
 
@@ -301,5 +305,3 @@ install(FILES
    DESTINATION include
 )
 #KBinstall(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
-
-endif(GOTM_BUILD_LIBRARIES_ONLY)
