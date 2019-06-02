@@ -50,7 +50,7 @@ if(GOTM_USE_FABM)
 endif(GOTM_USE_FABM)
 
 add_subdirectory(src)
-add_subdirectory(tests EXCLUDE_FROM_ALL)
+add_subdirectory(tests)
 
 include(FeatureSummary)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
