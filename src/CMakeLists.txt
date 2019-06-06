@@ -291,7 +291,7 @@ else()
 endif()
 
 # Install GOTM library and include files, unless the host overruled this.
-set(INSTALL_LIBS turbulence util field_manager)
+set(INSTALL_LIBS turbulence util)
 install(TARGETS gotm_exe RUNTIME DESTINATION bin)
 install(TARGETS ${INSTALL_LIBS} 
    EXPORT gotmConfig
