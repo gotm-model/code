@@ -302,6 +302,7 @@ install(FILES
    ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/turbulence.mod
    ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/time.mod
    ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/util.mod
+   ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/gotm_compilation.mod
    DESTINATION include
 )
 #KBinstall(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
