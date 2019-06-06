@@ -251,7 +251,7 @@ add_library(gotm
    gotm/deprecated_output.F90
    gotm/print_version.F90
 )
-target_link_libraries(gotm PUBLIC util airsea input output_manager yaml meanflow turbulence output_manager input)
+target_link_libraries(gotm PUBLIC util airsea input yaml meanflow turbulence output_manager input)
 if(GOTM_USE_FABM)
    target_link_libraries(gotm PUBLIC gotm_fabm gotm_fabm_io)
 endif()
@@ -291,7 +291,7 @@ else()
 endif()
 
 # Install GOTM library and include files, unless the host overruled this.
-set(INSTALL_LIBS turbulence util)
+set(INSTALL_LIBS turbulence util field_manager)
 install(TARGETS gotm_exe RUNTIME DESTINATION bin)
 install(TARGETS ${INSTALL_LIBS} 
    EXPORT gotmConfig
