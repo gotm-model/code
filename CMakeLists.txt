@@ -30,7 +30,6 @@ else()
    mark_as_advanced(FLEXOUT_USE_NetCDF)
    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/extern/flexout" 
                     "${CMAKE_CURRENT_BINARY_DIR}/extern/flexout"
-                    EXCLUDE_FROM_ALL
    )
 endif()
 
@@ -44,7 +43,7 @@ if(GOTM_USE_FABM)
       find_path(FABM_BASE src/fabm.F90 HINTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/fabm DOC "Path to FABM source directory.")
       set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
       set(FABM_FORCED_HOST gotm)
-      add_subdirectory("${FABM_BASE}/src" "${CMAKE_CURRENT_BINARY_DIR}/extern/fabm" EXCLUDE_FROM_ALL)
+      add_subdirectory("${FABM_BASE}/src" "${CMAKE_CURRENT_BINARY_DIR}/extern/fabm")
       mark_as_advanced(CLEAR FABM_BASE)
    endif()
 endif(GOTM_USE_FABM)
@@ -57,3 +56,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    feature_summary(WHAT ENABLED_FEATURES DISABLED_FEATURES PACKAGES_FOUND)
    feature_summary(FILENAME ${CMAKE_CURRENT_BINARY_DIR}/features.log WHAT ALL)
 endif()
+
+install(EXPORT gotmConfig DESTINATION cmake)
+
