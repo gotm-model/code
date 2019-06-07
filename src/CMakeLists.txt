@@ -93,6 +93,7 @@ if(GOTM_EMBED_VERSION)
 endif(GOTM_EMBED_VERSION)
 target_link_libraries(util PRIVATE field_manager)
 target_include_directories(util PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
+add_library(gotm::util ALIAS util)
 
 add_library(turbulence
    turbulence/algebraiclength.F90
@@ -157,6 +158,7 @@ add_library(turbulence
 )
 target_link_libraries(turbulence PRIVATE util)
 target_include_directories(turbulence PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
+add_library(gotm::turbulence ALIAS turbulence)
 
 if(GOTM_USE_FABM)
    add_library(gotm_fabm
@@ -307,4 +309,4 @@ install(FILES
    ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/mtridiagonal.mod
    DESTINATION include
 )
-install(EXPORT gotmConfig DESTINATION cmake)
+install(EXPORT gotmConfig DESTINATION cmake NAMESPACE gotm::)
