@@ -302,7 +302,9 @@ install(FILES
    ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/turbulence.mod
    ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/time.mod
    ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/util.mod
+   ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/gotm_version.mod
    ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/gotm_compilation.mod
+   ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/mtridiagonal.mod
    DESTINATION include
 )
-#KBinstall(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
+install(EXPORT gotmConfig DESTINATION cmake)
