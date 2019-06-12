@@ -37,7 +37,7 @@ if(GOTM_USE_FABM)
    mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
    if (NOT FABM_BASE AND FABM_PREFIX)
       # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
-      find_package(FABM REQUIRED CONFIG HINTS "${FABM_PREFIX}" NO_DEFAULT_PATH)
+      find_package(fabm REQUIRED CONFIG HINTS "${FABM_PREFIX}" NO_DEFAULT_PATH)
       mark_as_advanced(CLEAR FABM_PREFIX)
    else()
       find_path(FABM_BASE src/fabm.F90 HINTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/fabm DOC "Path to FABM source directory.")
