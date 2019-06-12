@@ -9,3 +9,13 @@ add_library(gotm_fabm_io
 )
 target_link_libraries(gotm_fabm_io PRIVATE input gotm_fabm fabm)
 set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
+
+install(TARGETS gotm_fabm 
+   EXPORT gotmConfig
+   LIBRARY DESTINATION lib 
+   ARCHIVE DESTINATION lib
+)
+install(FILES 
+   $<TARGET_PROPERTY:gotm_fabm,Fortran_MODULE_DIRECTORY>/\${BUILD_TYPE}/gotm_fabm.mod
+   DESTINATION include
+)
