@@ -25,6 +25,7 @@ add_library(util
 target_link_libraries(util PRIVATE field_manager)
 target_include_directories(util PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
 add_library(gotm::util ALIAS util)
+set_property(TARGET util PROPERTY FOLDER gotm)
 
 if(GOTM_EMBED_VERSION)
    # Create a custom target for generating version  information (only if GOTM_EMBED_VERSION is on)
@@ -36,4 +37,5 @@ if(GOTM_EMBED_VERSION)
       VERBATIM
    )
    add_dependencies(util version)
+   set_property(TARGET version PROPERTY FOLDER gotm)
 endif()

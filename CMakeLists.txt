@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 
 # Create main project.
 project(gotm VERSION 5.3.0 LANGUAGES Fortran)
@@ -23,12 +23,12 @@ option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical M
 
 option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
 
-if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/extern/flexout/src/CMakeLists.txt")
+if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/flexout/src/CMakeLists.txt")
    message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
 else()
    set(FLEXOUT_USE_NetCDF ${GOTM_USE_NetCDF} CACHE BOOL "Enable output in NetCDF format" FORCE)
    mark_as_advanced(FLEXOUT_USE_NetCDF)
-   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/extern/flexout" 
+   add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/extern/flexout" 
                     "${CMAKE_CURRENT_BINARY_DIR}/extern/flexout"
    )
 endif()
@@ -40,7 +40,7 @@ if(GOTM_USE_FABM)
       find_package(fabm REQUIRED CONFIG HINTS "${FABM_PREFIX}" NO_DEFAULT_PATH)
       mark_as_advanced(CLEAR FABM_PREFIX)
    else()
-      find_path(FABM_BASE src/fabm.F90 HINTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/fabm DOC "Path to FABM source directory.")
+      find_path(FABM_BASE src/fabm.F90 HINTS ${CMAKE_CURRENT_LIST_DIR}/extern/fabm DOC "Path to FABM source directory.")
       set(FABM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed FABM version information" FORCE)
       set(FABM_FORCED_HOST gotm)
       add_subdirectory("${FABM_BASE}/src" "${CMAKE_CURRENT_BINARY_DIR}/extern/fabm")
@@ -48,8 +48,8 @@ if(GOTM_USE_FABM)
    endif()
 endif(GOTM_USE_FABM)
 
-include(src/CMakeLists.txt)
-add_subdirectory(tests)
+include("${CMAKE_CURRENT_LIST_DIR}/src/CMakeLists.txt")
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/tests" tests)
 
 include(FeatureSummary)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)

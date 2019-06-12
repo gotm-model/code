@@ -1,3 +1,11 @@
+cmake_minimum_required(VERSION 3.0)
+
+if(NOT TARGET field_manager)
+   message(WARNING "You are using ${CMAKE_CURRENT_LIST_DIR} as source directory. This is deprecated. Please use its parent directory instead.")
+   include("${CMAKE_CURRENT_LIST_DIR}/../CMakeLists.txt")
+   return()
+endif()
+
 # ----------------------------
 # User-configurable options
 # ----------------------------
@@ -59,8 +67,6 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/turbulence)
 if(GOTM_USE_FABM)
    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm)
 endif(GOTM_USE_FABM)
-
-set_property(TARGET version util turbulence PROPERTY FOLDER gotm)
 
 if(GOTM_BUILD_LIBRARIES_ONLY)
    return()
