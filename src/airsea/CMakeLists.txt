@@ -12,4 +12,3 @@ add_library(airsea
 )
 target_compile_definitions(airsea PRIVATE GUSTINESS)
 target_link_libraries(airsea PRIVATE util input)
-target_include_directories(airsea PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)

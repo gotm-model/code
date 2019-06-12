@@ -16,4 +16,3 @@ add_library(meanflow
    wequation.F90
 )
 target_link_libraries(meanflow PRIVATE observations airsea)
-target_include_directories(meanflow PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)

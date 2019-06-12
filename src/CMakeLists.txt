@@ -41,6 +41,7 @@ endif()
 
 # Include directories
 include_directories("${CMAKE_CURRENT_LIST_DIR}/../include")
+include_directories($<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
 
 # Preprocessor definitions
 add_definitions(-DFORTRAN95)

@@ -5,4 +5,3 @@ add_library(observations
    observations.F90
 )
 target_link_libraries(observations PRIVATE util input)
-target_include_directories(observations PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)

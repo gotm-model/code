@@ -60,7 +60,6 @@ add_library(turbulence
    variances.F90
 )
 target_link_libraries(turbulence PRIVATE util)
-target_include_directories(turbulence PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
 add_library(gotm::turbulence ALIAS turbulence)
 set_property(TARGET turbulence PROPERTY FOLDER gotm)
 
