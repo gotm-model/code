@@ -82,7 +82,7 @@ if(GOTM_USE_SEAGRASS)
    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/extras/seagrass seagrass)
 endif()
 
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/gotm gotm)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/gotm gotmlib)
 
 set_property(TARGET gotm input airsea observations meanflow PROPERTY FOLDER gotm)
 
