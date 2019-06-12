@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.0)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
+if(NOT PROJECT_NAME STREQUAL gotm)
+   project(gotm VERSION 5.3.0 LANGUAGES Fortran)
+endif()
 
-# Create main project.
-project(gotm VERSION 5.3.0 LANGUAGES Fortran)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 
 # Use solution folders in IDEs
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

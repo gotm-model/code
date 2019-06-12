@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 
-if(NOT TARGET field_manager)
+if(NOT PROJECT_NAME STREQUAL gotm)
    message(WARNING "You are using ${CMAKE_CURRENT_LIST_DIR} as source directory. This is deprecated. Please use its parent directory instead.")
+   project(gotm VERSION 5.3.0 LANGUAGES Fortran)
    include("${CMAKE_CURRENT_LIST_DIR}/../CMakeLists.txt")
    return()
 endif()
