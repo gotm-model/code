@@ -61,27 +61,27 @@ endif()
 # Targets
 # ----------------------------
 
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/util)
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/turbulence)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/util util)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/turbulence turbulence)
 
 if(GOTM_USE_FABM)
-   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm)
+   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm fabm)
 endif(GOTM_USE_FABM)
 
 if(GOTM_BUILD_LIBRARIES_ONLY)
    return()
 endif()
 
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/input)
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/airsea)
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/observations)
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/meanflow)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/input input)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/airsea airsea)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/observations observations)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/meanflow meanflow)
 
 if(GOTM_USE_SEAGRASS)
-   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/extras/seagrass)
+   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/extras/seagrass seagrass)
 endif()
 
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/gotm)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/gotm gotm)
 
 set_property(TARGET gotm input airsea observations meanflow PROPERTY FOLDER gotm)
 
