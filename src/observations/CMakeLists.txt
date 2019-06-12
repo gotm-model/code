@@ -5,3 +5,4 @@ add_library(observations
    observations.F90
 )
 target_link_libraries(observations PRIVATE util input)
+set_property(TARGET observations PROPERTY FOLDER gotm)

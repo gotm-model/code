@@ -16,3 +16,4 @@ add_library(meanflow
    wequation.F90
 )
 target_link_libraries(meanflow PRIVATE observations airsea)
+set_property(TARGET meanflow PROPERTY FOLDER gotm)

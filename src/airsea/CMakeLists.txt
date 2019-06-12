@@ -12,3 +12,4 @@ add_library(airsea
 )
 target_compile_definitions(airsea PRIVATE GUSTINESS)
 target_link_libraries(airsea PRIVATE util input)
+set_property(TARGET airsea PROPERTY FOLDER gotm)

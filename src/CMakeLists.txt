@@ -84,8 +84,6 @@ endif()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/gotm gotmlib)
 
-set_property(TARGET gotm input airsea observations meanflow PROPERTY FOLDER gotm)
-
 # All libraries configured
 
 # Build GOTM executable.
