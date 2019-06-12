@@ -44,3 +44,11 @@ install(TARGETS util
    LIBRARY DESTINATION lib 
    ARCHIVE DESTINATION lib
 )
+install(FILES 
+   $<TARGET_PROPERTY:util,Fortran_MODULE_DIRECTORY>/\${BUILD_TYPE}/time.mod
+   $<TARGET_PROPERTY:util,Fortran_MODULE_DIRECTORY>/\${BUILD_TYPE}/util.mod
+   $<TARGET_PROPERTY:util,Fortran_MODULE_DIRECTORY>/\${BUILD_TYPE}/gotm_version.mod
+   $<TARGET_PROPERTY:util,Fortran_MODULE_DIRECTORY>/\${BUILD_TYPE}/gotm_compilation.mod
+   $<TARGET_PROPERTY:util,Fortran_MODULE_DIRECTORY>/\${BUILD_TYPE}/mtridiagonal.mod
+   DESTINATION include
+)

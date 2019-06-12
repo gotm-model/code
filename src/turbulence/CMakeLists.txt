@@ -68,3 +68,7 @@ install(TARGETS turbulence
    LIBRARY DESTINATION lib 
    ARCHIVE DESTINATION lib
 )
+install(FILES 
+   $<TARGET_PROPERTY:turbulence,Fortran_MODULE_DIRECTORY>/\${BUILD_TYPE}/turbulence.mod
+   DESTINATION include
+)

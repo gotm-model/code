@@ -68,7 +68,7 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/turbulence turbulence)
 
 if(GOTM_USE_FABM)
    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm fabm)
-endif(GOTM_USE_FABM)
+endif()
 
 if(GOTM_BUILD_LIBRARIES_ONLY)
    return()
@@ -84,8 +84,6 @@ if(GOTM_USE_SEAGRASS)
 endif()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/gotm gotmlib)
-
-# All libraries configured
 
 # Build GOTM executable.
 add_executable(gotm_exe
@@ -113,15 +111,7 @@ else()
   set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in")
 endif()
 
-# Install GOTM library and include files, unless the host overruled this.
+# Install GOTM executable
 install(TARGETS gotm_exe RUNTIME DESTINATION bin)
-install(FILES 
-   ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/turbulence.mod
-   ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/time.mod
-   ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/util.mod
-   ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/gotm_version.mod
-   ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/gotm_compilation.mod
-   ${CMAKE_CURRENT_BINARY_DIR}/modules/\${BUILD_TYPE}/mtridiagonal.mod
-   DESTINATION include
-)
+
 install(EXPORT gotmConfig DESTINATION cmake NAMESPACE gotm::)
