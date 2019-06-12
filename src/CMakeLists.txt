@@ -32,7 +32,7 @@ elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 endif()
 
 # Include directories
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../include")
+include_directories("${CMAKE_CURRENT_LIST_DIR}/../include")
 
 # Preprocessor definitions
 add_definitions(-DFORTRAN95)
@@ -53,120 +53,11 @@ endif()
 # Targets
 # ----------------------------
 
-# Generate source file with compilation information
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/util/compilation.F90.in" compilation.F90)
-
-# Create placeholder file with version information, used when GOTM_EMBED_VERSION is off.
-set(GIT_COMMIT_ID ${gotm_VERSION})
-set(GIT_BRANCH_NAME unknown)
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in" ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90)
-
-# Create a custom target for generating version  information (only if GOTM_EMBED_VERSION is on)
-if(GOTM_EMBED_VERSION)
-   add_custom_target(version
-      ${CMAKE_COMMAND} -DINFILE=${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in -DOUTFILE=${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90 -P "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Modules/GetGitInfo.cmake"
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      COMMENT "Retrieving description of last GOTM commit..."
-      SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/util/gotm_version.F90.in "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Modules/GetGitInfo.cmake"
-      VERBATIM
-  )
-endif(GOTM_EMBED_VERSION)
-
-add_library(util
-   util/adv_center.F90
-   util/convert_fluxes.F90
-   util/diff_center.F90
-   util/diff_face.F90
-   util/eqstate.F90
-   util/gridinterpol.F90
-   util/lagrange.F90
-   util/ode_solvers.F90
-   util/time.F90
-   util/tridiagonal.F90
-   util/util.F90
-   ../include/cppdefs.h
-   ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90
-   ${CMAKE_CURRENT_BINARY_DIR}/compilation.F90
-)
-if(GOTM_EMBED_VERSION)
-   add_dependencies(util version)
-endif(GOTM_EMBED_VERSION)
-target_link_libraries(util PRIVATE field_manager)
-target_include_directories(util PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
-add_library(gotm::util ALIAS util)
-
-add_library(turbulence
-   turbulence/algebraiclength.F90
-   turbulence/alpha_mnb.F90
-   turbulence/cmue_a.F90
-   turbulence/cmue_b.F90
-   turbulence/cmue_c.F90
-   turbulence/cmue_d.F90
-   turbulence/cmue_ma.F90
-   turbulence/cmue_rf.F90
-   turbulence/cmue_sg.F90
-   turbulence/compute_cpsi3.F90
-   turbulence/compute_rist.F90
-   turbulence/dissipationeq.F90
-   turbulence/epsbalgebraic.F90
-   turbulence/fk_craig.F90
-   turbulence/genericeq.F90
-   turbulence/gotm_lib_version.F90
-   turbulence/internal_wave.F90
-   turbulence/ispralength.F90
-   turbulence/kbalgebraic.F90
-   turbulence/kbeq.F90
-   turbulence/kpp.F90
-   turbulence/lengthscaleeq.F90
-   turbulence/potentialml.F90
-   turbulence/production.F90
-   turbulence/q2over2eq.F90
-   turbulence/r_ratio.F90
-   turbulence/tkealgebraic.F90
-   turbulence/tkeeq.F90
-   turbulence/turbulence.F90
-   turbulence/algebraiclength.F90
-   turbulence/alpha_mnb.F90
-   turbulence/cmue_a.F90
-   turbulence/cmue_b.F90
-   turbulence/cmue_c.F90
-   turbulence/cmue_d.F90
-   turbulence/cmue_ma.F90
-   turbulence/cmue_rf.F90
-   turbulence/cmue_sg.F90
-   turbulence/compute_cpsi3.F90
-   turbulence/compute_rist.F90
-   turbulence/dissipationeq.F90
-   turbulence/epsbalgebraic.F90
-   turbulence/fk_craig.F90
-   turbulence/genericeq.F90
-   turbulence/gotm_lib_version.F90
-   turbulence/internal_wave.F90
-   turbulence/ispralength.F90
-   turbulence/kbalgebraic.F90
-   turbulence/kbeq.F90
-   turbulence/kpp.F90
-   turbulence/lengthscaleeq.F90
-   turbulence/potentialml.F90
-   turbulence/production.F90
-   turbulence/q2over2eq.F90
-   turbulence/r_ratio.F90
-   turbulence/tkealgebraic.F90
-   turbulence/tkeeq.F90
-   turbulence/turbulence.F90
-   turbulence/variances.F90
-)
-target_link_libraries(turbulence PRIVATE util)
-target_include_directories(turbulence PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
-add_library(gotm::turbulence ALIAS turbulence)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/util)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/turbulence)
 
 if(GOTM_USE_FABM)
-   add_library(gotm_fabm
-      fabm/gotm_fabm.F90
-   )
-   target_link_libraries(gotm_fabm PUBLIC fabm PRIVATE util field_manager)
-   target_include_directories(gotm_fabm PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
-   set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
+   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm)
 endif(GOTM_USE_FABM)
 
 set_property(TARGET version util turbulence PROPERTY FOLDER gotm)
@@ -175,92 +66,16 @@ if(GOTM_BUILD_LIBRARIES_ONLY)
    return()
 endif()
 
-
-add_library(input
-   input/input.F90
-   input/input_netcdf.F90
-)
-target_link_libraries(input PRIVATE util output_manager)
-target_include_directories(input PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
-
-add_library(airsea
-   airsea/airsea.F90
-   airsea/airsea_fluxes.F90
-   airsea/airsea_variables.F90
-   airsea/back_radiation.F90
-   airsea/fairall.F90
-   airsea/humidity.F90
-   airsea/kondo.F90
-   airsea/solar_zenith_angle.F90
-   airsea/short_wave_radiation.F90
-   airsea/albedo_water.F90
-)
-target_compile_definitions(airsea PRIVATE GUSTINESS)
-target_link_libraries(airsea PRIVATE util input)
-target_include_directories(airsea PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
-
-add_library(observations
-   observations/analytical_profile.F90
-   observations/const_NNS.F90
-   observations/const_NNT.F90
-   observations/observations.F90
-)
-target_link_libraries(observations PRIVATE util input)
-target_include_directories(observations PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
-
-add_library(meanflow
-   meanflow/buoyancy.F90
-   meanflow/convectiveadjustment.F90
-   meanflow/coriolis.F90
-   meanflow/extpressure.F90
-   meanflow/friction.F90
-   meanflow/intpressure.F90
-   meanflow/meanflow.F90
-   meanflow/salinity.F90
-   meanflow/shear.F90
-   meanflow/stratification.F90
-   meanflow/temperature.F90
-   meanflow/uequation.F90
-   meanflow/updategrid.F90
-   meanflow/vequation.F90
-   meanflow/wequation.F90
-)
-target_link_libraries(meanflow PRIVATE observations airsea)
-target_include_directories(meanflow PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/input)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/airsea)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/observations)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/meanflow)
 
 if(GOTM_USE_SEAGRASS)
-   add_library(seagrass
-      extras/seagrass/seagrass.F90
-   )
-   target_link_libraries(seagrass PRIVATE meanflow field_manager)
-   target_include_directories(seagrass PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
-   set_property(TARGET seagrass PROPERTY FOLDER gotm)
+   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/extras/seagrass)
 endif()
 
-if(GOTM_USE_FABM)
-   add_library(gotm_fabm_io
-               fabm/gotm_fabm_input.F90
-   )
-   target_link_libraries(gotm_fabm_io PRIVATE input gotm_fabm fabm)
-   target_include_directories(gotm_fabm_io PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
-   set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
-endif(GOTM_USE_FABM)
-
-add_library(gotm
-   gotm/gotm.F90
-   gotm/diagnostics.F90
-   gotm/register_all_variables.F90
-   gotm/deprecated_output.F90
-   gotm/print_version.F90
-)
-target_link_libraries(gotm PUBLIC util airsea input yaml meanflow turbulence output_manager input)
-if(GOTM_USE_FABM)
-   target_link_libraries(gotm PUBLIC gotm_fabm gotm_fabm_io)
-endif()
-if(GOTM_USE_SEAGRASS)
-   target_link_libraries(gotm PUBLIC seagrass)
-endif()
-target_include_directories(gotm PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/gotm)
 
 set_property(TARGET gotm input airsea observations meanflow PROPERTY FOLDER gotm)
 
@@ -268,7 +83,7 @@ set_property(TARGET gotm input airsea observations meanflow PROPERTY FOLDER gotm
 
 # Build GOTM executable.
 add_executable(gotm_exe
-   gotm/main.F90
+   ${CMAKE_CURRENT_LIST_DIR}/gotm/main.F90
 )
 set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 target_link_libraries(gotm_exe PRIVATE gotm)

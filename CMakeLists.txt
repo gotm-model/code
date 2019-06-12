@@ -48,7 +48,7 @@ if(GOTM_USE_FABM)
    endif()
 endif(GOTM_USE_FABM)
 
-add_subdirectory(src)
+include(src/CMakeLists.txt)
 add_subdirectory(tests)
 
 include(FeatureSummary)
