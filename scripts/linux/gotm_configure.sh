@@ -19,10 +19,9 @@ install_prefix=${install_prefix:=~/local/gotm/$compiler}
 # ready to configure
 mkdir -p $compiler
 cd $compiler
-cmake $GOTM_BASE/src \
+cmake $GOTM_BASE \
       -DGOTM_EMBED_VERSION=on \
       -DGOTM_USE_FABM=on \
-      -DFABM_BASE=$FABM_BASE/ \
       -DCMAKE_Fortran_COMPILER=$compiler \
       -DCMAKE_INSTALL_PREFIX=$install_prefix
 cd ..
