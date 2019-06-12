@@ -39,3 +39,9 @@ if(GOTM_EMBED_VERSION)
    add_dependencies(util version)
    set_property(TARGET version PROPERTY FOLDER gotm)
 endif()
+
+install(TARGETS util 
+   EXPORT gotmConfig
+   LIBRARY DESTINATION lib 
+   ARCHIVE DESTINATION lib
+)
