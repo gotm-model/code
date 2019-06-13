@@ -65,6 +65,8 @@ endif()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/util util)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/turbulence turbulence)
+target_include_directories(util PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
+target_include_directories(turbulence PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
 
 if(GOTM_USE_FABM)
    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm fabm)
