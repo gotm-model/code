@@ -24,6 +24,12 @@ option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical M
 
 option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
 
+if(MSVC)
+  option(GOTM_EMBED_VERSION "Embed GOTM version information" OFF)
+else(MSVC)
+  option(GOTM_EMBED_VERSION "Embed GOTM version information" ON)
+endif(MSVC)
+
 if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/flexout/src/CMakeLists.txt")
    message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
 else()
@@ -35,7 +41,7 @@ else()
 endif()
 
 if(GOTM_USE_FABM)
-   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
+   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE FABM_EMBED_VERSION)
    if (NOT FABM_BASE AND FABM_PREFIX)
       # FABM must be pre-built: use FABM_PREFIX to locate existing include and lib directories.
       find_package(fabm REQUIRED CONFIG HINTS "${FABM_PREFIX}" NO_DEFAULT_PATH)

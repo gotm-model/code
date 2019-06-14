@@ -11,12 +11,6 @@ endif()
 # User-configurable options
 # ----------------------------
 
-if(MSVC)
-  option(GOTM_EMBED_VERSION "Embed GOTM version information" OFF)
-else(MSVC)
-  option(GOTM_EMBED_VERSION "Embed GOTM version information" ON)
-endif(MSVC)
-
 option(GOTM_USE_SEAGRASS "Enable seagrass module" OFF)
 
 option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
