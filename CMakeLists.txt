@@ -35,9 +35,7 @@ if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/flexout/src/CMakeLists.txt")
 else()
    set(FLEXOUT_USE_NetCDF ${GOTM_USE_NetCDF} CACHE BOOL "Enable output in NetCDF format" FORCE)
    mark_as_advanced(FLEXOUT_USE_NetCDF)
-   add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/extern/flexout" 
-                    "${CMAKE_CURRENT_BINARY_DIR}/extern/flexout"
-   )
+   add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/extern/flexout" extern/flexout)
 endif()
 
 if(GOTM_USE_FABM)
