@@ -23,6 +23,7 @@ add_library(util
    ${CMAKE_CURRENT_BINARY_DIR}/compilation.F90
 )
 target_link_libraries(util PRIVATE field_manager)
+target_include_directories(util PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:util,Fortran_MODULE_DIRECTORY>> $<INSTALL_INTERFACE:include>)
 add_library(gotm::util ALIAS util)
 set_property(TARGET util PROPERTY FOLDER gotm)
 

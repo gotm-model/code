@@ -2,15 +2,14 @@ add_library(gotm_fabm
    gotm_fabm.F90
 )
 target_link_libraries(gotm_fabm PUBLIC fabm PRIVATE util field_manager)
+target_include_directories(gotm_fabm PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:gotm_fabm,Fortran_MODULE_DIRECTORY>> $<INSTALL_INTERFACE:include>)
 set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
 
-if(NOT GOTM_BUILD_LIBRARIES_ONLY)
-   add_library(gotm_fabm_io
-               gotm_fabm_input.F90
-   )
-   target_link_libraries(gotm_fabm_io PRIVATE input gotm_fabm fabm)
-   set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
-endif()
+add_library(gotm_fabm_io
+            gotm_fabm_input.F90
+)
+target_link_libraries(gotm_fabm_io PRIVATE input gotm_fabm fabm)
+set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
 
 install(TARGETS gotm_fabm 
    EXPORT gotmConfig

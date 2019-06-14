@@ -27,7 +27,7 @@ mark_as_advanced(GOTM_EXTRA_OUTPUT)
 # ----------------------------
 
 # Common directory for Fortran modules
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+set(CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 # Compiler flags
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
@@ -42,7 +42,7 @@ endif()
 
 # Include directories
 include_directories("${CMAKE_CURRENT_LIST_DIR}/../include")
-include_directories($<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 # Preprocessor definitions
 add_definitions(-DFORTRAN95)
@@ -65,8 +65,6 @@ endif()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/util util)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/turbulence turbulence)
-target_include_directories(util PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
-target_include_directories(turbulence PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/modules> $<INSTALL_INTERFACE:include>)
 
 if(GOTM_USE_FABM)
    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm fabm)
