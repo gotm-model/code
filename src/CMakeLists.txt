@@ -8,15 +8,6 @@ if(NOT PROJECT_NAME STREQUAL gotm)
 endif()
 
 # ----------------------------
-# User-configurable options
-# ----------------------------
-
-option(GOTM_USE_SEAGRASS "Enable seagrass module" OFF)
-
-option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
-mark_as_advanced(GOTM_EXTRA_OUTPUT)
-
-# ----------------------------
 # Directory wide settings
 # ----------------------------
 
@@ -85,25 +76,6 @@ add_executable(gotm_exe
 )
 set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 target_link_libraries(gotm_exe PRIVATE gotm)
-
-# Installation
-# Set default installation prefix.
-if(WIN32)
-  if(DEFINED ENV{LOCALAPPDATA})
-    set(DEFAULT_PREFIX "$ENV{LOCALAPPDATA}/gotm")
-  else()
-    set(DEFAULT_PREFIX "$ENV{APPDATA}/gotm")
-  endif()
-else()
-  set(DEFAULT_PREFIX "$ENV{HOME}/local/gotm")
-endif()
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  # Still on CMake default - override with our own default.
-  set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in" FORCE)
-else()
-  # Just set the doc string for the variable.
-  set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in")
-endif()
 
 # Install GOTM executable
 install(TARGETS gotm_exe RUNTIME DESTINATION bin)

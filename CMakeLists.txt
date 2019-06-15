@@ -20,6 +20,10 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+# ----------------------------
+# User-configurable options
+# ----------------------------
+
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 
 option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
@@ -29,6 +33,15 @@ if(MSVC)
 else(MSVC)
   option(GOTM_EMBED_VERSION "Embed GOTM version information" ON)
 endif(MSVC)
+
+option(GOTM_USE_SEAGRASS "Enable seagrass module" OFF)
+
+option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
+mark_as_advanced(GOTM_EXTRA_OUTPUT)
+
+# ----------------------------
+# Dependencies
+# ----------------------------
 
 if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/flexout/src/CMakeLists.txt")
    message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
@@ -52,6 +65,28 @@ if(GOTM_USE_FABM)
       mark_as_advanced(CLEAR FABM_BASE)
    endif()
 endif(GOTM_USE_FABM)
+
+# ----------------------------
+# GOTM itself
+# ----------------------------
+
+# Set default installation prefix (done after dependencies to ensure ours takes precedence)
+if(WIN32)
+  if(DEFINED ENV{LOCALAPPDATA})
+    set(DEFAULT_PREFIX "$ENV{LOCALAPPDATA}/gotm")
+  else()
+    set(DEFAULT_PREFIX "$ENV{APPDATA}/gotm")
+  endif()
+else()
+  set(DEFAULT_PREFIX "$ENV{HOME}/local/gotm")
+endif()
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  # Still on CMake default - override with our own default.
+  set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in" FORCE)
+else()
+  # Just set the doc string for the variable.
+  set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in")
+endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/src/CMakeLists.txt")
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/tests" tests)
