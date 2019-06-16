@@ -1,0 +1,6 @@
+[submodule "extern/fabm"]
+	path = extern/fabm
+	url = ../../fabm-model/fabm
+[submodule "extern/flexout"]
+	path = extern/flexout
+	url = ../../BoldingBruggeman/flexout
