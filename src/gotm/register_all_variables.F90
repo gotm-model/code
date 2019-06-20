@@ -295,7 +295,7 @@
    call fm%register('SSV', '1/s2', 'y-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSV(1:nlev),category='turbulence/shear', output_level=output_level_debug)
    call fm%register('xP', 'm2/s3', 'extra turbulence production', standard_name='??', dimensions=(/id_dim_z/), data1d=xP(1:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('buoy', 'm/s2', 'buoyancy', standard_name='??', dimensions=(/id_dim_z/), data1d=buoy(1:nlev),category='turbulence/buoyancy')
-   call fm%register('rad', 'W/m2', 'short-wave radiation', standard_name='??', dimensions=(/id_dim_z/), data1d=rad(1:nlev),category='light')
+   call fm%register('rad', 'W/m2', 'shortwave radiation', standard_name='??', dimensions=(/id_dim_zi/), data1d=rad(0:nlev),category='light')
    call fm%register('avh', 'm2/s', 'eddy diffusivity', standard_name='??', dimensions=(/id_dim_z/), data1d=avh(1:nlev),category='turbulence')
    call fm%register('bioshade', '-', 'fraction of visible light that is not shaded by overlying biogeochemistry', dimensions=(/id_dim_z/), data1d=bioshade(1:nlev),category='light')
 
@@ -342,6 +342,9 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_turbulence_variables()'
+
+   if (turb_method.eq.99) return
+
    call fm%register('tke', 'm2/s2', 'turbulent kinetic energy', standard_name='??', dimensions=(/id_dim_zi/), data1d=tke(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('tkeo', 'm2/s2', 'turbulent kinetic energy - old time step', standard_name='??', dimensions=(/id_dim_zi/), data1d=tkeo(0:nlev),category='turbulence', part_of_state=.true., output_level=output_level_debug)
    call fm%register('eps', 'm2/s3', 'energy dissipation rate', standard_name='??', dimensions=(/id_dim_zi/), data1d=eps(0:nlev),category='turbulence', part_of_state=.true.)

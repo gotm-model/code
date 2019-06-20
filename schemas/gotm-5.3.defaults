@@ -7,6 +7,7 @@
          <dt>600.0</dt>
          <restart_offline>False</restart_offline>
          <restart_allow_missing_variable>False</restart_allow_missing_variable>
+         <restart_allow_perpetual>False</restart_allow_perpetual>
          <cnpar>1.0</cnpar>
          <buoy_method>1</buoy_method>
       </model_setup>

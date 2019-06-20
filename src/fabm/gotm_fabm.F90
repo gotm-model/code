@@ -136,6 +136,7 @@
    REALTYPE,pointer,dimension(:) :: Af,Afo,Vc,Vco,wq,Qres
 
    REALTYPE,pointer :: I_0,A,g1,g2
+   REALTYPE,pointer :: airp
    integer,pointer  :: yearday,secondsofday
    REALTYPE, target :: decimal_yearday
    logical          :: fabm_ready
@@ -373,7 +374,39 @@
       taub_id      = model%get_horizontal_variable_id(standard_variables%bottom_stress)
 
       ! Initialize spatially explicit variables
-      call init_var_gotm_fabm(nlev,field_manager)
+      call init_var_gotm_fabm(nlev)
+
+      if (present(field_manager)) then
+         do i=1,size(model%conserved_quantities)
+            call field_manager%register(trim(model%conserved_quantities(i)%name)//'_ini',  model%conserved_quantities(i)%units, &
+                trim(model%conserved_quantities(i)%long_name)//' at simulation start', minimum=model%conserved_quantities(i)%minimum, &
+                maximum=model%conserved_quantities(i)%maximum, fill_value= model%conserved_quantities(i)%missing_value, &
+                no_default_dimensions=.true., dimensions=(/id_dim_lon, id_dim_lat/), data0d=total0(i), category='fabm', &
+                output_level=output_level_debug, part_of_state=.true.)
+         end do
+
+         do i=1,size(model%state_variables)
+            call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i), part_of_state=.true.)
+         end do
+         do i=1,size(model%bottom_state_variables)
+            if (bottom_everywhere) then
+               call register_field(field_manager, model%bottom_state_variables(i), data1d=cc(1:,size(model%state_variables)+i), dimensions=(/id_dim_z/), part_of_state=.true.)
+            else
+               call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i), part_of_state=.true.)
+            end if
+         end do
+         do i=1,size(model%surface_state_variables)
+            call register_field(field_manager, model%surface_state_variables(i), data0d=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i), part_of_state=.true.)
+         end do
+
+         check_conservation = .false.
+         do i=1,size(model%conserved_quantities)
+            call field_manager%register('int_change_in_'//trim(model%conserved_quantities(i)%name), trim(model%conserved_quantities(i)%units)//'*m', &
+               'integrated change in '//trim(model%conserved_quantities(i)%long_name), fill_value=-1d20, &
+               data0d=change_in_total(i), category='fabm', output_level=output_level_debug, used=in_output)
+            if (in_output) check_conservation = .true.
+         end do
+      end if
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
       call check_fabm_expressions()
@@ -401,14 +434,13 @@
 ! !IROUTINE: Initialise FABM variables
 !
 ! !INTERFACE:
-   subroutine init_var_gotm_fabm(nlev,field_manager)
+   subroutine init_var_gotm_fabm(nlev)
 !
 ! !DESCRIPTION:
 ! This routine allocates memory for all FABM variables.
 !
 ! !INPUT PARAMETERS:
-   integer,                   intent(in)             :: nlev
-   class (type_field_manager),intent(inout),optional :: field_manager
+   integer, intent(in) :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -416,11 +448,11 @@
 ! !LOCAL VARIABLES:
    integer                   :: i,rc,output_level
    logical                   :: used
-   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
+!KB   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   ! Allocate state variable array for pelagic, bototm and surface combined and provide initial values.
+   ! Allocate state variable array for pelagic, bottom and surface combined and provide initial values.
    ! In terms of memory use, it is a waste to allocate storage for bottom-bound and surface-bound variables across
    ! the entire column. However, it is important that all values at a given point in time are integrated simultaneously
    ! in multi-step algorithms. Due to the design of the integration schemes, this currently can only be achieved by
@@ -441,7 +473,7 @@
       call fabm_link_surface_state_data(model,i,cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i))
    end do
 
-   ! Allocate arrays fro conserved quantity management
+   ! Allocate arrays for conserved quantity management
    allocate(local(1:nlev,1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (local)'
    allocate(total0(1:size(model%conserved_quantities)),stat=rc)
@@ -450,58 +482,6 @@
    allocate(change_in_total(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (change_in_total)'
    change_in_total = 0
-   do i=1,size(model%conserved_quantities)
-      call field_manager%register(trim(model%conserved_quantities(i)%name)//'_ini',  model%conserved_quantities(i)%units, &
-          trim(model%conserved_quantities(i)%long_name)//' at simulation start', minimum=model%conserved_quantities(i)%minimum, &
-          maximum=model%conserved_quantities(i)%maximum, fill_value= model%conserved_quantities(i)%missing_value, &
-          no_default_dimensions=.true., dimensions=(/id_dim_lon, id_dim_lat/), data0d=total0(i), category='fabm', &
-          output_level=output_level_debug, part_of_state=.true.)
-   end do
-
-   if (present(field_manager)) then
-      do i=1,size(model%state_variables)
-         call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i), part_of_state=.true.)
-      end do
-      do i=1,size(model%bottom_state_variables)
-         if (bottom_everywhere) then
-            call register_field(field_manager, model%bottom_state_variables(i), data1d=cc(1:,size(model%state_variables)+i), dimensions=(/id_dim_z/), part_of_state=.true.)
-         else
-            call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i), part_of_state=.true.)
-         end if
-      end do
-      do i=1,size(model%surface_state_variables)
-         call register_field(field_manager, model%surface_state_variables(i), data0d=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i), part_of_state=.true.)
-      end do
-
-      check_conservation = .false.
-      do i=1,size(model%conserved_quantities)
-         call field_manager%register('int_change_in_'//trim(model%conserved_quantities(i)%name), trim(model%conserved_quantities(i)%units)//'*m', &
-            'integrated change in '//trim(model%conserved_quantities(i)%long_name), fill_value=-1d20, &
-            data0d=change_in_total(i), category='fabm', output_level=output_level_debug, used=used)
-         if (used) check_conservation = .true.
-      end do
-
-      ! Send pointers to diagnostic data to output manager.
-      do i=1,size(model%diagnostic_variables)
-         if (model%diagnostic_variables(i)%save) &
-            call field_manager%send_data(model%diagnostic_variables(i)%name, fabm_get_bulk_diagnostic_data(model,i))
-      end do
-      do i=1,size(model%horizontal_diagnostic_variables)
-         if (model%horizontal_diagnostic_variables(i)%save) then
-            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
-               allocate(bottom_diagnostic_data)
-               allocate(bottom_diagnostic_data%column(nlev))
-               bottom_diagnostic_data%local => fabm_get_horizontal_diagnostic_data(model,i)
-               bottom_diagnostic_data%column(:) = model%horizontal_diagnostic_variables(i)%missing_value
-               bottom_diagnostic_data%next => first_bottom_diagnostic
-               first_bottom_diagnostic => bottom_diagnostic_data
-               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, bottom_diagnostic_data%column)
-            else
-               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, fabm_get_horizontal_diagnostic_data(model,i))
-            end if
-         end if
-      end do
-   end if
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indices to -1 (no external observations provided)
@@ -924,28 +904,63 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Accept current biogeochemcal state and compute derived diagnostics
+! !IROUTINE: Accept current biogeochemical state and compute derived diagnostics
 !
 ! !INTERFACE:
-   subroutine start_gotm_fabm(nlev)
+   subroutine start_gotm_fabm(nlev, field_manager)
 !
 ! !DESCRIPTION:
 ! TODO
 !
 ! !INPUT PARAMETERS:
-   integer,intent(in) :: nlev
+   integer,                    intent(in)              :: nlev
+   class (type_field_manager), intent(inout), optional :: field_manager
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer :: i,k
+   integer :: i
    REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
    REALTYPE :: total(size(model%conserved_quantities))
+   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
 !EOP
 
 !-----------------------------------------------------------------------
 !BOC
+   if (.not. fabm_calc) return
+
+   ! At this stage, FABM has been provided with arrays for all state variables, any variables
+   ! read in from file (gotm_fabm_input), and all variables exposed by GOTM. If FABM is still
+   ! lacking variable references, this should now trigger an error.
+   if (.not.fabm_ready) then
+      call fabm_check_ready(model)
+      fabm_ready = .true.
+   end if
+
+   if (present(field_manager)) then
+      ! Send pointers to diagnostic data to output manager.
+      do i=1,size(model%diagnostic_variables)
+         if (model%diagnostic_variables(i)%save) &
+            call field_manager%send_data(model%diagnostic_variables(i)%name, fabm_get_interior_diagnostic_data(model,i))
+      end do
+      do i=1,size(model%horizontal_diagnostic_variables)
+         if (model%horizontal_diagnostic_variables(i)%save) then
+            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
+               allocate(bottom_diagnostic_data)
+               allocate(bottom_diagnostic_data%column(nlev))
+               bottom_diagnostic_data%local => fabm_get_horizontal_diagnostic_data(model,i)
+               bottom_diagnostic_data%column(:) = model%horizontal_diagnostic_variables(i)%missing_value
+               bottom_diagnostic_data%next => first_bottom_diagnostic
+               first_bottom_diagnostic => bottom_diagnostic_data
+               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, bottom_diagnostic_data%column)
+            else
+               call field_manager%send_data(model%horizontal_diagnostic_variables(i)%name, fabm_get_horizontal_diagnostic_data(model,i))
+            end if
+         end if
+      end do
+   end if
+
    ! Compute pressure, depth, day of the year
    call calculate_derived_input(nlev,_ZERO_)
 
@@ -1048,6 +1063,7 @@
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
    rho      => rho_        ! density [1d array] - used to calculate pressure.
+   airp => model%get_data(model%get_horizontal_variable_id(standard_variables%surface_air_pressure))
 
    if (biodrag_feedback.and.present(bio_drag_scale_)) then
       bio_drag_scale => bio_drag_scale_
@@ -1129,6 +1145,7 @@
 ! !LOCAL VARIABLES:
    integer :: i
    REALTYPE,parameter :: gravity = 9.81d0
+   REALTYPE :: p0
 !
 !EOP
 !-----------------------------------------------------------------------!
@@ -1138,12 +1155,19 @@
    curnuh = nuh
 
    if (allocated(pres)) then
+      ! Start with air pressure (in dbar = 10 kPa)
+      if (associated(airp)) then
+          p0 = airp * 1e-4_rk
+      else
+          p0 = 10.1325_rk
+      end if
+
       ! Calculate local pressure in dbar (10 kPa) from layer height and density
-      pres(nlev) = rho(nlev)*curh(nlev)/2
+      pres(nlev) = pres(nlev) + rho(nlev)*curh(nlev)/2
       do i=nlev-1,1,-1
          pres(i) = pres(i+1) + (rho(i)*curh(i)+rho(i+1)*curh(i+1))/2
       end do
-      pres(1:nlev) = pres(1:nlev)*gravity/10000
+      pres(1:nlev) = p0 + pres(1:nlev)*gravity/10000
    end if
 
    ! Calculate local depth below surface from layer height
@@ -1197,14 +1221,6 @@
 !-----------------------------------------------------------------------
 !BOC
    if (.not. fabm_calc) return
-
-   ! At this stage, FABM has been provided with arrays for all state variables, any variables
-   ! read in from file (gotm_fabm_input), and all variables exposed by GOTM. If FABM is still
-   ! lacking variable references, this should now trigger an error.
-   if (.not.fabm_ready) then
-      call fabm_check_ready(model)
-      fabm_ready = .true.
-   end if
 
    call calculate_derived_input(nlev,itime)
 
