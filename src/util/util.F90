@@ -34,13 +34,14 @@
 ! !DEFINED PARAMETERS:
 
 !  type of advection scheme
+   integer,parameter                    :: CENTRAL        =-1
    integer,parameter                    :: UPSTREAM       = 1
    integer,parameter                    :: P1             = 2
    integer,parameter                    :: P2             = 3
    integer,parameter                    :: Superbee       = 4
    integer,parameter                    :: MUSCL          = 5
    integer,parameter                    :: P2_PDM         = 6
-
+   integer,parameter                    :: SPLMAX13       =13
 !  boundary condition type
 !  for diffusion scheme
    integer,parameter                    :: Dirichlet      = 0
