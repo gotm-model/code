@@ -4,5 +4,5 @@ add_library(observations
    const_NNT.F90
    observations.F90
 )
-target_link_libraries(observations PRIVATE util input)
+target_link_libraries(observations PRIVATE util input_manager)
 set_property(TARGET observations PROPERTY FOLDER gotm)

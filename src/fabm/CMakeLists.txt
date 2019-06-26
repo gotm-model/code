@@ -8,7 +8,7 @@ set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
 add_library(gotm_fabm_io
             gotm_fabm_input.F90
 )
-target_link_libraries(gotm_fabm_io PRIVATE input gotm_fabm fabm)
+target_link_libraries(gotm_fabm_io PRIVATE input_manager gotm_fabm fabm)
 set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
 
 install(TARGETS gotm_fabm 
