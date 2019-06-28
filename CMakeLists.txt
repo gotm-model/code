@@ -93,6 +93,6 @@ add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/tests" tests)
 
 include(FeatureSummary)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-   feature_summary(WHAT ENABLED_FEATURES DISABLED_FEATURES PACKAGES_FOUND)
+   #feature_summary(WHAT ENABLED_FEATURES DISABLED_FEATURES PACKAGES_FOUND)
    feature_summary(FILENAME ${CMAKE_CURRENT_BINARY_DIR}/features.log WHAT ALL)
 endif()
