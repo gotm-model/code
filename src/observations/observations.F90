@@ -193,6 +193,7 @@
    integer, parameter        :: NOTHING=0
    integer, parameter        :: ANALYTICAL=1
    integer, parameter        :: CONSTANT=1
+   integer, parameter        :: CONSTITUENTS=3
    integer, parameter        :: FROMFILE=2
    integer, parameter        :: CONST_PROF=1
    integer, parameter        :: TWO_LAYERS=2
@@ -616,6 +617,13 @@
          call register_input_0d(ext_press_file,3,dpdy,'observed external pressure: y-direction')
          LEVEL2 'Reading external pressure from:'
          LEVEL3 trim(ext_press_file)
+      case (CONSTITUENTS)
+#ifndef _OTPS_
+         LEVEL1 'You need to download and unzip the OTPS source code'
+         LEVEL1 'Then you need to re-compile GOTM with OTPS_BASE set'
+         LEVEL1 'or - you can change ext_press_method'
+         stop 'init_observations()'
+#endif
       case default
          LEVEL1 'A non-valid ext_press_method has been given ',ext_press_method
          stop 'init_observations()'
@@ -840,6 +848,7 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
+   REALTYPE                ::  SHPN(4),SHPNP(5)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -853,12 +862,26 @@
              + AmpSv*sin(2*pi*(fsecs-PhaseSv)/PeriodS)    &
              + PressConstV
    end if
+#ifdef _OTPS_
+   if (ext_press_method==CONSTITUENTS) then
+      call ASTROL(901.5, SHPN)
+      call ASTRO5(901.5, SHPNP)
+#if 0
+      call my_ptide(z1,)
+#endif
+      STDERR SHPN
+      STDERR SHPNP
+      stop
+   end if
+#endif
 
    if (zeta_method==ANALYTICAL) then
 !     Analytical prescription of tides
       Zeta = amp_1*sin(2*pi*(fsecs-phase_1)/period_1) &
             +amp_2*sin(2*pi*(fsecs-phase_2)/period_2) &
             +zeta_0
+   end if
+   if (zeta_method==CONSTITUENTS) then
    end if
 
    end subroutine get_all_obs

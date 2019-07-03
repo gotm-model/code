@@ -26,6 +26,8 @@ endif()
 
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 
+option(GOTM_USE_OTPS "Include support for OSU Tidal Models (volkov.oce.orst.edu/tides/)" OFF)
+
 option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
 
 if(MSVC)
