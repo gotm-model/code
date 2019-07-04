@@ -1,6 +1,7 @@
 # can maybe be done more pretty -  the problem is that otsp does not have a CMakeLists.txt file
 if(GOTM_USE_OTPS)
-   set (OTPS ${OTPS_BASE}/constit.h 
+   set (OTPS gotm_otps.F90
+             ${OTPS_BASE}/constit.h 
              ${OTPS_BASE}/derived_types.h 
              ${OTPS_BASE}/subs.f90)
    add_definitions(-D_OTPS_)

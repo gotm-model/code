@@ -25,7 +25,9 @@
 !
 ! !USES:
    use input
-
+#ifdef _OTPS_
+   use gotm_otps
+#endif
    IMPLICIT NONE
 
 !  default: all is private.
@@ -69,6 +71,9 @@
 
 !  sea surface elevation, sea surface gradients and height of velocity obs.
    REALTYPE, public, target                            :: zeta,dpdx,dpdy,h_press
+#ifdef _OTPS_
+   REALTYPE, public, target, dimension(:), allocatable :: otps_z,otps_u,otps_v
+#endif
 
 !  vertical advection velocity
    REALTYPE, public, target                            :: w_adv,w_height
@@ -623,6 +628,8 @@
          LEVEL1 'Then you need to re-compile GOTM with OTPS_BASE set'
          LEVEL1 'or - you can change ext_press_method'
          stop 'init_observations()'
+#else
+         call init_gotm_otps(julday,secs,otps_z,otps_u,otps_v)
 #endif
       case default
          LEVEL1 'A non-valid ext_press_method has been given ',ext_press_method
@@ -848,7 +855,7 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-   REALTYPE                ::  SHPN(4),SHPNP(5)
+   integer, save :: n=1
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -864,14 +871,12 @@
    end if
 #ifdef _OTPS_
    if (ext_press_method==CONSTITUENTS) then
-      call ASTROL(901.5, SHPN)
-      call ASTRO5(901.5, SHPNP)
-#if 0
-      call my_ptide(z1,)
-#endif
-      STDERR SHPN
-      STDERR SHPNP
-      stop
+!      call do_gotm_otps(n)
+      zeta = otps_z(n)
+      dpdx = otps_u(n)
+      dpdy = otps_v(n)
+      STDERR zeta,dpdx,dpdy
+      n=n+1
    end if
 #endif
 
