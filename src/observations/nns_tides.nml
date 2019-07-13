@@ -1,0 +1,91 @@
+&constituent
+   name = 'm2',
+   active =.true.
+   zr = 0.303467661
+   zi = 0.283405095 
+/
+
+&constituent
+   name = 's2',
+   active =.true.
+   zr = 0.153159693
+   zi = 1.714645885E-02
+/
+
+&constituent
+   name = 'n2',
+   active =.true.
+   zr = 3.976064920E-02
+   zi = 7.674244791E-02
+/
+
+&constituent
+   name = 'k2',
+   active =.true.
+   zr = 4.156357795E-02
+   zi = 8.708591573E-03
+/
+
+&constituent
+   name = 'k1',
+   active =.true.
+   zr = -5.224754661E-02
+   zi = 1.769049908E-03
+/
+
+&constituent
+   name = 'o1',
+   active =.true.
+   zr = 3.394745663E-02
+   zi = 3.517699987E-02
+/
+
+&constituent
+   name = 'p1',
+   active =.true.
+   zr = -1.631327532E-02
+   zi = 5.487190560E-03
+/
+
+&constituent
+   name = 'q1',
+   active =.true.
+   zr = 2.001957223E-02
+   zi = 5.155986641E-03
+/
+
+&constituent
+   name = 'm4',
+   active =.true.
+   zr = -4.749209620E-03
+   zi = 1.138902362E-02
+/
+
+&constituent
+   name = 'ms4',
+   active =.true.
+   zr = 4.310996272E-03
+   zi = 2.167073078E-03
+/
+
+&constituent
+   name = 'mn4',
+   active =.true.
+   zr = -2.381857485E-03
+   zi = 1.849737368E-03
+/
+
+&constituent
+   name = 'mm',
+   active =.true.
+   zr = -9.828073904E-03
+   zi = 1.937445719E-03
+/
+
+&constituent
+   name = 'mf',
+   active =.true.
+   zr = -1.672613062E-02
+   zi = 5.923178978E-03
+/
+
