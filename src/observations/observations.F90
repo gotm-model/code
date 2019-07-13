@@ -222,7 +222,7 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
-   subroutine init_observations(namlst,fn,julday,secs,                 &
+   subroutine init_observations(namlst,fn,julday,secs,lat,lon, &
                                 depth,nlev,z,h,gravity,rho_0)
 !
 ! !DESCRIPTION:
@@ -241,7 +241,7 @@
    integer, intent(in)                 :: namlst
    character(len=*), intent(in)        :: fn
    integer, intent(in)                 :: julday,secs
-   REALTYPE, intent(in)                :: depth
+   REALTYPE, intent(in)                :: lat,lon,depth
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
    REALTYPE, intent(in)                :: gravity,rho_0
@@ -629,7 +629,8 @@
          LEVEL1 'or - you can change ext_press_method'
          stop 'init_observations()'
 #else
-         call init_gotm_otps(julday,secs,otps_z,otps_u,otps_v)
+         call init_gotm_otps()
+         call post_init_gotm_otps(julday,secs,lat,otps_z,otps_u,otps_v)
 #endif
       case default
          LEVEL1 'A non-valid ext_press_method has been given ',ext_press_method
@@ -871,11 +872,8 @@
    end if
 #ifdef _OTPS_
    if (ext_press_method==CONSTITUENTS) then
-!      call do_gotm_otps(n)
-      zeta = otps_z(n)
       dpdx = otps_u(n)
       dpdy = otps_v(n)
-      STDERR zeta,dpdx,dpdy
       n=n+1
    end if
 #endif
@@ -887,6 +885,7 @@
             +zeta_0
    end if
    if (zeta_method==CONSTITUENTS) then
+      zeta = otps_z(n)
    end if
 
    end subroutine get_all_obs

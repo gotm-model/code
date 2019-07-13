@@ -250,7 +250,7 @@
    call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
-                          depth,nlev,z,h,gravity,rho_0)
+                          latitude,longitude,depth,nlev,z,h,gravity,rho_0)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
 !  Call do_input to make sure observed profiles are up-to-date.
