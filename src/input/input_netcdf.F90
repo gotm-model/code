@@ -10,6 +10,8 @@
 ! !DESCRIPTION:
 !
 ! !USES:
+   use time, only: julianday, secondsofday
+   use time, only: read_time_string, write_time_string
 #ifdef NETCDF_FMT
    use netcdf
    implicit none
@@ -18,7 +20,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public read_restart_data
+   public check_restart_time, read_restart_data
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding and Jorn Bruggeman
@@ -36,6 +38,7 @@
 !  Pointers to first files with observed profiles and observed scalars.
 !
 !  PRIVATE PARAMETERS
+   integer                     :: ncid=-1
 !
 !-----------------------------------------------------------------------
 
@@ -74,6 +77,63 @@
 ! !IROUTINE:
 !
 ! !INTERFACE:
+   subroutine check_restart_time(var_name)
+!
+! !DESCRIPTION:
+!
+! !INPUT PARAMETERS:
+   character(len=*), intent(in)        :: var_name
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding and Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer                   :: ierr, id
+   integer                   :: jd,secs
+   character(len=256)        :: units,timestr_out
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (ncid .eq. -1) then
+!      ierr = nf90_open(trim(path),NF90_NOWRITE,ncid)
+      ierr = nf90_open('restart.nc',NF90_NOWRITE,ncid)
+      if (ierr /= NF90_NOERR) call handle_err(ierr)
+   end if
+
+   ierr = nf90_inq_varid(ncid, trim(var_name), id)
+   if (ierr /= NF90_NOERR) then
+      FATAL 'Could not find time-variable in restart file'
+      stop 'restart_file()'
+   else
+      ierr = nf90_get_att(ncid, id, 'units', units)
+      call read_time_string(trim(units(15:)),jd,secs)
+   end if
+
+   if (jd .ne. julianday .or. secs .ne. secondsofday) then
+      FATAL 'start time given in namelist does not match time'
+      FATAL 'read from restart file'
+      FATAL 'from namelist: ',julianday,secondsofday
+      call write_time_string(julianday,secondsofday,timestr_out)
+      LEVEL3 trim(timestr_out)
+      FATAL 'from hotstart: ',jd,secs
+      call write_time_string(jd,secs,timestr_out)
+      LEVEL3 trim(timestr_out)
+      stop 'restart_file()'
+   else
+      call write_time_string(jd,secs,timestr_out)
+      LEVEL2 'restart time ',trim(timestr_out)
+   end if
+   return
+
+   end subroutine check_restart_time
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE:
+!
+! !INTERFACE:
    subroutine read_restart_data(var_name,allow_missing_variable,data_0d,data_1d)
 !
 ! !DESCRIPTION:
@@ -88,7 +148,6 @@
 !  Original author(s): Karsten Bolding and Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer, save             :: ncid=-1
    integer                   :: ierr, id
    integer                   :: start(4), edges(4)
 !EOP

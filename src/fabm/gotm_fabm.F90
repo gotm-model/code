@@ -114,6 +114,7 @@
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
    REALTYPE,pointer :: I_0,A,g1,g2
+   REALTYPE,pointer :: airp
    integer,pointer  :: yearday,secondsofday
    REALTYPE, target :: decimal_yearday
    logical          :: fabm_ready
@@ -992,6 +993,7 @@
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
    rho      => rho_        ! density [1d array] - used to calculate pressure.
+   airp => model%get_data(model%get_horizontal_variable_id(standard_variables%surface_air_pressure))
 
    if (biodrag_feedback.and.present(bio_drag_scale_)) then
       bio_drag_scale => bio_drag_scale_
@@ -1054,6 +1056,7 @@
 ! !LOCAL VARIABLES:
    integer :: i
    REALTYPE,parameter :: gravity = 9.81d0
+   REALTYPE :: p0
 !
 !EOP
 !-----------------------------------------------------------------------!
@@ -1063,12 +1066,19 @@
    curnuh = nuh
 
    if (allocated(pres)) then
+      ! Start with air pressure (in dbar = 10 kPa)
+      if (associated(airp)) then
+          p0 = airp * 1e-4_rk
+      else
+          p0 = 10.1325_rk
+      end if
+
       ! Calculate local pressure in dbar (10 kPa) from layer height and density
-      pres(nlev) = rho(nlev)*curh(nlev)/2
+      pres(nlev) = pres(nlev) + rho(nlev)*curh(nlev)/2
       do i=nlev-1,1,-1
          pres(i) = pres(i+1) + (rho(i)*curh(i)+rho(i+1)*curh(i+1))/2
       end do
-      pres(1:nlev) = pres(1:nlev)*gravity/10000
+      pres(1:nlev) = p0 + pres(1:nlev)*gravity/10000
    end if
 
    ! Calculate local depth below surface from layer height
