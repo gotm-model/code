@@ -5,7 +5,7 @@ add_library(gotm
    deprecated_output.F90
    print_version.F90
 )
-target_link_libraries(gotm PUBLIC util airsea input_manager yaml meanflow turbulence output_manager input_manager)
+target_link_libraries(gotm PUBLIC util airsea input_manager config meanflow turbulence output_manager input_manager)
 if(GOTM_USE_FABM)
    target_link_libraries(gotm PUBLIC gotm_fabm gotm_fabm_io)
 endif()
