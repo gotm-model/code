@@ -229,13 +229,14 @@
    call branch%get(nlev, 'nlev', 'number of layers', &
                    minimum=1, default=100)
    call branch%get(grid_method, 'grid_method', 'layer thicknesses', &
-                   options=(/type_option(0, 'equal with optional zooming'), type_option(1, 'prescribed relative fractions'), type_option(2, 'prescribed thicknesses'), type_option(3, 'adaptive')/),default=0)
+                   options=(/type_option(0, 'equal with optional zooming'), type_option(1, 'prescribed relative fractions'), type_option(2, 'prescribed thicknesses')/), default=0) ! type_option(3, 'adaptive')
    call branch%get(ddu, 'ddu', 'surface zooming', '-', &
-                   minimum=0._rk, maximum=5.0_rk, default=0._rk)
+                   minimum=0._rk, default=0._rk)
    call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
-                   minimum=0._rk, maximum=5.0_rk, default=0._rk)
+                   minimum=0._rk, default=0._rk)
    call branch%get(grid_file, 'grid_file', 'file with custom grid specification', &
                    default='grid.dat')
+#if 0
    twig => branch%get_child('adaptation')
    call twig%get(c1ad, 'c1ad', 'weighting factor for buoyancy frequency', '-', &
                  default=0.8_rk)
@@ -255,7 +256,7 @@
                  minimum=0._rk,default=10._rk)
    call twig%get(dtgrid, 'dtgrid', 'time step (must be fraction of dt)', 's', &
                  minimum=0._rk,default=5._rk)
-
+#endif
    branch => settings_store%get_child('time_integration')
    call branch%get(dt, 'dt', 'time step', 's', &
                    minimum=0.e-10_rk, default=3600._rk)
@@ -274,8 +275,8 @@
    call branch%get(restart_offline, 'restart_offline', &
                    'initialize simulation with state stored in restart.nc', &
                    default=.false.)
-   call branch%get(restart_allow_missing_variable, 'restart_allow_missing_variable', &
-                   'warning or error when variable is missing in restart file', &
+   call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
+                   'abort if any variable is missing from restart file', &
                    default=.false.)
   
    LEVEL2 'configuring modules ....'
@@ -337,10 +338,10 @@
 
    allocate(type_gotm_host::output_manager_host)
    branch => settings_store%get_child('output')
-!KB   call output_manager_init(fm,title,settings=branch,postfix=output_id)
+   call output_manager_init(fm,title,settings=branch,postfix=output_id)
 
    inquire(file='output.yaml',exist=file_exists)
-   if (.not.file_exists) then
+   if (read_nml .and. .not. file_exists) then
       call deprecated_output(namlst,title,dt,list_fields)
    end if
 

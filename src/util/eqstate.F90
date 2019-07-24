@@ -142,10 +142,11 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_eqstate_yaml'
-   call branch%get(eq_state_mode, 'eq_state_mode', 'choice for empirical formula for equation of state', &
-                   minimum=1,maximum=2,default=2)
+   call branch%get(eq_state_mode, 'eq_state_mode', 'empirical formula for equation of state', &
+                   options=(/type_option(1, 'UNESCO'), type_option(2, 'Jackett et al.')/), default=2)
    call branch%get(eq_state_method, 'eq_state_method', 'equation of state implementation', &
-                   minimum=1,maximum=4,default=1)
+                   options=(/type_option(1, 'full with in-situ temperature/density'), type_option(2, 'full with potential temperature/density'), &
+                   type_option(3, 'linearized at T0,S0,p0'), type_option(4, 'linearized at T0,S0,p0,dtr0,dsr0')/), default=1)
    call branch%get(T0, 'T0', 'reference temperature', 'Celsius', &
                    minimum=-2._rk, default=10._rk)
    call branch%get(S0, 'S0', 'reference salinity', 'PSU', &

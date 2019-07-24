@@ -250,11 +250,11 @@
    call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
                 minimum=0._rk,default=1._rk)
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
-   call branch%get(bioshade_feedback, 'bioshade_feedback', 'interior light absorption', &
+   call branch%get(bioshade_feedback, 'shade', 'interior light absorption', &
                 default=.false.)
-   call branch%get(bioalbedo_feedback, 'bioalbedo_feedback', 'surface albedo', &
+   call branch%get(bioalbedo_feedback, 'albedo', 'surface albedo', &
                 default=.false.)
-   call branch%get(biodrag_feedback, 'biodrag_feedback', 'surface drag', &
+   call branch%get(biodrag_feedback, 'surface_drag', 'surface drag', &
                 default=.false.)
 #if 0
    call cfg%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', '', &
@@ -269,9 +269,9 @@
                 default=.false.) ! disables surface exchange; useful to check mass conservation
    call branch%get(save_inputs, 'save_inputs', 'include additional forcing fields in output', &
                 default=.false.)
-   call cfg%get(configuration_method, 'configuration_method', '', &
+   call cfg%get(configuration_method, 'configuration_method', 'configuration file', &
+                options=(/type_option(-1, 'auto-detect (prefer fabm.yaml)'), type_option(0, 'fabm.nml'), type_option(1, 'fabm.yaml')/), &
                 default=-1)
-!KB                minimum=1,maximum=2,default=1)
 
    LEVEL2 'done.'
 
