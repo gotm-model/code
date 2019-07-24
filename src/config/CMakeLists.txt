@@ -1,8 +1,7 @@
 add_library(config
-#   settings.F90
-   yaml_settings.F90
+   settings.F90
 )
-target_link_libraries(config PRIVATE yaml)
+target_link_libraries(config PUBLIC yaml PRIVATE input_manager)
 set_property(TARGET config PROPERTY FOLDER gotm)
 
 install(TARGETS config
