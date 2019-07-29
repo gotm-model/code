@@ -292,8 +292,12 @@
    branch => settings_store%get_child('eqstate')
    call init_eqstate(branch)
 
+#ifndef GFORTRAN
    call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
                            options=(/type_option(1, 'equation of state'), type_option(2, 'prognostic equation')/), default=1)
+#else
+   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy')
+#endif
 
 !  open the namelist file.
    if (read_nml) then
@@ -338,7 +342,9 @@
 
    allocate(type_gotm_host::output_manager_host)
    branch => settings_store%get_child('output')
+#ifndef _GFORTRAN
    call output_manager_init(fm,title,settings=branch,postfix=output_id)
+#endif
 
    inquire(file='output.yaml',exist=file_exists)
    if (read_nml .and. .not. file_exists) then
@@ -575,7 +581,9 @@
 !BOC
    if (.not. restart) then
       LEVEL1 'saving initial conditions'
+#ifndef GFORTRAN
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
+#endif
    end if
    STDERR LINE
    LEVEL1 'time_loop'
@@ -595,7 +603,9 @@
 
 !     prepare time and output
       call update_time(n)
+#ifndef GFORTRAN
       call output_manager_prepare_save(julianday, int(fsecondsofday), int(mod(fsecondsofday,_ONE_)*1000000), int(n))
+#endif
 
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
@@ -681,7 +691,9 @@
       end select
 
       call do_diagnostics(nlev)
+#ifndef GFORTRAN
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),int(n))
+#endif
 
    end do
    STDERR LINE

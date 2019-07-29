@@ -16,6 +16,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/modules")
 
 # Compiler flags
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
+  add_definitions(-DGFORTRAN)
   add_compile_options(-ffree-line-length-none)
 elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
   add_compile_options(-N 1023)
