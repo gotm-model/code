@@ -6,3 +6,6 @@
 	path = extern/flexout
 	url = https://github.com/BoldingBruggeman/flexout
 #	url = ../../BoldingBruggeman/flexout
+[submodule "extern/stim"]
+	path = extern/stim
+	url = ../../BoldingBruggeman/stim
