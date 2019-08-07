@@ -25,6 +25,10 @@
    use fabm_version, only: fabm_commit_id=>git_commit_id, &
                            fabm_branch_name=>git_branch_name
 #endif
+#ifdef _ICE_
+   use stim_version, only: stim_commit_id=>git_commit_id, &
+                           stim_branch_name=>git_branch_name
+#endif
 #ifdef NETCDF_FMT
    use netcdf
 #endif
@@ -49,6 +53,9 @@
       LEVEL0 trim(version%module_name)//':  ',trim(version%version_string)
       version => version%next
    end do
+#endif
+#ifdef _ICE_
+   LEVEL0 'STIM:    ',stim_commit_id,' (',stim_branch_name,' branch)'
 #endif
 #ifdef NETCDF_FMT
    LEVEL0 'NetCDF: ',trim(NF90_INQ_LIBVERS())
