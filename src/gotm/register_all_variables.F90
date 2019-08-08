@@ -60,6 +60,9 @@
    call register_coordinate_variables(lat,lon)
    call register_meanflow_variables(nlev)
    call register_airsea_variables(nlev)
+#ifdef _ICE_
+   call register_stim_variables(nlev)
+#endif
    call register_observation_variables(nlev)
 #if 0
    call register_stream_variables(nlev)
@@ -165,6 +168,48 @@
 
    end subroutine register_airsea_variables
 !EOC
+
+#ifdef _ICE_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: ice variable registration
+!
+! !INTERFACE:
+   subroutine register_stim_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use ice, only: ice_model
+   use stim_variables, only: Tice_surface,Tice,Tf
+   use stim_variables, only: Hice, Hfrazil, dHis, dHib
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_stim_variables()'
+
+   call fm%register('Tice_surface', 'celcius', 'ice temperature (surface)', standard_name='', data0d=Tice_surface, category='ice')
+   if (ice_model .eq. 3) then
+      call fm%register('T1', 'celcius', 'ice temperature (upper)', standard_name='', data0d=Tice(1), category='ice')
+      call fm%register('T2', 'celcius', 'ice temperature (lower)', standard_name='', data0d=Tice(2), category='ice')
+   end if
+   call fm%register('Tf', 'celcius', 'ice freezing temperature', standard_name='', data0d=Tf, category='ice')
+   call fm%register('Hice', 'm', 'ice thickness', standard_name='', data0d=Hice, category='ice')
+   call fm%register('Hfrazil', 'm', 'ice thickness (frazil)', standard_name='', data0d=Hfrazil, category='ice')
+   call fm%register('dHis', 'm', 'ice growth (surface)', standard_name='', data0d=dHis, category='ice')
+   call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice')
+
+   return
+   end subroutine register_stim_variables
+!EOC
+#endif
 
 !-----------------------------------------------------------------------
 !BOP

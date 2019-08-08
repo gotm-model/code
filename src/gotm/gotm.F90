@@ -48,11 +48,17 @@
    use time
 
    use airsea,      only: init_airsea,post_init_airsea,do_airsea,clean_airsea
+   use airsea,      only: surface_fluxes
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
    use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp
    use airsea,      only: bio_albedo,bio_drag_scale
    use airsea_variables, only: qa,ta
+
+#ifdef _ICE_
+   use ice,         only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
+   use stim_variables, only: Tice_surface,albedo_ice,attenuation_ice
+#endif
 
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,post_init_turbulence,do_turbulence
@@ -134,7 +140,8 @@
 ! !IROUTINE: Initialise the model \label{initGOTM}
 !
 ! !INTERFACE:
-   subroutine init_gotm(t1,t2)
+!KB   subroutine init_gotm(t1,t2)
+   subroutine init_gotm()
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
@@ -153,7 +160,7 @@
   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   character(len=*), intent(in), optional  :: t1,t2
+!KB   character(len=*), intent(in), optional  :: t1,t2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -178,10 +185,11 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_gotm'
-
+#if 0
    if (present(t1)) then
       restart_online = .true.
    end if
+#endif
 
    config_only = write_yaml_path /= '' .or. write_schema_path /= ''
    STDERR LINE
@@ -296,7 +304,7 @@
    call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
                            options=(/type_option(1, 'equation of state'), type_option(2, 'prognostic equation')/), default=1)
 #else
-   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy')
+   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', default=1)
 #endif
 
 !  open the namelist file.
@@ -318,6 +326,10 @@
       if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
 
       call init_airsea(namlst)
+
+#ifdef _ICE_
+      call init_ice(namlst,'ice.nml')
+#endif
    end if
 
 #ifdef _FABM_
@@ -342,9 +354,7 @@
 
    allocate(type_gotm_host::output_manager_host)
    branch => settings_store%get_child('output')
-#ifndef _GFORTRAN
    call output_manager_init(fm,title,settings=branch,postfix=output_id)
-#endif
 
    inquire(file='output.yaml',exist=file_exists)
    if (read_nml .and. .not. file_exists) then
@@ -370,8 +380,8 @@
    if (restart_online) then
       LEVEL3 'online restart - updating values in the time namelist ...'
       LEVEL4 'orignal: ',start,' -> ',stop
-      start = t1
-      stop  = t2
+!KB      start = t1
+!KB      stop  = t2
       LEVEL4 'updated: ',start,' -> ',stop
    end if
 
@@ -436,7 +446,9 @@
    v(1:nlev) = vprof%data(1:nlev)
 
    call post_init_airsea(latitude,longitude)
-
+#ifdef _ICE_
+   call post_init_ice(ta,S(nlev))
+#endif
    call init_diagnostics(nlev)
 
    call do_register_all_variables(latitude,longitude,nlev)
@@ -576,14 +588,13 @@
    character(8)              :: d_
    character(10)             :: t_
 
+   REALTYPE                  :: Qsw, Qflux, albedo
 !
 !-----------------------------------------------------------------------
 !BOC
    if (.not. restart) then
       LEVEL1 'saving initial conditions'
-#ifndef GFORTRAN
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
-#endif
    end if
    STDERR LINE
    LEVEL1 'time_loop'
@@ -603,9 +614,7 @@
 
 !     prepare time and output
       call update_time(n)
-#ifndef GFORTRAN
       call output_manager_prepare_save(julianday, int(fsecondsofday), int(mod(fsecondsofday,_ONE_)*1000000), int(n))
-#endif
 
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
@@ -613,14 +622,47 @@
 
 !     external forcing
       if( calc_fluxes ) then
+#ifdef _ICE_
+         if(ice_cover .eq. 0) then
+#endif
          call set_sst(T(nlev))
          call set_ssuv(u(nlev),v(nlev))
+#ifdef _ICE_
+         else
+            call set_sst(Tice_surface)
+            call set_ssuv(_ZERO_,_ZERO_)
+         end if
+#endif
       end if
       call do_airsea(julianday,secondsofday)
 
+#ifdef _ICE_
+!     ice
+      if(ice_cover .eq. 2) then
+         albedo = albedo_ice
+      end if
+#endif
+      I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
+
+#ifdef _ICE_
+      Qsw = I_0%value
+      call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw,surface_fluxes)
+#endif
+
 !     reset some quantities
-      tx = tx/rho_0
-      ty = ty/rho_0
+#ifdef _ICE_
+      if(ice_cover .gt. 0) then
+         tx = _ZERO_
+         ty = _ZERO_
+         heat%value = _ZERO_
+         I_0%value = attenuation_ice*I_0%value
+      else
+#endif
+         tx = tx/rho_0
+         ty = ty/rho_0
+#ifdef _ICE_
+      end if
+#endif
 
       call integrated_fluxes(dt)
 
@@ -691,9 +733,7 @@
       end select
 
       call do_diagnostics(nlev)
-#ifndef GFORTRAN
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),int(n))
-#endif
 
    end do
    STDERR LINE
@@ -731,6 +771,10 @@
    LEVEL1 'clean_up'
 
    call clean_airsea()
+
+#ifdef _ICE_
+   call clean_ice()
+#endif
 
    call clean_meanflow()
 

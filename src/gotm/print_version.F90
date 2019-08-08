@@ -19,15 +19,15 @@
                            yaml_branch_name=>git_branch_name
    use flexout_version, only: flexout_commit_id=>git_commit_id, &
                               flexout_branch_name=>git_branch_name
+#ifdef _ICE_
+   use stim_version, only: stim_commit_id=>git_commit_id, &
+                           stim_branch_name=>git_branch_name
+#endif
 #ifdef _FABM_
    use fabm, only: fabm_initialize_library
    use fabm_types, only: type_version,first_module_version
    use fabm_version, only: fabm_commit_id=>git_commit_id, &
                            fabm_branch_name=>git_branch_name
-#endif
-#ifdef _ICE_
-   use stim_version, only: stim_commit_id=>git_commit_id, &
-                           stim_branch_name=>git_branch_name
 #endif
 #ifdef NETCDF_FMT
    use netcdf
@@ -45,6 +45,9 @@
    LEVEL0 'GOTM:    ',gotm_commit_id,' (',gotm_branch_name,' branch)'
    LEVEL0 'YAML:    ',yaml_commit_id,' (',yaml_branch_name,' branch)'
    LEVEL0 'flexout: ',flexout_commit_id,' (',flexout_branch_name,' branch)'
+#ifdef _ICE_
+   LEVEL0 'STIM:    ',stim_commit_id,' (',stim_branch_name,' branch)'
+#endif
 #ifdef _FABM_
    LEVEL0 'FABM:    ',fabm_commit_id,' (',fabm_branch_name,' branch)'
    call fabm_initialize_library()
@@ -53,9 +56,6 @@
       LEVEL0 trim(version%module_name)//':  ',trim(version%version_string)
       version => version%next
    end do
-#endif
-#ifdef _ICE_
-   LEVEL0 'STIM:    ',stim_commit_id,' (',stim_branch_name,' branch)'
 #endif
 #ifdef NETCDF_FMT
    LEVEL0 'NetCDF: ',trim(NF90_INQ_LIBVERS())
