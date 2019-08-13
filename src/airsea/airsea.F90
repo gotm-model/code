@@ -48,6 +48,7 @@
    public                              :: clean_airsea
    public                              :: set_sst
    public                              :: set_ssuv
+   public                              :: surface_fluxes
    public                              :: integrated_fluxes
 #ifdef _PRINTSTATE_
    public                              :: print_state_airsea
@@ -138,6 +139,7 @@
 
 
    REALTYPE                  :: dlon,dlat
+   integer                   :: mjul,msecs
 !
 ! !BUGS:
 !  Wind speed - w - is not entirely correct.
@@ -721,6 +723,35 @@
    stop 'init_airsea'
 
    end subroutine post_init_airsea
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+   subroutine surface_fluxes(surface_temp,sensible,latent,back_radiation)
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: surface_temp
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: sensible,latent,back_radiation
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   call set_sst(surface_temp)
+   call flux_from_meteo(mjul,msecs)
+   sensible = qh
+   latent = qe
+#if 1
+   if (qe .lt. _ZERO_) then
+      STDERR 'Stefan# ',qh/qe
+   end if
+#endif
+   back_radiation = qb%value
+   return
+   end subroutine surface_fluxes
 !EOC
 
 !-----------------------------------------------------------------------

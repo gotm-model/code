@@ -35,7 +35,8 @@
 ! !USES:
    use field_manager
    use register_all_variables, only: do_register_all_variables, fm
-   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,time_unit_second,type_output_category
+!KB   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,time_unit_second,type_output_category
+   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
    use output_manager
    use diagnostics
    use settings
@@ -47,12 +48,18 @@
    use time
 
    use airsea,      only: init_airsea,post_init_airsea,do_airsea,clean_airsea
+   use airsea,      only: surface_fluxes
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
    use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp
    use airsea,      only: int_net_precip
    use airsea,      only: bio_albedo,bio_drag_scale
    use airsea_variables, only: qa,ta
+
+#ifdef _ICE_
+   use ice,         only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
+   use stim_variables, only: Tice_surface,albedo_ice,attenuation_ice
+#endif
 
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,post_init_turbulence,do_turbulence
@@ -137,7 +144,8 @@
 ! !IROUTINE: Initialise the model \label{initGOTM}
 !
 ! !INTERFACE:
-   subroutine init_gotm(t1,t2)
+!KB   subroutine init_gotm(t1,t2)
+   subroutine init_gotm()
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
@@ -156,7 +164,7 @@
   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   character(len=*), intent(in), optional  :: t1,t2
+!KB   character(len=*), intent(in), optional  :: t1,t2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -166,13 +174,14 @@
    integer, parameter :: rk = kind(_ONE_)
 
    namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
-                          cnpar,buoy_method
+                          restart_allow_perpetual,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
    logical          ::    list_fields=.false.
    logical          ::    restart_online=.false.
    logical          ::    restart_offline = .false.
    logical          ::    restart_allow_missing_variable = .false.
+   logical          ::    restart_allow_perpetual = .true.
    integer          ::    rc
    logical          ::    file_exists
    logical          ::    config_only=.false.
@@ -180,10 +189,11 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_gotm'
-
+#if 0
    if (present(t1)) then
       restart_online = .true.
    end if
+#endif
 
    config_only = write_yaml_path /= '' .or. write_schema_path /= ''
    STDERR LINE
@@ -231,13 +241,14 @@
    call branch%get(nlev, 'nlev', 'number of layers', &
                    minimum=1, default=100)
    call branch%get(grid_method, 'grid_method', 'layer thicknesses', &
-                   options=(/type_option(0, 'equal with optional zooming'), type_option(1, 'prescribed relative fractions'), type_option(2, 'prescribed thicknesses'), type_option(3, 'adaptive')/),default=0)
+                   options=(/type_option(0, 'equal with optional zooming'), type_option(1, 'prescribed relative fractions'), type_option(2, 'prescribed thicknesses')/), default=0) ! type_option(3, 'adaptive')
    call branch%get(ddu, 'ddu', 'surface zooming', '-', &
-                   minimum=0._rk, maximum=5.0_rk, default=0._rk)
+                   minimum=0._rk, default=0._rk)
    call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
-                   minimum=0._rk, maximum=5.0_rk, default=0._rk)
+                   minimum=0._rk, default=0._rk)
    call branch%get(grid_file, 'grid_file', 'file with custom grid specification', &
                    default='grid.dat')
+#if 0
    twig => branch%get_child('adaptation')
    call twig%get(c1ad, 'c1ad', 'weighting factor for buoyancy frequency', '-', &
                  default=0.8_rk)
@@ -257,7 +268,7 @@
                  minimum=0._rk,default=10._rk)
    call twig%get(dtgrid, 'dtgrid', 'time step (must be fraction of dt)', 's', &
                  minimum=0._rk,default=5._rk)
-
+#endif
    branch => settings_store%get_child('time_integration')
    call branch%get(dt, 'dt', 'time step', 's', &
                    minimum=0.e-10_rk, default=3600._rk)
@@ -276,8 +287,8 @@
    call branch%get(restart_offline, 'restart_offline', &
                    'initialize simulation with state stored in restart.nc', &
                    default=.false.)
-   call branch%get(restart_allow_missing_variable, 'restart_allow_missing_variable', &
-                   'warning or error when variable is missing in restart file', &
+   call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
+                   'abort if any variable is missing from restart file', &
                    default=.false.)
   
    LEVEL2 'configuring modules ....'
@@ -294,6 +305,7 @@
    branch => settings_store%get_child('eqstate')
    call init_eqstate(branch)
 
+#ifndef GFORTRAN
    call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
                            options=(/type_option(1, 'equation of state'), type_option(2, 'prognostic equation')/), default=1)
 #if 0
@@ -303,6 +315,8 @@
 #else
    call settings_store%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', &
                            options=(/type_option(0, 'none'), type_option(1, 'surface'), type_option(2, 'all layers'), type_option(3, 'free surface')/), default=0)
+#endif
+   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', default=1)
 #endif
 
 !  open the namelist file.
@@ -324,6 +338,10 @@
       if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
 
       call init_airsea(namlst)
+
+#ifdef _ICE_
+      call init_ice(namlst,'ice.nml')
+#endif
    end if
 
 !KB must be moved down to have e.g. init_hypsograph() called - testing for side effects.
@@ -354,7 +372,7 @@
    call output_manager_init(fm,title,settings=branch,postfix=output_id)
 
    inquire(file='output.yaml',exist=file_exists)
-   if (.not.file_exists) then
+   if (read_nml .and. .not. file_exists) then
       call deprecated_output(namlst,title,dt,list_fields)
    end if
 
@@ -380,8 +398,8 @@
    if (restart_online) then
       LEVEL3 'online restart - updating values in the time namelist ...'
       LEVEL4 'orignal: ',start,' -> ',stop
-      start = t1
-      stop  = t2
+!KB      start = t1
+!KB      stop  = t2
       LEVEL4 'updated: ',start,' -> ',stop
    end if
 
@@ -458,7 +476,9 @@
    v(1:nlev) = vprof%data(1:nlev)
 
    call post_init_airsea(latitude,longitude)
-
+#ifdef _ICE_
+   call post_init_ice(ta,S(nlev))
+#endif
    call init_diagnostics(nlev)
 
    call do_register_all_variables(latitude,longitude,nlev)
@@ -509,6 +529,11 @@
    if (restart) then
       if (restart_offline) then
          LEVEL1 'read_restart'
+         if (.not. restart_allow_perpetual) then
+            call check_restart_time('time')
+         else
+            LEVEL2 'allow perpetual restarts'
+         end if
          call read_restart(restart_allow_missing_variable)
          call friction(kappa,avmolu,tx,ty)
       end if
@@ -601,6 +626,7 @@
    character(8)              :: d_
    character(10)             :: t_
 
+   REALTYPE                  :: Qsw, Qflux, albedo
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -626,6 +652,7 @@
 
 !     prepare time and output
       call update_time(n)
+      call output_manager_prepare_save(julianday, int(fsecondsofday), int(mod(fsecondsofday,_ONE_)*1000000), int(n))
 
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
@@ -633,14 +660,47 @@
 
 !     external forcing
       if( calc_fluxes ) then
+#ifdef _ICE_
+         if(ice_cover .eq. 0) then
+#endif
          call set_sst(T(nlev))
          call set_ssuv(u(nlev),v(nlev))
+#ifdef _ICE_
+         else
+            call set_sst(Tice_surface)
+            call set_ssuv(_ZERO_,_ZERO_)
+         end if
+#endif
       end if
       call do_airsea(julianday,secondsofday)
 
+#ifdef _ICE_
+!     ice
+      if(ice_cover .eq. 2) then
+         albedo = albedo_ice
+      end if
+#endif
+      I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
+
+#ifdef _ICE_
+      Qsw = I_0%value
+      call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw,surface_fluxes)
+#endif
+
 !     reset some quantities
-      tx = tx/rho_0
-      ty = ty/rho_0
+#ifdef _ICE_
+      if(ice_cover .gt. 0) then
+         tx = _ZERO_
+         ty = _ZERO_
+         heat%value = _ZERO_
+         I_0%value = attenuation_ice*I_0%value
+      else
+#endif
+         tx = tx/rho_0
+         ty = ty/rho_0
+#ifdef _ICE_
+      end if
+#endif
 
       call integrated_fluxes(dt)
       int_fwf = int_net_precip
@@ -756,6 +816,10 @@
 
    call clean_airsea()
 
+#ifdef _ICE_
+   call clean_ice()
+#endif
+
    call clean_hypsograph()
 
    call clean_meanflow()
@@ -852,8 +916,8 @@
       use output_manager_core
       use time, only: jul2,secs2
 
-      class (type_netcdf_file),     pointer :: file
-      class (type_output_category), pointer :: category
+      class (type_netcdf_file), pointer :: file
+      type (type_output_item),  pointer :: item
 
       allocate(file)
       file%path = 'restart'
@@ -863,15 +927,15 @@
       file%first_seconds = secs2
       call output_manager_add_file(fm,file)
 
-      allocate(category)
-      category%name = 'state'
-      category%output_level = output_level_debug
-      category%settings => file%create_settings()
-      select type (settings=>category%settings)
-         class is (type_netcdf_variable_settings)
-            settings%xtype = NF90_DOUBLE
+      allocate(item)
+      item%name = 'state'
+      item%output_level = output_level_debug
+      item%settings => file%create_settings()
+      select type (settings=>item%settings)
+      class is (type_netcdf_variable_settings)
+         settings%xtype = NF90_DOUBLE
       end select
-      call file%append_category(category)
+      call file%append_item(item)
 #endif
    end subroutine setup_restart
 
@@ -885,14 +949,14 @@
       member => field_set%first
       do while (associated(member))
          ! This field is part of the model state. Its name is member%field%name.
-         if (associated(member%field%data_0d)) then
-            ! Depth-independent variable with data pointed to by child%field%data_0d
-            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data_0d.
-            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data_0d)
-         elseif (associated(member%field%data_1d)) then
-            ! Depth-dependent variable with data pointed to by child%field%data_1d
-            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data_1d.
-            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data_1d)
+         if (associated(member%field%data%p0d)) then
+            ! Depth-independent variable with data pointed to by member%field%data%p0d
+            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data%p0d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data%p0d)
+         elseif (associated(member%field%data%p1d)) then
+            ! Depth-dependent variable with data pointed to by member%field%data%p1d
+            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data%p1d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data%p1d)
          else
             stop 'no data assigned to state field'
          end if

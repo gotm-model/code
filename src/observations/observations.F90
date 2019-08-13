@@ -707,9 +707,9 @@
 #endif
 
    twig => branch%get_typed_child('velprofile', 'horizontal velocities')
-   call twig%get(uprof, 'uprof', 'velocity in x direction', 'm/s', default=0._rk, &
+   call twig%get(uprof, 'uprof', 'velocity in West-East direction', 'm/s', default=0._rk, &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
-   call twig%get(vprof, 'vprof', 'velocity in y direction', 'm/s', default=0._rk, &
+   call twig%get(vprof, 'vprof', 'velocity in South-North direction', 'm/s', default=0._rk, &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
    call twig%get(vel_relax_tau, 'vel_relax_tau', 'relaxation time', 's', &
                    minimum=0._rk,default=1.e15_rk)
@@ -719,11 +719,11 @@
    branch => settings_store%get_typed_child('observations')
 
    twig => branch%get_typed_child('wave', 'wind waves')
-   call twig%get(Hs_, 'Hs', '', 'm', &
+   call twig%get(Hs_, 'Hs', 'significant wave-height', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(Tz_, 'Tz', '', 's', &
+   call twig%get(Tz_, 'Tz', 'mean zero-crossing period', 's', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(phiw_, 'phiw', '', '-', &
+   call twig%get(phiw_, 'phiw', 'mean direction', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
 
    call branch%get(epsprof, 'epsprof', 'turbulence dissipation rate', 'W/kg', &
