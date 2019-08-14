@@ -296,7 +296,7 @@
    call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
                            options=(/type_option(1, 'equation of state'), type_option(2, 'prognostic equation')/), default=1)
 #else
-   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy')
+   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', default=1)
 #endif
 
 !  open the namelist file.
