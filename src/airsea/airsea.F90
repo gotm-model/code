@@ -761,12 +761,12 @@
 !-----------------------------------------------------------------------
 !BOC
 
+   have_zenith_angle = .false.
    if (calc_fluxes) then
 !     Calculate bulk fluxes from meteorological conditions and surface state (sst,ssu,ssv).
       call flux_from_meteo(jul,secs)
 
 !     Optionally calculate surface shortwave radiation from location, time, cloud cover.
-      have_zenith_angle = .false.
       if (I_0%method .eq. 3) then
          hh = secs*(_ONE_/3600)
          zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
