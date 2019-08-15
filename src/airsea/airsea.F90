@@ -453,7 +453,7 @@
 !BOC
    LEVEL1 'init_airsea_yaml'
 
-   branch => settings_store%get_typed_child('surface')
+   branch => settings_store%get_typed_child('surface/meteo')
    call branch%get(calc_fluxes, 'calc_fluxes', 'calculate heat and momentum fluxes', &
                 default=.false.)
    call branch%get(fluxes_method, 'fluxes_method', 'method to calculate heat and momentum fluxes', &
