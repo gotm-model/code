@@ -289,6 +289,9 @@
   
    LEVEL2 'configuring modules ....'
    call init_airsea()
+#ifdef _ICE_
+   call init_ice()
+#endif
    call init_observations()
    branch => settings_store%get_child('turbulence')
    call init_turbulence(branch)
@@ -326,10 +329,6 @@
       if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
 
       call init_airsea(namlst)
-
-#ifdef _ICE_
-      call init_ice(namlst,'ice.nml')
-#endif
    end if
 
 #ifdef _FABM_
