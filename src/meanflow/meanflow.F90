@@ -65,6 +65,11 @@
 !  shading in the water column
    REALTYPE, public, dimension(:), allocatable, target  :: bioshade
 
+#ifndef _ICE_
+!  fake ice thickness - switch between 0 and 1 - see temperature.F90
+   REALTYPE, public  :: Hice
+#endif
+
 # ifdef EXTRA_OUTPUT
 
 !  dummies for testing

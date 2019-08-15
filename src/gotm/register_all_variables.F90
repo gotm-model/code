@@ -363,6 +363,9 @@
    call fm%register('mean4', '??', '4. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean4(1:nlev),category='meanflow',output_level=output_level_debug)
    call fm%register('mean5', '??', '5. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean5(1:nlev),category='meanflow',output_level=output_level_debug)
 #endif
+#ifndef _ICE_
+   call fm%register('Hice', 'm', 'fake ice thickness', standard_name='', data0d=Hice, category='surface')
+#endif
    return
    end subroutine register_meanflow_variables
 !EOC

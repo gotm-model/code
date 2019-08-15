@@ -68,6 +68,10 @@
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: h,u,v,w,T,S,avh
    use meanflow,     only: bioshade
+#ifndef _ICE_
+   use meanflow,     only: Hice
+#endif
+   use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
    use observations, only: w_adv_discr,w_adv
    use observations, only: tprof,TRelaxTau
@@ -132,8 +136,10 @@
 ! simple sea ice model: surface heat flux switched off for sst < freezing temp
    if (T(nlev) .le. -0.0575*S(nlev)) then
        DiffTup    = max(_ZERO_,heat/(rho_0*cp))
+       Hice = _ONE_
    else
        DiffTup    = heat/(rho_0*cp)
+       Hice = _ZERO_
    end if
 #else
    DiffTup    = heat/(rho_0*cp)
