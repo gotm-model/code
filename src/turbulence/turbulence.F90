@@ -617,7 +617,7 @@
                    default=.false.)
    call twig%get(gen_m, 'gen_m', 'exponent for k', '-', &
                    default=1._rk)
-   call twig%get(gen_l, 'gen_l', 'exponent for l', '-', &
+   call twig%get(gen_n, 'gen_n', 'exponent for l', '-', &
                    default=-0.67_rk)
    call twig%get(gen_p, 'gen_p', 'exponent for cm0', '-', &
                    default=3._rk)
