@@ -556,14 +556,14 @@
 
    call branch%get(turb_method, 'turb_method', 'turbulence closure', &
                    options=(/option(convective, 'convective adjustment'), option(algebraic, 'algebraic'), option(first_order, 'first-order'), option(second_order, 'second-order')/),default=second_order)
-   call branch%get(tke_method, 'tke_method', 'equation for TKE', &
+   call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
                    options=(/option(tke_local_eq, 'algebraic length scale equation'), option(tke_keps, 'differential equation for tke (k-epsilon style)'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)')/),default=tke_keps)
-   call branch%get(len_scale_method, 'len_scale_method', 'type of model for dissipative length scale', &
-                   minimum=1,maximum=10,default=8)
-   call branch%get(stab_method, 'stab_method', 'type of stability function', &
-                   minimum=1,maximum=4,default=3)
+   call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
+                   options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'Xing and Davies (1995)'), option(4, 'Robert and Ouellet (1987)'), option(5, 'Blackadar (two boundaries) (1962)'), option(6, 'Bougeault and Andre (1986)'), option(7, 'Eifler and Schrimpf (ISPRAMIX) (1992)'), option(8, 'dynamic dissipation rate equation'), option(9, 'dynamic Mellor-Yamada q^2 l-equation'), option(10, 'generic length scale (GLS)')/),default=8)
+   call branch%get(stab_method, 'stab_method', 'stability functions', &
+                   options=(/option(1, 'constant'), option(2, 'Munk and Anderson (1954)'), option(3, 'Schumann and Gerz (1995)'), option(4, 'Eifler and Schrimpf (1992)')/),default=3)
 
-   twig => branch%get_child('bc')
+   twig => branch%get_child('bc', 'boundary conditions')
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
                    options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
    call twig%get(k_lbc, 'k_lbc', 'lower boundary condition for k-equation', &
@@ -572,9 +572,9 @@
                    options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
    call twig%get(psi_lbc, 'psi_lbc', 'lower boundary condition for length-scale equation', &
                    options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
-   call twig%get(ubc_type, 'ubc_type', 'type of upper boundary layer', &
+   call twig%get(ubc_type, 'ubc_type', 'upper boundary layer', &
                    options=(/option(1, 'logarithmic law of the wall'), option(2, 'tke-injection (breaking waves)')/),default=1)
-   call twig%get(lbc_type, 'lbc_type', 'type of lower boundary layer', &
+   call twig%get(lbc_type, 'lbc_type', 'lower boundary layer', &
                    options=(/option(1, 'logarithmic law of the wall')/),default=1)
 
 
@@ -598,7 +598,7 @@
    call twig%get(length_lim, 'length_lim', 'apply Galperin et al. (1988) length scale limitation', &
                    default=.true.)
    call twig%get(galp, 'galp', 'coefficient for length scale limitation', '-', &
-                   minimum=0._rk,default=0.53_rk)
+                   minimum=0._rk,default=0.27_rk)
    call twig%get(const_num, 'const_num', 'constant eddy diffusivity', 'm^2/s', &
                    minimum=0._rk,default=0.0005_rk)
    call twig%get(const_nuh, 'const_nuh', 'constant heat diffusivity', 'm^2/s', &
@@ -667,20 +667,20 @@
                    default=0.2_rk)
    call twig%get(sl, 'sl', 'turbulent diffusivities of q^2 l', '-', &
                    default=0.2_rk)
-   call twig%get(my_length, 'my_length', 'prescribed barotropic length scale in q^2 l equation of MY', &
-                   minimum=1,maximum=3,default=3)
+   call twig%get(my_length, 'my_length', 'barotropic length scale in q^2 l equation', &
+                   options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'linear from surface')/),default=3)
    call twig%get(new_constr, 'new_constr', 'stabilize stability functions', &
                    default=.false.)
 
-   twig => branch%get_child('scnd')
-   call twig%get(scnd_method, 'scnd_method', 'type of second-order model', &
-                   minimum=1,maximum=3,default=1)
-   call twig%get(kb_method, 'kb_method', 'type of equation for buoyancy variance', &
-                   minimum=1,maximum=2,default=1)
-   call twig%get(epsb_method, 'epsb_method', 'type of equation for variance destruction', &
-                   minimum=1,maximum=2,default=1)
+   twig => branch%get_child('scnd', 'second-order model')
+   call twig%get(scnd_method, 'scnd_method', 'method', &
+                   options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance'), option(3, 'weak equilibrium with PDE for buoyancy variance')/), default=1)
+   call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
+                   options=(/option(1, 'algebraic'), option(2, 'PDE')/), default=1)
+   call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
+                   options=(/option(1, 'algebraic'), option(2, 'PDE')/), default=1)
    call twig%get(scnd_coeff, 'scnd_coeff', 'coefficients of second-order model', &
-                   minimum=0,maximum=7,default=7)
+                   options=(/option(0, 'custom'), option(1, 'Gibson and Launder (1978)'), option(2, 'Mellor and Yamada (1982)'), option(3, 'Kantha and Clayson (1994)'), option(4, 'Luyten et al. (1996)'), option(5, 'Canuto et al. (2001) (version A)'), option(6, 'Canuto et al. (2001) (version B)'), option(7, 'Cheng et al. (2002)')/),default=5)
    call twig%get(cc1, 'cc1', 'cc1', '-', &
                    default=3.6_rk)
    call twig%get(cc2, 'cc2', 'cc2', '-', &
@@ -706,9 +706,9 @@
    call twig%get(ctt, 'ctt', 'ctt', '-', &
                    default=0.8_rk)
 
-   twig => branch%get_child('iw')
-   call twig%get(iw_model, 'iw_model', 'method to compute internal wave mixing', &
-                   minimum=0,maximum=2,default=0)
+   twig => branch%get_child('iw', 'internal wave mixing')
+   call twig%get(iw_model, 'iw_model', 'model', &
+                   options=(/option(0, 'none'), option(1, 'Mellor (1989)'), option(2, 'Large et al. (1994)')/), default=0)
    call twig%get(alpha, 'alpha', 'coefficient for Mellor internal wave model', '-', &
                    default=0.7_rk)
    call twig%get(klimiw, 'klimiw', 'critical value of TKE', 'm^2/s^2', &
