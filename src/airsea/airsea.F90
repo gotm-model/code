@@ -482,9 +482,9 @@
                 default=.false.)
    call branch%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
                 default=.false.)
-   call branch%get(albedo_method, 'albedo_method', '', &
-                minimum=0,maximum=2,default=1)
-   call branch%get(const_albedo, 'const_albedo', '', '-', &
+   call branch%get(albedo_method, 'albedo_method', 'method to compute albedo', &
+                options=(/option(0, 'constant'), option(1, 'Payne (1972)'), option(2, 'Cogley (1979)')/), default=1)
+   call branch%get(const_albedo, 'const_albedo', 'constant albedo', '-', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
    call branch%get(heat, 'heat', 'surface heat flux', 'W/m2', &
                 default=0._rk)

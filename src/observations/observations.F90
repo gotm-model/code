@@ -549,7 +549,7 @@
                    extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
    call twig%get(t_analyt_method, 't_analyt_method', 'type of analytical initial temperature profile', &
-                   minimum=1,maximum=3,default=1)
+                   options=(/option(CONST_PROF, 'constant'), option(TWO_LAYERS, 'two layers'), option(CONST_NN, 'from salinity and buoyancy frequency')/),default=CONST_PROF)
    call twig%get(z_t1, 'z_t1', 'upper layer thickness', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(t_1, 't_1', 'upper layer temperature', 'Celsius', &
@@ -558,7 +558,7 @@
                    minimum=0._rk,default=0._rk)
    call twig%get(t_2, 't_2', 'lower layer temperature', 'Celsius', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(t_obs_NN, 't_obs_NN', 'constant N²', '/s²', &
+   call twig%get(t_obs_NN, 't_obs_NN', 'constant buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
    twig => branch%get_typed_child('relaxation')
    call twig%get(TRelaxTauM, 'TRelaxTauM', 'time scale for interior layer', 's', &
@@ -576,7 +576,7 @@
                    extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
    call twig%get(s_analyt_method, 's_analyt_method', 'type of analytical initial salinity profile', &
-                   minimum=1,maximum=3,default=1)
+                   options=(/option(CONST_PROF, 'constant'), option(TWO_LAYERS, 'two layers'), option(CONST_NN, 'from temperature and buoyancy frequency')/),default=CONST_PROF)
    call twig%get(z_s1, 'z_s1', 'upper layer thickness', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(s_1, 's_1', 'upper layer salinity', 'PSU', &
@@ -585,7 +585,7 @@
                    minimum=0._rk,default=0._rk)
    call twig%get(s_2, 's_2', 'lower layer salinity', 'PSU', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(s_obs_NN, 's_obs_NN', 'constant N²', 's^-2', &
+   call twig%get(s_obs_NN, 's_obs_NN', 'constant buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
    twig => branch%get_typed_child('relaxation')
    call twig%get(SRelaxTauM, 'SRelaxTauM', 'time scale for interior layer', 's', &
