@@ -284,7 +284,7 @@
                    'initialize simulation with state stored in restart.nc', &
                    default=.false.)
    call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
-                   'abort if any variable is missing from restart file', &
+                   'warn but not abort if a variable is missing from restart file', &
                    default=.false.)
   
    LEVEL2 'configuring modules ....'

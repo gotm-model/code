@@ -554,10 +554,10 @@
 !BOC
    LEVEL1 'init_turbulence_yaml'
 
-   call branch%get(turb_method, 'turb_method', 'type of turbulence closure', &
-                   minimum=0,default=3)
-   call branch%get(tke_method, 'tke_method', 'type of equation for TKE', &
-                   minimum=1,maximum=3,default=2)
+   call branch%get(turb_method, 'turb_method', 'turbulence closure', &
+                   options=(/option(convective, 'convective adjustment'), option(algebraic, 'algebraic'), option(first_order, 'first-order'), option(second_order, 'second-order')/),default=second_order)
+   call branch%get(tke_method, 'tke_method', 'equation for TKE', &
+                   options=(/option(tke_local_eq, 'algebraic length scale equation'), option(tke_keps, 'differential equation for tke (k-epsilon style)'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'type of model for dissipative length scale', &
                    minimum=1,maximum=10,default=8)
    call branch%get(stab_method, 'stab_method', 'type of stability function', &
@@ -565,17 +565,17 @@
 
    twig => branch%get_child('bc')
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
-                   minimum=0,maximum=1,default=1)
+                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
    call twig%get(k_lbc, 'k_lbc', 'lower boundary condition for k-equation', &
-                   minimum=0,maximum=1,default=1)
+                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
    call twig%get(psi_ubc, 'psi_ubc', 'upper boundary condition for length-scale equation', &
-                   minimum=0,maximum=1,default=1)
+                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
    call twig%get(psi_lbc, 'psi_lbc', 'lower boundary condition for length-scale equation', &
-                   minimum=0,maximum=1,default=1)
+                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
    call twig%get(ubc_type, 'ubc_type', 'type of upper boundary layer', &
-                   minimum=1,maximum=2,default=1)
+                   options=(/option(1, 'logarithmic law of the wall'), option(2, 'tke-injection (breaking waves)')/),default=1)
    call twig%get(lbc_type, 'lbc_type', 'type of lower boundary layer', &
-                   minimum=1,maximum=2,default=1)
+                   options=(/option(1, 'logarithmic law of the wall')/),default=1)
 
 
    twig => branch%get_child('turb_param')
@@ -587,9 +587,9 @@
                    minimum=0._rk,default=0.74_rk)
    call twig%get(cw, 'cw', 'constant of the wave-breaking model', '-', &
                    minimum=0._rk,default=100._rk)
-   call twig%get(compute_kappa, 'compute_kappa', 'compute von Kármán constant from model parameters', &
+   call twig%get(compute_kappa, 'compute_kappa', 'compute von Karman constant from model parameters', &
                    default=.false.)
-   call twig%get(kappa, 'kappa', 'von Kármán constant', '-', &
+   call twig%get(kappa, 'kappa', 'von Karman constant', '-', &
                    minimum=0._rk,default=0.4_rk)
    call twig%get(compute_c3, 'compute_c3', 'compute c3 (E3 for Mellor-Yamada) from steady-state Richardson number', &
                    default=.true.)
@@ -640,7 +640,7 @@
    call twig%get(gen_l, 'gen_l', 'slope L of the length scale in shear-free turbulence', '-', &
                    default=0.2_rk)
 
-   twig => branch%get_child('keps')
+   twig => branch%get_child('keps', 'k-epsilon model')
    call twig%get(ce1, 'ce1', 'empirical coefficient ce1 in dissipation equation', '-', &
                    default=1.44_rk)
    call twig%get(ce2, 'ce2', 'empirical coefficient ce2 in dissipation equation', '-', &
@@ -656,18 +656,18 @@
    call twig%get(sig_peps, 'sig_peps', 'use Burchard (2001) wave breaking parameterisation', &
                    default=.false.)
 
-   twig => branch%get_child('my')
-   call twig%get(e1, 'e1', 'coefficient e1 in MY q²l equation', '-', &
+   twig => branch%get_child('my', 'Mellor-Yamada model')
+   call twig%get(e1, 'e1', 'coefficient e1 in MY q^2 l equation', '-', &
                    default=1.8_rk)
-   call twig%get(e2, 'e2', 'coefficient e2 in MY q²l equation', '-', &
+   call twig%get(e2, 'e2', 'coefficient e2 in MY q^2 l equation', '-', &
                    default=1.33_rk)
-   call twig%get(e3, 'e3', 'coefficient e3 in MY q²l equation', '-', &
+   call twig%get(e3, 'e3', 'coefficient e3 in MY q^2 l equation', '-', &
                    default=1.8_rk)
-   call twig%get(sq, 'sq', 'turbulent diffusivities of q² (= 2k)', '-', &
+   call twig%get(sq, 'sq', 'turbulent diffusivities of q^2 (= 2k)', '-', &
                    default=0.2_rk)
-   call twig%get(sl, 'sl', 'turbulent diffusivities of q²l', '-', &
+   call twig%get(sl, 'sl', 'turbulent diffusivities of q^2 l', '-', &
                    default=0.2_rk)
-   call twig%get(my_length, 'my_length', 'prescribed barotropic length scale in q²l equation of MY', &
+   call twig%get(my_length, 'my_length', 'prescribed barotropic length scale in q^2 l equation of MY', &
                    minimum=1,maximum=3,default=3)
    call twig%get(new_constr, 'new_constr', 'stabilize stability functions', &
                    default=.false.)
@@ -711,15 +711,15 @@
                    minimum=0,maximum=2,default=0)
    call twig%get(alpha, 'alpha', 'coefficient for Mellor internal wave model', '-', &
                    default=0.7_rk)
-   call twig%get(klimiw, 'klimiw', 'critical value of TKE', 'm²/s²', &
+   call twig%get(klimiw, 'klimiw', 'critical value of TKE', 'm^2/s^2', &
                    default=1.e-6_rk)
    call twig%get(rich_cr, 'rich_cr', 'critical Richardson number for shear instability', '-', &
                    default=0.7_rk)
-   call twig%get(numshear, 'numshear', 'background diffusivity for shear instability', 'm²/s', &
+   call twig%get(numshear, 'numshear', 'background diffusivity for shear instability', 'm^2/s', &
                    default=5.e-3_rk)
-   call twig%get(numiw, 'numiw', 'background viscosity for internal wave breaking', 'm²/s', &
+   call twig%get(numiw, 'numiw', 'background viscosity for internal wave breaking', 'm^2/s', &
                    default=1.e-4_rk)
-   call twig%get(nuhiw, 'nuhiw', 'background diffusivity for internal wave breaking', 'm²/s', &
+   call twig%get(nuhiw, 'nuhiw', 'background diffusivity for internal wave breaking', 'm^2/s', &
                    default=1.e-5_rk)
    LEVEL2 'done.'
    return
