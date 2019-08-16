@@ -108,12 +108,13 @@
 !
 ! !LOCAL VARIABLES:
    character(len=32) :: arg
-   integer :: i
+   integer :: n, i
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+   n = command_argument_count()
    i = 1
-   do while (i <= command_argument_count())
+   do while (i <= n)
       call get_command_argument(i, arg)
       select case (arg)
       case ('-v', '--version')
@@ -130,12 +131,24 @@
          read_nml = .true.
       case ('--write_yaml')
          i = i+1
+         if (i > n) then
+            FATAL 'Error parsing command line options: --write_yaml must be followed by the path of the file to write.'
+            stop 2
+         end if
          call get_command_argument(i, write_yaml_path)
       case ('--write_schema')
          i = i+1
+         if (i > n) then
+            FATAL 'Error parsing command line options: --write_schema must be followed by the path of the file to write.'
+            stop 2
+         end if
          call get_command_argument(i, write_schema_path)
       case ('--output_id')
          i = i+1
+         if (i > n) then
+            FATAL 'Error parsing command line options: --output_id must be followed by the postfix that is to be appended to the name of each output file.'
+            stop 2
+         end if
          call get_command_argument(i, output_id)
       case default
          yaml_file = arg
