@@ -51,7 +51,7 @@
    use airsea,      only: surface_fluxes
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
-   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp
+   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
    use airsea,      only: bio_albedo,bio_drag_scale
    use airsea_variables, only: qa,ta
 
@@ -583,7 +583,7 @@
    character(8)              :: d_
    character(10)             :: t_
 
-   REALTYPE                  :: Qsw, Qflux, albedo
+   REALTYPE                  :: Qsw, Qflux
 !
 !-----------------------------------------------------------------------
 !BOC
