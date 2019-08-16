@@ -7,7 +7,7 @@ module settings
 
    private
 
-   public type_settings, type_gotm_settings, type_option, settings_store, type_input_create
+   public type_settings, type_gotm_settings, option, settings_store, type_input_create
 
    type,extends(type_settings) :: type_gotm_settings
    contains
@@ -139,15 +139,15 @@ contains
       noptions = 0
       if (target%method_off /= method_unsupported) then
          noptions = noptions + 1
-         options(noptions) = type_option(target%method_off, 'off')
+         options(noptions) = option(target%method_off, 'off')
       end if
       if (target%method_constant /= method_unsupported) then
          noptions = noptions + 1
-         options(noptions) = type_option(target%method_constant, 'constant')
+         options(noptions) = option(target%method_constant, 'constant')
       end if
       if (target%method_file /= method_unsupported) then
          noptions = noptions + 1
-         options(noptions) = type_option(target%method_file, 'from file')
+         options(noptions) = option(target%method_file, 'from file')
       end if
       if (present(extra_options)) options(noptions + 1:) = extra_options
       if (default_method == method_unsupported) default_method = options(1)%value

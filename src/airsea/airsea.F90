@@ -457,7 +457,7 @@
    call branch%get(calc_fluxes, 'calc_fluxes', 'calculate heat and momentum fluxes', &
                 default=.false.)
    call branch%get(fluxes_method, 'fluxes_method', 'method to calculate heat and momentum fluxes', &
-                options=(/type_option(1, 'Kondo (1975)'), type_option(2, 'Fairall et al. (1996)')/), default=1)
+                options=(/option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=1)
    call branch%get(u10, 'u10', '10 metre wind speed in x direction', 'm/s', &
                 default=0._rk)
    call branch%get(v10, 'v10', '10 metre wind speed in y direction', 'm/s', &
@@ -469,15 +469,15 @@
    call branch%get(hum, 'hum', '2 metre humidity', '', &
                 default=0._rk, pchild=leaf)
    call leaf%get(hum_method, 'hum_method', 'humidity metric', &
-                options=(/type_option(1, 'relative humidity (%)'), type_option(2, 'wet-bulb temperature'), &
-                type_option(3, 'dew point temperature'), type_option(4 ,'specific humidity (kg/kg)')/), default=1)
+                options=(/option(1, 'relative humidity (%)'), option(2, 'wet-bulb temperature'), &
+                option(3, 'dew point temperature'), option(4 ,'specific humidity (kg/kg)')/), default=1)
    call branch%get(cloud, 'cloud', 'cloud cover', '-', &
                 minimum=0._rk, maximum=1._rk, default=0._rk)
    call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m2', &
-                minimum=0._rk,default=0._rk, extra_options=(/type_option(3, 'from time, location and cloud cover')/))
+                minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover')/))
    call branch%get(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-               extra_options=(/type_option(1, 'Clark'), type_option(2, 'Hastenrath'), type_option(3, 'Bignami'), type_option(4, 'Berliand')/))
+               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand')/))
    call branch%get(rain_impact, 'rain_impact', 'include effect of rain fall on fluxes of sensible heat and momentum', &
                 default=.false.)
    call branch%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
@@ -499,7 +499,7 @@
    call branch%get(sss, 'sss', 'observed surface salinity', 'PSU', &
                 default=0._rk)
    call branch%get(ssuv_method, 'ssuv_method', 'wind speed correction for current velocity', &
-                options=(/type_option(0, 'use absolute wind speed'), type_option(1, 'use relative wind speed')/), default=0)
+                options=(/option(0, 'use absolute wind speed'), option(1, 'use relative wind speed')/), default=0)
    LEVEL2 'done'
    return
    end subroutine init_airsea_yaml

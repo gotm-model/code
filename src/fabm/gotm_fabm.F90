@@ -270,7 +270,7 @@
    call branch%get(save_inputs, 'save_inputs', 'include additional forcing fields in output', &
                 default=.false.)
    call cfg%get(configuration_method, 'configuration_method', 'configuration file', &
-                options=(/type_option(-1, 'auto-detect (prefer fabm.yaml)'), type_option(0, 'fabm.nml'), type_option(1, 'fabm.yaml')/), &
+                options=(/option(-1, 'auto-detect (prefer fabm.yaml)'), option(0, 'fabm.nml'), option(1, 'fabm.yaml')/), &
                 default=-1)
 
    LEVEL2 'done.'

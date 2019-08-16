@@ -546,7 +546,7 @@
    LEVEL1 'init_observations_yaml'
 
    call settings_store%get(tprof, 'temperature', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
-                   extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
+                   extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
    call twig%get(t_analyt_method, 't_analyt_method', 'type of analytical initial temperature profile', &
                    minimum=1,maximum=3,default=1)
@@ -573,7 +573,7 @@
                    minimum=0._rk,default=0._rk)
 
    call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'PSU', &
-                   extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
+                   extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
    call twig%get(s_analyt_method, 's_analyt_method', 'type of analytical initial salinity profile', &
                    minimum=1,maximum=3,default=1)
@@ -601,8 +601,8 @@
 
    twig => settings_store%get_typed_child('light')
    call twig%get(extinct_method, 'extinct_method', 'water type', &
-                   options=(/type_option(1, 'Jerlov type I'), type_option(2, 'Jerlov type 1 (upper 50 m)'), type_option(3, 'Jerlov type IA'), &
-                   type_option(4, 'Jerlov type IB'), type_option(5, 'Jerlov type II'), type_option(6, 'Jerlov type III'), type_option(7, 'custom')/), default=1)
+                   options=(/option(1, 'Jerlov type I'), option(2, 'Jerlov type 1 (upper 50 m)'), option(3, 'Jerlov type IA'), &
+                   option(4, 'Jerlov type IB'), option(5, 'Jerlov type II'), option(6, 'Jerlov type III'), option(7, 'custom')/), default=1)
    call twig%get(A_, 'A', 'non-visible fraction of shortwave radiation', '1', &
                    minimum=0._rk,maximum=1._rk,default=0.7_rk)
    call twig%get(g1_, 'g1', 'e-folding depth of non-visible shortwave radiation', 'm', &

@@ -223,7 +223,7 @@
 
    branch => settings_store%get_child('period')
    call branch%get(timefmt, 'timefmt', 'method to specify simulated period', default=2, &
-                   options=(/type_option(1, 'number of time steps'), type_option(2, 'start and stop'), type_option(3, 'start and number of time steps')/))
+                   options=(/option(1, 'number of time steps'), option(2, 'start and stop'), option(3, 'start and number of time steps')/))
 #if 0
    call branch%get(MaxN, 'MaxN', 'number of time steps', &
                    minimum=1,default=100)
@@ -237,7 +237,7 @@
    call branch%get(nlev, 'nlev', 'number of layers', &
                    minimum=1, default=100)
    call branch%get(grid_method, 'grid_method', 'layer thicknesses', &
-                   options=(/type_option(0, 'equal with optional zooming'), type_option(1, 'prescribed relative fractions'), type_option(2, 'prescribed thicknesses')/), default=0) ! type_option(3, 'adaptive')
+                   options=(/option(0, 'equal with optional zooming'), option(1, 'prescribed relative fractions'), option(2, 'prescribed thicknesses')/), default=0) ! option(3, 'adaptive')
    call branch%get(ddu, 'ddu', 'surface zooming', '-', &
                    minimum=0._rk, default=0._rk)
    call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
@@ -304,7 +304,7 @@
    call init_eqstate(branch)
 
    call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
-                           options=(/type_option(1, 'equation of state'), type_option(2, 'prognostic equation')/), default=1)
+                           options=(/option(1, 'equation of state'), option(2, 'prognostic equation')/), default=1)
 
 !  open the namelist file.
    if (read_nml) then
