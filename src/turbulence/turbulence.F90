@@ -612,7 +612,7 @@
    call twig%get(epsb_min, 'epsb_min', 'minimum buoyancy variance destruction rate', 'm^2/s^5', &
                    minimum=0._rk,default=1.e-14_rk)
 
-   twig => branch%get_child('generic')
+   twig => branch%get_child('generic', 'generic length scale (GLS) model')
    call twig%get(compute_param, 'compute_param', 'compute the model parameters', &
                    default=.false.)
    call twig%get(gen_m, 'gen_m', 'exponent for k', '-', &

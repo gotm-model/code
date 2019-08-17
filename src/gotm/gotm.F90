@@ -286,7 +286,7 @@
    call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
                    'warn but not abort if a variable is missing from restart file', &
                    default=.false.)
-  
+
    LEVEL2 'configuring modules ....'
    call init_airsea()
 #ifdef _ICE_
@@ -300,11 +300,19 @@
    call configure_gotm_fabm(branch)
 #endif
    call init_meanflow()
+
+   branch => settings_store%get_child('buoyancy')
+   call branch%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
+                   options=(/option(1, 'equation of state'), option(2, 'prognostic equation')/), default=1)
+   call branch%get(b_obs_surf, 'b_obs_surf', 'initial buoyancy at the surface', '-', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(b_obs_NN, 'b_obs_NN', 'initial value of NN (=buoyancy gradient)', 's^-2', &
+                   minimum=0._rk,default=0._rk)
+   call branch%get(b_obs_sbf, 'b_obs_sbf', 'constant surface buoyancy flux', '-', &
+                   minimum=0._rk,default=0._rk)
+
    branch => settings_store%get_child('eqstate')
    call init_eqstate(branch)
-
-   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
-                           options=(/option(1, 'equation of state'), option(2, 'prognostic equation')/), default=1)
 
 !  open the namelist file.
    if (read_nml) then

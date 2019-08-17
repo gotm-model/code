@@ -707,14 +707,6 @@
    call branch%get(o2_prof, 'o2_prof', 'oxygen profile', '', &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
 
-   twig => branch%get_typed_child('bprofile', 'buoyancy profile')
-   call twig%get(b_obs_surf, 'b_obs_surf', '', '-', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(b_obs_NN, 'b_obs_NN', '', 's^-2', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(b_obs_sbf, 'b_obs_sbf', '', '-', &
-                   minimum=0._rk,default=0._rk)
-   LEVEL2 'done.'
    return
 
    end subroutine init_observations_yaml
