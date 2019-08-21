@@ -103,7 +103,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   if (dsdx%method .ne. 0 .and. dsdy%method .ne. 0 .and. dtdx%method .ne. 0 .and. dtdy%method .ne. 0) then
+   if (dsdx%method .ne. 0 .or. dsdy%method .ne. 0 .or. dtdx%method .ne. 0 .or. dtdy%method .ne. 0) then
 
 !     initialize local depth
 !     and pressure gradient

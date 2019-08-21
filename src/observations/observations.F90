@@ -456,7 +456,7 @@
    end if
 
    call w_adv%configure(method=w_adv_method, path=w_adv_file, index=1, constant_value=w_adv0)
-   call w_height%configure(method=w_adv_method, path=w_adv_file, index=2, constant_value=w_adv_height0)
+   call w_height%configure(method=max(1, w_adv_method), path=w_adv_file, index=2, constant_value=w_adv_height0)
 
    call zeta%configure(method=zeta_method, path=zeta_file, index=1, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
 
@@ -660,11 +660,10 @@
    call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
 
-   twig => branch%get_typed_child('w_advspec', 'vertical velocity')
-   call twig%get(w_adv, 'w_adv', 'velocity', 'm/s', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call branch%get(w_adv, 'w_adv', 'vertical velocity', 'm/s', &
+      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, pchild=twig)
    call twig%get(w_height, 'w_height', 'height at which velocity is prescribed', 'm', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+      default=0._rk, method_constant=CONSTANT, method_file=FROMFILE)
    call twig%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme', options=&
              (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
                 option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &

@@ -473,7 +473,7 @@
    call leaf%get(hum_method, 'hum_method', 'humidity metric', &
                 options=(/option(1, 'relative humidity (%)'), option(2, 'wet-bulb temperature'), &
                 option(3, 'dew point temperature'), option(4 ,'specific humidity (kg/kg)')/), default=1)
-   call twig%get(cloud, 'cloud', 'cloud cover', '-', &
+   call twig%get(cloud, 'cloud', 'cloud cover', '1', &
                 minimum=0._rk, maximum=1._rk, default=0._rk)
    call twig%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
                 minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover')/))
@@ -497,11 +497,11 @@
                 minimum=0._rk,maximum=1._rk,default=0._rk)
 
    twig => branch%get_typed_child('fluxes', 'prescribed fluxes')
-   call twig%get(heat, 'heat', 'surface heat flux', 'W/m^2', &
+   call twig%get(heat, 'heat', 'heat flux', 'W/m^2', &
                 default=0._rk)
-   call twig%get(tx_, 'tx', 'surface momentum flux in West-East direction', 'Pa', &
+   call twig%get(tx_, 'tx', 'momentum flux in West-East direction', 'Pa', &
                 default=0._rk)
-   call twig%get(ty_, 'ty', 'surface momentum flux in South-North direction', 'Pa', &
+   call twig%get(ty_, 'ty', 'momentum flux in South-North direction', 'Pa', &
                 default=0._rk)
 
    call branch%get(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
