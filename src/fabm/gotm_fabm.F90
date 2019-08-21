@@ -219,6 +219,7 @@
 
 ! !USES:
    use yaml_settings
+   use util, only: UPSTREAM, P2, MUSCL, Superbee, P2_PDM
 !
 ! !INPUT PARAMETERS:
    class (type_settings), intent(inout) :: cfg
@@ -242,11 +243,16 @@
                 default=.false.)
    branch => cfg%get_child('numerics')
    call branch%get(ode_method, 'ode_method', 'time integration scheme applied to source terms', &
-                minimum=1,maximum=11,default=1)
+                options=(/ option(1, 'Forward Euler'), option(2, 'Runge-Kutta 2'), option(3, 'Runge-Kutta 4'), &
+                option(4, 'first-order Patanker'), option(5, 'second-order Patanker'), option(7, 'first-order modified Patanker'), &
+                option(8, 'second-order modified Patanker'), option(10, 'first-order extended modified Patanker'), &
+                option(11, 'second-order extended modified Patankar') /), default=1)
    call branch%get(split_factor, 'split_factor', 'number of substeps used for source integration', &
                 minimum=1,maximum=100,default=1)
-   call branch%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme', &
-                minimum=1,maximum=6,default=6)
+   call branch%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme', options=&
+             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
+                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
+                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
    call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
                 minimum=0._rk,default=1._rk)
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
