@@ -157,7 +157,12 @@ contains
          call setting%get(target%constant_value, 'constant_value', 'value to use throughout the simulation', units=units, default=default, minimum=minimum, maximum=maximum)
       end if
       if (target%method_file /= method_unsupported) then
-         call setting%get(target%path, 'file', 'path to file with time series', default=setting%path(istart:)//'.dat')
+         select type (target)
+         class is (type_profile_input)
+            call setting%get(target%path, 'file', 'path to file with series of profiles', default=setting%path(istart:)//'.dat')
+         class default
+            call setting%get(target%path, 'file', 'path to file with time series', default=setting%path(istart:)//'.dat')
+         end select
          call setting%get(target%index, 'column', 'index of column to read from', default=1)
          call setting%get(target%scale_factor, 'scale_factor', 'scale factor to be applied to values read from file', '', default=1._rk)
          call setting%get(target%add_offset, 'offset', 'offset to be added to values read from file', units=units, default=0._rk)
