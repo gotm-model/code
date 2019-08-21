@@ -446,58 +446,64 @@
 !  Original author(s): Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   class (type_gotm_settings), pointer :: branch, leaf
-   class (type_settings), pointer :: twig
+   class (type_gotm_settings), pointer :: branch, twig, leaf
    integer, parameter :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_airsea_yaml'
 
-   branch => settings_store%get_typed_child('surface/meteo')
+   branch => settings_store%get_typed_child('surface')
    call branch%get(calc_fluxes, 'calc_fluxes', 'calculate heat and momentum fluxes', &
                 default=.false.)
    call branch%get(fluxes_method, 'fluxes_method', 'method to calculate heat and momentum fluxes', &
                 options=(/option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=1)
-   call branch%get(u10, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
+   
+   twig => branch%get_typed_child('meteo')
+   call twig%get(u10, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
                 default=0._rk)
-   call branch%get(v10, 'v10', 'wind speed in South-North direction @ 10 m', 'm/s', &
+   call twig%get(v10, 'v10', 'wind speed in South-North direction @ 10 m', 'm/s', &
                 default=0._rk)
-   call branch%get(airp, 'airp', 'air pressure', 'Pa', &
+   call twig%get(airp, 'airp', 'air pressure', 'Pa', &
                 default=0._rk)
-   call branch%get(airt, 'airt', 'air temperature @ 2 m', 'Celsius or K', &
+   call twig%get(airt, 'airt', 'air temperature @ 2 m', 'Celsius or K', &
                 default=0._rk)
-   call branch%get(hum, 'hum', 'humidity @ 2 m', '', &
+   call twig%get(hum, 'hum', 'humidity @ 2 m', '', &
                 default=0._rk, pchild=leaf)
    call leaf%get(hum_method, 'hum_method', 'humidity metric', &
                 options=(/option(1, 'relative humidity (%)'), option(2, 'wet-bulb temperature'), &
                 option(3, 'dew point temperature'), option(4 ,'specific humidity (kg/kg)')/), default=1)
-   call branch%get(cloud, 'cloud', 'cloud cover', '-', &
+   call twig%get(cloud, 'cloud', 'cloud cover', '-', &
                 minimum=0._rk, maximum=1._rk, default=0._rk)
-   call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
+   call twig%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
                 minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover')/))
+   call twig%get(precip, 'precip', 'precipitation', 'm/s', &
+                default=0._rk, pchild=leaf)
+   call leaf%get(rain_impact, 'rain_impact', 'include effect of rain fall on fluxes of sensible heat and momentum', &
+                default=.false.)
+   call twig%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
+                default=.false.)
+   call twig%get(ssuv_method, 'ssuv_method', 'wind treatment', &
+                options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=0)
+
    call branch%get(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
                extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand')/))
-   twig => branch%get_child('albedo')
+
+   twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
                 options=(/option(0, 'constant'), option(1, 'Payne (1972)'), option(2, 'Cogley (1979)')/), default=1)
    call twig%get(const_albedo, 'constant_value', 'constant albedo', '-', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
-   call branch%get(precip, 'precip', 'precipitation', 'm/s', &
-                default=0._rk, pchild=leaf)
-   call leaf%get(rain_impact, 'rain_impact', 'include effect of rain fall on fluxes of sensible heat and momentum', &
-                default=.false.)
-   call branch%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
-                default=.false.)
-   call branch%get(ssuv_method, 'ssuv_method', 'wind treatment', &
-                options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=0)
-   call branch%get(heat, 'heat', 'surface heat flux', 'W/m^2', &
+
+   twig => branch%get_typed_child('fluxes', 'prescribed fluxes')
+   call twig%get(heat, 'heat', 'surface heat flux', 'W/m^2', &
                 default=0._rk)
-   call branch%get(tx_, 'tx', 'surface momentum flux in West-East direction', 'Pa', &
+   call twig%get(tx_, 'tx', 'surface momentum flux in West-East direction', 'Pa', &
                 default=0._rk)
-   call branch%get(ty_, 'ty', 'surface momentum flux in South-North direction', 'Pa', &
+   call twig%get(ty_, 'ty', 'surface momentum flux in South-North direction', 'Pa', &
                 default=0._rk)
+
    call branch%get(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
                 default=0._rk)
    call branch%get(sss, 'sss', 'observed surface salinity', 'PSU', &
