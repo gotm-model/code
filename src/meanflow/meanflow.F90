@@ -164,12 +164,12 @@
    call branch%get(MaxItz0b, 'MaxItz0b', 'number of iterations for hydrodynamic bottom roughness', &
                 minimum=1,default=1, description='number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
 
-   branch => settings_store%get_typed_child('surface')
-   call branch%get(charnock, 'charnock', 'use Charnock (1955) surface roughness adaptation', &
+   branch => settings_store%get_typed_child('surface/roughness')
+   call branch%get(charnock, 'charnock', 'use Charnock (1955) roughness adaptation', &
                 default=.false.)
-   call branch%get(charnock_val, 'charnock_val', 'empirical constant for surface roughness adaptation', '-', &
+   call branch%get(charnock_val, 'charnock_val', 'empirical constant for roughness adaptation', '-', &
                 minimum=0._rk,default=1400._rk)
-   call branch%get(z0s_min, 'z0s_min', 'minimum hydrodynamic surface roughness', 'm', &
+   call branch%get(z0s_min, 'z0s_min', 'hydrodynamic roughness (minimum value if Charnock adaptation is used)', 'm', &
                 minimum=0.0_rk,default=0.02_rk)
 
    branch => settings_store%get_typed_child('physical_constants')

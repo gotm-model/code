@@ -599,8 +599,8 @@
    call twig%get(SRelaxBott, 'SRelaxBott', 'height of bottom relaxation layer', 'm', &
                    minimum=0._rk,default=0._rk)
 
-   twig => settings_store%get_typed_child('light')
-   call twig%get(extinct_method, 'extinct_method', 'water type', &
+   twig => settings_store%get_typed_child('light_extinction')
+   call twig%get(extinct_method, 'method', 'water type', &
                    options=(/option(1, 'Jerlov type I'), option(2, 'Jerlov type 1 (upper 50 m)'), option(3, 'Jerlov type IA'), &
                    option(4, 'Jerlov type IB'), option(5, 'Jerlov type II'), option(6, 'Jerlov type III'), option(7, 'custom')/), default=1)
    call twig%get(A_, 'A', 'non-visible fraction of shortwave radiation', '1', &
@@ -688,7 +688,7 @@
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
    call twig%get(vel_relax_tau, 'vel_relax_tau', 'relaxation time', 's', &
                    minimum=0._rk,default=1.e15_rk)
-   call twig%get(vel_relax_ramp, 'vel_relax_ramp', '', 's', &
+   call twig%get(vel_relax_ramp, 'vel_relax_ramp', 'duration of initial relaxation', 's', &
                    minimum=0._rk,default=1.e15_rk)
 
    branch => settings_store%get_typed_child('observations')

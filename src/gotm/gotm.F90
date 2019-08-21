@@ -275,7 +275,7 @@
    branch => settings_store%get_child('salinity')
    branch => settings_store%get_child('surface')
    branch => settings_store%get_child('bottom')
-   branch => settings_store%get_child('light')
+   branch => settings_store%get_child('light_extinction')
    branch => settings_store%get_child('turbulence')
    branch => settings_store%get_child('output')
    
