@@ -530,6 +530,7 @@
 !
 ! !USES:
    use settings
+   use util, only: UPSTREAM, P2, MUSCL, Superbee, P2_PDM
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -609,9 +610,9 @@
                    minimum=0._rk,default=0.4_rk)
    call twig%get(g2_, 'g2', 'e-folding depth of visible shortwave radiation', 'm', &
                    minimum=0._rk,default=8._rk)
-   
+
    branch => settings_store%get_typed_child('mimic_3d')
-   
+
    twig => branch%get_typed_child('ext_pressure', 'external pressure')
    leaf => twig%get_typed_child('analytical', 'analytical external pressure')
    call leaf%get(PeriodM, 'PeriodM', 'period of 1st harmonic (eg. M2-tide)', 's', &
@@ -640,34 +641,36 @@
    leaf => twig%get_typed_child('from_file', 'external pressure read from file')
    call leaf%get(h_press, 'h', 'height above bed', 'm', &
                    minimum=0._rk,default=0._rk)
-   call leaf%get(dpdx, 'dpdx', 'pressure in x-direction', '', &
+   call leaf%get(dpdx, 'dpdx', 'pressure in West-East direction', '', &
                    default=0._rk)
 !                   default=0._rk, pchild=leaf)
-   call leaf%get(dpdy, 'dpdy', 'pressure in y-direction', '', &
+   call leaf%get(dpdy, 'dpdy', 'pressure in South-North direction', '', &
                    default=0._rk)
 !                   default=0._rk, pchild=leaf)
 
    twig => branch%get_typed_child('int_press', 'internal pressure')
-   call twig%get(dsdx, 'dsdx', 'salinity gradient: x direction', 'Celsius/m', &
+   call twig%get(dsdx, 'dsdx', 'salinity gradient in West-East direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dsdy, 'dsdy', 'salinity gradient: y direction', 'Celsius/m', &
+   call twig%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dtdx, 'dtdx', 'temperature gradient: x direction', 'PSU/m', &
+   call twig%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'PSU/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dtdy, 'dtdy', 'temperature gradient: y direction', 'PSU/m', &
+   call twig%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'PSU/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(t_adv, 't_adv', 'advect temperature', default=.false.)
-   call twig%get(s_adv, 's_adv', 'advect salinity', default=.false.)
+   call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
+   call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
 
    twig => branch%get_typed_child('w_advspec', 'vertical velocity')
-   call twig%get(w_adv, 'w_adv', 'vertical velocity', 'm/s', &
+   call twig%get(w_adv, 'w_adv', 'velocity', 'm/s', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(w_height, 'w_height', 'height', 'm', &
+   call twig%get(w_height, 'w_height', 'height at which velocity is prescribed', 'm', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(w_adv_discr, 'w_adv_discr', '', &
-                   minimum=0,maximum=6,default=6)
+   call twig%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme', options=&
+             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
+                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
+                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
 
-   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, pchild=twig)
+   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'analytical')/), pchild=twig)
    call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
                    default=44714._rk)
    call twig%get(amp_1, 'amp_1', 'amplitude of 1st harmonic', 'm', &

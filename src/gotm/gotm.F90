@@ -242,7 +242,7 @@
                    minimum=0._rk, default=0._rk)
    call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
                    minimum=0._rk, default=0._rk)
-   call branch%get(grid_file, 'grid_file', 'file with custom grid specification', &
+   call branch%get(grid_file, 'grid_file', 'file with custom grid', &
                    default='grid.dat')
 #if 0
    twig => branch%get_child('adaptation')

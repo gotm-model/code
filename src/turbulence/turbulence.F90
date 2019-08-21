@@ -676,9 +676,9 @@
    call twig%get(scnd_method, 'scnd_method', 'method', &
                    options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance')/), default=1)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
-                   options=(/option(1, 'algebraic'), option(2, 'PDE')/), default=1)
+                   options=(/option(1, 'algebraic'), option(2, 'prognostic')/), default=1)
    call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
-                   options=(/option(1, 'algebraic'), option(2, 'PDE')/), default=1)
+                   options=(/option(1, 'algebraic')/), default=1)
    call twig%get(scnd_coeff, 'scnd_coeff', 'coefficients of second-order model', &
                    options=(/option(0, 'custom'), option(1, 'Gibson and Launder (1978)'), option(2, 'Mellor and Yamada (1982)'), option(3, 'Kantha and Clayson (1994)'), option(4, 'Luyten et al. (1996)'), option(5, 'Canuto et al. (2001) (version A)'), option(6, 'Canuto et al. (2001) (version B)'), option(7, 'Cheng et al. (2002)')/),default=5)
    call twig%get(cc1, 'cc1', 'cc1', '-', &

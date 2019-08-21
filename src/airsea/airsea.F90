@@ -459,9 +459,9 @@
                 default=.false.)
    call branch%get(fluxes_method, 'fluxes_method', 'method to calculate heat and momentum fluxes', &
                 options=(/option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=1)
-   call branch%get(u10, 'u10', 'wind speed in x direction @ 10 m', 'm/s', &
+   call branch%get(u10, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
                 default=0._rk)
-   call branch%get(v10, 'v10', 'wind speed in y direction @ 10 m', 'm/s', &
+   call branch%get(v10, 'v10', 'wind speed in South-North direction @ 10 m', 'm/s', &
                 default=0._rk)
    call branch%get(airp, 'airp', 'air pressure', 'Pa', &
                 default=0._rk)
@@ -494,9 +494,9 @@
                 options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=0)
    call branch%get(heat, 'heat', 'surface heat flux', 'W/m^2', &
                 default=0._rk)
-   call branch%get(tx_, 'tx', 'surface momentum flux: x-direction', 'Pa', &
+   call branch%get(tx_, 'tx', 'surface momentum flux in West-East direction', 'Pa', &
                 default=0._rk)
-   call branch%get(ty_, 'ty', 'surface momentum flux: y-direction', 'Pa', &
+   call branch%get(ty_, 'ty', 'surface momentum flux in South-North direction', 'Pa', &
                 default=0._rk)
    call branch%get(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
                 default=0._rk)
