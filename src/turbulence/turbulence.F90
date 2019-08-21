@@ -657,11 +657,11 @@
                    default=.false.)
 
    twig => branch%get_child('my', 'Mellor-Yamada model')
-   call twig%get(e1, 'e1', 'coefficient e1 in MY q^2 l equation', '-', &
+   call twig%get(e1, 'e1', 'coefficient e1 in q^2 l equation', '-', &
                    default=1.8_rk)
-   call twig%get(e2, 'e2', 'coefficient e2 in MY q^2 l equation', '-', &
+   call twig%get(e2, 'e2', 'coefficient e2 in q^2 l equation', '-', &
                    default=1.33_rk)
-   call twig%get(e3, 'e3', 'coefficient e3 in MY q^2 l equation', '-', &
+   call twig%get(e3, 'e3', 'coefficient e3 in q^2 l equation', '-', &
                    default=1.8_rk)
    call twig%get(sq, 'sq', 'turbulent diffusivities of q^2 (= 2k)', '-', &
                    default=0.2_rk)
@@ -674,7 +674,7 @@
 
    twig => branch%get_child('scnd', 'second-order model')
    call twig%get(scnd_method, 'scnd_method', 'method', &
-                   options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance'), option(3, 'weak equilibrium with PDE for buoyancy variance')/), default=1)
+                   options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance')/), default=1)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
                    options=(/option(1, 'algebraic'), option(2, 'PDE')/), default=1)
    call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
