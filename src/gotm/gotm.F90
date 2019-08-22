@@ -296,13 +296,13 @@
    branch => settings_store%get_child('turbulence')
    call init_turbulence(branch)
 #ifdef _FABM_
-   branch => settings_store%get_typed_child('fabm')
+   branch => settings_store%get_typed_child('fabm', 'Framework for Aquatic Biogeochemical Models')
    call configure_gotm_fabm(branch)
 #endif
    call init_meanflow()
 
    branch => settings_store%get_child('buoyancy')
-   call branch%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
+   call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
                    options=(/option(1, 'equation of state'), option(2, 'prognostic equation')/), default=1)
    call branch%get(b_obs_surf, 'b_obs_surf', 'initial buoyancy at the surface', '-', &
                    minimum=0._rk,default=0._rk)
@@ -311,7 +311,7 @@
    call branch%get(b_obs_sbf, 'b_obs_sbf', 'constant surface buoyancy flux', '-', &
                    minimum=0._rk,default=0._rk)
 
-   branch => settings_store%get_child('eqstate')
+   branch => settings_store%get_child('eq_state', 'equation of state')
    call init_eqstate(branch)
 
 !  open the namelist file.

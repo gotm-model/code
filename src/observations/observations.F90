@@ -549,7 +549,7 @@
    call settings_store%get(tprof, 'temperature', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
                    extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
-   call twig%get(t_analyt_method, 't_analyt_method', 'type of analytical initial temperature profile', &
+   call twig%get(t_analyt_method, 'method', 'type of analytical initial temperature profile', &
                    options=(/option(CONST_PROF, 'constant'), option(TWO_LAYERS, 'two layers'), option(CONST_NN, 'from salinity and buoyancy frequency')/),default=CONST_PROF)
    call twig%get(z_t1, 'z_t1', 'upper layer thickness', 'm', &
                    minimum=0._rk,default=0._rk)
@@ -576,7 +576,7 @@
    call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'PSU', &
                    extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
-   call twig%get(s_analyt_method, 's_analyt_method', 'type of analytical initial salinity profile', &
+   call twig%get(s_analyt_method, 'method', 'type of analytical initial salinity profile', &
                    options=(/option(CONST_PROF, 'constant'), option(TWO_LAYERS, 'two layers'), option(CONST_NN, 'from temperature and buoyancy frequency')/),default=CONST_PROF)
    call twig%get(z_s1, 'z_s1', 'upper layer thickness', 'm', &
                    minimum=0._rk,default=0._rk)
@@ -660,15 +660,6 @@
    call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
 
-   call branch%get(w_adv, 'w_adv', 'vertical velocity', 'm/s', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, pchild=twig)
-   call twig%get(w_height, 'w_height', 'height at which velocity is prescribed', 'm', &
-      default=0._rk, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme', options=&
-             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
-                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
-                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
-
    call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=twig)
    call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
                    default=44714._rk)
@@ -684,24 +675,33 @@
                    minimum=0._rk, default=0._rk)
 
    twig => branch%get_typed_child('velprofile', 'horizontal velocities')
-   call twig%get(uprof, 'uprof', 'velocity in West-East direction', 'm/s', default=0._rk, &
+   call twig%get(uprof, 'u', 'velocity in West-East direction', 'm/s', default=0._rk, &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
-   call twig%get(vprof, 'vprof', 'velocity in South-North direction', 'm/s', default=0._rk, &
+   call twig%get(vprof, 'v', 'velocity in South-North direction', 'm/s', default=0._rk, &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
-   call twig%get(vel_relax_tau, 'vel_relax_tau', 'relaxation time', 's', &
+   call twig%get(vel_relax_tau, 'relax_tau', 'relaxation time', 's', &
                    minimum=0._rk,default=1.e15_rk)
-   call twig%get(vel_relax_ramp, 'vel_relax_ramp', 'duration of initial relaxation', 's', &
+   call twig%get(vel_relax_ramp, 'relax_ramp', 'duration of initial relaxation', 's', &
                    minimum=0._rk,default=1.e15_rk)
 
-   branch => settings_store%get_typed_child('observations')
+   call branch%get(w_adv, 'w', 'vertical velocity', 'm/s', &
+      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, pchild=twig)
+   call twig%get(w_height, 'height', 'height at which velocity is prescribed', 'm', &
+      default=0._rk, method_constant=CONSTANT, method_file=FROMFILE)
+   call twig%get(w_adv_discr, 'adv_discr', 'vertical advection scheme', options=&
+             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
+                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
+                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
 
-   twig => branch%get_typed_child('wave', 'wind waves')
+   twig => settings_store%get_typed_child('surface/wave', 'wind waves')
    call twig%get(Hs_, 'Hs', 'significant wave-height', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(Tz_, 'Tz', 'mean zero-crossing period', 's', &
                    minimum=0._rk,default=0._rk)
    call twig%get(phiw_, 'phiw', 'mean direction', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
+
+   branch => settings_store%get_typed_child('observations')
 
    call branch%get(epsprof, 'epsprof', 'turbulence dissipation rate', 'W/kg', &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
