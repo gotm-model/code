@@ -131,8 +131,6 @@
    integer, public           :: albedo_method
    REALTYPE, public          :: const_albedo
    integer, public           :: fluxes_method
-   integer, public           :: back_radiation_method
-   integer                   :: heat_method
    integer                   :: ssuv_method
    logical, public           :: rain_impact
    logical, public           :: calc_evaporation
@@ -264,6 +262,8 @@
    REALTYPE                  :: const_tx,const_ty
    REALTYPE                  :: const_precip
    REALTYPE                  :: precip_factor
+   integer                   :: back_radiation_method
+   integer                   :: heat_method
 
    namelist /airsea/ calc_fluxes, &
                      fluxes_method, &
@@ -947,12 +947,12 @@
          meteo_secs2 = hh*3600 + min*60 + ss
          if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .gt. 0) EXIT
       end do
-      u10   = obs(1)*wind_factor
-      v10   = obs(2)*wind_factor
-      airp  = obs(3)*100. !kbk mbar/hPa --> Pa
-      airt  = obs(4)
-      hum   = obs(5)
-      cloud = obs(6)
+      u10%value   = obs(1)*u10%scale_factor
+      v10%value   = obs(2)*v10%scale_factor
+      airp%value  = obs(3)*100. !kbk mbar/hPa --> Pa
+      airt%value  = obs(4)
+      hum%value   = obs(5)
+      cloud%value = obs(6)
 
       if (sst .lt. 100.) then
          tw  = sst
@@ -962,12 +962,12 @@
          tw_k= sst
       end if
 
-      if (airt .lt. 100.) then
-         ta_k  = airt + KELVIN
-         ta = airt
+      if (airt%value .lt. 100.) then
+         ta_k  = airt%value + KELVIN
+         ta = airt%value
       else
-         ta  = airt - KELVIN
-         ta_k = airt
+         ta  = airt%value - KELVIN
+         ta_k = airt%value
       end if
 
       h1     = h2
@@ -976,19 +976,19 @@
       cloud1 = cloud2
 
       call humidity(hum_method,hum,airp,tw,ta)
-      if (back_radiation_method .gt. 0) then
-         call back_radiation(back_radiation_method, &
+      if (qb%method .gt. 0) then
+         call back_radiation(qb%method, &
                              dlat,tw_k,ta_k,cloud,qb)
       end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
-                         tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
+                         tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)
 #else
       call airsea_fluxes(fluxes_method, &
-                         tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
+                         tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)
 #endif
-      h2     = qb+qe+qh
-      cloud2 = cloud
+      h2     = qb%value+qe+qh
+      cloud2 = cloud%value
 
       if (init_saved_vars) then
          h1     = h2
@@ -1006,10 +1006,10 @@
 
 !  Do the time interpolation
    t  = time_diff(jul,secs,meteo_jul1,meteo_secs1)
-   heat  = h1  + t*alpha(2)
-   tx    = tx1 + t*alpha(3)
-   ty    = ty1 + t*alpha(4)
-   cloud = cloud1 + t*alpha(5)
+   heat%value  = h1  + t*alpha(2)
+   tx_%value    = tx1 + t*alpha(3)
+   ty_%value    = ty1 + t*alpha(4)
+   cloud%value = cloud1 + t*alpha(5)
 #else
    if (sst .lt. 100.) then
       tw  = sst
@@ -1028,8 +1028,8 @@
    end if
 
    call humidity(hum_method,hum%value,airp%value,tw,ta)
-   if (back_radiation_method .gt. 0) then
-      call back_radiation(back_radiation_method, &
+   if (qb%method .gt. 0) then
+      call back_radiation(qb%method, &
                           dlat,tw_k,ta_k,cloud%value,qb%value)
    endif
    call airsea_fluxes(fluxes_method, &
