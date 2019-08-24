@@ -455,7 +455,7 @@
 
    branch => settings_store%get_typed_child('surface')
 
-   twig => branch%get_typed_child('fluxes', 'fluxes of sensible heat and momentum')
+   twig => branch%get_typed_child('fluxes', 'heat and momentum fluxes')
    call twig%get(calc_fluxes, 'calc', 'calculate fluxes from meteorology', &
                 default=.false.)
    call twig%get(fluxes_method, 'method', 'method to calculate fluxes', &
@@ -487,7 +487,7 @@
                 minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover')/))
    call twig%get(precip, 'precip', 'precipitation', 'm/s', &
                 default=0._rk, pchild=leaf)
-   call leaf%get(rain_impact, 'flux_impact', 'include effect on fluxes of sensible heat and momentum', &
+   call leaf%get(rain_impact, 'flux_impact', 'include effect on heat and momentum fluxes', &
                 default=.false.)
    call twig%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
                 default=.false.)
