@@ -559,46 +559,46 @@
                    minimum=0._rk,default=0._rk)
    call twig%get(t_2, 't_2', 'lower layer temperature', 'Celsius', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(t_obs_NN, 't_obs_NN', 'constant buoyancy frequency', 's^-2', &
+   call twig%get(t_obs_NN, 'obs_NN', 'constant buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
-   twig => branch%get_typed_child('relaxation')
-   call twig%get(TRelaxTauM, 'TRelaxTauM', 'time scale for interior layer', 's', &
+   twig => branch%get_typed_child('relax', 'relax model temperature to observed/prescribed profile')
+   call twig%get(TRelaxTauM, 'tau', 'time scale for interior layer', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call twig%get(TRelaxTauB, 'TRelaxTauB', 'time scale for bottom layer', 's', &
-                   minimum=0._rk,default=1e+15_rk)
-   call twig%get(TRelaxTauS, 'TRelaxTauS', 'time scale for surface layer', 's', &
-                   minimum=0._rk,default=1e+15_rk)
-   call twig%get(TRelaxSurf, 'TRelaxSurf', 'height of surface relaxation layer', 'm', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(TRelaxBott, 'TRelaxBott', 'height of bottom relaxation layer', 'm', &
-                   minimum=0._rk,default=0._rk)
+   call twig%get(TRelaxSurf, 'h_s', 'height of surface relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(TRelaxTauS, 'tau_s', 'time scale for surface layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
+   call twig%get(TRelaxBott, 'h_b', 'height of bottom relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(TRelaxTauB, 'tau_b', 'time scale for bottom layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
 
-   call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'PSU', &
+   call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'psu', &
                    extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
    call twig%get(s_analyt_method, 'method', 'type of analytical initial salinity profile', &
                    options=(/option(CONST_PROF, 'constant'), option(TWO_LAYERS, 'two layers'), option(CONST_NN, 'from temperature and buoyancy frequency')/),default=CONST_PROF)
    call twig%get(z_s1, 'z_s1', 'upper layer thickness', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(s_1, 's_1', 'upper layer salinity', 'PSU', &
+   call twig%get(s_1, 's_1', 'upper layer salinity', 'psu', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
    call twig%get(z_s2, 'z_s2', 'lower layer thickness', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(s_2, 's_2', 'lower layer salinity', 'PSU', &
+   call twig%get(s_2, 's_2', 'lower layer salinity', 'psu', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(s_obs_NN, 's_obs_NN', 'constant buoyancy frequency', 's^-2', &
+   call twig%get(s_obs_NN, 'obs_NN', 'constant buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
-   twig => branch%get_typed_child('relaxation')
-   call twig%get(SRelaxTauM, 'SRelaxTauM', 'time scale for interior layer', 's', &
+   twig => branch%get_typed_child('relax', 'relax model salinity to observed/prescribed profile')
+   call twig%get(SRelaxTauM, 'tau', 'time scale for interior layer', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call twig%get(SRelaxTauB, 'SRelaxTauB', 'time scale for bottom layer', 's', &
-                   minimum=0._rk,default=1e+15_rk)
-   call twig%get(SRelaxTauS, 'SRelaxTauS', 'time scale for surface layer', 's', &
-                   minimum=0._rk,default=1e+15_rk)
-   call twig%get(SRelaxSurf, 'SRelaxSurf', 'height of surface relaxation layer', 'm', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(SRelaxBott, 'SRelaxBott', 'height of bottom relaxation layer', 'm', &
-                   minimum=0._rk,default=0._rk)
+   call twig%get(SRelaxSurf, 'h_s', 'height of surface relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(SRelaxTauS, 'tau_s', 'time scale for surface layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
+   call twig%get(SRelaxBott, 'h_b', 'height of bottom relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(SRelaxTauB, 'tau_b', 'time scale for bottom layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
 
    twig => settings_store%get_typed_child('light_extinction')
    call twig%get(extinct_method, 'method', 'water type', &
@@ -653,9 +653,9 @@
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    call twig%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'PSU/m', &
+   call twig%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'psu/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'PSU/m', &
+   call twig%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'psu/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
@@ -693,7 +693,7 @@
                 option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
                 option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
 
-   twig => settings_store%get_typed_child('surface/wave', 'wind waves')
+   twig => settings_store%get_typed_child('surface/wave', 'wind waves', display=display_advanced)
    call twig%get(Hs_, 'Hs', 'significant wave-height', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(Tz_, 'Tz', 'mean zero-crossing period', 's', &
@@ -701,13 +701,13 @@
    call twig%get(phiw_, 'phiw', 'mean direction', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
 
-   branch => settings_store%get_typed_child('observations')
+   branch => settings_store%get_typed_child('turbulence')
 
-   call branch%get(epsprof, 'epsprof', 'turbulence dissipation rate', 'W/kg', &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
+   call branch%get(epsprof, 'epsprof', 'observed dissipation rate', 'W/kg', &
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_advanced)
 
-   call branch%get(o2_prof, 'o2_prof', 'oxygen profile', '', &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
+   call settings_store%get(o2_prof, 'o2', 'oxygen', '', &
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_maximum)
 
    return
 

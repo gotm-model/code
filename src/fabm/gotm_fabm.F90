@@ -30,7 +30,7 @@
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
-   public no_precipitation_dilution
+   public freshwater_impact
    public register_observation
    public calculate_conserved_quantities, total0
 
@@ -94,7 +94,7 @@
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor,configuration_method
    logical                   :: fabm_calc,repair_state, &
                                 bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
-                                no_precipitation_dilution,salinity_relaxation_to_freshwater_flux, &
+                                freshwater_impact,salinity_relaxation_to_freshwater_flux, &
                                 save_inputs, no_surface
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
@@ -157,6 +157,7 @@
 !  local variables
 !KB   integer :: i, output_level
 !KB   logical :: file_exists, in_output
+   logical :: no_precipitation_dilution
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
@@ -190,6 +191,7 @@
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=gotm_fabm_nml,err=99)
    close(namlst)
+   freshwater_impact = .not. no_precipitation_dilution
    LEVEL2 'done.'
    return
 
@@ -239,22 +241,8 @@
    ! Initialize all namelist variables to reasonable default values.
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
-   call cfg%get(repair_state, 'repair_state', 'clip state to minimum/maximum boundaries', &
-                default=.false.)
-   branch => cfg%get_child('numerics')
-   call branch%get(ode_method, 'ode_method', 'time integration scheme applied to source terms', &
-                options=(/ option(1, 'Forward Euler'), option(2, 'Runge-Kutta 2'), option(3, 'Runge-Kutta 4'), &
-                option(4, 'first-order Patanker'), option(5, 'second-order Patanker'), option(7, 'first-order modified Patanker'), &
-                option(8, 'second-order modified Patanker'), option(10, 'first-order extended modified Patanker'), &
-                option(11, 'second-order extended modified Patankar') /), default=1)
-   call branch%get(split_factor, 'split_factor', 'number of substeps used for source integration', &
-                minimum=1,maximum=100,default=1)
-   call branch%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme', options=&
-             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
-                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
-                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
-   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
-                minimum=0._rk,default=1._rk)
+   call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
+                default=.true.) ! disable to check mass conservation
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
    call branch%get(bioshade_feedback, 'shade', 'interior light absorption', &
                 default=.false.)
@@ -262,22 +250,36 @@
                 default=.false.)
    call branch%get(biodrag_feedback, 'surface_drag', 'surface drag', &
                 default=.false.)
+   call cfg%get(repair_state, 'repair_state', 'clip state to minimum/maximum boundaries', &
+                default=.false.)
+   branch => cfg%get_child('numerics', display=display_advanced)
+   call branch%get(ode_method, 'ode_method', 'time integration scheme applied to source terms', &
+                options=(/ option(1, 'Forward Euler'), option(2, 'Runge-Kutta 2'), option(3, 'Runge-Kutta 4'), &
+                option(4, 'first-order Patanker'), option(5, 'second-order Patanker'), option(7, 'first-order modified Patanker'), &
+                option(8, 'second-order modified Patanker'), option(10, 'first-order extended modified Patanker'), &
+                option(11, 'second-order extended modified Patankar') /), default=1)
+   call branch%get(split_factor, 'split_factor', 'number of substeps used for source integration', &
+                minimum=1,maximum=100,default=1)
+   call branch%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme for settling/rising', options=&
+             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
+                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
+                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
+   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
+                minimum=0._rk,default=1._rk)
 #if 0
    call cfg%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', '', &
                 default=.false.)
 #else
    salinity_relaxation_to_freshwater_flux = .false.
 #endif
-   branch => cfg%get_child('debug')
-   call branch%get(no_precipitation_dilution, 'no_precipitation_dilution', 'disable dilution/concentration by net freshwater flux', &
-                default=.false.) ! useful to check mass conservation
+   branch => cfg%get_child('debug', display=display_advanced)
    call branch%get(no_surface, 'no_surface', 'disable surface processes', &
                 default=.false.) ! disables surface exchange; useful to check mass conservation
    call branch%get(save_inputs, 'save_inputs', 'include additional forcing fields in output', &
                 default=.false.)
    call cfg%get(configuration_method, 'configuration_method', 'configuration file', &
                 options=(/option(-1, 'auto-detect (prefer fabm.yaml)'), option(0, 'fabm.nml'), option(1, 'fabm.yaml')/), &
-                default=-1)
+                default=-1, display=display_advanced)
 
    LEVEL2 'done.'
 
@@ -1161,7 +1163,7 @@
 
    ! Add surface flux due to evaporation/precipitation, unless the model explicitly says otherwise.
    do i=1,size(model%state_variables)
-      if (.not. (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution)) then
+      if (freshwater_impact .and. .not. model%state_variables(i)%no_precipitation_dilution) then
          sfl(i) = sfl(i)-cc(nlev,i)*dilution
          if (virtual_dilution/=_ZERO_) sfl(i) = sfl(i)-sum(cc(1:nlev,i)*curh(1:nlev))*virtual_dilution
       end if

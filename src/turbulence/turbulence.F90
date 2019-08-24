@@ -563,7 +563,7 @@
    call branch%get(stab_method, 'stab_method', 'stability functions', &
                    options=(/option(1, 'constant'), option(2, 'Munk and Anderson (1954)'), option(3, 'Schumann and Gerz (1995)'), option(4, 'Eifler and Schrimpf (1992)')/),default=3)
 
-   twig => branch%get_child('bc', 'boundary conditions')
+   twig => branch%get_child('bc', 'boundary conditions', display=display_advanced)
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
                    options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
    call twig%get(k_lbc, 'k_lbc', 'lower boundary condition for k-equation', &
@@ -612,7 +612,7 @@
    call twig%get(epsb_min, 'epsb_min', 'minimum buoyancy variance destruction rate', 'm^2/s^5', &
                    minimum=0._rk,default=1.e-14_rk)
 
-   twig => branch%get_child('generic', 'generic length scale (GLS) model')
+   twig => branch%get_child('generic', 'generic length scale (GLS) model', display=display_advanced)
    call twig%get(compute_param, 'compute_param', 'compute the model parameters', &
                    default=.false.)
    call twig%get(gen_m, 'gen_m', 'exponent for k', '-', &
@@ -640,7 +640,7 @@
    call twig%get(gen_l, 'gen_l', 'slope L of the length scale in shear-free turbulence', '-', &
                    default=0.2_rk)
 
-   twig => branch%get_child('keps', 'k-epsilon model')
+   twig => branch%get_child('keps', 'k-epsilon model', display=display_advanced)
    call twig%get(ce1, 'ce1', 'empirical coefficient ce1 in dissipation equation', '-', &
                    default=1.44_rk)
    call twig%get(ce2, 'ce2', 'empirical coefficient ce2 in dissipation equation', '-', &
@@ -656,7 +656,7 @@
    call twig%get(sig_peps, 'sig_peps', 'use Burchard (2001) wave breaking parameterisation', &
                    default=.false.)
 
-   twig => branch%get_child('my', 'Mellor-Yamada model')
+   twig => branch%get_child('my', 'Mellor-Yamada model', display=display_advanced)
    call twig%get(e1, 'e1', 'coefficient e1 in q^2 l equation', '-', &
                    default=1.8_rk)
    call twig%get(e2, 'e2', 'coefficient e2 in q^2 l equation', '-', &
@@ -672,7 +672,7 @@
    call twig%get(new_constr, 'new_constr', 'stabilize stability functions', &
                    default=.false.)
 
-   twig => branch%get_child('scnd', 'second-order model')
+   twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
    call twig%get(scnd_method, 'scnd_method', 'method', &
                    options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance')/), default=1)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
@@ -706,8 +706,8 @@
    call twig%get(ctt, 'ctt', 'ctt', '-', &
                    default=0.8_rk)
 
-   twig => branch%get_child('iw', 'internal wave mixing')
-   call twig%get(iw_model, 'iw_model', 'model', &
+   twig => branch%get_child('iw', 'internal wave mixing', display=display_advanced)
+   call twig%get(iw_model, 'model', 'model', &
                    options=(/option(0, 'none'), option(1, 'Mellor (1989)'), option(2, 'Large et al. (1994)')/), default=0)
    call twig%get(alpha, 'alpha', 'coefficient for Mellor internal wave model', '-', &
                    default=0.7_rk)

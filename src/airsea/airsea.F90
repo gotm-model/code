@@ -454,10 +454,18 @@
    LEVEL1 'init_airsea_yaml'
 
    branch => settings_store%get_typed_child('surface')
-   call branch%get(calc_fluxes, 'calc_fluxes', 'calculate heat and momentum fluxes', &
+
+   twig => branch%get_typed_child('fluxes', 'fluxes of sensible heat and momentum')
+   call twig%get(calc_fluxes, 'calc', 'calculate fluxes from meteorology', &
                 default=.false.)
-   call branch%get(fluxes_method, 'fluxes_method', 'method to calculate heat and momentum fluxes', &
+   call twig%get(fluxes_method, 'method', 'method to calculate fluxes', &
                 options=(/option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=1)
+   call twig%get(heat, 'heat', 'prescribed sensible heat flux', 'W/m^2', &
+                default=0._rk)
+   call twig%get(tx_, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
+                default=0._rk)
+   call twig%get(ty_, 'ty', 'prescribed momentum flux in South-North direction', 'Pa', &
+                default=0._rk)
    
    twig => branch%get_typed_child('meteo')
    call twig%get(u10, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
@@ -470,7 +478,7 @@
                 default=0._rk)
    call twig%get(hum, 'hum', 'humidity @ 2 m', '', &
                 default=0._rk, pchild=leaf)
-   call leaf%get(hum_method, 'hum_method', 'humidity metric', &
+   call leaf%get(hum_method, 'type', 'humidity metric', &
                 options=(/option(1, 'relative humidity (%)'), option(2, 'wet-bulb temperature'), &
                 option(3, 'dew point temperature'), option(4 ,'specific humidity (kg/kg)')/), default=1)
    call twig%get(cloud, 'cloud', 'cloud cover', '1', &
@@ -479,12 +487,12 @@
                 minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover')/))
    call twig%get(precip, 'precip', 'precipitation', 'm/s', &
                 default=0._rk, pchild=leaf)
-   call leaf%get(rain_impact, 'rain_impact', 'include effect of rain fall on fluxes of sensible heat and momentum', &
+   call leaf%get(rain_impact, 'flux_impact', 'include effect on fluxes of sensible heat and momentum', &
                 default=.false.)
    call twig%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
                 default=.false.)
    call twig%get(ssuv_method, 'ssuv_method', 'wind treatment', &
-                options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=0)
+                options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=1, display=display_advanced)
 
    call branch%get(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
@@ -496,18 +504,10 @@
    call twig%get(const_albedo, 'constant_value', 'constant albedo', '-', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
 
-   twig => branch%get_typed_child('fluxes', 'prescribed fluxes')
-   call twig%get(heat, 'heat', 'heat flux', 'W/m^2', &
-                default=0._rk)
-   call twig%get(tx_, 'tx', 'momentum flux in West-East direction', 'Pa', &
-                default=0._rk)
-   call twig%get(ty_, 'ty', 'momentum flux in South-North direction', 'Pa', &
-                default=0._rk)
-
    call branch%get(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
-                default=0._rk)
-   call branch%get(sss, 'sss', 'observed surface salinity', 'PSU', &
-                default=0._rk)
+                default=0._rk, display=display_advanced)
+   call branch%get(sss, 'sss', 'observed surface salinity', 'psu', &
+                default=0._rk, display=display_advanced)
    LEVEL2 'done'
    return
    end subroutine init_airsea_yaml

@@ -108,7 +108,7 @@
 !
 ! !LOCAL VARIABLES:
    character(len=32) :: arg
-   integer :: n, i
+   integer :: n, i, ios
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -136,6 +136,18 @@
             stop 2
          end if
          call get_command_argument(i, write_yaml_path)
+      case ('--detail')
+         i = i+1
+         if (i > n) then
+            FATAL 'Error parsing command line options: --detail must be followed by the detail level (0-3) to use in written yaml.'
+            stop 2
+         end if
+         call get_command_argument(i, arg)
+         read (arg,*,iostat=ios) write_yaml_detail
+         if (ios /= 0) then
+            FATAL 'Error parsing command line options: --detail must be integer.'
+            stop 2
+         end if
       case ('--write_schema')
          i = i+1
          if (i > n) then

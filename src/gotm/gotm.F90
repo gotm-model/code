@@ -123,6 +123,7 @@
    character(len=1024), public :: write_schema_path = ''
    character(len=1024), public :: output_id = ''
    logical, public             :: read_nml = .false.
+   integer, public             :: write_yaml_detail = display_maximum
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -269,7 +270,8 @@
    call branch%get(dt, 'dt', 'time step', 's', &
                    minimum=0.e-10_rk, default=3600._rk)
    call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
-                   minimum=0._rk, maximum=1._rk, default=1._rk, description='constant for the theta scheme used for time integration of diffusion-reaction components. cnpar=0.5 for Cranck-Nicholson (second-order accurate), cnpar=0 for Forward Euler (first-order accurate), cnpar=1 for Backward Euler (first-order accurate). Only cnpar=1 guarantees positive solutions for positive definite systems.')
+                   minimum=0._rk, maximum=1._rk, default=1._rk, display=display_advanced, &
+                   description='constant for the theta scheme used for time integration of diffusion-reaction components. Typical values: 0.5 for Cranck-Nicholson (second-order accurate), 0 for Forward Euler (first-order accurate), 1 for Backward Euler (first-order accurate). Only 1 guarantees positive solutions for positive definite systems.')
 
    branch => settings_store%get_child('temperature')
    branch => settings_store%get_child('salinity')
@@ -280,12 +282,12 @@
    branch => settings_store%get_child('output')
    
    branch => settings_store%get_child('restart')
-   call branch%get(restart_offline, 'restart_offline', &
+   call branch%get(restart_offline, 'load', &
                    'initialize simulation with state stored in restart.nc', &
                    default=.false.)
    call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
                    'warn but not abort if a variable is missing from restart file', &
-                   default=.false.)
+                   default=.false., display=display_advanced)
 
    LEVEL2 'configuring modules ....'
    call init_airsea()
@@ -301,7 +303,7 @@
 #endif
    call init_meanflow()
 
-   branch => settings_store%get_child('buoyancy')
+   branch => settings_store%get_child('buoyancy', display=display_advanced)
    call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
                    options=(/option(1, 'equation of state'), option(2, 'prognostic equation')/), default=1)
    call branch%get(b_obs_surf, 'b_obs_surf', 'initial buoyancy at the surface', '-', &
@@ -371,7 +373,7 @@
    end if
 
    if (write_yaml_path /= '') then
-      call settings_store%save(trim(write_yaml_path), namlst)
+      call settings_store%save(trim(write_yaml_path), namlst, display=write_yaml_detail)
       LEVEL0 'Your configuration has been written to '//trim(write_yaml_path)//'.'
    end if
    if (write_schema_path /= '') then

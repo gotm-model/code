@@ -149,7 +149,7 @@
                    option(3, 'linearized at T0,S0,p0'), option(4, 'linearized at T0,S0,p0,dtr0,dsr0')/), default=1)
    call branch%get(T0, 'T0', 'reference temperature', 'Celsius', &
                    minimum=-2._rk, default=10._rk)
-   call branch%get(S0, 'S0', 'reference salinity', 'PSU', &
+   call branch%get(S0, 'S0', 'reference salinity', 'psu', &
                    minimum=0._rk, default=35._rk)
    call branch%get(p0, 'p0', 'reference pressure', 'Pa', &
                    default=0._rk)
