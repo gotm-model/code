@@ -198,6 +198,7 @@
       print '(a)', '  --output_id <string>  append to output file names - before extension'
       print '(a)', '  --read_nml            read configuration from namelist files'
       print '(a)', '  --write_yaml <file>   save yaml configuration to file'
+      print '(a)', '  --detail <level>      settings to include in saved yaml file (0: minimum, 1: common, 2: advanced)'
       print '(a)', '  --write_schema <file> save configuration schema in xml format to file'
       print '(a)', ''
    end subroutine print_help
