@@ -611,7 +611,7 @@
    call twig%get(g2_, 'g2', 'e-folding depth of visible shortwave radiation', 'm', &
                    minimum=0._rk,default=8._rk)
 
-   branch => settings_store%get_typed_child('mimic_3d')
+   branch => settings_store%get_typed_child('mimic_3d', 'effects of horizontal gradients')
 
    twig => branch%get_typed_child('ext_pressure', 'external pressure')
    leaf => twig%get_typed_child('analytical', 'analytical external pressure')
@@ -674,7 +674,7 @@
    call twig%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
                    minimum=0._rk, default=0._rk)
 
-   twig => branch%get_typed_child('velprofile', 'horizontal velocities')
+   twig => settings_store%get_typed_child('velocities', 'observed/prescribed horizontal velocities')
    call twig%get(uprof, 'u', 'velocity in West-East direction', 'm/s', default=0._rk, &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
    call twig%get(vprof, 'v', 'velocity in South-North direction', 'm/s', default=0._rk, &
