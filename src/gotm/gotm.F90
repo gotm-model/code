@@ -273,14 +273,14 @@
                    minimum=0._rk, maximum=1._rk, default=1._rk, display=display_advanced, &
                    description='constant for the theta scheme used for time integration of diffusion-reaction components. Typical values: 0.5 for Cranck-Nicholson (second-order accurate), 0 for Forward Euler (first-order accurate), 1 for Backward Euler (first-order accurate). Only 1 guarantees positive solutions for positive definite systems.')
 
+   ! Predefine order of top-level categories in gotm.yaml
    branch => settings_store%get_child('temperature')
    branch => settings_store%get_child('salinity')
    branch => settings_store%get_child('surface')
    branch => settings_store%get_child('bottom')
    branch => settings_store%get_child('light_extinction')
    branch => settings_store%get_child('turbulence')
-   branch => settings_store%get_child('output')
-   
+
    branch => settings_store%get_child('restart')
    call branch%get(restart_offline, 'load', &
                    'initialize simulation with state stored in restart.nc', &
