@@ -460,7 +460,7 @@
                 default=.false.)
    call twig%get(fluxes_method, 'method', 'method to calculate fluxes', &
                 options=(/option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=1)
-   call twig%get(heat, 'heat', 'prescribed sensible heat flux', 'W/m^2', &
+   call twig%get(heat, 'heat', 'prescribed total heat flux (sensible, latent and net back-radiation)', 'W/m^2', &
                 default=0._rk)
    call twig%get(tx_, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
                 default=0._rk)
