@@ -50,7 +50,7 @@ contains
       end select
    end function get_typed_child
 
-   subroutine get_input2(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display)
+   subroutine get_input2(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display, default_method)
       class (type_gotm_settings), intent(inout) :: self
       class (type_input), target                :: target
       character(len=*),           intent(in)    :: name
@@ -65,15 +65,16 @@ contains
       class (type_gotm_settings), optional, pointer :: pchild
       logical,           optional,intent(in)    :: treat_as_path
       integer,           optional,intent(in)    :: display
+      integer,           optional,intent(in)    :: default_method
 
       class (type_settings_node), pointer :: node
       integer                             :: istart
 
       node => self%get_node(name, treat_as_path=treat_as_path, istart=istart)
-      call type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display=display)
+      call type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display, default_method)
    end subroutine
 
-   subroutine type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display)
+   subroutine type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display, default_method)
       class (type_settings_node), intent(inout) :: node
       class (type_input), target                :: target
       character(len=*),           intent(in)    :: long_name
@@ -87,10 +88,13 @@ contains
       class (type_gotm_settings), optional, pointer :: pchild
       logical,           optional,intent(in)    :: treat_as_path
       integer,           optional,intent(in)    :: display
+      integer,           optional,intent(in)    :: default_method
 
-      integer :: default_method
+      integer :: default_method_
       integer :: noptions
       type (type_option),allocatable :: options(:)
+      real(rk)                            :: constant_value
+      logical                             :: has_constant_value
       class (type_input_setting), pointer :: setting
       integer                             :: istart
       class(type_yaml_node),      pointer :: node2
@@ -115,18 +119,24 @@ contains
       if (present(method_constant)) target%method_constant = method_constant
       if (present(method_file)) target%method_file = method_file
 
-      default_method = method_unsupported
+      default_method_ = method_unsupported
+      has_constant_value = .false.
+      if (present(default_method)) default_method_ = default_method
       if (associated(setting%backing_store_node)) then
          select type (yaml_node => setting%backing_store_node)
          class is (type_yaml_dictionary)
             setting%backing_store => yaml_node
-            if (target%method_file /= method_unsupported) default_method = target%method_file
          class is (type_yaml_scalar)
-            target%constant_value = yaml_node%to_real(default, success)
+            if (target%method_constant == method_unsupported) then
+               call report_error(setting%path//' must be a dictionary (constant values are not supported).')
+               return
+            end if
+            constant_value = yaml_node%to_real(default, success)
             if (.not. success) then
                call report_error(setting%path//' is set to a single value "'//trim(yaml_node%string)//'" that cannot be interpreted as a real number.')
                return
             end if
+            has_constant_value = .true.
          class is (type_yaml_null)
             call report_error(setting%path//' must be a constant or a dictionary with further information. It cannot be null.')
          class is (type_yaml_list)
@@ -157,11 +167,15 @@ contains
          options(noptions) = option(target%method_file, 'from file')
       end if
       if (present(extra_options)) options(noptions + 1:) = extra_options
-      if (default_method == method_unsupported) default_method = options(1)%value
+      if (default_method_ == method_unsupported) default_method_ = options(1)%value
 
-      call setting%get(target%method, 'method', 'method', options=options, default=default_method)
+      call setting%get(target%method, 'method', 'method', options=options, default=default_method_)
       if (target%method_constant /= method_unsupported) then
          call setting%get(target%constant_value, 'constant_value', 'value to use throughout the simulation', units=units, default=default, minimum=minimum, maximum=maximum)
+         if (has_constant_value) then
+            target%method = target%method_constant
+            target%constant_value = constant_value
+         end if
       end if
       if (target%method_file /= method_unsupported) then
          select type (target)

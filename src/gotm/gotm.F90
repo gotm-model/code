@@ -375,6 +375,10 @@
    if (write_yaml_path /= '') then
       call settings_store%save(trim(write_yaml_path), namlst, display=write_yaml_detail)
       LEVEL0 'Your configuration has been written to '//trim(write_yaml_path)//'.'
+      if (file_exists) then
+         LEVEL0 'Settings from output.yaml have been migrated to gotm.yaml, but output.yaml will still take priority.'
+         LEVEL0 'Delete or rename output.yaml if you want output settings from gotm.yaml to take effect.'
+      end if
    end if
    if (write_schema_path /= '') then
       call settings_store%write_schema_file(trim(write_schema_path), namlst, 'gotm-5.3')
