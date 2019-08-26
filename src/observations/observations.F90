@@ -707,7 +707,7 @@
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_advanced)
 
    call settings_store%get(o2_prof, 'o2', 'oxygen', '', &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_maximum)
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_hidden)
 
    return
 

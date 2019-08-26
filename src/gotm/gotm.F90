@@ -123,7 +123,7 @@
    character(len=1024), public :: write_schema_path = ''
    character(len=1024), public :: output_id = ''
    logical, public             :: read_nml = .false.
-   integer, public             :: write_yaml_detail = display_maximum
+   integer, public             :: write_yaml_detail = display_advanced
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains

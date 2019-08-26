@@ -10,7 +10,7 @@ module settings
    public type_gotm_settings, settings_store
 
    ! From yaml_settings module:
-   public type_settings, option, type_input_create, display_normal, display_advanced, display_maximum
+   public type_settings, option, type_input_create, display_normal, display_advanced, display_hidden
 
    type,extends(type_settings) :: type_gotm_settings
    contains
@@ -180,9 +180,9 @@ contains
       if (target%method_file /= method_unsupported) then
          select type (target)
          class is (type_profile_input)
-            call setting%get(target%path, 'file', 'path to file with series of profiles', default=setting%path(istart:)//'.dat')
+            call setting%get(target%path, 'file', 'path to file with series of profiles', default='')
          class default
-            call setting%get(target%path, 'file', 'path to file with time series', default=setting%path(istart:)//'.dat')
+            call setting%get(target%path, 'file', 'path to file with time series', default='')
          end select
          call setting%get(target%index, 'column', 'index of column to read from', default=1)
          call setting%get(target%scale_factor, 'scale_factor', 'scale factor to be applied to values read from file', '', default=1._rk, display=display_advanced)
