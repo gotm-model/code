@@ -149,7 +149,7 @@
 
       if (present(method)) self%method = method
       if (present(path)) self%path = path
-      if (present(index)) self%index = index
+      if (present(index) .and. self%method == self%method_file) self%index = index
       if (present(constant_value)) self%constant_value = constant_value
       if (present(scale_factor)) self%scale_factor = scale_factor
       if (present(add_offset)) self%add_offset = add_offset

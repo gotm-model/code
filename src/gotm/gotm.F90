@@ -50,7 +50,7 @@
    use airsea,      only: init_airsea,post_init_airsea,do_airsea,clean_airsea
    use airsea,      only: surface_fluxes
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
-   use airsea,      only: calc_fluxes
+   use airsea,      only: fluxes_method
    use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
    use airsea,      only: bio_albedo,bio_drag_scale
    use airsea_variables, only: qa,ta
@@ -203,8 +203,9 @@
          call settings_store%load(trim(yaml_file), namlst)
       elseif (.not. config_only) then
          FATAL 'GOTM now reads its configuration from gotm.yaml.'
-         FATAL 'If you want to read it from namelists instead, specify --read_nml.'
-         FATAL 'You can generate gotm.yaml from namelists by specifying --read_nml --write_yaml gotm.yaml.'
+         LEVEL1 'To use namelists instead, specify --read_nml.'
+         LEVEL1 'To migrate namelists to yaml, specify --read_nml --write_yaml gotm.yaml.'
+         LEVEL1 'To generate gotm.yaml with default settings, specify --write_yaml gotm.yaml.'
          stop 2
       end if
    end if
@@ -222,23 +223,28 @@
    call branch%get(depth, 'depth', 'water depth', 'm', &
                    minimum=0._rk, default=100._rk)
 
-   branch => settings_store%get_child('period')
-   call branch%get(timefmt, 'timefmt', 'method to specify simulated period', default=2, &
-                   options=(/option(1, 'number of time steps'), option(2, 'start and stop'), option(3, 'start and number of time steps')/))
+   branch => settings_store%get_child('time')
+   call branch%get(timefmt, 'method', 'method to specify simulated period', default=2, &
+                   options=(/option(1, 'number of time steps'), option(2, 'start and stop'), option(3, 'start and number of time steps')/), display=display_advanced)
 #if 0
    call branch%get(MaxN, 'MaxN', 'number of time steps', &
-                   minimum=1,default=100)
+                   minimum=1,default=100, display=display_advanced)
 #endif
    call branch%get(start, 'start', 'start date and time', units='yyyy-mm-dd HH:MM:SS', &
                    default='2017-01-01 00:00:00')
    call branch%get(stop, 'stop', 'stop date and time', units='yyyy-mm-dd HH:MM:SS', &
                    default='2018-01-01 00:00:00')
+   call branch%get(dt, 'dt', 'time step for integration', 's', &
+                   minimum=0.e-10_rk, default=3600._rk)
+   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
+                   minimum=0._rk, maximum=1._rk, default=1._rk, display=display_advanced, &
+                   description='constant for the theta scheme used for time integration of diffusion-reaction components. Typical values: 0.5 for Cranck-Nicholson (second-order accurate), 0 for Forward Euler (first-order accurate), 1 for Backward Euler (first-order accurate). Only 1 guarantees positive solutions for positive definite systems.')
 
    branch => settings_store%get_child('grid')
    call branch%get(nlev, 'nlev', 'number of layers', &
                    minimum=1, default=100)
-   call branch%get(grid_method, 'grid_method', 'layer thicknesses', &
-                   options=(/option(0, 'equal with optional zooming'), option(1, 'prescribed relative fractions'), option(2, 'prescribed thicknesses')/), default=0) ! option(3, 'adaptive')
+   call branch%get(grid_method, 'method', 'layer thicknesses', &
+                   options=(/option(0, 'equal by default with optional zooming'), option(1, 'prescribed relative fractions'), option(2, 'prescribed thicknesses')/), default=0) ! option(3, 'adaptive')
    call branch%get(ddu, 'ddu', 'surface zooming', '-', &
                    minimum=0._rk, default=0._rk)
    call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
@@ -266,12 +272,6 @@
    call twig%get(dtgrid, 'dtgrid', 'time step (must be fraction of dt)', 's', &
                  minimum=0._rk,default=5._rk)
 #endif
-   branch => settings_store%get_child('time_integration')
-   call branch%get(dt, 'dt', 'time step', 's', &
-                   minimum=0.e-10_rk, default=3600._rk)
-   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
-                   minimum=0._rk, maximum=1._rk, default=1._rk, display=display_advanced, &
-                   description='constant for the theta scheme used for time integration of diffusion-reaction components. Typical values: 0.5 for Cranck-Nicholson (second-order accurate), 0 for Forward Euler (first-order accurate), 1 for Backward Euler (first-order accurate). Only 1 guarantees positive solutions for positive definite systems.')
 
    ! Predefine order of top-level categories in gotm.yaml
    branch => settings_store%get_child('temperature')
@@ -473,7 +473,7 @@
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth,depth)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_roughness_length,z0b)
-      if (calc_fluxes) then
+      if (fluxes_method /= 0) then
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp%value)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
@@ -630,7 +630,7 @@
       call get_all_obs(julianday,secondsofday,nlev,z)
 
 !     external forcing
-      if( calc_fluxes ) then
+      if(fluxes_method /= 0) then
 #ifdef _ICE_
          if(ice_cover .eq. 0) then
 #endif
