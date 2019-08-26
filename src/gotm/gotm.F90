@@ -243,7 +243,7 @@
    branch => settings_store%get_child('grid')
    call branch%get(nlev, 'nlev', 'number of layers', &
                    minimum=1, default=100)
-   call branch%get(grid_method, 'grid_method', 'layer thicknesses', &
+   call branch%get(grid_method, 'method', 'layer thicknesses', &
                    options=(/option(0, 'equal with optional zooming'), option(1, 'prescribed relative fractions'), option(2, 'prescribed thicknesses')/), default=0) ! option(3, 'adaptive')
    call branch%get(ddu, 'ddu', 'surface zooming', '-', &
                    minimum=0._rk, default=0._rk)
