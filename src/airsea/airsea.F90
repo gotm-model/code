@@ -501,7 +501,7 @@
    twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
                 options=(/option(0, 'constant'), option(1, 'Payne (1972)'), option(2, 'Cogley (1979)')/), default=1)
-   call twig%get(const_albedo, 'constant_value', 'constant albedo', '-', &
+   call twig%get(const_albedo, 'constant_value', 'constant value to use throughout the simulation', '1', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
 
    call branch%get(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
