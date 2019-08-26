@@ -163,6 +163,10 @@
          end if
          call get_command_argument(i, output_id)
       case default
+         if (arg(1:2) == '--') then
+            FATAL 'Command line option '//trim(arg)//' not recognized. Use -h to see supported options'
+            stop 2
+         end if
          yaml_file = arg
       end select
       i = i+1

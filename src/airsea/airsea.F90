@@ -61,7 +61,6 @@
 
 !
 ! !PUBLIC DATA MEMBERS:
-   logical,  public                    :: calc_fluxes
 !
 !  Meteorological forcing variables
    integer,  public                    :: hum_method
@@ -240,6 +239,7 @@
 !  Original author(s): Karsten Bolding
 !
 ! !LOCAL VARIABLES:
+   logical                   :: calc_fluxes
    integer :: swr_method
    REALTYPE                  :: const_swr
    REALTYPE                  :: swr_factor
@@ -344,6 +344,8 @@
    call sst_obs%configure(method=sst_method, path=sst_file, index=1)
    call sss%configure(method=sss_method, path=sss_file, index=1)
    call precip%configure(method=precip_method, path=precip_file, index=1, scale_factor=precip_factor, constant_value=const_precip)
+
+   if (.not. calc_fluxes) fluxes_method = 0
 
    LEVEL2 'done'
    return
@@ -456,10 +458,8 @@
    branch => settings_store%get_typed_child('surface')
 
    twig => branch%get_typed_child('fluxes', 'heat and momentum fluxes')
-   call twig%get(calc_fluxes, 'calc', 'calculate fluxes from meteorology', &
-                default=.false.)
-   call twig%get(fluxes_method, 'method', 'method to calculate fluxes', &
-                options=(/option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=1)
+   call twig%get(fluxes_method, 'method', 'method to calculate fluxes from meteorology', &
+                options=(/option(0, 'use prescribed fluxes'), option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=0)
    call twig%get(heat, 'heat', 'prescribed total heat flux (sensible, latent and net back-radiation)', 'W/m^2', &
                 default=0._rk)
    call twig%get(tx_, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
@@ -655,8 +655,8 @@
 !  The short wave radiation
    select case (I_0%method)
       case (3)
-         if (.not. calc_fluxes) then
-            LEVEL2 'Not possible to calculate swr - when calc_fluxes=.false.'
+         if (fluxes_method == 0) then
+            LEVEL2 'Not possible to calculate swr if heat and momentum fluxes are prescribed'
             stop 'init_airsea'
          else
             LEVEL2 'Calculating swr=swr(t(lon),lat,cloud)'
@@ -666,7 +666,7 @@
          call register_input(I_0)
    end select
 
-   if (calc_fluxes) then
+   if (fluxes_method /= 0) then
 
 #ifndef INTERPOLATE_METEO
       open(meteo_unit,file=meteo_file,action='read',status='old',err=93)
@@ -714,7 +714,7 @@
 
    end if
 
-!  The fresh water fluxes (used for calc_fluxes=.true. and calc_fluxes=.false.)
+!  The fresh water fluxes (used with prescribed and calculated fluxes of heat/momentum)
    call register_input(precip)
    LEVEL2 'rain_impact=      ',rain_impact
    LEVEL2 'calc_evaporation= ',calc_evaporation
@@ -801,7 +801,7 @@
 !BOC
 
    have_zenith_angle = .false.
-   if (calc_fluxes) then
+   if (fluxes_method /= 0) then
 !     Calculate bulk fluxes from meteorological conditions and surface state (sst,ssu,ssv).
       call flux_from_meteo(jul,secs)
 
@@ -861,7 +861,7 @@
 !BOC
 
 #ifndef INTERPOLATE_METEO
-   if (calc_fluxes) close(meteo_unit)
+   if (fluxes_method /= 0) close(meteo_unit)
 #endif
 
    end subroutine clean_airsea
