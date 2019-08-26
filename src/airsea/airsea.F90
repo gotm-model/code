@@ -825,7 +825,6 @@
       else
          albedo = albedo_water(albedo_method,zenith_angle,yearday)
       end if
-      I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
    end if
 
    tx = tx_%value*bio_drag_scale

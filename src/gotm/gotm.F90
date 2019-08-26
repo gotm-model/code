@@ -646,7 +646,6 @@
       call do_airsea(julianday,secondsofday)
 
 #ifdef _ICE_
-!     ice
       if(ice_cover .eq. 2) then
          albedo = albedo_ice
       end if
