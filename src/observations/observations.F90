@@ -211,6 +211,8 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
+   integer, parameter :: rk = kind(_ZERO_)
+
    integer                   :: s_prof_method
    character(LEN=PATH_MAX)   :: s_prof_file
    integer                   :: t_prof_method
@@ -248,8 +250,8 @@
    integer           :: o2_units
    character(LEN=PATH_MAX)   :: o2_prof_file
    
-   REALTYPE,parameter        :: mmol_o2_per_liter = 44.661
-   REALTYPE,parameter        :: mmol_o2_per_gram  = 31.25
+   REALTYPE,parameter        :: mmol_o2_per_liter = 44.661_rk
+   REALTYPE,parameter        :: mmol_o2_per_gram  = 31.25_rk
 
    integer                   :: wave_method
    character(LEN=PATH_MAX)   :: wave_file
@@ -346,12 +348,12 @@
    PressConstU=_ZERO_
    PressConstV=_ZERO_
    PressHeight=_ZERO_
-   PeriodM=44714.
+   PeriodM=44714._rk
    AmpMu=_ZERO_
    AmpMv=_ZERO_
    PhaseMu=_ZERO_
    PhaseMv=_ZERO_
-   PeriodS=43200.
+   PeriodS=43200._rk
    AmpSu=_ZERO_
    AmpSv=_ZERO_
    PhaseSu=_ZERO_
@@ -372,9 +374,9 @@
    extinct_file='extinction.dat'
    ! extinct_method=7 - user defined
    ! default values are from Lago Maggiore, Stips
-   A=0.7
-   g1=0.40
-   g2=8.0
+   A=0.7_rk
+   g1=0.40_rk
+   g2=8.0_rk
 
 !  Vertical advection velocity - 'w_advspec' namelist
    w_adv_method=0
@@ -389,10 +391,10 @@
    zeta_scale=_ONE_
    zeta_offset=_ZERO_
    zeta_0=_ZERO_
-   period_1=44714.
+   period_1=44714._rk
    amp_1=_ZERO_
    phase_1=_ZERO_
-   period_2=43200.
+   period_2=43200._rk
    amp_2=_ZERO_
    phase_2=_ZERO_
 
@@ -406,12 +408,12 @@
 !  Observed velocity profile profiles - typically from ADCP
    vel_prof_method=0
    vel_prof_file='velprof.dat'
-   vel_relax_tau=3600.
-   vel_relax_ramp=86400.
+   vel_relax_tau=3600._rk
+   vel_relax_ramp=86400._rk
 
 !  Observed dissipation profiles
    e_prof_method=0
-   e_obs_const=1.e-12
+   e_obs_const=1.e-12_rk
    e_prof_file='eprof.dat'
 
 !  Buoyancy - 'bprofile' namelist
