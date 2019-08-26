@@ -711,15 +711,15 @@
                    options=(/option(0, 'none'), option(1, 'Mellor (1989)'), option(2, 'Large et al. (1994)')/), default=0)
    call twig%get(alpha, 'alpha', 'coefficient for Mellor internal wave model', '-', &
                    default=0._rk)
-   call twig%get(klimiw, 'klimiw', 'critical value of TKE', 'm^2/s^2', &
+   call twig%get(klimiw, 'klim', 'critical value of TKE', 'm^2/s^2', &
                    default=1.e-6_rk)
    call twig%get(rich_cr, 'rich_cr', 'critical Richardson number for shear instability', '-', &
                    default=0.7_rk)
    call twig%get(numshear, 'numshear', 'background diffusivity for shear instability', 'm^2/s', &
                    default=5.e-3_rk)
-   call twig%get(numiw, 'numiw', 'background viscosity for internal wave breaking', 'm^2/s', &
+   call twig%get(numiw, 'num', 'background viscosity for internal wave breaking', 'm^2/s', &
                    default=1.e-4_rk)
-   call twig%get(nuhiw, 'nuhiw', 'background diffusivity for internal wave breaking', 'm^2/s', &
+   call twig%get(nuhiw, 'nuh', 'background diffusivity for internal wave breaking', 'm^2/s', &
                    default=1.e-5_rk)
    LEVEL2 'done.'
    return
