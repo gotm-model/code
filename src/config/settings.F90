@@ -50,7 +50,7 @@ contains
       end select
    end function get_typed_child
 
-   subroutine get_input2(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display, default_method)
+   subroutine get_input2(self, target, name, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display, default_method, order)
       class (type_gotm_settings), intent(inout) :: self
       class (type_input), target                :: target
       character(len=*),           intent(in)    :: name
@@ -66,11 +66,12 @@ contains
       logical,           optional,intent(in)    :: treat_as_path
       integer,           optional,intent(in)    :: display
       integer,           optional,intent(in)    :: default_method
+      integer,           optional,intent(in)    :: order
 
       class (type_settings_node), pointer :: node
       integer                             :: istart
 
-      node => self%get_node(name, treat_as_path=treat_as_path, istart=istart)
+      node => self%get_node(name, treat_as_path=treat_as_path, istart=istart, order=order)
       call type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display, default_method)
    end subroutine
 

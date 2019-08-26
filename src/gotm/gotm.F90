@@ -281,13 +281,14 @@
    branch => settings_store%get_child('light_extinction')
    branch => settings_store%get_child('turbulence')
 
-   branch => settings_store%get_child('restart')
+   branch => settings_store%get_child('restart', order=998)
    call branch%get(restart_offline, 'load', &
                    'initialize simulation with state stored in restart.nc', &
                    default=.false.)
    call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
                    'warn but not abort if a variable is missing from restart file', &
                    default=.false., display=display_advanced)
+   branch => settings_store%get_child('output', order=999)
 
    LEVEL2 'configuring modules ....'
    call init_airsea()
