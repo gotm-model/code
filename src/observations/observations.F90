@@ -706,7 +706,7 @@
    branch => settings_store%get_typed_child('turbulence')
 
    call branch%get(epsprof, 'epsprof', 'observed dissipation rate', 'W/kg', &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_advanced)
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_advanced, order=999)
 
    call settings_store%get(o2_prof, 'o2', 'oxygen', '', &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_hidden)
