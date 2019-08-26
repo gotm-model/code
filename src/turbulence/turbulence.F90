@@ -611,28 +611,28 @@
                    minimum=0._rk,default=1.e-10_rk)
    call twig%get(epsb_min, 'epsb_min', 'minimum buoyancy variance destruction rate', 'm^2/s^5', &
                    minimum=0._rk,default=1.e-14_rk)
-
+   
    twig => branch%get_child('generic', 'generic length scale (GLS) model', display=display_advanced)
    call twig%get(compute_param, 'compute_param', 'compute the model parameters', &
                    default=.false.)
    call twig%get(gen_m, 'gen_m', 'exponent for k', '-', &
-                   default=1._rk)
+                   default=1.5_rk)
    call twig%get(gen_n, 'gen_n', 'exponent for l', '-', &
-                   default=-0.67_rk)
+                   default=-1._rk)
    call twig%get(gen_p, 'gen_p', 'exponent for cm0', '-', &
                    default=3._rk)
    call twig%get(cpsi1, 'cpsi1', 'empirical coefficient cpsi1 in psi equation', '-', &
-                   default=1._rk)
+                   default=1.44_rk)
    call twig%get(cpsi2, 'cpsi2', 'empirical coefficient cpsi2 in psi equation', '-', &
-                   default=1.22_rk)
+                   default=1.92_rk)
    call twig%get(cpsi3minus, 'cpsi3minus', 'cpsi3 for stable stratification', '-', &
-                   default=0.05_rk)
+                   default=0.0_rk)
    call twig%get(cpsi3plus, 'cpsi3plus', 'cpsi3 for unstable stratification', '-', &
                    default=1._rk)
    call twig%get(sig_kpsi, 'sig_kpsi', 'Schmidt number for TKE diffusivity', '-', &
-                   default=0.8_rk)
+                   default=1._rk)
    call twig%get(sig_psi, 'sig_psi', 'Schmidt number for psi diffusivity', '-', &
-                   default=1.07_rk)
+                   default=1.3_rk)
    call twig%get(gen_d, 'gen_d', 'temporal decay rate d in homogeneous turbulence', '-', &
                    default=-1.2_rk)
    call twig%get(gen_alpha, 'gen_alpha', 'decay exponent alpha', '-', &
@@ -646,7 +646,7 @@
    call twig%get(ce2, 'ce2', 'empirical coefficient ce2 in dissipation equation', '-', &
                    default=1.92_rk)
    call twig%get(ce3minus, 'ce3minus', 'ce3 for stable stratification', '-', &
-                   default=-0.4_rk)
+                   default=0._rk)
    call twig%get(ce3plus, 'ce3plus', 'ce3 for unstable stratification', '-', &
                    default=1.0_rk)
    call twig%get(sig_k, 'sig_k', 'Schmidt number for TKE diffusivity', '-', &
@@ -667,13 +667,13 @@
                    default=0.2_rk)
    call twig%get(sl, 'sl', 'turbulent diffusivities of q^2 l', '-', &
                    default=0.2_rk)
-   call twig%get(my_length, 'my_length', 'barotropic length scale in q^2 l equation', &
-                   options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'linear from surface')/),default=3)
+   call twig%get(my_length, 'length', 'barotropic length scale in q^2 l equation', &
+                   options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'linear from surface')/),default=1)
    call twig%get(new_constr, 'new_constr', 'stabilize stability functions', &
                    default=.false.)
 
    twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
-   call twig%get(scnd_method, 'scnd_method', 'method', &
+   call twig%get(scnd_method, 'method', 'method', &
                    options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance')/), default=1)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
                    options=(/option(1, 'algebraic'), option(2, 'prognostic')/), default=1)
@@ -710,7 +710,7 @@
    call twig%get(iw_model, 'model', 'model', &
                    options=(/option(0, 'none'), option(1, 'Mellor (1989)'), option(2, 'Large et al. (1994)')/), default=0)
    call twig%get(alpha, 'alpha', 'coefficient for Mellor internal wave model', '-', &
-                   default=0.7_rk)
+                   default=0._rk)
    call twig%get(klimiw, 'klimiw', 'critical value of TKE', 'm^2/s^2', &
                    default=1.e-6_rk)
    call twig%get(rich_cr, 'rich_cr', 'critical Richardson number for shear instability', '-', &

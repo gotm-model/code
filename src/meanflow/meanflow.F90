@@ -182,9 +182,9 @@
    call branch%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
                 minimum=0._rk,default=1.3e-6_rk)
    call branch%get(avmolt, 'avmolt', 'molecular viscosity for temperature', 'm^2/s', &
-                minimum=0._rk,default=1.3e-7_rk)
+                minimum=0._rk,default=1.4e-7_rk)
    call branch%get(avmols, 'avmols', 'molecular viscosity for salinity', 'm^2/s', &
-                minimum=0._rk,default=1.3e-9_rk)
+                minimum=0._rk,default=1.1e-9_rk)
    !call branch%get(no_shear, 'no_shear', 'set shear production term to zero', &
    !             default=.false.)
    LEVEL2 'done'

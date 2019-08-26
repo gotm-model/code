@@ -123,7 +123,7 @@
    character(len=1024), public :: write_schema_path = ''
    character(len=1024), public :: output_id = ''
    logical, public             :: read_nml = .false.
-   integer, public             :: write_yaml_detail = display_advanced
+   integer, public             :: write_yaml_detail = display_normal
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -243,8 +243,8 @@
                    minimum=0._rk, default=0._rk)
    call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
                    minimum=0._rk, default=0._rk)
-   call branch%get(grid_file, 'grid_file', 'file with custom grid', &
-                   default='grid.dat')
+   call branch%get(grid_file, 'file', 'file with custom grid', &
+                   default='')
 #if 0
    twig => branch%get_child('adaptation')
    call twig%get(c1ad, 'c1ad', 'weighting factor for buoyancy frequency', '-', &
@@ -306,12 +306,12 @@
    branch => settings_store%get_child('buoyancy', display=display_advanced)
    call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
                    options=(/option(1, 'equation of state'), option(2, 'prognostic equation')/), default=1)
-   call branch%get(b_obs_surf, 'b_obs_surf', 'initial buoyancy at the surface', '-', &
-                   minimum=0._rk,default=0._rk)
-   call branch%get(b_obs_NN, 'b_obs_NN', 'initial value of NN (=buoyancy gradient)', 's^-2', &
-                   minimum=0._rk,default=0._rk)
-   call branch%get(b_obs_sbf, 'b_obs_sbf', 'constant surface buoyancy flux', '-', &
-                   minimum=0._rk,default=0._rk)
+   call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', '-', &
+                   default=0._rk)
+   call branch%get(b_obs_NN, 'NN_ini', 'initial value of NN (=buoyancy gradient)', 's^-2', &
+                   default=0._rk)
+   call branch%get(b_obs_sbf, 'obs_sbf', 'observed constant surface buoyancy flux', '-', &
+                   default=0._rk, display=display_hidden)
 
    branch => settings_store%get_child('eq_state', 'equation of state')
    call init_eqstate(branch)

@@ -496,7 +496,7 @@
 
    call branch%get(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand')/))
+               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand')/), default_method=1)
 
    twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
