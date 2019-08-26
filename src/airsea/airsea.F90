@@ -820,7 +820,11 @@
          hh = secs*(_ONE_/3600)
          zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
       end if
-      albedo = albedo_water(albedo_method,zenith_angle,yearday)
+      if (albedo_method .eq. 0) then
+         albedo = const_albedo
+      else
+         albedo = albedo_water(albedo_method,zenith_angle,yearday)
+      end if
       I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
    end if
 
