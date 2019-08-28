@@ -73,6 +73,11 @@
 !  shading in the water column
    REALTYPE, public, dimension(:), allocatable, target  :: bioshade
 
+#ifndef _ICE_
+!  fake ice thickness - switch between 0 and 1 - see temperature.F90
+   REALTYPE, public  :: Hice
+#endif
+
 # ifdef EXTRA_OUTPUT
 
 !  dummies for testing
@@ -186,17 +191,17 @@
    call branch%get(h0b, 'h0b', 'physical bottom roughness', 'm', &
                 minimum=0._rk,default=0.05_rk, description='physical bottom roughness or bed roughness. This variable, h0b, relates to the hydrodynamic bottom roughness z0b as z0b = 0.03*h0b + 0.1*nu/ustar.')
    call branch%get(MaxItz0b, 'MaxItz0b', 'number of iterations for hydrodynamic bottom roughness', &
-                minimum=1,default=1, description='number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
+                minimum=1,default=1, display=display_advanced, description='number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
 
-   branch => settings_store%get_typed_child('surface')
-   call branch%get(charnock, 'charnock', 'use Charnock (1955) surface roughness adaptation', &
+   branch => settings_store%get_typed_child('surface/roughness')
+   call branch%get(charnock, 'charnock', 'use Charnock (1955) roughness adaptation', &
                 default=.false.)
-   call branch%get(charnock_val, 'charnock_val', 'empirical constant for surface roughness adaptation', '-', &
+   call branch%get(charnock_val, 'charnock_val', 'empirical constant for roughness adaptation', '-', &
                 minimum=0._rk,default=1400._rk)
-   call branch%get(z0s_min, 'z0s_min', 'minimum hydrodynamic surface roughness', 'm', &
+   call branch%get(z0s_min, 'z0s_min', 'hydrodynamic roughness (minimum value if Charnock adaptation is used)', 'm', &
                 minimum=0.0_rk,default=0.02_rk)
 
-   branch => settings_store%get_typed_child('physical_constants')
+   branch => settings_store%get_typed_child('physical_constants', display=display_advanced)
    call branch%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
                 minimum=0._rk,default=9.81_rk)
    call branch%get(rho_0, 'rho_0', 'reference density', 'kg/m^3', &
@@ -206,9 +211,9 @@
    call branch%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
                 minimum=0._rk,default=1.3e-6_rk)
    call branch%get(avmolt, 'avmolt', 'molecular viscosity for temperature', 'm^2/s', &
-                minimum=0._rk,default=1.3e-7_rk)
+                minimum=0._rk,default=1.4e-7_rk)
    call branch%get(avmols, 'avmols', 'molecular viscosity for salinity', 'm^2/s', &
-                minimum=0._rk,default=1.3e-9_rk)
+                minimum=0._rk,default=1.1e-9_rk)
    !call branch%get(no_shear, 'no_shear', 'set shear production term to zero', &
    !             default=.false.)
 

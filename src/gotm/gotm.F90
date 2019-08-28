@@ -50,8 +50,8 @@
    use airsea,      only: init_airsea,post_init_airsea,do_airsea,clean_airsea
    use airsea,      only: surface_fluxes
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
-   use airsea,      only: calc_fluxes
-   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp
+   use airsea,      only: fluxes_method
+   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
    use airsea,      only: int_net_precip
    use airsea,      only: bio_albedo,bio_drag_scale
    use airsea_variables, only: qa,ta
@@ -127,6 +127,7 @@
    character(len=1024), public :: write_schema_path = ''
    character(len=1024), public :: output_id = ''
    logical, public             :: read_nml = .false.
+   integer, public             :: write_yaml_detail = display_normal
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -206,8 +207,9 @@
          call settings_store%load(trim(yaml_file), namlst)
       elseif (.not. config_only) then
          FATAL 'GOTM now reads its configuration from gotm.yaml.'
-         FATAL 'If you want to read it from namelists instead, specify --read_nml.'
-         FATAL 'You can generate gotm.yaml from namelists by specifying --read_nml --write_yaml gotm.yaml.'
+         LEVEL1 'To use namelists instead, specify --read_nml.'
+         LEVEL1 'To migrate namelists to yaml, specify --read_nml --write_yaml gotm.yaml.'
+         LEVEL1 'To generate gotm.yaml with default settings, specify --write_yaml gotm.yaml.'
          stop 2
       end if
    end if
@@ -225,29 +227,34 @@
    call branch%get(depth, 'depth', 'water depth', 'm', &
                    minimum=0._rk, default=100._rk)
 
-   branch => settings_store%get_child('period')
-   call branch%get(timefmt, 'timefmt', 'method to specify simulated period', default=2, &
-                   options=(/type_option(1, 'number of time steps'), type_option(2, 'start and stop'), type_option(3, 'start and number of time steps')/))
+   branch => settings_store%get_child('time')
+   call branch%get(timefmt, 'method', 'method to specify simulated period', default=2, &
+                   options=(/option(1, 'number of time steps'), option(2, 'start and stop'), option(3, 'start and number of time steps')/), display=display_advanced)
 #if 0
    call branch%get(MaxN, 'MaxN', 'number of time steps', &
-                   minimum=1,default=100)
+                   minimum=1,default=100, display=display_advanced)
 #endif
    call branch%get(start, 'start', 'start date and time', units='yyyy-mm-dd HH:MM:SS', &
                    default='2017-01-01 00:00:00')
    call branch%get(stop, 'stop', 'stop date and time', units='yyyy-mm-dd HH:MM:SS', &
                    default='2018-01-01 00:00:00')
+   call branch%get(dt, 'dt', 'time step for integration', 's', &
+                   minimum=0.e-10_rk, default=3600._rk)
+   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
+                   minimum=0._rk, maximum=1._rk, default=1._rk, display=display_advanced, &
+                   description='constant for the theta scheme used for time integration of diffusion-reaction components. Typical values: 0.5 for Cranck-Nicholson (second-order accurate), 0 for Forward Euler (first-order accurate), 1 for Backward Euler (first-order accurate). Only 1 guarantees positive solutions for positive definite systems.')
 
    branch => settings_store%get_child('grid')
    call branch%get(nlev, 'nlev', 'number of layers', &
                    minimum=1, default=100)
-   call branch%get(grid_method, 'grid_method', 'layer thicknesses', &
-                   options=(/type_option(0, 'equal with optional zooming'), type_option(1, 'prescribed relative fractions'), type_option(2, 'prescribed thicknesses')/), default=0) ! type_option(3, 'adaptive')
+   call branch%get(grid_method, 'method', 'layer thicknesses', &
+                   options=(/option(0, 'equal by default with optional zooming'), option(1, 'prescribed relative fractions'), option(2, 'prescribed thicknesses')/), default=0) ! option(3, 'adaptive')
    call branch%get(ddu, 'ddu', 'surface zooming', '-', &
                    minimum=0._rk, default=0._rk)
    call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
                    minimum=0._rk, default=0._rk)
-   call branch%get(grid_file, 'grid_file', 'file with custom grid specification', &
-                   default='grid.dat')
+   call branch%get(grid_file, 'file', 'file with custom grid', &
+                   default='')
 #if 0
    twig => branch%get_child('adaptation')
    call twig%get(c1ad, 'c1ad', 'weighting factor for buoyancy frequency', '-', &
@@ -269,55 +276,51 @@
    call twig%get(dtgrid, 'dtgrid', 'time step (must be fraction of dt)', 's', &
                  minimum=0._rk,default=5._rk)
 #endif
-   branch => settings_store%get_child('time_integration')
-   call branch%get(dt, 'dt', 'time step', 's', &
-                   minimum=0.e-10_rk, default=3600._rk)
-   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
-                   minimum=0._rk, maximum=1._rk, default=1._rk, description='constant for the theta scheme used for time integration of diffusion-reaction components. cnpar=0.5 for Cranck-Nicholson (second-order accurate), cnpar=0 for Forward Euler (first-order accurate), cnpar=1 for Backward Euler (first-order accurate). Only cnpar=1 guarantees positive solutions for positive definite systems.')
 
+   ! Predefine order of top-level categories in gotm.yaml
    branch => settings_store%get_child('temperature')
    branch => settings_store%get_child('salinity')
    branch => settings_store%get_child('surface')
    branch => settings_store%get_child('bottom')
-   branch => settings_store%get_child('light')
+   branch => settings_store%get_child('light_extinction')
    branch => settings_store%get_child('turbulence')
-   branch => settings_store%get_child('output')
-   
-   branch => settings_store%get_child('restart')
-   call branch%get(restart_offline, 'restart_offline', &
+
+   branch => settings_store%get_child('restart', order=998)
+   call branch%get(restart_offline, 'load', &
                    'initialize simulation with state stored in restart.nc', &
                    default=.false.)
    call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
-                   'abort if any variable is missing from restart file', &
-                   default=.false.)
-  
+                   'warn but not abort if a variable is missing from restart file', &
+                   default=.false., display=display_advanced)
+   branch => settings_store%get_child('output', order=999)
+
    LEVEL2 'configuring modules ....'
    call init_airsea()
+#ifdef _ICE_
+   call init_ice()
+#endif
    call init_observations()
    call configure_streams()
    branch => settings_store%get_child('turbulence')
    call init_turbulence(branch)
 #ifdef _FABM_
-   branch => settings_store%get_typed_child('fabm')
+   branch => settings_store%get_typed_child('fabm', 'Framework for Aquatic Biogeochemical Models')
    call configure_gotm_fabm(branch)
 #endif
    call init_meanflow()
-   branch => settings_store%get_child('eqstate')
-   call init_eqstate(branch)
 
-#ifndef GFORTRAN
-   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', &
-                           options=(/type_option(1, 'equation of state'), type_option(2, 'prognostic equation')/), default=1)
-#if 0
-   branch => settings_store%get_child('streams')
-   call branch%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', &
-                           options=(/type_option(0, 'none'), type_option(1, 'surface'), type_option(2, 'all layers'), type_option(3, 'free surface')/), default=0)
-#else
-   call settings_store%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', &
-                           options=(/type_option(0, 'none'), type_option(1, 'surface'), type_option(2, 'all layers'), type_option(3, 'free surface')/), default=0)
-#endif
-   call settings_store%get(buoy_method, 'buoy_method', 'method to compute mean buoyancy', default=1)
-#endif
+   branch => settings_store%get_child('buoyancy', display=display_advanced)
+   call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
+                   options=(/option(1, 'equation of state'), option(2, 'prognostic equation')/), default=1)
+   call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', '-', &
+                   default=0._rk)
+   call branch%get(b_obs_NN, 'NN_ini', 'initial value of NN (=buoyancy gradient)', 's^-2', &
+                   default=0._rk)
+   call branch%get(b_obs_sbf, 'obs_sbf', 'observed constant surface buoyancy flux', '-', &
+                   default=0._rk, display=display_hidden)
+
+   branch => settings_store%get_child('eq_state', 'equation of state')
+   call init_eqstate(branch)
 
 !  open the namelist file.
    if (read_nml) then
@@ -338,10 +341,6 @@
       if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
 
       call init_airsea(namlst)
-
-#ifdef _ICE_
-      call init_ice(namlst,'ice.nml')
-#endif
    end if
 
 !KB must be moved down to have e.g. init_hypsograph() called - testing for side effects.
@@ -386,8 +385,12 @@
 #endif
 
    if (write_yaml_path /= '') then
-      call settings_store%save(trim(write_yaml_path), namlst)
+      call settings_store%save(trim(write_yaml_path), namlst, display=write_yaml_detail)
       LEVEL0 'Your configuration has been written to '//trim(write_yaml_path)//'.'
+      if (file_exists) then
+         LEVEL0 'Settings from output.yaml have been migrated to gotm.yaml, but output.yaml will still take priority.'
+         LEVEL0 'Delete or rename output.yaml if you want output settings from gotm.yaml to take effect.'
+      end if
    end if
    if (write_schema_path /= '') then
       call settings_store%write_schema_file(trim(write_schema_path), namlst, 'gotm-5.3')
@@ -494,7 +497,7 @@
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth,depth)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_roughness_length,z0b)
-      if (calc_fluxes) then
+      if (fluxes_method /= 0) then
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp%value)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
@@ -626,7 +629,7 @@
    character(8)              :: d_
    character(10)             :: t_
 
-   REALTYPE                  :: Qsw, Qflux, albedo
+   REALTYPE                  :: Qsw, Qflux
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -659,7 +662,7 @@
       call get_all_obs(julianday,secondsofday,nlev,z)
 
 !     external forcing
-      if( calc_fluxes ) then
+      if(fluxes_method /= 0) then
 #ifdef _ICE_
          if(ice_cover .eq. 0) then
 #endif
@@ -675,7 +678,6 @@
       call do_airsea(julianday,secondsofday)
 
 #ifdef _ICE_
-!     ice
       if(ice_cover .eq. 2) then
          albedo = albedo_ice
       end if

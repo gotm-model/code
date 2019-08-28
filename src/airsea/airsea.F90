@@ -61,7 +61,6 @@
 
 !
 ! !PUBLIC DATA MEMBERS:
-   logical,  public                    :: calc_fluxes
 !
 !  Meteorological forcing variables
    integer,  public                    :: hum_method
@@ -131,8 +130,6 @@
    integer, public           :: albedo_method
    REALTYPE, public          :: const_albedo
    integer, public           :: fluxes_method
-   integer, public           :: back_radiation_method
-   integer                   :: heat_method
    integer                   :: ssuv_method
    logical, public           :: rain_impact
    logical, public           :: calc_evaporation
@@ -242,6 +239,7 @@
 !  Original author(s): Karsten Bolding
 !
 ! !LOCAL VARIABLES:
+   logical                   :: calc_fluxes
    integer :: swr_method
    REALTYPE                  :: const_swr
    REALTYPE                  :: swr_factor
@@ -264,6 +262,8 @@
    REALTYPE                  :: const_tx,const_ty
    REALTYPE                  :: const_precip
    REALTYPE                  :: precip_factor
+   integer                   :: back_radiation_method
+   integer                   :: heat_method
 
    namelist /airsea/ calc_fluxes, &
                      fluxes_method, &
@@ -344,6 +344,8 @@
    call sst_obs%configure(method=sst_method, path=sst_file, index=1)
    call sss%configure(method=sss_method, path=sss_file, index=1)
    call precip%configure(method=precip_method, path=precip_file, index=1, scale_factor=precip_factor, constant_value=const_precip)
+
+   if (.not. calc_fluxes) fluxes_method = 0
 
    LEVEL2 'done'
    return
@@ -446,7 +448,7 @@
 !  Original author(s): Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   class (type_gotm_settings), pointer :: branch, leaf
+   class (type_gotm_settings), pointer :: branch, twig, leaf
    integer, parameter :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
@@ -454,52 +456,58 @@
    LEVEL1 'init_airsea_yaml'
 
    branch => settings_store%get_typed_child('surface')
-   call branch%get(calc_fluxes, 'calc_fluxes', 'calculate heat and momentum fluxes', &
-                default=.false.)
-   call branch%get(fluxes_method, 'fluxes_method', 'method to calculate heat and momentum fluxes', &
-                options=(/type_option(1, 'Kondo (1975)'), type_option(2, 'Fairall et al. (1996)')/), default=1)
-   call branch%get(u10, 'u10', '10 metre wind speed in x direction', 'm/s', &
+
+   twig => branch%get_typed_child('fluxes', 'heat and momentum fluxes')
+   call twig%get(fluxes_method, 'method', 'method to calculate fluxes from meteorology', &
+                options=(/option(0, 'use prescribed fluxes'), option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=0)
+   call twig%get(heat, 'heat', 'prescribed total heat flux (sensible, latent and net back-radiation)', 'W/m^2', &
                 default=0._rk)
-   call branch%get(v10, 'v10', '10 metre wind speed in y direction', 'm/s', &
+   call twig%get(tx_, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
                 default=0._rk)
-   call branch%get(airp, 'airp', 'air pressure', 'Pa', &
+   call twig%get(ty_, 'ty', 'prescribed momentum flux in South-North direction', 'Pa', &
                 default=0._rk)
-   call branch%get(airt, 'airt', '2 metre air temperature', 'Celsius or K', &
+   
+   twig => branch%get_typed_child('meteo')
+   call twig%get(u10, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
                 default=0._rk)
-   call branch%get(hum, 'hum', '2 metre humidity', '', &
+   call twig%get(v10, 'v10', 'wind speed in South-North direction @ 10 m', 'm/s', &
+                default=0._rk)
+   call twig%get(airp, 'airp', 'air pressure', 'Pa', &
+                default=0._rk)
+   call twig%get(airt, 'airt', 'air temperature @ 2 m', 'Celsius or K', &
+                default=0._rk)
+   call twig%get(hum, 'hum', 'humidity @ 2 m', '', &
                 default=0._rk, pchild=leaf)
-   call leaf%get(hum_method, 'hum_method', 'humidity metric', &
-                options=(/type_option(1, 'relative humidity (%)'), type_option(2, 'wet-bulb temperature'), &
-                type_option(3, 'dew point temperature'), type_option(4 ,'specific humidity (kg/kg)')/), default=1)
-   call branch%get(cloud, 'cloud', 'cloud cover', '-', &
+   call leaf%get(hum_method, 'type', 'humidity metric', &
+                options=(/option(1, 'relative humidity (%)'), option(2, 'wet-bulb temperature'), &
+                option(3, 'dew point temperature'), option(4 ,'specific humidity (kg/kg)')/), default=1)
+   call twig%get(cloud, 'cloud', 'cloud cover', '1', &
                 minimum=0._rk, maximum=1._rk, default=0._rk)
-   call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m2', &
-                minimum=0._rk,default=0._rk, extra_options=(/type_option(3, 'from time, location and cloud cover')/))
+   call twig%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
+                minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover')/))
+   call twig%get(precip, 'precip', 'precipitation', 'm/s', &
+                default=0._rk, pchild=leaf)
+   call leaf%get(rain_impact, 'flux_impact', 'include effect on fluxes of sensible heat and momentum', &
+                default=.false.)
+   call twig%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
+                default=.false.)
+   call twig%get(ssuv_method, 'ssuv_method', 'wind treatment', &
+                options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=1, display=display_advanced)
+
    call branch%get(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-               extra_options=(/type_option(1, 'Clark'), type_option(2, 'Hastenrath'), type_option(3, 'Bignami'), type_option(4, 'Berliand')/))
-   call branch%get(rain_impact, 'rain_impact', 'include effect of rain fall on fluxes of sensible heat and momentum', &
-                default=.false.)
-   call branch%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
-                default=.false.)
-   call branch%get(albedo_method, 'albedo_method', '', &
-                minimum=0,maximum=2,default=1)
-   call branch%get(const_albedo, 'const_albedo', '', '-', &
+               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand')/), default_method=1)
+
+   twig => branch%get_typed_child('albedo')
+   call twig%get(albedo_method, 'method', 'method to compute albedo', &
+                options=(/option(0, 'constant'), option(1, 'Payne (1972)'), option(2, 'Cogley (1979)')/), default=1)
+   call twig%get(const_albedo, 'constant_value', 'constant value to use throughout the simulation', '1', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
-   call branch%get(heat, 'heat', 'surface heat flux', 'W/m2', &
-                default=0._rk)
-   call branch%get(tx_, 'tx', 'surface momentum flux: x-direction', 'Pa', &
-                default=0._rk)
-   call branch%get(ty_, 'ty', 'surface momentum flux: y-direction', 'Pa', &
-                default=0._rk)
-   call branch%get(precip, 'precip', 'precipitation', 'm/s', &
-                default=0._rk)
+
    call branch%get(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
-                default=0._rk)
-   call branch%get(sss, 'sss', 'observed surface salinity', 'PSU', &
-                default=0._rk)
-   call branch%get(ssuv_method, 'ssuv_method', 'wind speed correction for current velocity', &
-                options=(/type_option(0, 'use absolute wind speed'), type_option(1, 'use relative wind speed')/), default=0)
+                default=0._rk, display=display_advanced)
+   call branch%get(sss, 'sss', 'observed surface salinity', 'psu', &
+                default=0._rk, display=display_advanced)
    LEVEL2 'done'
    return
    end subroutine init_airsea_yaml
@@ -647,8 +655,8 @@
 !  The short wave radiation
    select case (I_0%method)
       case (3)
-         if (.not. calc_fluxes) then
-            LEVEL2 'Not possible to calculate swr - when calc_fluxes=.false.'
+         if (fluxes_method == 0) then
+            LEVEL2 'Not possible to calculate swr if heat and momentum fluxes are prescribed'
             stop 'init_airsea'
          else
             LEVEL2 'Calculating swr=swr(t(lon),lat,cloud)'
@@ -658,7 +666,7 @@
          call register_input(I_0)
    end select
 
-   if (calc_fluxes) then
+   if (fluxes_method /= 0) then
 
 #ifndef INTERPOLATE_METEO
       open(meteo_unit,file=meteo_file,action='read',status='old',err=93)
@@ -706,7 +714,7 @@
 
    end if
 
-!  The fresh water fluxes (used for calc_fluxes=.true. and calc_fluxes=.false.)
+!  The fresh water fluxes (used with prescribed and calculated fluxes of heat/momentum)
    call register_input(precip)
    LEVEL2 'rain_impact=      ',rain_impact
    LEVEL2 'calc_evaporation= ',calc_evaporation
@@ -792,12 +800,12 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   if (calc_fluxes) then
+   have_zenith_angle = .false.
+   if (fluxes_method /= 0) then
 !     Calculate bulk fluxes from meteorological conditions and surface state (sst,ssu,ssv).
       call flux_from_meteo(jul,secs)
 
 !     Optionally calculate surface shortwave radiation from location, time, cloud cover.
-      have_zenith_angle = .false.
       if (I_0%method .eq. 3) then
          hh = secs*(_ONE_/3600)
          zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
@@ -812,8 +820,11 @@
          hh = secs*(_ONE_/3600)
          zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
       end if
-      albedo = albedo_water(albedo_method,zenith_angle,yearday)
-      I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
+      if (albedo_method .eq. 0) then
+         albedo = const_albedo
+      else
+         albedo = albedo_water(albedo_method,zenith_angle,yearday)
+      end if
    end if
 
    tx = tx_%value*bio_drag_scale
@@ -853,7 +864,7 @@
 !BOC
 
 #ifndef INTERPOLATE_METEO
-   if (calc_fluxes) close(meteo_unit)
+   if (fluxes_method /= 0) close(meteo_unit)
 #endif
 
    end subroutine clean_airsea
@@ -939,12 +950,12 @@
          meteo_secs2 = hh*3600 + min*60 + ss
          if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .gt. 0) EXIT
       end do
-      u10   = obs(1)*wind_factor
-      v10   = obs(2)*wind_factor
-      airp  = obs(3)*100. !kbk mbar/hPa --> Pa
-      airt  = obs(4)
-      hum   = obs(5)
-      cloud = obs(6)
+      u10%value   = obs(1)*u10%scale_factor
+      v10%value   = obs(2)*v10%scale_factor
+      airp%value  = obs(3)*100. !kbk mbar/hPa --> Pa
+      airt%value  = obs(4)
+      hum%value   = obs(5)
+      cloud%value = obs(6)
 
       if (sst .lt. 100.) then
          tw  = sst
@@ -954,12 +965,12 @@
          tw_k= sst
       end if
 
-      if (airt .lt. 100.) then
-         ta_k  = airt + KELVIN
-         ta = airt
+      if (airt%value .lt. 100.) then
+         ta_k  = airt%value + KELVIN
+         ta = airt%value
       else
-         ta  = airt - KELVIN
-         ta_k = airt
+         ta  = airt%value - KELVIN
+         ta_k = airt%value
       end if
 
       h1     = h2
@@ -968,19 +979,19 @@
       cloud1 = cloud2
 
       call humidity(hum_method,hum,airp,tw,ta)
-      if (back_radiation_method .gt. 0) then
-         call back_radiation(back_radiation_method, &
+      if (qb%method .gt. 0) then
+         call back_radiation(qb%method, &
                              dlat,tw_k,ta_k,cloud,qb)
       end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
-                         tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
+                         tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)
 #else
       call airsea_fluxes(fluxes_method, &
-                         tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
+                         tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)
 #endif
-      h2     = qb+qe+qh
-      cloud2 = cloud
+      h2     = qb%value+qe+qh
+      cloud2 = cloud%value
 
       if (init_saved_vars) then
          h1     = h2
@@ -998,10 +1009,10 @@
 
 !  Do the time interpolation
    t  = time_diff(jul,secs,meteo_jul1,meteo_secs1)
-   heat  = h1  + t*alpha(2)
-   tx    = tx1 + t*alpha(3)
-   ty    = ty1 + t*alpha(4)
-   cloud = cloud1 + t*alpha(5)
+   heat%value  = h1  + t*alpha(2)
+   tx_%value    = tx1 + t*alpha(3)
+   ty_%value    = ty1 + t*alpha(4)
+   cloud%value = cloud1 + t*alpha(5)
 #else
    if (sst .lt. 100.) then
       tw  = sst
@@ -1020,8 +1031,8 @@
    end if
 
    call humidity(hum_method,hum%value,airp%value,tw,ta)
-   if (back_radiation_method .gt. 0) then
-      call back_radiation(back_radiation_method, &
+   if (qb%method .gt. 0) then
+      call back_radiation(qb%method, &
                           dlat,tw_k,ta_k,cloud%value,qb%value)
    endif
    call airsea_fluxes(fluxes_method, &

@@ -112,11 +112,7 @@
    REALTYPE                  :: TRelaxBott
 
 !  External pressure - 'press' namelist
-   integer, public           :: ext_press_method,ext_press_mode
-   character(LEN=PATH_MAX)   :: ext_press_file
-   REALTYPE, public          :: PressConstU
-   REALTYPE, public          :: PressConstV
-   REALTYPE, public          :: PressHeight
+   integer, public           :: ext_press_mode
    REALTYPE, public          :: PeriodM
    REALTYPE, public          :: AmpMu
    REALTYPE, public          :: AmpMv
@@ -220,6 +216,8 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
+   integer, parameter :: rk = kind(_ZERO_)
+
    integer                   :: s_prof_method
    character(LEN=PATH_MAX)   :: s_prof_file
    integer                   :: t_prof_method
@@ -231,6 +229,12 @@
    REALTYPE                :: const_dsdy
    REALTYPE                :: const_dtdx
    REALTYPE                :: const_dtdy
+
+   integer                 :: ext_press_method
+   character(LEN=PATH_MAX) :: ext_press_file
+   REALTYPE                :: PressConstU
+   REALTYPE                :: PressConstV
+   REALTYPE                :: PressHeight
 
    integer                 :: zeta_method
    character(LEN=PATH_MAX) :: zeta_file
@@ -251,8 +255,8 @@
    integer           :: o2_units
    character(LEN=PATH_MAX)   :: o2_prof_file
    
-   REALTYPE,parameter        :: mmol_o2_per_liter = 44.661
-   REALTYPE,parameter        :: mmol_o2_per_gram  = 31.25
+   REALTYPE,parameter        :: mmol_o2_per_liter = 44.661_rk
+   REALTYPE,parameter        :: mmol_o2_per_gram  = 31.25_rk
 
    integer                   :: wave_method
    character(LEN=PATH_MAX)   :: wave_file
@@ -349,12 +353,12 @@
    PressConstU=_ZERO_
    PressConstV=_ZERO_
    PressHeight=_ZERO_
-   PeriodM=44714.
+   PeriodM=44714._rk
    AmpMu=_ZERO_
    AmpMv=_ZERO_
    PhaseMu=_ZERO_
    PhaseMv=_ZERO_
-   PeriodS=43200.
+   PeriodS=43200._rk
    AmpSu=_ZERO_
    AmpSv=_ZERO_
    PhaseSu=_ZERO_
@@ -375,9 +379,9 @@
    extinct_file='extinction.dat'
    ! extinct_method=7 - user defined
    ! default values are from Lago Maggiore, Stips
-   A=0.7
-   g1=0.40
-   g2=8.0
+   A=0.7_rk
+   g1=0.40_rk
+   g2=8.0_rk
 
 !  Vertical advection velocity - 'w_advspec' namelist
    w_adv_method=0
@@ -392,10 +396,10 @@
    zeta_scale=_ONE_
    zeta_offset=_ZERO_
    zeta_0=_ZERO_
-   period_1=44714.
+   period_1=44714._rk
    amp_1=_ZERO_
    phase_1=_ZERO_
-   period_2=43200.
+   period_2=43200._rk
    amp_2=_ZERO_
    phase_2=_ZERO_
 
@@ -409,12 +413,12 @@
 !  Observed velocity profile profiles - typically from ADCP
    vel_prof_method=0
    vel_prof_file='velprof.dat'
-   vel_relax_tau=3600.
-   vel_relax_ramp=86400.
+   vel_relax_tau=3600._rk
+   vel_relax_ramp=86400._rk
 
 !  Observed dissipation profiles
    e_prof_method=0
-   e_obs_const=1.e-12
+   e_obs_const=1.e-12_rk
    e_prof_file='eprof.dat'
 
 !  Buoyancy - 'bprofile' namelist
@@ -461,7 +465,7 @@
    end if
 
    call w_adv%configure(method=w_adv_method, path=w_adv_file, index=1, constant_value=w_adv0)
-   call w_height%configure(method=w_adv_method, path=w_adv_file, index=2, constant_value=w_adv_height0)
+   call w_height%configure(method=max(1, w_adv_method), path=w_adv_file, index=2, constant_value=w_adv_height0)
 
    call zeta%configure(method=zeta_method, path=zeta_file, index=1, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
 
@@ -535,6 +539,7 @@
 !
 ! !USES:
    use settings
+   use util, only: UPSTREAM, P2, MUSCL, Superbee, P2_PDM
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -551,10 +556,10 @@
    LEVEL1 'init_observations_yaml'
 
    call settings_store%get(tprof, 'temperature', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
-                   extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
+                   extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
-   call twig%get(t_analyt_method, 't_analyt_method', 'type of analytical initial temperature profile', &
-                   minimum=1,maximum=3,default=1)
+   call twig%get(t_analyt_method, 'method', 'type of analytical initial temperature profile', &
+                   options=(/option(CONST_PROF, 'constant'), option(TWO_LAYERS, 'two layers'), option(CONST_NN, 'from salinity and buoyancy frequency')/),default=CONST_PROF)
    call twig%get(z_t1, 'z_t1', 'upper layer thickness', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(t_1, 't_1', 'upper layer temperature', 'Celsius', &
@@ -563,117 +568,106 @@
                    minimum=0._rk,default=0._rk)
    call twig%get(t_2, 't_2', 'lower layer temperature', 'Celsius', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(t_obs_NN, 't_obs_NN', 'constant N^2', '/s^2', &
+   call twig%get(t_obs_NN, 'obs_NN', 'constant buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
-   twig => branch%get_typed_child('relaxation')
-   call twig%get(TRelaxTauM, 'TRelaxTauM', 'time scale for interior layer', 's', &
+   twig => branch%get_typed_child('relax', 'relax model temperature to observed/prescribed value')
+   call twig%get(TRelaxTauM, 'tau', 'time scale for interior layer', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call twig%get(TRelaxTauB, 'TRelaxTauB', 'time scale for bottom layer', 's', &
-                   minimum=0._rk,default=1e+15_rk)
-   call twig%get(TRelaxTauS, 'TRelaxTauS', 'time scale for surface layer', 's', &
-                   minimum=0._rk,default=1e+15_rk)
-   call twig%get(TRelaxSurf, 'TRelaxSurf', 'height of surface relaxation layer', 'm', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(TRelaxBott, 'TRelaxBott', 'height of bottom relaxation layer', 'm', &
-                   minimum=0._rk,default=0._rk)
+   call twig%get(TRelaxSurf, 'h_s', 'height of surface relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(TRelaxTauS, 'tau_s', 'time scale for surface layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
+   call twig%get(TRelaxBott, 'h_b', 'height of bottom relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(TRelaxTauB, 'tau_b', 'time scale for bottom layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
 
-   call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'PSU', &
-                   extra_options=(/type_option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
+   call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'psu', &
+                   extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
-   call twig%get(s_analyt_method, 's_analyt_method', 'type of analytical initial salinity profile', &
-                   minimum=1,maximum=3,default=1)
+   call twig%get(s_analyt_method, 'method', 'type of analytical initial salinity profile', &
+                   options=(/option(CONST_PROF, 'constant'), option(TWO_LAYERS, 'two layers'), option(CONST_NN, 'from temperature and buoyancy frequency')/),default=CONST_PROF)
    call twig%get(z_s1, 'z_s1', 'upper layer thickness', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(s_1, 's_1', 'upper layer salinity', 'PSU', &
+   call twig%get(s_1, 's_1', 'upper layer salinity', 'psu', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
    call twig%get(z_s2, 'z_s2', 'lower layer thickness', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(s_2, 's_2', 'lower layer salinity', 'PSU', &
+   call twig%get(s_2, 's_2', 'lower layer salinity', 'psu', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(s_obs_NN, 's_obs_NN', 'constant N^2', '/s^2', &
+   call twig%get(s_obs_NN, 'obs_NN', 'constant buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
-   twig => branch%get_typed_child('relaxation')
-   call twig%get(SRelaxTauM, 'SRelaxTauM', 'time scale for interior layer', 's', &
+   twig => branch%get_typed_child('relax', 'relax model salinity to observed/prescribed value')
+   call twig%get(SRelaxTauM, 'tau', 'time scale for interior layer', 's', &
                    minimum=0._rk,default=1e+15_rk)
-   call twig%get(SRelaxTauB, 'SRelaxTauB', 'time scale for bottom layer', 's', &
-                   minimum=0._rk,default=1e+15_rk)
-   call twig%get(SRelaxTauS, 'SRelaxTauS', 'time scale for surface layer', 's', &
-                   minimum=0._rk,default=1e+15_rk)
-   call twig%get(SRelaxSurf, 'SRelaxSurf', 'height of surface relaxation layer', 'm', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(SRelaxBott, 'SRelaxBott', 'height of bottom relaxation layer', 'm', &
-                   minimum=0._rk,default=0._rk)
+   call twig%get(SRelaxSurf, 'h_s', 'height of surface relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(SRelaxTauS, 'tau_s', 'time scale for surface layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
+   call twig%get(SRelaxBott, 'h_b', 'height of bottom relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(SRelaxTauB, 'tau_b', 'time scale for bottom layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
 
-   twig => settings_store%get_typed_child('light')
-   call twig%get(extinct_method, 'extinct_method', 'water type', &
-                   options=(/type_option(1, 'Jerlov type I'), type_option(2, 'Jerlov type 1 (upper 50 m)'), type_option(3, 'Jerlov type IA'), &
-                   type_option(4, 'Jerlov type IB'), type_option(5, 'Jerlov type II'), type_option(6, 'Jerlov type III'), type_option(7, 'custom')/), default=1)
+   twig => settings_store%get_typed_child('light_extinction')
+   call twig%get(extinct_method, 'method', 'water type', &
+                   options=(/option(1, 'Jerlov type I'), option(2, 'Jerlov type 1 (upper 50 m)'), option(3, 'Jerlov type IA'), &
+                   option(4, 'Jerlov type IB'), option(5, 'Jerlov type II'), option(6, 'Jerlov type III'), option(7, 'custom')/), default=1)
    call twig%get(A_, 'A', 'non-visible fraction of shortwave radiation', '1', &
                    minimum=0._rk,maximum=1._rk,default=0.7_rk)
    call twig%get(g1_, 'g1', 'e-folding depth of non-visible shortwave radiation', 'm', &
                    minimum=0._rk,default=0.4_rk)
    call twig%get(g2_, 'g2', 'e-folding depth of visible shortwave radiation', 'm', &
                    minimum=0._rk,default=8._rk)
-   
-   branch => settings_store%get_typed_child('mimic_3d')
-   
+
+   branch => settings_store%get_typed_child('mimic_3d', 'effects of horizontal gradients')
+
    twig => branch%get_typed_child('ext_pressure', 'external pressure')
-   leaf => twig%get_typed_child('analytical', 'analytical external pressure')
-   call leaf%get(PeriodM, 'PeriodM', 'period of 1st harmonic (eg. M2-tide)', 's', &
+   call twig%get(ext_press_mode, 'mode', 'formulation', options=(/option(0, 'horizontal gradient in surface elevation'), option(1, 'horizontal velocities at given height above bed'), option(2, 'vertically averaged horizontal velocities')/), default=0)
+
+   call twig%get(dpdx, 'dpdx', 'pressure in West-East direction', '', &
+                   default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=leaf)
+   call leaf%get(AmpMu, 'AmpM', 'amplitude of 1st harmonic', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseMu, 'PhaseM', 'phase of 1st harmonic', 's', &
+                   minimum=0._rk,default=0._rk)
+   call leaf%get(AmpSu, 'AmpS', 'amplitude of 2nd harmonic', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseSu, 'PhaseS', 'phase of 2nd harmonic', 's', &
+                   minimum=0._rk,default=0._rk)
+
+   call twig%get(dpdy, 'dpdy', 'pressure in South-North direction', '', &
+                   default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=leaf)
+   call leaf%get(AmpMv, 'AmpM', 'amplitude of 1st harmonic', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseMv, 'PhaseM', 'phase of 1st harmonic', 's', &
+                   minimum=0._rk,default=0._rk)
+   call leaf%get(AmpSv, 'AmpS', 'amplitude of 2nd harmonic', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseSv, 'PhaseS', 'phase of 2nd harmonic', 's', &
+                   minimum=0._rk,default=0._rk)
+
+   call twig%get(h_press, 'h', 'height above bed', 'm', &
+                   minimum=0._rk,default=0._rk)
+   
+   call twig%get(PeriodM, 'PeriodM', 'period of 1st tidal harmonic (eg. M2-tide)', 's', &
                    default=44714._rk)
-   call leaf%get(AmpMu, 'AmpMu', 'u amplitude of 1st harmonic', '-', &
-                   default=0._rk)
-   call leaf%get(PhaseMu, 'PhaseMu', 'u phase of 1st harmonic', 's', &
-                   minimum=0._rk,default=0._rk)
-   call leaf%get(AmpMv, 'AmpMv', 'v amplitude of 1st harmonic', '-', &
-                   default=0._rk)
-   call leaf%get(PhaseMv, 'PhaseMv', 'v phase of 1st harmonic', 's', &
-                   minimum=0._rk,default=0._rk)
-
-   call leaf%get(PeriodS, 'PeriodS', 'period of 2nd harmonic (eg. S2-tide)', 's', &
+   call twig%get(PeriodS, 'PeriodS', 'period of 2nd tidal harmonic (eg. S2-tide)', 's', &
                    default=43200._rk)
-   call leaf%get(AmpSu, 'AmpSu', 'u amplitude of 2nd harmonic', '-', &
-                   default=0._rk)
-   call leaf%get(PhaseSu, 'PhaseSu', 'u phase of 2nd harmonic', 's', &
-                   minimum=0._rk,default=0._rk)
-   call leaf%get(AmpSv, 'AmpSv', 'v amplitude of 2nd harmonic', '-', &
-                   default=0._rk)
-   call leaf%get(PhaseSv, 'PhaseSv', 'v phase of 2nd harmonic', 's', &
-                   minimum=0._rk,default=0._rk)
-
-   twig => branch%get_typed_child('ext_pressure', 'external pressure')
-   leaf => twig%get_typed_child('from_file', 'external pressure read from file')
-   call leaf%get(h_press, 'h', 'height above bed', 'm', &
-                   minimum=0._rk,default=0._rk)
-   call leaf%get(dpdx, 'dpdx', 'pressure in x-direction', '', &
-                   default=0._rk)
-!                   default=0._rk, pchild=leaf)
-   call leaf%get(dpdy, 'dpdy', 'pressure in y-direction', '', &
-                   default=0._rk)
-!                   default=0._rk, pchild=leaf)
 
    twig => branch%get_typed_child('int_press', 'internal pressure')
-   call twig%get(dsdx, 'dsdx', 'salinity gradient: x direction', 'Celsius/m', &
+   call twig%get(dsdx, 'dsdx', 'salinity gradient in West-East direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dsdy, 'dsdy', 'salinity gradient: y direction', 'Celsius/m', &
+   call twig%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dtdx, 'dtdx', 'temperature gradient: x direction', 'PSU/m', &
+   call twig%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'psu/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dtdy, 'dtdy', 'temperature gradient: y direction', 'PSU/m', &
+   call twig%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'psu/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(t_adv, 't_adv', 'advect temperature', default=.false.)
-   call twig%get(s_adv, 's_adv', 'advect salinity', default=.false.)
+   call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
+   call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
 
-   twig => branch%get_typed_child('w_advspec', 'vertical velocity')
-   call twig%get(w_adv, 'w_adv', 'vertical velocity', 'm/s', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(w_height, 'w_height', 'height', 'm', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(w_adv_discr, 'w_adv_discr', '', &
-                   minimum=0,maximum=6,default=6)
-
-#if 1
-   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, pchild=twig)
+   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=twig)
    call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
                    default=44714._rk)
    call twig%get(amp_1, 'amp_1', 'amplitude of 1st harmonic', 'm', &
@@ -686,39 +680,29 @@
                    default=0._rk)
    call twig%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
                    minimum=0._rk, default=0._rk)
-#else
 
-   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, pchild=twig)
-!   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, &
-!                   extra_options=(/type_option(ANALYTICAL, 'analytical'), type_option(3, 'calculated')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
-   twig => branch%get_typed_child('analytical')
-   call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
-                   default=44714._rk)
-   call twig%get(amp_1, 'amp_1', 'amplitude of 1st harmonic', 'm', &
-                   default=0._rk)
-   call twig%get(phase_1, 'phase_1', 'phase of 1st harmonic', 's', &
-                   minimum=0._rk, default=0._rk)
-   call twig%get(period_2, 'period_2', 'period of 2nd harmonic (eg. S2-tide)', 's', &
-                   default=43200._rk)
-   call twig%get(amp_2, 'amp_2', 'amplitude of 2nd harmonic', 'm', &
-                   default=0._rk)
-   call twig%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
-                   minimum=0._rk, default=0._rk)
-#endif
-
-   twig => branch%get_typed_child('velprofile', 'horizontal velocities')
-   call twig%get(uprof, 'uprof', 'velocity in West-East direction', 'm/s', default=0._rk, &
+   twig => settings_store%get_typed_child('velocities', 'observed/prescribed horizontal velocities')
+   call twig%get(uprof, 'u', 'velocity in West-East direction', 'm/s', default=0._rk, &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
-   call twig%get(vprof, 'vprof', 'velocity in South-North direction', 'm/s', default=0._rk, &
+   call twig%get(vprof, 'v', 'velocity in South-North direction', 'm/s', default=0._rk, &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
-   call twig%get(vel_relax_tau, 'vel_relax_tau', 'relaxation time', 's', &
+   leaf => twig%get_typed_child('relax', 'relax model velocities towards observed/prescribed value')
+   call leaf%get(vel_relax_tau, 'tau', 'time scale', 's', &
                    minimum=0._rk,default=1.e15_rk)
-   call twig%get(vel_relax_ramp, 'vel_relax_ramp', '', 's', &
+   call leaf%get(vel_relax_ramp, 'ramp', 'duration of initial relaxation period', 's', &
                    minimum=0._rk,default=1.e15_rk)
 
-   branch => settings_store%get_typed_child('observations')
+   twig => branch%get_typed_child('w', 'vertical velocity')
+   call twig%get(w_adv, 'max', 'maximum velocity', 'm/s', &
+      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call twig%get(w_height, 'height', 'height of maximum velocity', 'm', &
+      default=0._rk, method_constant=CONSTANT, method_file=FROMFILE)
+   call twig%get(w_adv_discr, 'adv_discr', 'vertical advection scheme', options=&
+             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
+                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
+                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
 
-   twig => branch%get_typed_child('wave', 'wind waves')
+   twig => settings_store%get_typed_child('surface/wave', 'wind waves', display=display_advanced)
    call twig%get(Hs_, 'Hs', 'significant wave-height', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(Tz_, 'Tz', 'mean zero-crossing period', 's', &
@@ -726,20 +710,14 @@
    call twig%get(phiw_, 'phiw', 'mean direction', '-', &
                    minimum=0._rk,maximum=360._rk,default=0._rk)
 
-   call branch%get(epsprof, 'epsprof', 'turbulence dissipation rate', 'W/kg', &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
+   branch => settings_store%get_typed_child('turbulence')
 
-   call branch%get(o2_prof, 'o2_prof', 'oxygen profile', '', &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
+   call branch%get(epsprof, 'epsprof', 'observed dissipation rate', 'W/kg', &
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_advanced, order=999)
 
-   twig => branch%get_typed_child('bprofile', 'buoyancy profile')
-   call twig%get(b_obs_surf, 'b_obs_surf', '', '-', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(b_obs_NN, 'b_obs_NN', '', 's^-2', &
-                   minimum=0._rk,default=0._rk)
-   call twig%get(b_obs_sbf, 'b_obs_sbf', '', '-', &
-                   minimum=0._rk,default=0._rk)
-   LEVEL2 'done.'
+   call settings_store%get(o2_prof, 'o2', 'oxygen', '', &
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_hidden)
+
    return
 
    end subroutine init_observations_yaml
@@ -1034,15 +1012,18 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (ext_press_method==ANALYTICAL) then
+   if (dpdx%method==ANALYTICAL) then
 !     Analytical prescription of tides
-      h_press%value = PressHeight
       dpdx%value = AmpMu*sin(2*pi*(fsecs-PhaseMu)/PeriodM)    &
              + AmpSu*sin(2*pi*(fsecs-PhaseSu)/PeriodS)    &
-             + PressConstU
+             + dpdx%constant_value
+   end if
+
+   if (dpdy%method==ANALYTICAL) then
+!     Analytical prescription of tides
       dpdy%value = AmpMv*sin(2*pi*(fsecs-PhaseMv)/PeriodM)    &
              + AmpSv*sin(2*pi*(fsecs-PhaseSv)/PeriodS)    &
-             + PressConstV
+             + dpdy%constant_value
    end if
 
    if (zeta%method==ANALYTICAL) then

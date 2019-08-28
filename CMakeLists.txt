@@ -26,7 +26,7 @@ endif()
 
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 
-option(GOTM_USE_STIM "Include support for Simple Thermodynamic Ice Models - STIM" ON)
+option(GOTM_USE_STIM "Include support for Simple Thermodynamic Ice Models - STIM" OFF)
 
 option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
 
