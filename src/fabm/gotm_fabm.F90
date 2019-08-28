@@ -1451,7 +1451,8 @@
 
          if (gotm_lake) then
 !           KK-TODO: do we need to consider virtual_dilution?
-            if (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution) then
+!KB            if (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution) then
+            if (model%state_variables(i)%no_precipitation_dilution .or. .not. freshwater_impact) then
                if ( dilution .gt. _ZERO_ ) then
                   Qsour(nlev) = Qsour(nlev) + dilution*Afo(nlev)*cc(nlev,i)
                else

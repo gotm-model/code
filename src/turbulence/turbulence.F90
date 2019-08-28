@@ -656,21 +656,6 @@
    call twig%get(sig_peps, 'sig_peps', 'use Burchard (2001) wave breaking parameterisation', &
                    default=.false.)
 
-<<<<<<< HEAD
-   twig => branch%get_child('my')
-   call twig%get(e1, 'e1', 'coefficient e1 in MY q^2l equation', '-', &
-                   default=1.8_rk)
-   call twig%get(e2, 'e2', 'coefficient e2 in MY q^2l equation', '-', &
-                   default=1.33_rk)
-   call twig%get(e3, 'e3', 'coefficient e3 in MY q^2l equation', '-', &
-                   default=1.8_rk)
-   call twig%get(sq, 'sq', 'turbulent diffusivities of q^2 (= 2k)', '-', &
-                   default=0.2_rk)
-   call twig%get(sl, 'sl', 'turbulent diffusivities of q^2l', '-', &
-                   default=0.2_rk)
-   call twig%get(my_length, 'my_length', 'prescribed barotropic length scale in q^2l equation of MY', &
-                   minimum=1,maximum=3,default=3)
-=======
    twig => branch%get_child('my', 'Mellor-Yamada model', display=display_advanced)
    call twig%get(e1, 'e1', 'coefficient e1 in q^2 l equation', '-', &
                    default=1.8_rk)
@@ -684,7 +669,6 @@
                    default=0.2_rk)
    call twig%get(my_length, 'length', 'barotropic length scale in q^2 l equation', &
                    options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'linear from surface')/),default=1)
->>>>>>> upstream/v5.4rc
    call twig%get(new_constr, 'new_constr', 'stabilize stability functions', &
                    default=.false.)
 
@@ -726,27 +710,16 @@
    call twig%get(iw_model, 'model', 'model', &
                    options=(/option(0, 'none'), option(1, 'Mellor (1989)'), option(2, 'Large et al. (1994)')/), default=0)
    call twig%get(alpha, 'alpha', 'coefficient for Mellor internal wave model', '-', &
-<<<<<<< HEAD
-                   default=0.7_rk)
-   call twig%get(klimiw, 'klimiw', 'critical value of TKE', 'm^2/s^2', &
-=======
                    default=0._rk)
    call twig%get(klimiw, 'klim', 'critical value of TKE', 'm^2/s^2', &
->>>>>>> upstream/v5.4rc
                    default=1.e-6_rk)
    call twig%get(rich_cr, 'rich_cr', 'critical Richardson number for shear instability', '-', &
                    default=0.7_rk)
    call twig%get(numshear, 'numshear', 'background diffusivity for shear instability', 'm^2/s', &
                    default=5.e-3_rk)
-<<<<<<< HEAD
-   call twig%get(numiw, 'numiw', 'background viscosity for internal wave breaking', 'm^2/s', &
-                   default=1.e-4_rk)
-   call twig%get(nuhiw, 'nuhiw', 'background diffusivity for internal wave breaking', 'm^2/s', &
-=======
    call twig%get(numiw, 'num', 'background viscosity for internal wave breaking', 'm^2/s', &
                    default=1.e-4_rk)
    call twig%get(nuhiw, 'nuh', 'background diffusivity for internal wave breaking', 'm^2/s', &
->>>>>>> upstream/v5.4rc
                    default=1.e-5_rk)
    LEVEL2 'done.'
    return
