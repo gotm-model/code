@@ -186,7 +186,7 @@
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
                            relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot, &
                            constant_value
-   type (type_key_value_pair), pointer :: pair
+   class (type_key_value_pair), pointer :: pair
 !
 !-----------------------------------------------------------------------
 !BOC
