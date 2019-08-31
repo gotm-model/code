@@ -501,12 +501,17 @@
    if (restart) then
       if (restart_offline) then
          LEVEL1 'read_restart'
+#ifdef NETCDF_FMT
          if (.not. restart_allow_perpetual) then
             call check_restart_time('time')
          else
             LEVEL2 'allow perpetual restarts'
          end if
          call read_restart(restart_allow_missing_variable)
+#else
+         FATAL 'Restart reading requires NetCDF support. Please build with GOTM_USE_NetCDF=ON'
+         stop 1
+#endif
          call friction(kappa,avmolu,tx,ty)
       end if
       if (restart_online) then
