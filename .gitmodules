@@ -1,6 +1,11 @@
 [submodule "extern/fabm"]
 	path = extern/fabm
-	url = ../../fabm-model/fabm
+	url = https://github.com/fabm-model/fabm
+#	url = ../../fabm-model/fabm
 [submodule "extern/flexout"]
 	path = extern/flexout
-	url = ../../BoldingBruggeman/flexout
+	url = https://github.com/BoldingBruggeman/flexout
+#	url = ../../BoldingBruggeman/flexout
+[submodule "extern/stim"]
+	path = extern/stim
+	url = ../../BoldingBruggeman/stim

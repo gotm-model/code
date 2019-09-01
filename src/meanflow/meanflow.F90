@@ -17,10 +17,15 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_meanflow, clean_meanflow
+   public init_meanflow, post_init_meanflow, clean_meanflow
 #ifdef _PRINTSTATE_
    public print_state_meanflow
 #endif
+
+   interface init_meanflow
+      module procedure init_meanflow_yaml
+      module procedure init_meanflow_nml
+   end interface
 !
 ! !PUBLIC DATA MEMBERS:
    logical, public                              :: grid_ready
@@ -59,6 +64,11 @@
 
 !  shading in the water column
    REALTYPE, public, dimension(:), allocatable, target  :: bioshade
+
+#ifndef _ICE_
+!  fake ice thickness - switch between 0 and 1 - see temperature.F90
+   REALTYPE, public  :: Hice
+#endif
 
 # ifdef EXTRA_OUTPUT
 
@@ -111,17 +121,10 @@
    REALTYPE, public, target            :: depth
    REALTYPE, public                    :: runtimeu, runtimev
 !
-! !DEFINED PARAMETERS:
-   REALTYPE, public, parameter         :: pi=3.141592654
-!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !EOP
-!
-!  private date members
-   REALTYPE, parameter       :: omega=2*pi/86164.
-!
 !-----------------------------------------------------------------------
 
    contains
@@ -132,7 +135,70 @@
 ! !IROUTINE: Initialisation of the mean flow variables
 !
 ! !INTERFACE:
-   subroutine init_meanflow(namlst,fn,nlev,latitude)
+   subroutine init_meanflow_yaml()
+!
+! !DESCRIPTION:
+!  Allocates memory and initialises everything related
+!  to the `meanflow' component of GOTM.
+!
+! !USES:
+   use settings
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+!  See log for the meanflow module
+!
+! !LOCAL VARIABLES:
+   type (type_gotm_settings), pointer :: branch
+   integer                   :: rc
+   integer, parameter        :: rk = kind(_ONE_)
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'init_meanflow_yaml'
+
+   branch => settings_store%get_typed_child('bottom')
+   call branch%get(h0b, 'h0b', 'physical bottom roughness', 'm', &
+                minimum=0._rk,default=0.05_rk, description='physical bottom roughness or bed roughness. This variable, h0b, relates to the hydrodynamic bottom roughness z0b as z0b = 0.03*h0b + 0.1*nu/ustar.')
+   call branch%get(MaxItz0b, 'MaxItz0b', 'number of iterations for hydrodynamic bottom roughness', &
+                minimum=1,default=1, display=display_advanced, description='number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
+
+   branch => settings_store%get_typed_child('surface/roughness')
+   call branch%get(charnock, 'charnock', 'use Charnock (1955) roughness adaptation', &
+                default=.false.)
+   call branch%get(charnock_val, 'charnock_val', 'empirical constant for roughness adaptation', '-', &
+                minimum=0._rk,default=1400._rk)
+   call branch%get(z0s_min, 'z0s_min', 'hydrodynamic roughness (minimum value if Charnock adaptation is used)', 'm', &
+                minimum=0.0_rk,default=0.02_rk)
+
+   branch => settings_store%get_typed_child('physical_constants', display=display_advanced)
+   call branch%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
+                minimum=0._rk,default=9.81_rk)
+   call branch%get(rho_0, 'rho_0', 'reference density', 'kg/m^3', &
+                minimum=0._rk,default=1027._rk)
+   call branch%get(cp, 'cp', 'specific heat of sea water', 'J/kg/K', &
+                minimum=0._rk,default=3985._rk)
+   call branch%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
+                minimum=0._rk,default=1.3e-6_rk)
+   call branch%get(avmolt, 'avmolt', 'molecular viscosity for temperature', 'm^2/s', &
+                minimum=0._rk,default=1.4e-7_rk)
+   call branch%get(avmols, 'avmols', 'molecular viscosity for salinity', 'm^2/s', &
+                minimum=0._rk,default=1.1e-9_rk)
+   !call branch%get(no_shear, 'no_shear', 'set shear production term to zero', &
+   !             default=.false.)
+   LEVEL2 'done'
+   return
+   end subroutine init_meanflow_yaml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialisation of the mean flow variables
+!
+! !INTERFACE:
+   subroutine init_meanflow_nml(namlst,fn)
 !
 ! !DESCRIPTION:
 !  Allocates memory and initialises everything related
@@ -144,27 +210,21 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                      :: namlst
    character(len=*), intent(in)             :: fn
-   integer, intent(in)                      :: nlev
-   REALTYPE, intent(in)                     :: latitude
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See log for the meanflow module
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
-   integer                   :: rc
-
    namelist /meanflow/  h0b,z0s_min,charnock,charnock_val,ddu,ddl,     &
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
                         avmolu,avmolT,avmolS,MaxItz0b,no_shear
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_meanflow'
+   LEVEL1 'init_meanflow_nml'
 
 !  Initialize namelist variables with default values.
 !  Note that namelists should preferably contain all variables,
@@ -196,11 +256,54 @@
    no_shear     = .false.
 
 !  Read namelist from file.
-   open(namlst,file=fn,status='old',action='read',err=80)
-   LEVEL2 'reading meanflow namelists..'
-   read(namlst,nml=meanflow,err=81)
-   close (namlst)
+   open(10,file='gotmmean.nml',status='old',action='read',err=80)
+   read(10,nml=meanflow,err=81)
+   close (10)
    LEVEL2 'done.'
+
+   return
+80 FATAL 'I could not open: ',trim('gotmmean.nml')
+   stop 'init_meanflow'
+81 FATAL 'I could not read "meanflow" namelist'
+   stop 'init_meanflow'
+
+   end subroutine init_meanflow_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialisation of the mean flow variables
+!
+! !INTERFACE:
+   subroutine post_init_meanflow(nlev,latitude)
+!
+! !DESCRIPTION:
+!  Allocates memory and initialises everything related
+!  to the `meanflow' component of GOTM.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                      :: nlev
+   REALTYPE, intent(in)                     :: latitude
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+!  See log for the meanflow module
+!
+! !DEFINED PARAMETERS:
+   REALTYPE, parameter       :: pi=3.141592654
+   REALTYPE, parameter       :: omega=2*pi/86164.
+!
+! !LOCAL VARIABLES:
+   integer                   :: rc
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'post_init_meanflow'
 
 !  Important: we do not initialize "depth" here, because it has already been initialized by gotm.F90.
 
@@ -361,14 +464,8 @@
 # endif
 
    LEVEL2 'done.'
-
    return
-80 FATAL 'I could not open: ',trim(fn)
-   stop 'init_meanflow'
-81 FATAL 'I could not read "meanflow" namelist'
-   stop 'init_meanflow'
-
-   end subroutine init_meanflow
+   end subroutine post_init_meanflow
 !EOC
 
 !-----------------------------------------------------------------------

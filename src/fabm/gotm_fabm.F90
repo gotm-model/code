@@ -26,11 +26,11 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
+   public configure_gotm_fabm, configure_gotm_fabm_from_nml, gotm_fabm_create_model, init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
-   public no_precipitation_dilution
+   public freshwater_impact
    public register_observation
    public calculate_conserved_quantities, total0
 
@@ -42,10 +42,11 @@
 
    ! Variables below must be accessible for getm_fabm
    public cc_transport
+
 !
 ! !PUBLIC DATA MEMBERS:
 !  The one and only model
-   class (type_model), pointer, public :: model
+   class (type_model), pointer, save, public :: model => null()
 
    type,extends(type_base_driver) :: type_gotm_driver
    contains
@@ -93,7 +94,7 @@
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor,configuration_method
    logical                   :: fabm_calc,repair_state, &
                                 bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
-                                no_precipitation_dilution,salinity_relaxation_to_freshwater_flux, &
+                                freshwater_impact,salinity_relaxation_to_freshwater_flux, &
                                 save_inputs, no_surface
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
@@ -141,23 +142,22 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm(nlev,namlst,fname,dt,field_manager)
+   subroutine configure_gotm_fabm_from_nml(namlst, fname)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
 ! !INPUT PARAMETERS:
-   integer,                   intent(in)             :: nlev,namlst
-   character(len=*),          intent(in)             :: fname
-   REALTYPE,optional,         intent(in)             :: dt
-   class (type_field_manager),intent(inout),optional :: field_manager
+   integer,          intent(in) :: namlst
+   character(len=*), intent(in) :: fname
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
 !  local variables
-   integer :: i, output_level
-   logical :: file_exists, in_output
+!KB   integer :: i, output_level
+!KB   logical :: file_exists, in_output
+   logical :: no_precipitation_dilution
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
@@ -167,9 +167,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_gotm_fabm'
-
-   nullify(model)
+   LEVEL1 'init_gotm_fabm_nml'
 
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
@@ -193,11 +191,173 @@
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=gotm_fabm_nml,err=99)
    close(namlst)
+   freshwater_impact = .not. no_precipitation_dilution
+   LEVEL2 'done.'
+   return
+
+98 LEVEL2 'I could not open '//trim(fname)
+   LEVEL2 'If thats not what you want you have to supply '//trim(fname)
+   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
+   fabm_calc = .false.
+   return
+
+99 FATAL 'I could not read '//trim(fname)
+   stop 'init_gotm_fabm_nml'
+   return
+
+   end subroutine configure_gotm_fabm_from_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine configure_gotm_fabm(cfg)
+!
+! !DESCRIPTION:
+! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+
+! !USES:
+   use yaml_settings
+   use util, only: UPSTREAM, P2, MUSCL, Superbee, P2_PDM
+!
+! !INPUT PARAMETERS:
+   class (type_settings), intent(inout) :: cfg
+   type (type_settings), pointer :: branch
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!  local variables
+!KB   integer :: i, output_level
+!KB   logical :: file_exists, in_output
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'init_gotm_fabm_yaml'
+
+   ! Initialize all namelist variables to reasonable default values.
+   call cfg%get(fabm_calc, 'use', 'enable FABM', &
+                default=.false.)
+   call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
+                default=.true.) ! disable to check mass conservation
+   branch => cfg%get_child('feedbacks', 'feedbacks to physics')
+   call branch%get(bioshade_feedback, 'shade', 'interior light absorption', &
+                default=.false.)
+   call branch%get(bioalbedo_feedback, 'albedo', 'surface albedo', &
+                default=.false.)
+   call branch%get(biodrag_feedback, 'surface_drag', 'surface drag', &
+                default=.false.)
+   call cfg%get(repair_state, 'repair_state', 'clip state to minimum/maximum boundaries', &
+                default=.false.)
+   branch => cfg%get_child('numerics', display=display_advanced)
+   call branch%get(ode_method, 'ode_method', 'time integration scheme applied to source terms', &
+                options=(/ option(1, 'Forward Euler'), option(2, 'Runge-Kutta 2'), option(3, 'Runge-Kutta 4'), &
+                option(4, 'first-order Patanker'), option(5, 'second-order Patanker'), option(7, 'first-order modified Patanker'), &
+                option(8, 'second-order modified Patanker'), option(10, 'first-order extended modified Patanker'), &
+                option(11, 'second-order extended modified Patankar') /), default=1)
+   call branch%get(split_factor, 'split_factor', 'number of substeps used for source integration', &
+                minimum=1,maximum=100,default=1)
+   call branch%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme for settling/rising', options=&
+             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
+                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
+                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
+   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
+                minimum=0._rk,default=1._rk)
+#if 0
+   call cfg%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', '', &
+                default=.false.)
+#else
+   salinity_relaxation_to_freshwater_flux = .false.
+#endif
+   branch => cfg%get_child('debug', display=display_advanced)
+   call branch%get(no_surface, 'no_surface', 'disable surface processes', &
+                default=.false.) ! disables surface exchange; useful to check mass conservation
+   call branch%get(save_inputs, 'save_inputs', 'include additional forcing fields in output', &
+                default=.false.)
+   call cfg%get(configuration_method, 'configuration_method', 'configuration file', &
+                options=(/option(-1, 'auto-detect (prefer fabm.yaml)'), option(0, 'fabm.nml'), option(1, 'fabm.yaml')/), &
+                default=-1, display=display_advanced)
+
+   LEVEL2 'done.'
+
+   end subroutine configure_gotm_fabm
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine gotm_fabm_create_model(namlst)
+!
+! !INPUT PARAMETERS:
+   integer, intent(in) :: namlst
+
+   logical :: file_exists
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (.not. fabm_calc) return
+
+   ! Provide FABM with an object for communication with host
+   allocate(type_gotm_driver::driver)
+
+   fabm_ready = .false.
+
+   ! Create model tree
+   if (configuration_method==-1) then
+      configuration_method = 1
+      inquire(file='fabm.yaml',exist=file_exists)
+      if (.not.file_exists) then
+         inquire(file='fabm.nml',exist=file_exists)
+         if (file_exists) configuration_method = 0
+      end if
+   end if
+   select case (configuration_method)
+   case (0)
+      ! From namelists in fabm.nml
+      model => fabm_create_model_from_file(namlst)
+   case (1)
+      ! From YAML file fabm.yaml
+      allocate(model)
+      call fabm_create_model_from_yaml_file(model)
+   end select   
+
+   end subroutine
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine init_gotm_fabm(nlev,dt,field_manager)
+!
+! !DESCRIPTION:
+! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+!
+! !INPUT PARAMETERS:
+   integer,                   intent(in)             :: nlev
+!   character(len=*),          intent(in)             :: fname
+   REALTYPE,optional,         intent(in)             :: dt
+   class (type_field_manager),intent(inout),optional :: field_manager
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!  local variables
+   integer :: i
+   logical :: in_output
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'post_init_gotm_fabm'
 
    if (fabm_calc) then
-      ! Provide FABM with an object for communication with host
-      allocate(type_gotm_driver::driver)
-
       clock_adv    = 0
       clock_diff   = 0
       clock_source = 0
@@ -205,27 +365,6 @@
       repair_interior_count = 0
       repair_surface_count = 0
       repair_bottom_count = 0
-
-      fabm_ready = .false.
-
-      ! Create model tree
-      if (configuration_method==-1) then
-         configuration_method = 1
-         inquire(file='fabm.yaml',exist=file_exists)
-         if (.not.file_exists) then
-            inquire(file='fabm.nml',exist=file_exists)
-            if (file_exists) configuration_method = 0
-         end if
-      end if
-      select case (configuration_method)
-         case (0)
-            ! From namelists in fabm.nml
-            model => fabm_create_model_from_file(namlst)
-         case (1)
-            ! From YAML file fabm.yaml
-            allocate(model)
-            call fabm_create_model_from_yaml_file(model)
-      end select
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call fabm_set_domain(model,nlev,dt)
@@ -357,20 +496,9 @@
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
       call check_fabm_expressions()
-
    end if
 
-   return
-
-98 LEVEL2 'I could not open '//trim(fname)
-   LEVEL2 'If thats not what you want you have to supply '//trim(fname)
-   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
-   fabm_calc = .false.
-   return
-
-99 FATAL 'I could not read '//trim(fname)
-   stop 'init_gotm_fabm'
-   return
+   LEVEL2 'done.'
 
    end subroutine init_gotm_fabm
 !EOC
@@ -1035,7 +1163,7 @@
 
    ! Add surface flux due to evaporation/precipitation, unless the model explicitly says otherwise.
    do i=1,size(model%state_variables)
-      if (.not. (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution)) then
+      if (freshwater_impact .and. .not. model%state_variables(i)%no_precipitation_dilution) then
          sfl(i) = sfl(i)-cc(nlev,i)*dilution
          if (virtual_dilution/=_ZERO_) sfl(i) = sfl(i)-sum(cc(1:nlev,i)*curh(1:nlev))*virtual_dilution
       end if
@@ -1615,6 +1743,7 @@
    nullify(g2)
    nullify(yearday)
    nullify(secondsofday)
+   nullify(model)
 
    LEVEL1 'done.'
 

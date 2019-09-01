@@ -56,7 +56,6 @@
    use meanflow,     only: depth0,depth
    use meanflow,     only: ga,z,zi,h,ho,ddu,ddl,grid_method
    use meanflow,     only: grid_file,w
-   use observations, only: zeta_method,w_adv_method
    use observations, only: w_adv,w_height
    IMPLICIT NONE
 !
@@ -121,7 +120,7 @@
          open (grid_unit,FILE =grid_file,ERR=100)
 ! Observations is called after meanflow is initialised, and we don#t have
 ! zeta_method
-!        if (zeta_method /= 0) then
+!        if (zeta%method /= 0) then
 !          stop "You are using Cartesian coordinates with varying surface elevation"
 !        end if
          read (grid_unit,*) nlayers

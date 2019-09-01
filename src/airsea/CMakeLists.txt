@@ -11,5 +11,5 @@ add_library(airsea
    albedo_water.F90
 )
 target_compile_definitions(airsea PRIVATE GUSTINESS)
-target_link_libraries(airsea PRIVATE util input_manager)
+target_link_libraries(airsea PRIVATE util input_manager config)
 set_property(TARGET airsea PROPERTY FOLDER gotm)

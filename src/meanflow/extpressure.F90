@@ -62,26 +62,17 @@
    select case (method)
       case (1)
 !        current measurement at h_press above bed
-         if (h_press.le._ZERO_) then
-            LEVEL2 ''
-            LEVEL2 '***************************************************'
-            LEVEL2 'PressHeight=',h_press, 'but it must be positive.'
-            LEVEL2 'Please correct this in obs.nml and rerun.'
-            LEVEL2 'Program aborted.'
-            LEVEL2 '***************************************************'
-            stop 'extpressure'
-         end if
          z(1)=0.5*h(1)
          i   =0
 222      i=i+1
          z(i+1)=z(i)+0.5*(h(i)+h(i+1))
-         if ((z(i+1).lt.h_press).and.(i.lt.nlev)) goto 222
-         rat=(h_press-z(i))/(z(i+1)-z(i))
+         if ((z(i+1).lt.h_press%value).and.(i.lt.nlev)) goto 222
+         rat=(h_press%value-z(i))/(z(i+1)-z(i))
          uint=rat*u(i+1)+(1-rat)*u(i)
          vint=rat*v(i+1)+(1-rat)*v(i)
          do i=1,nlev
-            u(i)=u(i)+dpdx-uint
-            v(i)=v(i)+dpdy-vint
+            u(i)=u(i)+dpdx%value-uint
+            v(i)=v(i)+dpdy%value-vint
          end do
       case (2)
 !     vertical mean of current prescribed
@@ -96,8 +87,8 @@
          uint=uint/hint
          vint=vint/hint
          do i=1,nlev
-            u(i)=u(i)+dpdx-uint
-            v(i)=v(i)+dpdy-vint
+            u(i)=u(i)+dpdx%value-uint
+            v(i)=v(i)+dpdy%value-vint
          end do
       case default
 !     do nothing if method=0, because then

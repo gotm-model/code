@@ -205,7 +205,7 @@
    heat_obs=0
    do i=1,nlev
       heat_sim=heat_sim+T(i)*h(i)*rho_0*cp
-      heat_obs=heat_obs+tprof(i)*h(i)*rho_0*cp
+      heat_obs=heat_obs+tprof%data(i)*h(i)*rho_0*cp
    end do
    if (init_diagnostics) then
       heat_sim0=heat_sim
