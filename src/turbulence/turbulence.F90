@@ -278,7 +278,7 @@
 ! !IROUTINE: Initialise the turbulence module
 !
 ! !INTERFACE:
-   subroutine init_turbulence_nml(namlst,fn)
+   subroutine init_turbulence_nml(namlst,fn,nlev)
 !
 ! !DESCRIPTION:
 ! Initialises all turbulence related stuff. This routine reads a number
@@ -304,6 +304,7 @@
 ! !INPUT PARAMETERS:
    integer,          intent(in)        :: namlst
    character(len=*), intent(in)        :: fn
+   integer, optional,intent(in)        :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -483,6 +484,9 @@
       close (10)
    endif
    LEVEL2 'done.'
+
+   if (present(nlev)) call post_init_turbulence(nlev)
+
    return
 
 80 FATAL 'I could not open "gotmturb.nml"'
