@@ -46,7 +46,7 @@
 !
 ! !PUBLIC DATA MEMBERS:
 !  The one and only model
-   class (type_model), pointer, public :: model => null()
+   class (type_model), pointer, save, public :: model => null()
 
    type,extends(type_base_driver) :: type_gotm_driver
    contains
@@ -178,7 +178,7 @@
 ! !INPUT PARAMETERS:
    integer,          intent(in) :: namlst
    character(len=*), intent(in) :: fname
-   logical,          intent(in)   ,optional :: lake
+   logical,optional, intent(in) :: lake
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -408,22 +408,6 @@
       repair_surface_count = 0
       repair_bottom_count = 0
 
-      ! Inform field manager about available diagnostics
-      if (present(field_manager)) then
-         do i=1,size(model%diagnostic_variables)
-            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
-            if (in_output) model%diagnostic_variables(i)%save = .true.
-         end do
-         do i=1,size(model%horizontal_diagnostic_variables)
-            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
-               call register_field(field_manager, model%horizontal_diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
-            else
-               call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=in_output)
-            end if
-            if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
-         end do
-      end if
-
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call fabm_set_domain(model,nlev,dt)
       call model%set_bottom_index(1)
@@ -546,24 +530,19 @@
             if (in_output) check_conservation = .true.
          end do
 
-!KB - this code occurs twice
-#if 0
          ! Inform field manager about available diagnostics
          ! This also tells FABM which diagnostics need computing (through setting of the "save" attribute).
          ! This MUST be done before fabm_check_ready is called.
          do i=1,size(model%diagnostic_variables)
-            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
-            if (in_output) model%diagnostic_variables(i)%save = .true.
+            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=model%diagnostic_variables(i)%save)
          end do
          do i=1,size(model%horizontal_diagnostic_variables)
             if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
-               call register_field(field_manager, model%horizontal_diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), dimensions=(/id_dim_z/), used=model%diagnostic_variables(i)%save)
             else
-               call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=in_output)
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=model%diagnostic_variables(i)%save)
             end if
-            if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
          end do
-#endif
       end if
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
@@ -594,7 +573,6 @@
 !
 ! !LOCAL VARIABLES:
    integer :: i,rc,output_level
-   logical :: used
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -627,7 +605,7 @@
    total0 = huge(_ZERO_)
    allocate(change_in_total(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (change_in_total)'
-   change_in_total = 0._rk
+   change_in_total = 0
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indices to -1 (no external observations provided)
