@@ -59,7 +59,7 @@ add_library(turbulence
    turbulence.F90
    variances.F90
 )
-target_link_libraries(turbulence PRIVATE util)
+target_link_libraries(turbulence PRIVATE util yaml)
 target_include_directories(turbulence PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:turbulence,Fortran_MODULE_DIRECTORY>> $<INSTALL_INTERFACE:include>)
 add_library(gotm::turbulence ALIAS turbulence)
 set_property(TARGET turbulence PROPERTY FOLDER gotm)

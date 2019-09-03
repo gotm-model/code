@@ -26,11 +26,11 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
+   public configure_gotm_fabm, configure_gotm_fabm_from_nml, gotm_fabm_create_model, init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
-   public no_precipitation_dilution
+   public freshwater_impact
    public register_observation, register_stream, register_stream_concentration
    public calculate_conserved_quantities, total0
 
@@ -42,10 +42,11 @@
 
    ! Variables below must be accessible for getm_fabm
    public cc_transport
+
 !
 ! !PUBLIC DATA MEMBERS:
 !  The one and only model
-   class (type_model), pointer, public :: model
+   class (type_model), pointer, public :: model => null()
 
    type,extends(type_base_driver) :: type_gotm_driver
    contains
@@ -111,7 +112,7 @@
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor,configuration_method
    logical                   :: fabm_calc,repair_state, &
                                 bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
-                                no_precipitation_dilution,salinity_relaxation_to_freshwater_flux, &
+                                freshwater_impact,salinity_relaxation_to_freshwater_flux, &
                                 save_inputs, no_surface
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
@@ -141,7 +142,7 @@
    REALTYPE, target :: decimal_yearday
    logical          :: fabm_ready
 
-   type (type_stream),pointer :: first_stream
+   type (type_stream), pointer :: first_stream => null()
 
    logical              :: check_conservation
    REALTYPE,allocatable :: local(:,:)
@@ -169,24 +170,23 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm(nlev,namlst,fname,dt,field_manager,lake)
+   subroutine configure_gotm_fabm_from_nml(namlst, fname, lake)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
 ! !INPUT PARAMETERS:
-   integer,                   intent(in)             :: nlev,namlst
-   character(len=*),          intent(in)             :: fname
-   REALTYPE,optional,         intent(in)             :: dt
-   class (type_field_manager),intent(inout),optional :: field_manager
-   logical                   ,intent(in)   ,optional :: lake
+   integer,          intent(in) :: namlst
+   character(len=*), intent(in) :: fname
+   logical,          intent(in)   ,optional :: lake
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
 !  local variables
-   integer :: i, output_level
-   logical :: file_exists, in_output
+!KB   integer :: i, output_level
+!KB   logical :: file_exists, in_output
+   logical :: no_precipitation_dilution
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
@@ -196,11 +196,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_gotm_fabm'
-
-   nullify(model)
-
-   nullify(first_stream)
+   LEVEL1 'configure_gotm_fabm_from_nml'
 
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
@@ -225,11 +221,185 @@
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=gotm_fabm_nml,err=99)
    close(namlst)
+   freshwater_impact = .not. no_precipitation_dilution
+   LEVEL2 'done.'
+   return
+
+98 LEVEL2 'I could not open '//trim(fname)
+   LEVEL2 'If thats not what you want you have to supply '//trim(fname)
+   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
+   fabm_calc = .false.
+   return
+
+99 FATAL 'I could not read '//trim(fname)
+   stop 'configure_gotm_fabm_from_nml'
+   return
+
+   end subroutine configure_gotm_fabm_from_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine configure_gotm_fabm(cfg)
+!
+! !DESCRIPTION:
+! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+
+! !USES:
+   use yaml_settings
+   use util, only: UPSTREAM, P2, MUSCL, Superbee, P2_PDM
+!
+! !INPUT PARAMETERS:
+   class (type_settings), intent(inout) :: cfg
+   type (type_settings), pointer :: branch
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!  local variables
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'configure_gotm_fabm'
+
+   ! Initialize all namelist variables to reasonable default values.
+   call cfg%get(fabm_calc, 'use', 'enable FABM', &
+                default=.false.)
+   call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
+                default=.true.) ! disable to check mass conservation
+   branch => cfg%get_child('feedbacks', 'feedbacks to physics')
+   call branch%get(bottom_everywhere, 'bottom_everywhere', 'apply benthic/pelagic coupling at every layer', &
+                default=.false.)
+   call branch%get(bioshade_feedback, 'shade', 'interior light absorption', &
+                default=.false.)
+   call branch%get(bioalbedo_feedback, 'albedo', 'surface albedo', &
+                default=.false.)
+   call branch%get(biodrag_feedback, 'surface_drag', 'surface drag', &
+                default=.false.)
+   call cfg%get(repair_state, 'repair_state', 'clip state to minimum/maximum boundaries', &
+                default=.false.)
+   branch => cfg%get_child('numerics', display=display_advanced)
+   call branch%get(ode_method, 'ode_method', 'time integration scheme applied to source terms', &
+                options=(/ option(1, 'Forward Euler'), option(2, 'Runge-Kutta 2'), option(3, 'Runge-Kutta 4'), &
+                option(4, 'first-order Patanker'), option(5, 'second-order Patanker'), option(7, 'first-order modified Patanker'), &
+                option(8, 'second-order modified Patanker'), option(10, 'first-order extended modified Patanker'), &
+                option(11, 'second-order extended modified Patankar') /), default=1)
+   call branch%get(split_factor, 'split_factor', 'number of substeps used for source integration', &
+                minimum=1,maximum=100,default=1)
+   call branch%get(w_adv_discr, 'w_adv_discr', 'vertical advection scheme for settling/rising', options=&
+             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
+                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
+                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
+   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
+                minimum=0._rk,default=1._rk)
+#if 0
+   call cfg%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', '', &
+                default=.false.)
+#else
+   salinity_relaxation_to_freshwater_flux = .false.
+#endif
+   branch => cfg%get_child('debug', display=display_advanced)
+   call branch%get(no_surface, 'no_surface', 'disable surface processes', &
+                default=.false.) ! disables surface exchange; useful to check mass conservation
+   call branch%get(save_inputs, 'save_inputs', 'include additional forcing fields in output', &
+                default=.false.)
+   call cfg%get(configuration_method, 'configuration_method', 'configuration file', &
+                options=(/option(-1, 'auto-detect (prefer fabm.yaml)'), option(0, 'fabm.nml'), option(1, 'fabm.yaml')/), &
+                default=-1, display=display_advanced)
+
+   LEVEL2 'done.'
+
+   end subroutine configure_gotm_fabm
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine gotm_fabm_create_model(namlst,nlev,lake)
+!
+! !INPUT PARAMETERS:
+   integer, intent(in) :: namlst, nlev
+   logical, intent(in), optional :: lake
+
+   logical :: file_exists
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (.not. fabm_calc) return
+
+   ! Provide FABM with an object for communication with host
+   allocate(type_gotm_driver::driver)
+
+   fabm_ready = .false.
+
+   if ( present(lake) ) then
+      gotm_lake = lake
+   else
+      gotm_lake = .false.
+      ! bottom_everywhere only makes sense when we have a hypsograph.
+      if (bottom_everywhere) bottom_everywhere = .false.
+   end if
+
+   kmax_bot = 1
+   if (bottom_everywhere) kmax_bot = nlev
+
+   ! Create model tree
+   if (configuration_method==-1) then
+      configuration_method = 1
+      inquire(file='fabm.yaml',exist=file_exists)
+      if (.not.file_exists) then
+         inquire(file='fabm.nml',exist=file_exists)
+         if (file_exists) configuration_method = 0
+      end if
+   end if
+   select case (configuration_method)
+   case (0)
+      ! From namelists in fabm.nml
+      model => fabm_create_model_from_file(namlst)
+   case (1)
+      ! From YAML file fabm.yaml
+      allocate(model)
+      call fabm_create_model_from_yaml_file(model)
+   end select   
+
+   end subroutine gotm_fabm_create_model
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine init_gotm_fabm(nlev,dt,field_manager)
+!
+! !DESCRIPTION:
+! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+!
+! !INPUT PARAMETERS:
+   integer,                   intent(in)             :: nlev
+!   character(len=*),          intent(in)             :: fname
+   REALTYPE,optional,         intent(in)             :: dt
+   class (type_field_manager),intent(inout),optional :: field_manager
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!  local variables
+   integer :: i
+   logical :: in_output
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'init_gotm_fabm'
 
    if (fabm_calc) then
-      ! Provide FABM with an object for communication with host
-      allocate(type_gotm_driver::driver)
-
       clock_adv    = 0
       clock_diff   = 0
       clock_source = 0
@@ -237,38 +407,6 @@
       repair_interior_count = 0
       repair_surface_count = 0
       repair_bottom_count = 0
-
-      fabm_ready = .false.
-
-      if ( present(lake) ) then
-         gotm_lake = lake
-      else
-         gotm_lake = .false.
-         ! bottom_everywhere only makes sense when we have a hypsograph.
-         if (bottom_everywhere) bottom_everywhere = .false.
-      end if
-
-      kmax_bot = 1
-      if (bottom_everywhere) kmax_bot = nlev
-
-      ! Create model tree
-      if (configuration_method==-1) then
-         configuration_method = 1
-         inquire(file='fabm.yaml',exist=file_exists)
-         if (.not.file_exists) then
-            inquire(file='fabm.nml',exist=file_exists)
-            if (file_exists) configuration_method = 0
-         end if
-      end if
-      select case (configuration_method)
-         case (0)
-            ! From namelists in fabm.nml
-            model => fabm_create_model_from_file(namlst)
-         case (1)
-            ! From YAML file fabm.yaml
-            allocate(model)
-            call fabm_create_model_from_yaml_file(model)
-      end select
 
       ! Inform field manager about available diagnostics
       if (present(field_manager)) then
@@ -376,6 +514,7 @@
       ! Initialize spatially explicit variables
       call init_var_gotm_fabm(nlev)
 
+      ! Inform the fields manager about all variables
       if (present(field_manager)) then
          do i=1,size(model%conserved_quantities)
             call field_manager%register(trim(model%conserved_quantities(i)%name)//'_ini',  model%conserved_quantities(i)%units, &
@@ -406,24 +545,32 @@
                data0d=change_in_total(i), category='fabm', output_level=output_level_debug, used=in_output)
             if (in_output) check_conservation = .true.
          end do
+
+!KB - this code occurs twice
+#if 0
+         ! Inform field manager about available diagnostics
+         ! This also tells FABM which diagnostics need computing (through setting of the "save" attribute).
+         ! This MUST be done before fabm_check_ready is called.
+         do i=1,size(model%diagnostic_variables)
+            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
+            if (in_output) model%diagnostic_variables(i)%save = .true.
+         end do
+         do i=1,size(model%horizontal_diagnostic_variables)
+            if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
+            else
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=in_output)
+            end if
+            if (in_output) model%horizontal_diagnostic_variables(i)%save = .true.
+         end do
+#endif
       end if
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
       call check_fabm_expressions()
-
    end if
 
-   return
-
-98 LEVEL2 'I could not open '//trim(fname)
-   LEVEL2 'If thats not what you want you have to supply '//trim(fname)
-   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
-   fabm_calc = .false.
-   return
-
-99 FATAL 'I could not read '//trim(fname)
-   stop 'init_gotm_fabm'
-   return
+   LEVEL2 'done.'
 
    end subroutine init_gotm_fabm
 !EOC
@@ -446,13 +593,12 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i,rc,output_level
-   logical                   :: used
-!KB   type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
+   integer :: i,rc,output_level
+   logical :: used
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   ! Allocate state variable array for pelagic, bottom and surface combined and provide initial values.
+   ! Allocate state variable array for pelagic, bototm and surface combined and provide initial values.
    ! In terms of memory use, it is a waste to allocate storage for bottom-bound and surface-bound variables across
    ! the entire column. However, it is important that all values at a given point in time are integrated simultaneously
    ! in multi-step algorithms. Due to the design of the integration schemes, this currently can only be achieved by
@@ -481,7 +627,7 @@
    total0 = huge(_ZERO_)
    allocate(change_in_total(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (change_in_total)'
-   change_in_total = 0
+   change_in_total = 0._rk
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indices to -1 (no external observations provided)
@@ -766,14 +912,14 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine register_stream(name,QI,Q)
+   subroutine register_stream(name,flow,Q)
 !
 ! !DESCRIPTION:
 ! TODO
 !
 ! !INPUT PARAMETERS:
    character(len=*),intent(in) :: name
-   REALTYPE,target             :: QI,Q(:)
+   REALTYPE,target             :: flow,Q(:)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -799,7 +945,7 @@
    end if
 
    stream%name = name
-   stream%QI => QI
+   stream%QI => flow
    stream%Q => Q
    allocate(stream%cc(1:size(model%state_variables)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (stream%cc)'
@@ -1248,7 +1394,7 @@
 
    ! Add surface flux due to evaporation/precipitation, unless the model explicitly says otherwise.
    do i=1,size(model%state_variables)
-      if (.not. (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution)) then
+      if (freshwater_impact .and. .not. model%state_variables(i)%no_precipitation_dilution) then
          sfl(i) = sfl(i)-cc(nlev,i)*dilution
          if (virtual_dilution/=_ZERO_) sfl(i) = sfl(i)-sum(cc(1:nlev,i)*curh(1:nlev))*virtual_dilution
       end if
@@ -1305,7 +1451,8 @@
 
          if (gotm_lake) then
 !           KK-TODO: do we need to consider virtual_dilution?
-            if (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution) then
+!KB            if (model%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution) then
+            if (model%state_variables(i)%no_precipitation_dilution .or. .not. freshwater_impact) then
                if ( dilution .gt. _ZERO_ ) then
                   Qsour(nlev) = Qsour(nlev) + dilution*Afo(nlev)*cc(nlev,i)
                else
@@ -1598,7 +1745,6 @@
 ! !LOCAL VARIABLES:
    integer :: i,k,n
    type (type_bottom_diagnostic), pointer :: bottom_diagnostic_data
-   REALTYPE                               :: rhs_sf(1:size(model%state_variables))
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1657,12 +1803,10 @@
 
    if (.not.no_surface) then
       ! Calculate temporal derivatives due to surface processes (e.g. gas exchange, ice algae).
-      ! (set rhs_sf=0 here in order not to depend on FABM's current surface-specific zeroing)
-      rhs_sf = _ZERO_
-      call fabm_do_surface(model,rhs_sf(1:n),rhs(nlev,n+size(model%bottom_state_variables)+1:))
+      call fabm_do_surface(model,rhs(nlev,1:n),rhs(nlev,n+size(model%bottom_state_variables)+1:))
 
       ! Distribute surface flux into pelagic over surface box (i.e., divide by layer height).
-      rhs(nlev,1:n) = rhs(nlev,1:n) + rhs_sf(1:n)/curh(nlev)
+      rhs(nlev,1:n) = rhs(nlev,1:n)/curh(nlev)
    end if
 
    ! Add pelagic sink and source terms for all depth levels.
@@ -1926,6 +2070,8 @@
    nullify(g2)
    nullify(yearday)
    nullify(secondsofday)
+   nullify(model)
+   nullify(first_stream)
 
    LEVEL1 'done.'
 
