@@ -71,7 +71,7 @@
    use meanflow,     only: h,Vco,Vc,Afo,Af
    use meanflow,     only: u,uo,v,w,avh
    use meanflow,     only: drag,SS,runtimeu
-   use observations, only: w_adv_method,w_adv_discr
+   use observations, only: w_adv,w_adv_discr
    use observations, only: uprof,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdx,dpdx
    use observations, only: wq
@@ -147,7 +147,7 @@
 
 !  set external pressure gradient
    if (method .eq. 0) then
-      dzetadx = dpdx
+      dzetadx = dpdx%value
    else
       dzetadx = _ZERO_
    endif
@@ -178,7 +178,7 @@
    end if
 
 !  do advection step
-   if (w_adv_method.ne.0) then
+   if (w_adv%method.ne.0) then
       Lsour = _ZERO_
       Qsour = _ZERO_
       call adv_center(nlev,dt,h,Vc,Vc,Af,w,AdvBcup,AdvBcdw,             &
@@ -201,11 +201,9 @@
 #endif
    end do
 
-
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
-                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uprof,U)
-
+                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uprof%data,U)
    return
    end subroutine uequation
 !EOC

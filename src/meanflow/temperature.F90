@@ -72,10 +72,14 @@
    use meanflow,     only: h,Vco,Vc,Afo,Af
    use meanflow,     only: u,v,w,T,S,avh
    use meanflow,     only: bioshade
+#ifndef _ICE_
+   use meanflow,     only: Hice
+#endif
+   use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
-   use observations, only: w_adv_discr,w_adv_method
+   use observations, only: w_adv_discr,w_adv
    use observations, only: tprof,TRelaxTau
-   use observations, only: A,g1,g2
+   use observations, only: A_,g1_,g2_
    use observations, only: Qt, Lt, Qres, wq
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
@@ -135,12 +139,18 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
+#ifndef _ICE_
 ! simple sea ice model: surface heat flux switched off for sst < freezing temp
    if (T(nlev) .le. -0.0575*S(nlev)) then
        DiffTup    = max(_ZERO_,heat/(rho_0*cp))
+       Hice = _ONE_
    else
        DiffTup    = heat/(rho_0*cp)
+       Hice = _ZERO_
    end if
+#else
+   DiffTup    = heat/(rho_0*cp)
+#endif
    DiffTdw        = _ZERO_
 
    AdvBcup        = oneSided
@@ -157,7 +167,7 @@
       z=z+h(i+1)
 
 !     compute short wave radiation
-      rad(i)=I_0*(A*exp(-z/g1)+(1.-A)*exp(-z/g2)*bioshade(i+1))
+      rad(i)=I_0*(A_%value*exp(-z/g1_%value)+(1.-A_%value)*exp(-z/g2_%value)*bioshade(i+1))
 
 !     compute total diffusivity
       avh(i)=nuh(i)+avmolT
@@ -165,7 +175,7 @@
 
 !  ... and from streams
    if (lake) then
-      net_precip = precip + evap
+      net_precip = precip%value + evap
       if ( net_precip .gt. _ZERO_ ) then
          Qt(nlev) = Qt(nlev) + net_precip*Afo(nlev)*T(nlev)
       else
@@ -183,7 +193,7 @@
    end if
 
 !  do advection step
-   if (w_adv_method.ne.0) then
+   if (w_adv%method.ne.0) then
       Lsour = _ZERO_
       Qsour = _ZERO_
       call adv_center(nlev,dt,h,Vc,Vc,Af,w,AdvBcup,AdvBcdw,             &
@@ -210,13 +220,13 @@
 !  ... and from lateral advection
    if (t_adv) then
       do i=1,nlev
-         Qsour(i) = Qsour(i) - u(i)*dtdx(i) - v(i)*dtdy(i)
+         Qsour(i) = Qsour(i) - u(i)*dtdx%data(i) - v(i)*dtdy%data(i)
       end do
    end if
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
+                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf%data,T)
    return
    end subroutine temperature
 !EOC

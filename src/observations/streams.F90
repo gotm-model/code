@@ -16,26 +16,38 @@
 !
 ! !USES
    use input
+   use yaml_settings
+   use settings
 
 !  !PUBLIC DATA MEMBERS:
    IMPLICIT NONE
-   public                                :: init_streams,clean_streams
+   public                                :: configure_streams,post_init_streams,clean_streams
    public                                :: update_streams
    public                                :: type_stream,nstreams,first_stream
    REALTYPE, public                      :: int_inflow=_ZERO_
    REALTYPE, public                      :: int_outflow=_ZERO_
 !
+   interface configure_streams
+!KB      module procedure configure_streams_nml
+      module procedure configure_streams_yaml
+   end interface
+
+   type, extends(type_dictionary_populator) :: type_stream_populator
+   contains
+      procedure :: create => register_stream
+   end type
+!
 ! !REVISION HISTORY:
 !  Original author(s): Lennart Schueler
-!
-!EOP
 !
 ! !LOCAL VARIABLES:
    type type_stream
       character(len=64)      :: name = ''
       integer                :: method
       REALTYPE               :: zl,zu
-      REALTYPE               :: QI,SI=_ZERO_,TI
+      type (type_scalar_input) :: flow
+      type (type_scalar_input) :: temp
+      type (type_scalar_input) :: salt
       logical                :: has_S = .false.
       logical                :: has_T = .false.
       REALTYPE, allocatable  :: weights(:), Q(:)
@@ -49,8 +61,8 @@
    integer                   :: nstreams
    type (type_stream), pointer :: first_stream
 
-! !DEFINED PARAMETERS:
-!
+   class (type_gotm_settings), pointer :: cfg => null()
+!EOP
 !-----------------------------------------------------------------------
 
    contains
@@ -61,7 +73,7 @@
 ! !ROUTINE: initialises everything related to the streams
 !
 ! !INTERFACE:
-   subroutine init_streams(lake,nlev)
+   subroutine configure_streams_nml(lake,nlev)
 !
 !  !DESCRIPTION:
 !  Initialises everything related to the lake model, e.g. allocating memory
@@ -85,7 +97,7 @@
 
    namelist /stream/ name,method,zl,zu,Q_file,T_file,S_file,Q_col,T_col,S_col
 
-   type (type_stream), pointer :: current_stream
+   type (type_stream), pointer :: c
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -96,7 +108,7 @@
    if (.not.lake) return
 
    open(unit,file='streams.nml',action='read',status='old',err=98)
-   LEVEL1 'init_streams'
+   LEVEL1 'configure_streams_nml'
    do
       name   = ''
       method = surface_flow
@@ -114,59 +126,21 @@
 
       if (.not.associated(first_stream)) then
          allocate(first_stream)
-         current_stream => first_stream
+         c => first_stream
       else
-         current_stream => first_stream
-         do while (associated(current_stream%next))
-            current_stream => current_stream%next
+         c => first_stream
+         do while (associated(c%next))
+            c => c%next
          end do
-         allocate(current_stream%next)
-         current_stream => current_stream%next
+         allocate(c%next)
+         c => c%next
       end if
 
       LEVEL2 '.... ',trim(name),method,real(zl),real(zu)
-      current_stream%name = name
-      current_stream%method = method
-      current_stream%zu   = zu
-      current_stream%zl   = zl
-
-      if (Q_file=='') then
-         FATAL 'Error: "Q_file" must be provided in namelist "stream".'
-         stop 'init_streams'
-      end if
-      call register_input_0d(Q_file,Q_col,current_stream%QI,'observed stream: discharge')
-
-      if (T_file/='') then
-         call register_input_0d(T_file,T_col,current_stream%TI,'observed stream: temperature')
-         current_stream%has_T = .true.
-      end if
-
-      if (S_file/='') then
-         call register_input_0d(S_file,S_col,current_stream%SI,'observed stream: salinity')
-         current_stream%has_S = .true.
-      end if
-
-      allocate(current_stream%weights(1:nlev),stat=rc)
-      if (rc /= 0) STOP 'init_observations: Error allocating (weights)'
-      current_stream%weights = _ZERO_
-
-      allocate(current_stream%Q(1:nlev),stat=rc)
-      if (rc /= 0) STOP 'init_observations: Error allocating (Q)'
-      current_stream%Q = _ZERO_
-
-      if (current_stream%method .eq. interleaving .and. .not. current_stream%has_T) then
-         LEVEL1 trim(current_stream%name),' ....'
-         FATAL "Can't specify - interleaving - without providing either S or T"
-         stop 'init_streams()'
-      end if
-
-      select case (current_stream%method)
-         case (surface_flow)
-            current_stream%weights(nlev) = _ONE_
-         case (bottom_flow)
-            current_stream%weights(1) = _ONE_
-!        other methods are dynamic are are update in update_streams()
-      end select
+      c%name = name
+      c%method = method
+      c%zu   = zu
+      c%zl   = zl
 
       nstreams = nstreams + 1
 
@@ -176,12 +150,154 @@
    return
 
 99 FATAL 'Error reading namelist "stream" from streams.nml.'
-   stop 'init_streams'
+   stop 'config_streams_nml'
 
 98 LEVEL2 'I could not open streams.nml. Inflows will not be used.'
    LEVEL2 'If that''s not what you want you have to supply streams.nml.'
 
-   end subroutine init_streams
+   end subroutine configure_streams_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: configures everything related to the streams
+!
+! !INTERFACE:
+   subroutine configure_streams_yaml()
+!
+! !DESCRIPTION:
+!  Initialises everything related to the lake model, e.g. allocating memory
+!  for arrays.
+!
+! !LOCAL VARIABLES:
+   type (type_stream_populator), pointer :: stream_populator
+#if 0
+   class (type_gotm_settings), pointer :: branch, twig, leaf
+   integer water_balance_method
+#endif
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'configure_streams_yaml'
+   cfg => settings_store%get_typed_child('streams')
+#if 0
+#if 1
+   call cfg%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', default=0)
+#else
+   call cfg%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', &
+                           options=(/type_option(0, 'none'), type_option(1, 'surface'), type_option(2, 'all layers'), type_option(3, 'free surface')/), default=0)
+#endif
+#endif
+   allocate(stream_populator)
+   call cfg%populate(stream_populator)
+   LEVEL2 'done'
+   end subroutine configure_streams_yaml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: configures everything related to the streams
+!
+! !INTERFACE:
+   subroutine register_stream(self, pair)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use yaml_settings
+!
+! !INPUT PARAMETERS:
+   class (type_stream_populator), intent(inout) :: self
+   type (type_key_value_pair), intent(inout) :: pair
+!
+! !LOCAL VARIABLES:
+   class (type_settings), pointer :: child
+   type (type_stream), pointer :: stream
+   integer, parameter :: rk = kind(_ONE_)
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   allocate(stream)
+   stream%next => first_stream
+   first_stream => stream
+
+   child => type_settings_create(pair,'stream configuration')
+   stream%name = pair%name
+   select type (child)
+      class is (type_gotm_settings)
+         call child%get(stream%method, 'method', 'inflow method', default=1)
+         call child%get(stream%zu, 'zu', 'upper limit','m',default=0._rk)
+         call child%get(stream%zl, 'zl', 'lower limit','m',default=0._rk)
+         call child%get(stream%flow,'flow','water flow','m^3/s',default=0._rk)
+         call child%get(stream%temp,'temp','flow temperature','Celcius',default=-1._rk)
+         stream%has_T = .true.
+         if (stream%temp%method .eq. 0 .and. stream%temp%constant_value .lt. 0._rk) stream%has_T = .false.
+         call child%get(stream%salt,'salt','flow salinity','PSU', default=-1._rk)
+         stream%has_S = .true.
+         if (stream%salt%method .eq. 0 .and. stream%salt%constant_value .lt. 0._rk) stream%has_S = .false.
+   end select
+   end subroutine register_stream
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: configures everything related to the streams
+!
+! !INTERFACE:
+   subroutine post_init_streams(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)            :: nlev
+!
+! !LOCAL VARIABLES:
+   integer                        :: rc
+   type (type_stream), pointer    :: c
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'post_init_streams'
+   c => first_stream
+
+   do while (associated(c))
+
+      call register_input(c%flow)
+      call register_input(c%temp)
+      call register_input(c%salt)
+
+      allocate(c%weights(1:nlev),stat=rc)
+      if (rc /= 0) STOP 'init_observations: Error allocating (weights)'
+      c%weights = _ZERO_
+
+      allocate(c%Q(1:nlev),stat=rc)
+      if (rc /= 0) STOP 'init_observations: Error allocating (Q)'
+      c%Q = _ZERO_
+
+      if (c%method .eq. interleaving .and. .not. c%has_T) then
+         LEVEL1 trim(c%name),' ....'
+         FATAL "Can't specify - interleaving - without providing either S or T"
+         stop 'post_init_streams()'
+      end if
+
+      select case (c%method)
+         case (surface_flow)
+            c%weights(nlev) = _ONE_
+         case (bottom_flow)
+            c%weights(1) = _ONE_
+!        other methods are dynamic are are update in update_streams()
+      end select
+
+      nstreams = nstreams + 1
+      c => c%next
+   end do
+   return
+   end subroutine post_init_streams
 !EOC
 
 !-----------------------------------------------------------------------
@@ -215,8 +331,7 @@
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
    REALTYPE             :: TI,SI
-   type (type_stream), pointer :: current_stream
-!
+   type (type_stream), pointer :: c
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -226,17 +341,17 @@
    Lt = _ZERO_
    Q  = _ZERO_
 
-   current_stream => first_stream
-   do while (associated(current_stream))
+   c => first_stream
+   do while (associated(c))
 
-      if (current_stream%QI .eq. _ZERO_) then
-         current_stream => current_stream%next
+      if (c%flow%value .eq. _ZERO_) then
+         c => c%next
          cycle
       end if
 
-      current_stream%Q = _ZERO_
+      c%Q = _ZERO_
 
-      select case (current_stream%method)
+      select case (c%method)
          case (surface_flow)
             nmin = nlev ; nmax = nlev
          case (bottom_flow)
@@ -244,25 +359,25 @@
          case (depth_range)
             nmin = nlev
             do n=1,nlev
-               if ( current_stream%zl .lt. zi(n) ) then
+               if ( c%zl .lt. zi(n) ) then
                   nmin = n
                   exit
                end if
             end do
             nmax = nmin
             do n=nlev,nmin,-1
-               if ( zi(n-1) .lt. current_stream%zu ) then
+               if ( zi(n-1) .lt. c%zu ) then
                   nmax = n
                   exit
                end if
             end do
 
-            call get_weights(nlev,nmin,nmax,h,zi,current_stream)
+            call get_weights(nlev,nmin,nmax,h,zi,c)
 
          case (interleaving)
 
-            TI = current_stream%TI
-            SI = current_stream%SI
+            TI = c%temp%value
+            SI = c%salt%value
 
             ! find minimal depth where the inflow will take place
             nmin = nlev
@@ -294,68 +409,68 @@
             end do
 !KBSTDERR 'nmax ',nmax,rhoI,rho
 
-            call get_weights(nlev,nmin,nmax,h,zi,current_stream)
+            call get_weights(nlev,nmin,nmax,h,zi,c)
 
       end select
-!KBSTDERR current_stream%has_T,current_stream%has_S
-!KBSTDERR nmin,nmax,sum(current_stream%weights)
+!KBSTDERR c%has_T,c%has_S
+!KBSTDERR nmin,nmax,sum(c%weights)
 
 
 !     weights have been found - now apply them for the flow
-      current_stream%Q = current_stream%weights*current_stream%QI
+      c%Q = c%weights*c%flow%value
 
       ! inflow stream
-      if (current_stream%QI .gt. _ZERO_) then
-         int_inflow = int_inflow + dt*current_stream%QI
+      if (c%flow%value .gt. _ZERO_) then
+         int_inflow = int_inflow + dt*c%flow%value
 
-         if (current_stream%has_T) then
-            TI = current_stream%TI
+         if (c%has_T) then
+            TI = c%temp%value
          else
 !KB         is there a mean !!!!
 !           KK-TODO: maybe the mean should be volume-weighted
             TI = sum(T(nmin:nmax))/(nmax-nmin+1)
          end if
-         if (current_stream%has_S) then
-            SI = current_stream%SI
+         if (c%has_S) then
+            SI = c%salt%value
          else
             SI = _ZERO_
          end if
 
          do n=1,nlev
-            Qt(n) = Qt(n) + TI * current_stream%Q(n)
-            Qs(n) = Qs(n) + SI * current_stream%Q(n)
+            Qt(n) = Qt(n) + TI * c%Q(n)
+            Qs(n) = Qs(n) + SI * c%Q(n)
          end do
 
       else ! outflow
 
-         int_outflow = int_outflow + dt*current_stream%QI
+         int_outflow = int_outflow + dt*c%flow%value
 
-         if (current_stream%has_T) then
-            TI = current_stream%TI
+         if (c%has_T) then
+            TI = c%temp%value
             do n=1,nlev
-               Qt(n) = Qt(n) + TI * current_stream%Q(n)
+               Qt(n) = Qt(n) + TI * c%Q(n)
             end do
          else
             do n=1,nlev
-               Lt(n) = Lt(n) + current_stream%Q(n)
+               Lt(n) = Lt(n) + c%Q(n)
             end do
          end if
-         if (current_stream%has_S) then
-            SI = current_stream%SI
+         if (c%has_S) then
+            SI = c%salt%value
             do n=1,nlev
-               Qs(n) = Qs(n) + SI * current_stream%Q(n)
+               Qs(n) = Qs(n) + SI * c%Q(n)
             end do
          else
             do n=1,nlev
-               Ls(n) = Ls(n) + current_stream%Q(n)
+               Ls(n) = Ls(n) + c%Q(n)
             end do
          end if
 
       end if
 
-      Q(1:nlev) = Q(1:nlev) + current_stream%Q
+      Q(1:nlev) = Q(1:nlev) + c%Q
 
-      current_stream => current_stream%next
+      c => c%next
    end do
 
    end subroutine update_streams
@@ -441,16 +556,16 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   type (type_stream), pointer :: current_stream, next_stream
+   type (type_stream), pointer :: c, n
 !
 !-----------------------------------------------------------------------
 !BOC
-   current_stream => first_stream
-   do while (associated(current_stream))
-      next_stream => current_stream%next
-      deallocate(current_stream%Q)
-      deallocate(current_stream)
-      current_stream => next_stream
+   c => first_stream
+   do while (associated(c))
+      n => c%next
+      deallocate(c%Q)
+      deallocate(c)
+      c => n
    end do
 
    end subroutine clean_streams

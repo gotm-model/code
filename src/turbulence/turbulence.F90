@@ -36,12 +36,17 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_turbulence, do_turbulence
+   public init_turbulence,post_init_turbulence,do_turbulence
    public k_bc,q2over2_bc,epsilon_bc,psi_bc,q2l_bc
    public clean_turbulence
 #ifdef _PRINTSTATE_
    public print_state_turbulence
 #endif
+
+   interface init_turbulence
+      module procedure init_turbulence_nml
+      module procedure init_turbulence_yaml
+   end interface
 
 ! !PUBLIC DATA MEMBERS:
 !  TKE, rate of dissipation, turbulent length-scale
@@ -261,6 +266,7 @@
 !  Original author(s): Karsten Bolding, Hans Burchard,
 !                      Manuel Ruiz Villarreal,
 !                      Lars Umlauf
+! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 
@@ -272,7 +278,7 @@
 ! !IROUTINE: Initialise the turbulence module
 !
 ! !INTERFACE:
-   subroutine init_turbulence(namlst,fn,nlev)
+   subroutine init_turbulence_nml(namlst,fn,nlev)
 !
 ! !DESCRIPTION:
 ! Initialises all turbulence related stuff. This routine reads a number
@@ -298,18 +304,15 @@
 ! !INPUT PARAMETERS:
    integer,          intent(in)        :: namlst
    character(len=*), intent(in)        :: fn
-   integer,          intent(in)        :: nlev
+   integer, optional,intent(in)        :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
 !                      Manuel Ruiz Villarreal,
 !                      Lars Umlauf
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
    integer                            :: rc
-   REALTYPE                           :: L_min
 !
    namelist /turbulence/    turb_method,tke_method,            &
                             len_scale_method,stab_method
@@ -341,10 +344,10 @@
 
    namelist /iw/            iw_model,alpha,klimiw,rich_cr,     &
                             numiw,nuhiw,numshear
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_turbulence'
+   LEVEL1 'init_turbulence_nml'
 
    a1 = _ZERO_
    a2 = _ZERO_
@@ -465,34 +468,349 @@
    numshear=5.e-3
 
    ! read the variables from the namelist file
-
-   open(namlst,file=fn,status='old',action='read',err=80)
-
-   LEVEL2 'reading turbulence namelists..'
-
-   read(namlst,nml=turbulence,err=81)
+   open(10,file='gotmturb.nml',status='old',action='read',err=80)
+   read(10,nml=turbulence,err=81)
 
    if (turb_method.eq.99) then
-      close (namlst)
-      LEVEL2 'done.'
-      LEVEL1 'done.'
-      return
+      close (10)
    else
-      read(namlst,nml=bc,err=82)
-      read(namlst,nml=turb_param,err=83)
-      read(namlst,nml=generic,err=84)
-      read(namlst,nml=keps,err=85)
-      read(namlst,nml=my,err=86)
-      read(namlst,nml=scnd,err=87)
-      read(namlst,nml=iw,err=88)
-      close (namlst)
-      LEVEL2 'done.'
+      read(10,nml=bc,err=82)
+      read(10,nml=turb_param,err=83)
+      read(10,nml=generic,err=84)
+      read(10,nml=keps,err=85)
+      read(10,nml=my,err=86)
+      read(10,nml=scnd,err=87)
+      read(10,nml=iw,err=88)
+      close (10)
    endif
+   LEVEL2 'done.'
 
+   if (present(nlev)) call post_init_turbulence(nlev)
+
+   return
+
+80 FATAL 'I could not open "gotmturb.nml"'
+   stop 'init_turbulence'
+81 FATAL 'I could not read "turbulence" namelist'
+   stop 'init_turbulence'
+82 FATAL 'I could not read "bc" namelist'
+   stop 'init_turbulence'
+83 FATAL 'I could not read "turb_param" namelist'
+   stop 'init_turbulence'
+84 FATAL 'I could not read "generic" namelist'
+   stop 'init_turbulence'
+85 FATAL 'I could not read "keps" namelist'
+   stop 'init_turbulence'
+86 FATAL 'I could not read "my" namelist'
+   stop 'init_turbulence'
+87 FATAL 'I could not read "scnd" namelist'
+   stop 'init_turbulence'
+88 FATAL 'I could not read "iw" namelist'
+   stop 'init_turbulence'
+
+ end subroutine init_turbulence_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the turbulence module
+!
+! !INTERFACE:
+   subroutine init_turbulence_yaml(branch)
+!
+! !DESCRIPTION:
+! Initialises all turbulence related stuff. This routine reads a number
+! of namelists and allocates memory for turbulence related vectors.
+! The core consists of calls to the the internal functions
+! {\tt generate\_model()} and {\tt analyse\_model()}, discussed in
+! great detail in \sect{sec:generate} and \sect{sec:analyse}, respectively.
+! The former function computes the model coefficients for the generic two-equation
+! model (see \cite{Umlaufetal2003}) from physically motivated quantities
+! like the von K{\'a}rm{\'a}n constant, $\kappa$, the decay rate in homogeneous
+! turbulence, $d$, the steady-state Richardson number, $Ri_{st}$,
+! and many others. The latter function does the inverse:
+! it computes the physically motivated quantities from the model constants
+! of any model currently available in GOTM.
+! After the call to either function, all relevant model parameters
+! are known to GOTM.
+! Then, the function {\tt report\_model()} is called, which displays all
+! results on the screen.
+!
+! !USES:
+   use yaml_settings
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   class (type_settings), intent(inout) :: branch
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding, Hans Burchard,
+!                      Manuel Ruiz Villarreal,
+!                      Lars Umlauf
+!
+! !LOCAL VARIABLES:
+   class (type_settings), pointer :: twig
+   integer, parameter :: rk = kind(_ONE_)
+   integer                            :: rc
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'init_turbulence_yaml'
+
+   call branch%get(turb_method, 'turb_method', 'turbulence closure', &
+                   options=(/option(convective, 'convective adjustment'), option(first_order, 'first-order'), option(second_order, 'second-order')/),default=second_order)
+   call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
+                   options=(/option(tke_local_eq, 'algebraic length scale equation'), option(tke_keps, 'differential equation for tke (k-epsilon style)'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)')/),default=tke_keps)
+   call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
+                   options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'Xing and Davies (1995)'), option(4, 'Robert and Ouellet (1987)'), option(5, 'Blackadar (two boundaries) (1962)'), option(6, 'Bougeault and Andre (1986)'), option(7, 'Eifler and Schrimpf (ISPRAMIX) (1992)'), option(8, 'dynamic dissipation rate equation'), option(9, 'dynamic Mellor-Yamada q^2 l-equation'), option(10, 'generic length scale (GLS)')/),default=8)
+   call branch%get(stab_method, 'stab_method', 'stability functions', &
+                   options=(/option(1, 'constant'), option(2, 'Munk and Anderson (1954)'), option(3, 'Schumann and Gerz (1995)'), option(4, 'Eifler and Schrimpf (1992)')/),default=1)
+
+   twig => branch%get_child('bc', 'boundary conditions', display=display_advanced)
+   call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
+                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
+   call twig%get(k_lbc, 'k_lbc', 'lower boundary condition for k-equation', &
+                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
+   call twig%get(psi_ubc, 'psi_ubc', 'upper boundary condition for length-scale equation', &
+                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
+   call twig%get(psi_lbc, 'psi_lbc', 'lower boundary condition for length-scale equation', &
+                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
+   call twig%get(ubc_type, 'ubc_type', 'upper boundary layer', &
+                   options=(/option(1, 'logarithmic law of the wall'), option(2, 'tke-injection (breaking waves)')/),default=1)
+   call twig%get(lbc_type, 'lbc_type', 'lower boundary layer', &
+                   options=(/option(1, 'logarithmic law of the wall')/),default=1)
+
+
+   twig => branch%get_child('turb_param')
+!   call branch%get(s_analyt_method, 's_analyt_method', '', &
+!                   minimum=1,maximum=3,default=1)
+   call twig%get(cm0_fix, 'cm0_fix', 'value of cm0', '-', &
+                   minimum=0._rk,default=0.5477_rk)
+   call twig%get(Prandtl0_fix, 'Prandtl0_fix', 'turbulent Prandtl-number', '-', &
+                   minimum=0._rk,default=0.74_rk)
+   call twig%get(cw, 'cw', 'constant of the wave-breaking model', '-', &
+                   minimum=0._rk,default=100._rk)
+   call twig%get(compute_kappa, 'compute_kappa', 'compute von Karman constant from model parameters', &
+                   default=.false.)
+   call twig%get(kappa, 'kappa', 'von Karman constant', '-', &
+                   minimum=0._rk,default=0.4_rk)
+   call twig%get(compute_c3, 'compute_c3', 'compute c3 (E3 for Mellor-Yamada) from steady-state Richardson number', &
+                   default=.true.)
+   call twig%get(Ri_st, 'Ri_st', 'desired steady-state Richardson number', '-', &
+                   minimum=0._rk,default=0.25_rk)
+   call twig%get(length_lim, 'length_lim', 'apply Galperin et al. (1988) length scale limitation', &
+                   default=.true.)
+   call twig%get(galp, 'galp', 'coefficient for length scale limitation', '-', &
+                   minimum=0._rk,default=0.27_rk)
+   call twig%get(const_num, 'const_num', 'constant eddy diffusivity', 'm^2/s', &
+                   minimum=0._rk,default=0.0005_rk)
+   call twig%get(const_nuh, 'const_nuh', 'constant heat diffusivity', 'm^2/s', &
+                   minimum=0._rk,default=0.0005_rk)
+   call twig%get(k_min, 'k_min', 'minimum turbulent kinetic energy', 'm^2/s^2', &
+                   minimum=0._rk,default=1.e-10_rk)
+   call twig%get(eps_min, 'eps_min', 'minimum dissipation rate', 'm^2/s^3', &
+                   minimum=0._rk,default=1.e-12_rk)
+   call twig%get(kb_min, 'kb_min', 'minimum buoyancy variance', 'm^2/s^4', &
+                   minimum=0._rk,default=1.e-10_rk)
+   call twig%get(epsb_min, 'epsb_min', 'minimum buoyancy variance destruction rate', 'm^2/s^5', &
+                   minimum=0._rk,default=1.e-14_rk)
+   
+   twig => branch%get_child('generic', 'generic length scale (GLS) model', display=display_advanced)
+   call twig%get(compute_param, 'compute_param', 'compute the model parameters', &
+                   default=.false.)
+   call twig%get(gen_m, 'gen_m', 'exponent for k', '-', &
+                   default=1.5_rk)
+   call twig%get(gen_n, 'gen_n', 'exponent for l', '-', &
+                   default=-1._rk)
+   call twig%get(gen_p, 'gen_p', 'exponent for cm0', '-', &
+                   default=3._rk)
+   call twig%get(cpsi1, 'cpsi1', 'empirical coefficient cpsi1 in psi equation', '-', &
+                   default=1.44_rk)
+   call twig%get(cpsi2, 'cpsi2', 'empirical coefficient cpsi2 in psi equation', '-', &
+                   default=1.92_rk)
+   call twig%get(cpsi3minus, 'cpsi3minus', 'cpsi3 for stable stratification', '-', &
+                   default=0.0_rk)
+   call twig%get(cpsi3plus, 'cpsi3plus', 'cpsi3 for unstable stratification', '-', &
+                   default=1._rk)
+   call twig%get(sig_kpsi, 'sig_kpsi', 'Schmidt number for TKE diffusivity', '-', &
+                   default=1._rk)
+   call twig%get(sig_psi, 'sig_psi', 'Schmidt number for psi diffusivity', '-', &
+                   default=1.3_rk)
+   call twig%get(gen_d, 'gen_d', 'temporal decay rate d in homogeneous turbulence', '-', &
+                   default=-1.2_rk)
+   call twig%get(gen_alpha, 'gen_alpha', 'decay exponent alpha', '-', &
+                   default=-2._rk)
+   call twig%get(gen_l, 'gen_l', 'slope L of the length scale in shear-free turbulence', '-', &
+                   default=0.2_rk)
+
+   twig => branch%get_child('keps', 'k-epsilon model', display=display_advanced)
+   call twig%get(ce1, 'ce1', 'empirical coefficient ce1 in dissipation equation', '-', &
+                   default=1.44_rk)
+   call twig%get(ce2, 'ce2', 'empirical coefficient ce2 in dissipation equation', '-', &
+                   default=1.92_rk)
+   call twig%get(ce3minus, 'ce3minus', 'ce3 for stable stratification', '-', &
+                   default=0._rk)
+   call twig%get(ce3plus, 'ce3plus', 'ce3 for unstable stratification', '-', &
+                   default=1.0_rk)
+   call twig%get(sig_k, 'sig_k', 'Schmidt number for TKE diffusivity', '-', &
+                   default=1._rk)
+   call twig%get(sig_e, 'sig_e', 'Schmidt number for dissipation diffusivity', '-', &
+                   default=1.3_rk)
+   call twig%get(sig_peps, 'sig_peps', 'use Burchard (2001) wave breaking parameterisation', &
+                   default=.false.)
+
+   twig => branch%get_child('my', 'Mellor-Yamada model', display=display_advanced)
+   call twig%get(e1, 'e1', 'coefficient e1 in q^2 l equation', '-', &
+                   default=1.8_rk)
+   call twig%get(e2, 'e2', 'coefficient e2 in q^2 l equation', '-', &
+                   default=1.33_rk)
+   call twig%get(e3, 'e3', 'coefficient e3 in q^2 l equation', '-', &
+                   default=1.8_rk)
+   call twig%get(sq, 'sq', 'turbulent diffusivities of q^2 (= 2k)', '-', &
+                   default=0.2_rk)
+   call twig%get(sl, 'sl', 'turbulent diffusivities of q^2 l', '-', &
+                   default=0.2_rk)
+   call twig%get(my_length, 'length', 'barotropic length scale in q^2 l equation', &
+                   options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'linear from surface')/),default=1)
+   call twig%get(new_constr, 'new_constr', 'stabilize stability functions', &
+                   default=.false.)
+
+   twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
+   call twig%get(scnd_method, 'method', 'method', &
+                   options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance')/), default=2)
+   call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
+                   options=(/option(1, 'algebraic'), option(2, 'prognostic')/), default=1)
+   call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
+                   options=(/option(1, 'algebraic')/), default=1)
+   call twig%get(scnd_coeff, 'scnd_coeff', 'coefficients of second-order model', &
+                   options=(/option(0, 'custom'), option(1, 'Gibson and Launder (1978)'), option(2, 'Mellor and Yamada (1982)'), option(3, 'Kantha and Clayson (1994)'), option(4, 'Luyten et al. (1996)'), option(5, 'Canuto et al. (2001) (version A)'), option(6, 'Canuto et al. (2001) (version B)'), option(7, 'Cheng et al. (2002)')/),default=5)
+   call twig%get(cc1, 'cc1', 'cc1', '-', &
+                   default=3.6_rk)
+   call twig%get(cc2, 'cc2', 'cc2', '-', &
+                   default=0.8_rk)
+   call twig%get(cc3, 'cc3', 'cc3', '-', &
+                   default=1.2_rk)
+   call twig%get(cc4, 'cc4', 'cc4', '-', &
+                   default=1.2_rk)
+   call twig%get(cc5, 'cc5', 'cc5', '-', &
+                   default=0.0_rk)
+   call twig%get(cc6, 'cc6', 'cc6', '-', &
+                   default=0.3_rk)
+   call twig%get(ct1, 'ct1', 'ct1', '-', &
+                   default=3.28_rk)
+   call twig%get(ct2, 'ct2', 'ct2', '-', &
+                   default=0.4_rk)
+   call twig%get(ct3, 'ct3', 'ct3', '-', &
+                   default=0.4_rk)
+   call twig%get(ct4, 'ct4', 'ct4', '-', &
+                   default=0.0_rk)
+   call twig%get(ct5, 'ct5', 'ct5', '-', &
+                   default=0.4_rk)
+   call twig%get(ctt, 'ctt', 'ctt', '-', &
+                   default=0.8_rk)
+
+   twig => branch%get_child('iw', 'internal wave mixing', display=display_advanced)
+   call twig%get(iw_model, 'model', 'model', &
+                   options=(/option(0, 'none'), option(1, 'Mellor (1989)'), option(2, 'Large et al. (1994)')/), default=0)
+   call twig%get(alpha, 'alpha', 'coefficient for Mellor internal wave model', '-', &
+                   default=0._rk)
+   call twig%get(klimiw, 'klim', 'critical value of TKE', 'm^2/s^2', &
+                   default=1.e-6_rk)
+   call twig%get(rich_cr, 'rich_cr', 'critical Richardson number for shear instability', '-', &
+                   default=0.7_rk)
+   call twig%get(numshear, 'numshear', 'background diffusivity for shear instability', 'm^2/s', &
+                   default=5.e-3_rk)
+   call twig%get(numiw, 'num', 'background viscosity for internal wave breaking', 'm^2/s', &
+                   default=1.e-4_rk)
+   call twig%get(nuhiw, 'nuh', 'background diffusivity for internal wave breaking', 'm^2/s', &
+                   default=1.e-5_rk)
+   LEVEL2 'done.'
+   return
+
+ end subroutine init_turbulence_yaml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the turbulence module
+!
+! !INTERFACE:
+   subroutine post_init_turbulence(nlev)
+!
+! !DESCRIPTION:
+! Initialises all turbulence related stuff. This routine reads a number
+! of namelists and allocates memory for turbulence related vectors.
+! The core consists of calls to the the internal functions
+! {\tt generate\_model()} and {\tt analyse\_model()}, discussed in
+! great detail in \sect{sec:generate} and \sect{sec:analyse}, respectively.
+! The former function computes the model coefficients for the generic two-equation
+! model (see \cite{Umlaufetal2003}) from physically motivated quantities
+! like the von K{\'a}rm{\'a}n constant, $\kappa$, the decay rate in homogeneous
+! turbulence, $d$, the steady-state Richardson number, $Ri_{st}$,
+! and many others. The latter function does the inverse:
+! it computes the physically motivated quantities from the model constants
+! of any model currently available in GOTM.
+! After the call to either function, all relevant model parameters
+! are known to GOTM.
+! Then, the function {\tt report\_model()} is called, which displays all
+! results on the screen.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,          intent(in)        :: nlev
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding, Hans Burchard,
+!                      Manuel Ruiz Villarreal,
+!                      Lars Umlauf
+!
+! !LOCAL VARIABLES:
+   integer                            :: rc
+   REALTYPE                           :: L_min
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'post_init_turbulence'
+
+#if 0
+   a1 = _ZERO_
+   a2 = _ZERO_
+   a3 = _ZERO_
+   a4 = _ZERO_
+   a5 = _ZERO_
+
+   at1 = _ZERO_
+   at2 = _ZERO_
+   at3 = _ZERO_
+   at4 = _ZERO_
+   at5 = _ZERO_
+
+   cm0 = _ZERO_
+   cmsf = _ZERO_
+   cde = _ZERO_
+   rcm = _ZERO_
+   b1 = _ZERO_
+
+!  Prandtl-number in neutrally stratified flow
+   Prandtl0 = _ZERO_
+
+!  parameters for wave-breaking
+   craig_m = _ZERO_
+   sig_e0 = _ZERO_
+
+   ! Initialize all namelist variables to reasonable defaults.
+   turb_method=2
+   tke_method=2
+   len_scale_method=8
+   stab_method=3
+#endif
 
 !  allocate memory
-
-   LEVEL2 'allocation memory..'
+   LEVEL2 'allocation turbulence memory..'
    allocate(tke(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (tke)'
    tke = k_min
@@ -509,12 +827,10 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (L)'
    L = _ZERO_
 
-   LEVEL2 'allocation memory..'
    allocate(kb(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (kb)'
    kb = kb_min
 
-   LEVEL2 'allocation memory..'
    allocate(epsb(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (epsb)'
    epsb = epsb_min
@@ -637,7 +953,6 @@
 
    LEVEL2 'done.'
 
-
 !  initialize the parameters of the second-order closure
    if (turb_method.eq.second_order) then
       call init_scnd(scnd_coeff)
@@ -667,31 +982,9 @@
 
 !  report on parameters and properties of the model
    call report_model
-
    return
-
-80 FATAL 'I could not open "gotmturb.nml"'
-   stop 'init_turbulence'
-81 FATAL 'I could not read "turbulence" namelist'
-   stop 'init_turbulence'
-82 FATAL 'I could not read "bc" namelist'
-   stop 'init_turbulence'
-83 FATAL 'I could not read "turb_param" namelist'
-   stop 'init_turbulence'
-84 FATAL 'I could not read "generic" namelist'
-   stop 'init_turbulence'
-85 FATAL 'I could not read "keps" namelist'
-   stop 'init_turbulence'
-86 FATAL 'I could not read "my" namelist'
-   stop 'init_turbulence'
-87 FATAL 'I could not read "scnd" namelist'
-   stop 'init_turbulence'
-88 FATAL 'I could not read "iw" namelist'
-   stop 'init_turbulence'
-
- end subroutine init_turbulence
+ end subroutine post_init_turbulence
 !EOC
-
 
 !-----------------------------------------------------------------------
 !BOP

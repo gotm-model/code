@@ -25,57 +25,60 @@
 !
 ! !USES:
    use input
-   use streams
-
    IMPLICIT NONE
 
 !  default: all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_observations, get_all_obs, clean_observations
+   public init_observations, post_init_observations, get_all_obs, clean_observations
 #ifdef _PRINTSTATE_
    public print_state_observations
 #endif
+
+   interface init_observations
+      module procedure init_observations_nml
+      module procedure init_observations_yaml
+   end interface
 !
 ! !PUBLIC DATA MEMBERS:
 !
 !  'observed' salinity profile
-   REALTYPE, public, dimension(:), allocatable, target :: sprof
+   type (type_profile_input), public, target :: sprof
 
 !  'observed' temperature profile
-   REALTYPE, public, dimension(:), allocatable, target :: tprof
+   type (type_profile_input), public, target :: tprof
 
 !  'observed' oxygen profile
-   REALTYPE, public, dimension(:), allocatable, target :: o2_prof
+   type (type_profile_input), public, target :: o2_prof
 
-!  'observed' horizontal salinity  gradients
-   REALTYPE, public, dimension(:), allocatable, target :: dsdx,dsdy
+!  'observed' horizontal salinity gradients
+   type (type_profile_input), public, target :: dsdx,dsdy
 
-!  'observed' horizontal temperarure  gradients
-   REALTYPE, public, dimension(:), allocatable, target :: dtdx,dtdy
+!  'observed' horizontal temperature gradients
+   type (type_profile_input), public, target :: dtdx,dtdy
 
 !  internal horizontal pressure gradients
-   REALTYPE, public, dimension(:), allocatable         :: idpdx,idpdy
+   REALTYPE, public, dimension(:), allocatable :: idpdx,idpdy
 
 !  horizontal velocity profiles
-   REALTYPE, public, dimension(:), allocatable, target :: uprof,vprof
+   type (type_profile_input), public, target :: uprof,vprof
 
 !  observed profile of turbulent dissipation rates
-   REALTYPE, public, dimension(:), allocatable, target :: epsprof
+   type (type_profile_input), public, target :: epsprof
 
-!  ralaxation times for salinity and temperature
+!  relaxation times for salinity and temperature
    REALTYPE, public, dimension(:), allocatable, target :: SRelaxTau
    REALTYPE, public, dimension(:), allocatable         :: TRelaxTau
 
 !  sea surface elevation, sea surface gradients and height of velocity obs.
-   REALTYPE, public, target                            :: zeta,dpdx,dpdy,h_press
+   type (type_scalar_input), public, target :: zeta,dpdx,dpdy,h_press
 
 !  vertical advection velocity
-   REALTYPE, public, target                            :: w_adv,w_height
+   type (type_scalar_input), public, target :: w_adv,w_height
 
 !  Parameters for water classification - default Jerlov type I
-   REALTYPE, public, target                            :: A,g1,g2
+   type (type_scalar_input), public, target :: A_, g1_, g2_
 
 !  streams for lake model
    REALTYPE, public, dimension(:), allocatable   :: Qs, Qt, Ls, Lt
@@ -89,9 +92,7 @@
 !------------------------------------------------------------------------------
 
 !  Salinity profile(s)
-   integer, public           :: s_prof_method
    integer, public           :: s_analyt_method
-   character(LEN=PATH_MAX)   :: s_prof_file
    REALTYPE                  :: z_s1,s_1,z_s2,s_2
    REALTYPE                  :: s_obs_NN
    REALTYPE                  :: SRelaxTauM
@@ -101,9 +102,7 @@
    REALTYPE                  :: SRelaxBott
 
 !  Temperature profile(s)
-   integer, public           :: t_prof_method
    integer, public           :: t_analyt_method
-   character(LEN=PATH_MAX)   :: t_prof_file
    REALTYPE                  :: z_t1,t_1,z_t2,t_2
    REALTYPE                  :: t_obs_NN
    REALTYPE                  :: TRelaxTauM
@@ -112,17 +111,8 @@
    REALTYPE                  :: TRelaxSurf
    REALTYPE                  :: TRelaxBott
 
-!  Oxygen profile(s)
-   integer, public           :: o2_prof_method
-   integer, public           :: o2_units
-   character(LEN=PATH_MAX)   :: o2_prof_file
-
 !  External pressure - 'press' namelist
-   integer, public           :: ext_press_method,ext_press_mode
-   character(LEN=PATH_MAX)   :: ext_press_file
-   REALTYPE, public          :: PressConstU
-   REALTYPE, public          :: PressConstV
-   REALTYPE, public          :: PressHeight
+   integer, public           :: ext_press_mode
    REALTYPE, public          :: PeriodM
    REALTYPE, public          :: AmpMu
    REALTYPE, public          :: AmpMv
@@ -135,32 +125,16 @@
    REALTYPE, public          :: PhaseSv
 
 !  Internal pressure - 'internal_pressure' namelist
-   integer, public           :: int_press_method
-   character(LEN=PATH_MAX)   :: int_press_file
-   REALTYPE, public          :: const_dsdx
-   REALTYPE, public          :: const_dsdy
-   REALTYPE, public          :: const_dtdx
-   REALTYPE, public          :: const_dtdy
    logical, public           :: s_adv
    logical, public           :: t_adv
 
 !  Light extinction - the 'extinct' namelist
    integer                   :: extinct_method
-   character(LEN=PATH_MAX)   :: extinct_file
 
 !  Vertical advection velocity - 'w_advspec' namelist
-   integer, public           :: w_adv_method
-   REALTYPE, public          :: w_adv0
-   REALTYPE, public          :: w_adv_height0
-   character(LEN=PATH_MAX)   :: w_adv_file
    integer, public           :: w_adv_discr
 
 !  Sea surface elevations - 'zetaspec' namelist
-   integer,public            :: zeta_method
-   character(LEN=PATH_MAX)   :: zeta_file
-   REALTYPE, public          :: zeta_scale
-   REALTYPE, public          :: zeta_offset
-   REALTYPE, public          :: zeta_0
    REALTYPE, public          :: period_1
    REALTYPE, public          :: amp_1
    REALTYPE, public          :: phase_1
@@ -169,11 +143,9 @@
    REALTYPE, public          :: phase_2
 
 !  Wind waves - 'wave_nml' namelist
-   integer,public            :: wave_method
-   character(LEN=PATH_MAX)   :: wave_file
-   REALTYPE, public          :: Hs
-   REALTYPE, public          :: Tz
-   REALTYPE, public          :: phiw
+   type (type_scalar_input), public :: Hs_
+   type (type_scalar_input), public :: Tz_
+   type (type_scalar_input), public :: phiw_
 
 !  Observed velocity profile profiles - typically from ADCP
    integer                   :: vel_prof_method
@@ -222,8 +194,7 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
-   subroutine init_observations(namlst,fn,julday,secs,                 &
-                                depth,nlev,z,h,gravity,rho_0,lake)
+   subroutine init_observations_nml(namlst,fn)
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -240,20 +211,57 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: namlst
    character(len=*), intent(in)        :: fn
-   integer, intent(in)                 :: julday,secs
-   REALTYPE, intent(in)                :: depth
-   integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
-   REALTYPE, intent(in)                :: gravity,rho_0
-   logical,  intent(in)                :: lake
-!
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
+   integer, parameter :: rk = kind(_ZERO_)
+
+   integer                   :: s_prof_method
+   character(LEN=PATH_MAX)   :: s_prof_file
+   integer                   :: t_prof_method
+   character(LEN=PATH_MAX)   :: t_prof_file
+
+   integer                 :: int_press_method
+   character(LEN=PATH_MAX) :: int_press_file
+   REALTYPE                :: const_dsdx
+   REALTYPE                :: const_dsdy
+   REALTYPE                :: const_dtdx
+   REALTYPE                :: const_dtdy
+
+   integer                 :: ext_press_method
+   character(LEN=PATH_MAX) :: ext_press_file
+   REALTYPE                :: PressConstU
+   REALTYPE                :: PressConstV
+   REALTYPE                :: PressHeight
+
+   integer                 :: zeta_method
+   character(LEN=PATH_MAX) :: zeta_file
+   REALTYPE                :: zeta_scale
+   REALTYPE                :: zeta_offset
+   REALTYPE                :: zeta_0
+
+   integer                 :: w_adv_method
+   REALTYPE                :: w_adv0
+   REALTYPE                :: w_adv_height0
+   character(LEN=PATH_MAX) :: w_adv_file
+
+   character(LEN=PATH_MAX)   :: extinct_file
+   REALTYPE :: A, g1, g2
+
+!  Oxygen profile(s)
+   integer           :: o2_prof_method
+   integer           :: o2_units
+   character(LEN=PATH_MAX)   :: o2_prof_file
+   
+   REALTYPE,parameter        :: mmol_o2_per_liter = 44.661_rk
+   REALTYPE,parameter        :: mmol_o2_per_gram  = 31.25_rk
+
+   integer                   :: wave_method
+   character(LEN=PATH_MAX)   :: wave_file
+   REALTYPE                  :: Hs,Tz,phiw
+
    namelist /sprofile/                                          &
             s_prof_method,s_analyt_method,                      &
             z_s1,s_1,z_s2,s_2,s_prof_file,s_obs_NN,             &
@@ -298,16 +306,10 @@
    namelist /eprofile/ e_prof_method,e_obs_const,e_prof_file
 
    namelist /bprofile/ b_obs_surf,b_obs_NN,b_obs_sbf
-
-   integer                   :: rc,i
-   REALTYPE                  :: ds,db
-
-   REALTYPE,parameter        :: mmol_o2_per_liter = 44.661
-   REALTYPE,parameter        :: mmol_o2_per_gram  = 31.25
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_observations'
+   LEVEL1 'init_observations_nml'
 
 !  Salinity profile(s)
    s_prof_method=0
@@ -351,12 +353,12 @@
    PressConstU=_ZERO_
    PressConstV=_ZERO_
    PressHeight=_ZERO_
-   PeriodM=44714.
+   PeriodM=44714._rk
    AmpMu=_ZERO_
    AmpMv=_ZERO_
    PhaseMu=_ZERO_
    PhaseMv=_ZERO_
-   PeriodS=43200.
+   PeriodS=43200._rk
    AmpSu=_ZERO_
    AmpSv=_ZERO_
    PhaseSu=_ZERO_
@@ -377,9 +379,9 @@
    extinct_file='extinction.dat'
    ! extinct_method=7 - user defined
    ! default values are from Lago Maggiore, Stips
-   A=0.7
-   g1=0.40
-   g2=8.0
+   A=0.7_rk
+   g1=0.40_rk
+   g2=8.0_rk
 
 !  Vertical advection velocity - 'w_advspec' namelist
    w_adv_method=0
@@ -394,10 +396,10 @@
    zeta_scale=_ONE_
    zeta_offset=_ZERO_
    zeta_0=_ZERO_
-   period_1=44714.
+   period_1=44714._rk
    amp_1=_ZERO_
    phase_1=_ZERO_
-   period_2=43200.
+   period_2=43200._rk
    amp_2=_ZERO_
    phase_2=_ZERO_
 
@@ -411,12 +413,12 @@
 !  Observed velocity profile profiles - typically from ADCP
    vel_prof_method=0
    vel_prof_file='velprof.dat'
-   vel_relax_tau=3600.
-   vel_relax_ramp=86400.
+   vel_relax_tau=3600._rk
+   vel_relax_ramp=86400._rk
 
 !  Observed dissipation profiles
    e_prof_method=0
-   e_obs_const=1.e-12
+   e_obs_const=1.e-12_rk
    e_prof_file='eprof.dat'
 
 !  Buoyancy - 'bprofile' namelist
@@ -424,44 +426,343 @@
    b_obs_NN=_ZERO_
    b_obs_sbf=_ZERO_
 
-   open(namlst,file=fn,status='old',action='read',err=80)
-   read(namlst,nml=sprofile,err=81)
-   read(namlst,nml=tprofile,err=82)
-   read(namlst,nml=ext_pressure,err=83)
-   read(namlst,nml=int_pressure,err=84)
-   read(namlst,nml=extinct,err=85)
-   read(namlst,nml=w_advspec,err=86)
-   read(namlst,nml=zetaspec,err=87)
-   read(namlst,nml=wave_nml,err=88)
-   read(namlst,nml=velprofile,err=89)
-   read(namlst,nml=eprofile,err=90)
-   read(namlst,nml=bprofile,err=91)
-   read(namlst,nml=o2_profile,err=92)
-   close(namlst)
+   open(10,file='obs.nml',status='old',action='read',err=80)
+   read(10,nml=sprofile,err=81)
+   read(10,nml=tprofile,err=82)
+   read(10,nml=ext_pressure,err=83)
+   read(10,nml=int_pressure,err=84)
+   read(10,nml=extinct,err=85)
+   read(10,nml=w_advspec,err=86)
+   read(10,nml=zetaspec,err=87)
+   read(10,nml=wave_nml,err=88)
+   read(10,nml=velprofile,err=89)
+   read(10,nml=eprofile,err=90)
+   read(10,nml=bprofile,err=91)
+   read(10,nml=o2_profile,err=92)
+   close(10)
 
-   allocate(sprof(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (sprof)'
-   sprof = _ZERO_
+   call sprof%configure(method=s_prof_method, path=s_prof_file, index=1)
+   call tprof%configure(method=t_prof_method, path=t_prof_file, index=1)
 
-   allocate(tprof(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (tprof)'
-   tprof = _ZERO_
+   call h_press%configure(method=ext_press_method, path=ext_press_file, index=1, constant_value=PressHeight)
+   call dpdx%configure(method=ext_press_method, path=ext_press_file, index=2, constant_value=PressConstU)
+   call dpdy%configure(method=ext_press_method, path=ext_press_file, index=3, constant_value=PressConstV)
 
-   allocate(dsdx(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (dsdx)'
-   dsdx = _ZERO_
+   call dsdx%configure(method=int_press_method, path=int_press_file, index=1, constant_value=const_dsdx)
+   call dsdy%configure(method=int_press_method, path=int_press_file, index=2, constant_value=const_dsdy)
+   call dtdx%configure(method=int_press_method, path=int_press_file, index=3, constant_value=const_dtdx)
+   call dtdy%configure(method=int_press_method, path=int_press_file, index=4, constant_value=const_dtdy)
 
-   allocate(dsdy(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (dsdy)'
-   dsdy = _ZERO_
+   if (extinct_method == 0) then
+      extinct_method = 7
+      call A_%configure(method=2, path=extinct_file, index=1, constant_value=A)
+      call g1_%configure(method=2, path=extinct_file, index=2, constant_value=g1)
+      call g2_%configure(method=2, path=extinct_file, index=3, constant_value=g2)
+   else
+      call A_%configure(method=0, path=extinct_file, index=1, constant_value=A)
+      call g1_%configure(method=0, path=extinct_file, index=2, constant_value=g1)
+      call g2_%configure(method=0, path=extinct_file, index=3, constant_value=g2)
+   end if
 
-   allocate(dtdx(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (dtdx)'
-   dtdx = _ZERO_
+   call w_adv%configure(method=w_adv_method, path=w_adv_file, index=1, constant_value=w_adv0)
+   call w_height%configure(method=max(1, w_adv_method), path=w_adv_file, index=2, constant_value=w_adv_height0)
 
-   allocate(dtdy(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (dtdy)'
-   dsdy = _ZERO_
+   call zeta%configure(method=zeta_method, path=zeta_file, index=1, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
+
+   call Hs_%configure(method=wave_method, path=wave_file, index=1, constant_value=Hs)
+   call Tz_%configure(method=wave_method, path=wave_file, index=2, constant_value=Tz)
+   call phiw_%configure(method=wave_method, path=wave_file, index=3, constant_value=phiw)
+
+   call uprof%configure(method=vel_prof_method, path=vel_prof_file, index=1)
+   call vprof%configure(method=vel_prof_method, path=vel_prof_file, index=2)
+
+   call epsprof%configure(method=e_prof_method, path=e_prof_file, index=1, constant_value=e_obs_const)
+
+   call o2_prof%configure(method=o2_prof_method, path=o2_prof_file, index=1)
+   select case (o2_units)
+   case (1) ! mg/l
+      o2_prof%scale_factor=mmol_o2_per_gram
+   case (2) ! ml/l
+      o2_prof%scale_factor=mmol_o2_per_liter
+   end select
+
+   LEVEL2 'done.'
+
+   return
+
+80 FATAL 'Unable to open "',trim('obs.nml'),'" for reading'
+   stop 'init_observations'
+81 FATAL 'I could not read "sprofile" namelist'
+   stop 'init_observations'
+82 FATAL 'I could not read "tprofile" namelist'
+   stop 'init_observations'
+83 FATAL 'I could not read "ext_pressure" namelist'
+   stop 'init_observations'
+84 FATAL 'I could not read "int_pressure" namelist'
+   stop 'init_observations'
+85 FATAL 'I could not read "extinct" namelist'
+   stop 'init_observations'
+86 FATAL 'I could not read "w_advspec" namelist'
+   stop 'init_observations'
+87 FATAL 'I could not read "zetaspec" namelist'
+   stop 'init_observations'
+88 FATAL 'I could not read "wave_nml" namelist'
+   stop 'init_observations'
+89 FATAL 'I could not read "velprofile" namelist'
+   stop 'init_observations'
+90 FATAL 'I could not read "eprofile" namelist'
+   stop 'init_observations'
+91 FATAL 'I could not read "bprofile" namelist'
+   stop 'init_observations'
+92 FATAL 'I could not read "o2_profile" namelist'
+   stop 'init_observations'
+
+   end subroutine init_observations_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the observation module
+!
+! !INTERFACE:
+   subroutine init_observations_yaml()
+!
+! !DESCRIPTION:
+!  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
+!  file with a number of different namelists and takes actions according
+!  to the specifications in the different namelists.
+!  In this routine also memory is allocated to hold the 'observations'.
+!  Finally, all variables are initialised to sane values, either by
+!  reading from files, by prescribing constant values, or by using analytical
+!  expressions.
+!
+! !USES:
+   use settings
+   use util, only: UPSTREAM, P2, MUSCL, Superbee, P2_PDM
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+   class (type_gotm_settings), pointer :: branch, twig, leaf
+   integer, parameter             :: rk = kind(_ONE_)
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'init_observations_yaml'
+
+   call settings_store%get(tprof, 'temperature', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
+                   extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
+   twig => branch%get_typed_child('analytical')
+   call twig%get(t_analyt_method, 'method', 'type of analytical initial temperature profile', &
+                   options=(/option(CONST_PROF, 'constant'), option(TWO_LAYERS, 'two layers'), option(CONST_NN, 'from salinity and buoyancy frequency')/),default=CONST_PROF)
+   call twig%get(z_t1, 'z_t1', 'upper layer thickness', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call twig%get(t_1, 't_1', 'upper layer temperature', 'Celsius', &
+                   minimum=0._rk,maximum=40._rk,default=0._rk)
+   call twig%get(z_t2, 'z_t2', 'lower layer thickness', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call twig%get(t_2, 't_2', 'lower layer temperature', 'Celsius', &
+                   minimum=0._rk,maximum=40._rk,default=0._rk)
+   call twig%get(t_obs_NN, 'obs_NN', 'constant buoyancy frequency', 's^-2', &
+                   minimum=0._rk,default=0._rk)
+   twig => branch%get_typed_child('relax', 'relax model temperature to observed/prescribed value')
+   call twig%get(TRelaxTauM, 'tau', 'time scale for interior layer', 's', &
+                   minimum=0._rk,default=1e+15_rk)
+   call twig%get(TRelaxSurf, 'h_s', 'height of surface relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(TRelaxTauS, 'tau_s', 'time scale for surface layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
+   call twig%get(TRelaxBott, 'h_b', 'height of bottom relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(TRelaxTauB, 'tau_b', 'time scale for bottom layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
+
+   call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'psu', &
+                   extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
+   twig => branch%get_typed_child('analytical')
+   call twig%get(s_analyt_method, 'method', 'type of analytical initial salinity profile', &
+                   options=(/option(CONST_PROF, 'constant'), option(TWO_LAYERS, 'two layers'), option(CONST_NN, 'from temperature and buoyancy frequency')/),default=CONST_PROF)
+   call twig%get(z_s1, 'z_s1', 'upper layer thickness', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call twig%get(s_1, 's_1', 'upper layer salinity', 'psu', &
+                   minimum=0._rk,maximum=40._rk,default=0._rk)
+   call twig%get(z_s2, 'z_s2', 'lower layer thickness', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call twig%get(s_2, 's_2', 'lower layer salinity', 'psu', &
+                   minimum=0._rk,maximum=40._rk,default=0._rk)
+   call twig%get(s_obs_NN, 'obs_NN', 'constant buoyancy frequency', 's^-2', &
+                   minimum=0._rk,default=0._rk)
+   twig => branch%get_typed_child('relax', 'relax model salinity to observed/prescribed value')
+   call twig%get(SRelaxTauM, 'tau', 'time scale for interior layer', 's', &
+                   minimum=0._rk,default=1e+15_rk)
+   call twig%get(SRelaxSurf, 'h_s', 'height of surface relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(SRelaxTauS, 'tau_s', 'time scale for surface layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
+   call twig%get(SRelaxBott, 'h_b', 'height of bottom relaxation layer', 'm', &
+                   minimum=0._rk,default=0._rk, display=display_advanced)
+   call twig%get(SRelaxTauB, 'tau_b', 'time scale for bottom layer', 's', &
+                   minimum=0._rk,default=1e+15_rk, display=display_advanced)
+
+   twig => settings_store%get_typed_child('light_extinction')
+   call twig%get(extinct_method, 'method', 'water type', &
+                   options=(/option(1, 'Jerlov type I'), option(2, 'Jerlov type 1 (upper 50 m)'), option(3, 'Jerlov type IA'), &
+                   option(4, 'Jerlov type IB'), option(5, 'Jerlov type II'), option(6, 'Jerlov type III'), option(7, 'custom')/), default=1)
+   call twig%get(A_, 'A', 'non-visible fraction of shortwave radiation', '1', &
+                   minimum=0._rk,maximum=1._rk,default=0.7_rk)
+   call twig%get(g1_, 'g1', 'e-folding depth of non-visible shortwave radiation', 'm', &
+                   minimum=0._rk,default=0.4_rk)
+   call twig%get(g2_, 'g2', 'e-folding depth of visible shortwave radiation', 'm', &
+                   minimum=0._rk,default=8._rk)
+
+   branch => settings_store%get_typed_child('mimic_3d', 'effects of horizontal gradients')
+
+   twig => branch%get_typed_child('ext_pressure', 'external pressure')
+   call twig%get(ext_press_mode, 'mode', 'formulation', options=(/option(0, 'horizontal gradient in surface elevation'), option(1, 'horizontal velocities at given height above bed'), option(2, 'vertically averaged horizontal velocities')/), default=0)
+
+   call twig%get(dpdx, 'dpdx', 'pressure in West-East direction', '', &
+                   default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=leaf)
+   call leaf%get(AmpMu, 'AmpM', 'amplitude of 1st harmonic', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseMu, 'PhaseM', 'phase of 1st harmonic', 's', &
+                   minimum=0._rk,default=0._rk)
+   call leaf%get(AmpSu, 'AmpS', 'amplitude of 2nd harmonic', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseSu, 'PhaseS', 'phase of 2nd harmonic', 's', &
+                   minimum=0._rk,default=0._rk)
+
+   call twig%get(dpdy, 'dpdy', 'pressure in South-North direction', '', &
+                   default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=leaf)
+   call leaf%get(AmpMv, 'AmpM', 'amplitude of 1st harmonic', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseMv, 'PhaseM', 'phase of 1st harmonic', 's', &
+                   minimum=0._rk,default=0._rk)
+   call leaf%get(AmpSv, 'AmpS', 'amplitude of 2nd harmonic', '-', &
+                   default=0._rk)
+   call leaf%get(PhaseSv, 'PhaseS', 'phase of 2nd harmonic', 's', &
+                   minimum=0._rk,default=0._rk)
+
+   call twig%get(h_press, 'h', 'height above bed', 'm', &
+                   minimum=0._rk,default=0._rk)
+   
+   call twig%get(PeriodM, 'PeriodM', 'period of 1st tidal harmonic (eg. M2-tide)', 's', &
+                   default=44714._rk)
+   call twig%get(PeriodS, 'PeriodS', 'period of 2nd tidal harmonic (eg. S2-tide)', 's', &
+                   default=43200._rk)
+
+   twig => branch%get_typed_child('int_press', 'internal pressure')
+   call twig%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'Celsius/m', &
+      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call twig%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'Celsius/m', &
+      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call twig%get(dsdx, 'dsdx', 'salinity gradient in West-East direction', 'psu/m', &
+      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call twig%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'psu/m', &
+      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
+   call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
+
+   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=twig)
+   call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
+                   default=44714._rk)
+   call twig%get(amp_1, 'amp_1', 'amplitude of 1st harmonic', 'm', &
+                   default=0._rk)
+   call twig%get(phase_1, 'phase_1', 'phase of 1st harmonic', 's', &
+                   minimum=0._rk, default=0._rk)
+   call twig%get(period_2, 'period_2', 'period of 2nd harmonic (eg. S2-tide)', 's', &
+                   default=43200._rk)
+   call twig%get(amp_2, 'amp_2', 'amplitude of 2nd harmonic', 'm', &
+                   default=0._rk)
+   call twig%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
+                   minimum=0._rk, default=0._rk)
+
+   twig => settings_store%get_typed_child('velocities', 'observed/prescribed horizontal velocities')
+   call twig%get(uprof, 'u', 'velocity in West-East direction', 'm/s', default=0._rk, &
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
+   call twig%get(vprof, 'v', 'velocity in South-North direction', 'm/s', default=0._rk, &
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
+   leaf => twig%get_typed_child('relax', 'relax model velocities towards observed/prescribed value')
+   call leaf%get(vel_relax_tau, 'tau', 'time scale', 's', &
+                   minimum=0._rk,default=1.e15_rk)
+   call leaf%get(vel_relax_ramp, 'ramp', 'duration of initial relaxation period', 's', &
+                   minimum=0._rk,default=1.e15_rk)
+
+   twig => branch%get_typed_child('w', 'vertical velocity')
+   call twig%get(w_adv, 'max', 'maximum velocity', 'm/s', &
+      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call twig%get(w_height, 'height', 'height of maximum velocity', 'm', &
+      default=0._rk, method_constant=CONSTANT, method_file=FROMFILE)
+   call twig%get(w_adv_discr, 'adv_discr', 'vertical advection scheme', options=&
+             (/ option(UPSTREAM, 'first-order upstream'), option(P2, 'third-order upstream-biased polynomial'), &
+                option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
+                option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
+
+   twig => settings_store%get_typed_child('surface/wave', 'wind waves', display=display_advanced)
+   call twig%get(Hs_, 'Hs', 'significant wave-height', 'm', &
+                   minimum=0._rk,default=0._rk)
+   call twig%get(Tz_, 'Tz', 'mean zero-crossing period', 's', &
+                   minimum=0._rk,default=0._rk)
+   call twig%get(phiw_, 'phiw', 'mean direction', '-', &
+                   minimum=0._rk,maximum=360._rk,default=0._rk)
+
+   branch => settings_store%get_typed_child('turbulence')
+
+   call branch%get(epsprof, 'epsprof', 'observed dissipation rate', 'W/kg', &
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_advanced, order=999)
+
+   call settings_store%get(o2_prof, 'o2', 'oxygen', '', &
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, display=display_hidden)
+
+   return
+
+   end subroutine init_observations_yaml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the observation module
+!
+! !INTERFACE:
+   subroutine post_init_observations(depth,nlev,z,h,gravity,rho_0,lake)
+!
+! !DESCRIPTION:
+!  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
+!  file with a number of different namelists and takes actions according
+!  to the specifications in the different namelists.
+!  In this routine also memory is allocated to hold the 'observations'.
+!  Finally, all variables are initialised to sane values, either by
+!  reading from files, by prescribing constant values, or by using analytical
+!  expressions.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: depth
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
+   REALTYPE, intent(in)                :: gravity,rho_0
+   logical,  intent(in)                :: lake
+!
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+   integer                   :: rc,i
+   REALTYPE                  :: ds,db
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'post_init_observations'
+
+   LEVEL2 'allocation observation memory..'
 
    allocate(idpdx(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (idpdx)'
@@ -479,14 +780,6 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (TRelaxTau)'
    TRelaxTau = _ZERO_
 
-   allocate(uprof(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_observations: Error allocating (uprof)'
-   uprof = _ZERO_
-
-   allocate(vprof(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_observations: Error allocating (vprof)'
-   vprof = _ZERO_
-
    db=_ZERO_
    ds=depth
    SRelaxTau(0)=SRelaxTauB
@@ -502,7 +795,7 @@
       if (ds.le.TRelaxSurf) TRelaxTau(i)=TRelaxTauS
       db=db+0.5*h(i)
       ds=ds-0.5*h(i)
-      if ((s_prof_method.ne.0).and.(SRelaxTau(i).le._ZERO_)) then
+      if ((sprof%method.ne.0).and.(SRelaxTau(i).le._ZERO_)) then
          LEVEL2 ''
          LEVEL2 '***************************************************'
          LEVEL2 'SRelaxTau at i=',i,' is not a positive value.'
@@ -511,7 +804,7 @@
          LEVEL2 '***************************************************'
          stop 'init_observations'
       end if
-      if ((t_prof_method.ne.0).and.(TRelaxTau(i).le._ZERO_)) then
+      if ((tprof%method.ne.0).and.(TRelaxTau(i).le._ZERO_)) then
          LEVEL2 ''
          LEVEL2 '***************************************************'
          LEVEL2 'TRelaxTau at i=',i,' is not a positive value.'
@@ -522,30 +815,23 @@
       end if
    end do
 
-   allocate(o2_prof(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (o2_prof)'
-   o2_prof = _ZERO_
-
 !  The salinity profile
-   LEVEL2 "initial salinity:"
-   select case (s_prof_method)
+   call register_input(sprof)
+   select case (sprof%method)
       case (NOTHING)
          LEVEL3 "none"
-         sprof = _ZERO_
+         sprof%data = _ZERO_
       case (ANALYTICAL)
-
          ! different ways to prescribe profiles analytically
          select case (s_analyt_method)
             case (CONST_PROF)
-               LEVEL3 "constant"
-               sprof = s_1
+               sprof%data = s_1
             case (TWO_LAYERS)
-               LEVEL3 "two-layer"
-               call analytical_profile(nlev,z,z_s1,s_1,z_s2,s_2,sprof)
+               call analytical_profile(nlev,z,z_s1,s_1,z_s2,s_2,sprof%data)
             case (CONST_NN)
                LEVEL3 "constant NN"
 
-               if (.not.((t_prof_method       .eq. ANALYTICAL) .and.      &
+               if (.not.((tprof%method    .eq. ANALYTICAL) .and.      &
                          (t_analyt_method .eq. CONST_PROF))   )  then
                   LEVEL2 ''
                   LEVEL2 '***************************************************'
@@ -557,41 +843,31 @@
                   stop 'init_observations'
                endif
 
-               call const_NNS(nlev,z,s_1,t_1,s_obs_NN,gravity,rho_0,sprof)
+               call const_NNS(nlev,z,s_1,t_1,s_obs_NN,gravity,rho_0,sprof%data)
             case default
                LEVEL1 'A non-valid s_analyt_method has been given ',s_analyt_method
                stop 'init_observations()'
          end select
-
-      case (FROMFILE)
-         call register_input_1d(s_prof_file,1,sprof,'observed salinity')
-         LEVEL2 'Reading salinity profiles from:'
-         LEVEL3 trim(s_prof_file)
-      case default
-         LEVEL1 'A non-valid s_prof_method has been given ',s_prof_method
-         stop 'init_observations()'
    end select
 
 !  The temperature profile
-   LEVEL2 "initial temperature:"
-   select case (t_prof_method)
+   call register_input(tprof)
+   select case (tprof%method)
       case (NOTHING)
          LEVEL3 "none"
-         tprof = _ZERO_
+         tprof%data = _ZERO_
       case (ANALYTICAL)
 
         ! different ways to prescribe profiles analytically
          select case (t_analyt_method)
          case (CONST_PROF)
-               LEVEL3 "constant"
-               tprof = t_1
+               tprof%data = t_1
             case (TWO_LAYERS)
-               LEVEL3 "two-layer"
-               call analytical_profile(nlev,z,z_t1,t_1,z_t2,t_2,tprof)
+               call analytical_profile(nlev,z,z_t1,t_1,z_t2,t_2,tprof%data)
             case (CONST_NN)
                LEVEL3 "constant NN"
 
-               if (.not.((s_prof_method       .eq. ANALYTICAL) .and.      &
+               if (.not.((sprof%method    .eq. ANALYTICAL) .and.      &
                          (s_analyt_method .eq. CONST_PROF))   )  then
 
                   LEVEL2 ''
@@ -604,227 +880,67 @@
                   stop 'init_observations'
                endif
 
-               call const_NNT(nlev,z,t_1,s_1,t_obs_NN,gravity,rho_0,tprof)
+               call const_NNT(nlev,z,t_1,s_1,t_obs_NN,gravity,rho_0,tprof%data)
             case default
                LEVEL1 'A non-valid t_analyt_method has been given ',t_analyt_method
                stop 'init_observations()'
          end select
-      case (FROMFILE)
-         call register_input_1d(t_prof_file,1,tprof,'observed temperature')
-         LEVEL2 'Reading temperature profiles from:'
-         LEVEL3 trim(t_prof_file)
-      case default
-         LEVEL1 'A non-valid t_prof_method has been given ',t_prof_method
-         stop 'init_observations()'
    end select
 
 !  The external pressure
-   LEVEL2 "external pressure"
-   select case (ext_press_method)
-      case (NOTHING)
-         LEVEL3 "none"
-         h_press = PressHeight
-         dpdx    = PressConstU
-         dpdy    = PressConstV
-      case (ANALYTICAL)
-         LEVEL3 "analytical"
-!        The analytical prescription of external pressure is time-dependent
-!        and is therefore handled in get_all_obs.
-      case (FROMFILE)
-         call register_input_0d(ext_press_file,1,h_press,'observed external pressure: height above bed')
-         call register_input_0d(ext_press_file,2,dpdx,'observed external pressure: x-direction')
-         call register_input_0d(ext_press_file,3,dpdy,'observed external pressure: y-direction')
-         LEVEL2 'Reading external pressure from:'
-         LEVEL3 trim(ext_press_file)
-      case default
-         LEVEL1 'A non-valid ext_press_method has been given ',ext_press_method
-         stop 'init_observations()'
-   end select
+   call register_input(h_press)
+   call register_input(dpdx)
+   call register_input(dpdy)
 
 !  The internal pressure
-   LEVEL2 "internal pressure"
-   select case (int_press_method)
-      case (NOTHING)
-         LEVEL3 "none"
-         dsdx = _ZERO_
-         dsdy = _ZERO_
-         dtdx = _ZERO_
-         dtdy = _ZERO_
-      case (CONSTANT)
-         LEVEL3 "constant"
-         dsdx = const_dsdx
-         dsdy = const_dsdy
-         dtdx = const_dtdx
-         dtdy = const_dtdy
-      case (FROMFILE)
-         call register_input_1d(int_press_file,1,dsdx,'observed internal pressure: salinity gradient in x-direction')
-         call register_input_1d(int_press_file,2,dsdy,'observed internal pressure: salinity gradient in y-direction')
-         call register_input_1d(int_press_file,3,dtdx,'observed internal pressure: temperature gradient in x-direction')
-         call register_input_1d(int_press_file,4,dtdy,'observed internal pressure: temperature gradient in y-direction')
-         LEVEL2 'Reading internal pressure from:'
-         LEVEL3 trim(int_press_file)
-      case default
-         LEVEL1 'A non-valid int_press_method has been given ',int_press_method
-         stop 'init_observations()'
-   end select
+   call register_input(dsdx)
+   call register_input(dsdy)
+   call register_input(dtdx)
+   call register_input(dtdy)
 
 !  The light extinction profiles
    LEVEL2 "extinction method"
    select case (extinct_method)
-      case (0)
-         call register_input_0d(extinct_file,1,A,'observed light extinction: non-visible fraction')
-         call register_input_0d(extinct_file,2,g1,'observed light extinction: e-folding depth of non-visible fraction')
-         call register_input_0d(extinct_file,3,g2,'observed light extinction: e-folding depth of visible fraction')
-         LEVEL2 'Reading extinction data from:'
-         LEVEL3 trim(extinct_file)
       case (1)
-         LEVEL3 "1"
-         A=0.58;g1=0.35;g2=23.0
+         A_%value=0.58;g1_%value=0.35;g2_%value=23.0
       case (2)
-         LEVEL3 "2"
-         A=0.68;g1=1.20;g2=28.0
+         A_%value=0.68;g1_%value=1.20;g2_%value=28.0
       case (3)
-         LEVEL3 "3"
-         A=0.62;g1=0.60;g2=20.0
+         A_%value=0.62;g1_%value=0.60;g2_%value=20.0
       case (4)
-         LEVEL3 "4"
-         A=0.67;g1=1.00;g2=17.0
+         A_%value=0.67;g1_%value=1.00;g2_%value=17.0
       case (5)
-         LEVEL3 "5"
-         A=0.77;g1=1.50;g2=14.0
+         A_%value=0.77;g1_%value=1.50;g2_%value=14.0
       case (6)
-         LEVEL3 "6"
-         A=0.78;g1=1.40;g2=7.9
-      case (7)
-         LEVEL3 "7"
+         A_%value=0.78;g1_%value=1.40;g2_%value=7.9
       case default
-         LEVEL1 'A non-valid extinct_method has been given ',extinct_method
-         stop 'init_observations()'
+         call register_input(A_)
+         call register_input(g1_)
+         call register_input(g2_)
    end select
 
 !  The vertical advection velocity
-   LEVEL2 "vertical advection"
-   select case (w_adv_method)
-      case(NOTHING)                               ! no vertical advection
-         LEVEL3 "none"
-         w_height = _ZERO_
-         w_adv    = _ZERO_
-      case(CONSTANT)
-         LEVEL3 "constant"
-         w_height = w_adv_height0
-         w_adv    = w_adv0
-      case (FROMFILE)
-         call register_input_0d(w_adv_file,1,w_height,'observed vertical velocity: depth')
-         call register_input_0d(w_adv_file,2,w_adv,'observed vertical velocity: value')
-         LEVEL2 'Reading vertical velocity observations from:'
-         LEVEL3 trim(w_adv_file)
-      case default
-         LEVEL1 'A non-valid w_adv_method has been given ',w_adv_method
-         stop 'init_observations()'
-   end select
+   call register_input(w_height)
+   call register_input(w_adv)
 
 !  The sea surface elevation
-   LEVEL2 "elevation"
-   select case (zeta_method)
-      case(0)
-         LEVEL3 "constant"
-         zeta = zeta_0
-      case(ANALYTICAL)
-         LEVEL3 "analytical"
-!        The analytical prescription of surface elevation is time-dependent
-!        and is therefore handled in get_all_obs.
-      case (FROMFILE)
-         call register_input_0d(zeta_file,1,zeta,'observed sea surface elevation',scale_factor=zeta_scale,add_offset=zeta_offset)
-         LEVEL2 'Reading sea surface elevations from:'
-         LEVEL3 trim(zeta_file)
-      case (FREE_SURFACE)
-         LEVEL3 "free surface"
-         zeta = zeta_0
-      case default
-         LEVEL1 'A non-valid zeta_method has been given ',zeta_method
-         stop 'init_observations()'
-   end select
+   call register_input(zeta)
 
 !  Wind waves
-   LEVEL2 "waves"
-   select case (wave_method)
-      case (NOTHING)
-         LEVEL3 "none"
-         Hs   = _ZERO_
-         Tz   = _ZERO_
-         phiw = _ZERO_
-      case (CONSTANT)
-         LEVEL3 "constant"
-!        Constant Hs, Tz and phiw have been already been set via the wave namelist.
-      case (FROMFILE)
-         call register_input_0d(wave_file,1,Hs,'observed wind waves: significant wave height')
-         call register_input_0d(wave_file,2,Tz,'observed wind waves: mean zero-crossing period')
-         call register_input_0d(wave_file,3,phiw,'observed wind waves: mean direction')
-         LEVEL2 'Reading wind wave data from:'
-         LEVEL3 trim(wave_file)
-      case default
-         LEVEL1 'A non-valid wave_method has been given ',wave_method
-         stop 'init_observations()'
-   end select
+   call register_input(Hs_)
+   call register_input(Tz_)
+   call register_input(phiw_)
 
 !  The observed velocity profile
-   LEVEL2 "velocity profiles"
-   select case (vel_prof_method)
-      case (NOTHING)
-         LEVEL3 "none"
-         uprof = _ZERO_
-         vprof = _ZERO_
-      case (FROMFILE)
-         call register_input_1d(vel_prof_file,1,uprof,'observed horizontal velocity: x-direction')
-         call register_input_1d(vel_prof_file,2,vprof,'observed horizontal velocity: y-direction')
-         LEVEL2 'Reading velocity profiles from:'
-         LEVEL3 trim(vel_prof_file)
-      case default
-         LEVEL1 'A non-valid vel_prof_method has been given ',vel_prof_method
-         stop 'init_observations()'
-   end select
+   call register_input(uprof)
+   call register_input(vprof)
 
 !  The observed dissipation profile
-   LEVEL2 "dissipations profiles"
-   select case (e_prof_method)
-      case (NOTHING)
-         LEVEL3 "none"
-      case (FROMFILE)
-         allocate(epsprof(0:nlev),stat=rc)
-         if (rc /= 0) stop 'init_observations: Error allocating (epsprof)'
-         epsprof = _ZERO_
-         call register_input_1d(e_prof_file,1,epsprof,'observed turbulence dissipation')
-         LEVEL2 'Reading dissipation profiles from:'
-         LEVEL3 trim(e_prof_file)
-      case default
-         LEVEL1 'A non-valid e_prof_method has been given ',e_prof_method
-         stop 'init_observations()'
-   end select
+   call register_input(epsprof)
 
 !  The oxygen profile
-   select case (o2_prof_method)
-      case (NOTHING)
-         o2_prof = _ZERO_
-      case (ANALYTICAL)
-      case (FROMFILE)
-         select case (o2_units)
-            case (1) ! mg/l
-               call register_input_1d(o2_prof_file,1,o2_prof,'observed dissolved oxygen',scale_factor=mmol_o2_per_gram)
-            case (2) ! ml/l
-               call register_input_1d(o2_prof_file,1,o2_prof,'observed dissolved oxygen',scale_factor=mmol_o2_per_liter)
-            case (3) ! mmol/m^3
-               call register_input_1d(o2_prof_file,1,o2_prof,'observed dissolved oxygen')
-            case default
-               STDERR "Invalid choice for oxygen unit conversion given in"
-               STDERR "namelist o2_profile of obs.nml. program aborted in"
-               stop 'init_observations()'
-         end select
-         LEVEL2 'Reading oxygen profiles from:'
-         LEVEL3 trim(o2_prof_file)
-      case default
-         LEVEL1 'A non-valid o2_prof_method has been given ',o2_prof_method
-         stop 'init_observations()'
-   end select
+   call register_input(o2_prof)
+   LEVEL2 'done.'
 
 !  The streams
    allocate(Qs(0:nlev),stat=rc)
@@ -859,38 +975,9 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (wq)'
    wq = _ZERO_
 
-   call init_streams(lake,nlev)
-
    return
 
-80 FATAL 'Unable to open "',trim(fn),'" for reading'
-   stop 'init_observations'
-81 FATAL 'I could not read "sprofile" namelist'
-   stop 'init_observations'
-82 FATAL 'I could not read "tprofile" namelist'
-   stop 'init_observations'
-83 FATAL 'I could not read "ext_pressure" namelist'
-   stop 'init_observations'
-84 FATAL 'I could not read "int_pressure" namelist'
-   stop 'init_observations'
-85 FATAL 'I could not read "extinct" namelist'
-   stop 'init_observations'
-86 FATAL 'I could not read "w_advspec" namelist'
-   stop 'init_observations'
-87 FATAL 'I could not read "zetaspec" namelist'
-   stop 'init_observations'
-88 FATAL 'I could not read "wave_nml" namelist'
-   stop 'init_observations'
-89 FATAL 'I could not read "velprofile" namelist'
-   stop 'init_observations'
-90 FATAL 'I could not read "eprofile" namelist'
-   stop 'init_observations'
-91 FATAL 'I could not read "bprofile" namelist'
-   stop 'init_observations'
-92 FATAL 'I could not read "o2_profile" namelist'
-   stop 'init_observations'
-
-   end subroutine init_observations
+   end subroutine post_init_observations
 !EOC
 
 !-----------------------------------------------------------------------
@@ -925,22 +1012,25 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (ext_press_method==ANALYTICAL) then
+   if (dpdx%method==ANALYTICAL) then
 !     Analytical prescription of tides
-      h_press = PressHeight
-      dpdx = AmpMu*sin(2*pi*(fsecs-PhaseMu)/PeriodM)    &
+      dpdx%value = AmpMu*sin(2*pi*(fsecs-PhaseMu)/PeriodM)    &
              + AmpSu*sin(2*pi*(fsecs-PhaseSu)/PeriodS)    &
-             + PressConstU
-      dpdy = AmpMv*sin(2*pi*(fsecs-PhaseMv)/PeriodM)    &
-             + AmpSv*sin(2*pi*(fsecs-PhaseSv)/PeriodS)    &
-             + PressConstV
+             + dpdx%constant_value
    end if
 
-   if (zeta_method==ANALYTICAL) then
+   if (dpdy%method==ANALYTICAL) then
 !     Analytical prescription of tides
-      Zeta = amp_1*sin(2*pi*(fsecs-phase_1)/period_1) &
+      dpdy%value = AmpMv*sin(2*pi*(fsecs-PhaseMv)/PeriodM)    &
+             + AmpSv*sin(2*pi*(fsecs-PhaseSv)/PeriodS)    &
+             + dpdy%constant_value
+   end if
+
+   if (zeta%method==ANALYTICAL) then
+!     Analytical prescription of tides
+      Zeta%value = amp_1*sin(2*pi*(fsecs-phase_1)/period_1) &
             +amp_2*sin(2*pi*(fsecs-phase_2)/period_2) &
-            +zeta_0
+            +zeta%constant_value
    end if
 
    end subroutine get_all_obs
@@ -969,28 +1059,11 @@
    LEVEL1 'clean_observations'
 
    LEVEL2 'de-allocate observation memory ...'
-   if (allocated(sprof)) deallocate(sprof)
-   if (allocated(tprof)) deallocate(tprof)
-   if (allocated(dsdx)) deallocate(dsdx)
-   if (allocated(dsdy)) deallocate(dsdy)
-   if (allocated(dtdx)) deallocate(dtdx)
-   if (allocated(dtdy)) deallocate(dtdy)
+   !KB - is this don in - close_input()?
    if (allocated(idpdx)) deallocate(idpdx)
    if (allocated(idpdy)) deallocate(idpdy)
    if (allocated(SRelaxTau)) deallocate(SRelaxTau)
    if (allocated(TRelaxTau)) deallocate(TRelaxTau)
-   if (allocated(uprof)) deallocate(uprof)
-   if (allocated(vprof)) deallocate(vprof)
-   if (allocated(epsprof)) deallocate(epsprof)
-   if (allocated(o2_prof)) deallocate(o2_prof)
-   if (allocated(Qs)) deallocate(Qs)
-   if (allocated(Qt)) deallocate(Qt)
-   if (allocated(Ls)) deallocate(Ls)
-   if (allocated(Lt)) deallocate(Lt)
-   if (allocated(Qlayer)) deallocate(Qlayer)
-   if (allocated(Qres)) deallocate(Qres)
-   if (allocated(FQ)) deallocate(FQ)
-   if (allocated(wq)) deallocate(wq)
    LEVEL2 'done.'
 
    end subroutine clean_observations

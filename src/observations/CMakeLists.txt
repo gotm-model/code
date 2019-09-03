@@ -5,5 +5,5 @@ add_library(observations
    streams.F90
    observations.F90
 )
-target_link_libraries(observations PRIVATE util input)
+target_link_libraries(observations PRIVATE util input_manager config)
 set_property(TARGET observations PROPERTY FOLDER gotm)

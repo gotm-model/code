@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 if(NOT PROJECT_NAME STREQUAL gotm)
-   project(gotm VERSION 5.3.0 LANGUAGES Fortran)
+   project(gotm VERSION 5.4.0 LANGUAGES Fortran)
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
@@ -25,6 +25,8 @@ endif()
 # ----------------------------
 
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
+
+option(GOTM_USE_STIM "Include support for Simple Thermodynamic Ice Models - STIM" OFF)
 
 option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
 
@@ -66,6 +68,14 @@ if(GOTM_USE_FABM)
    endif()
 endif(GOTM_USE_FABM)
 
+if(GOTM_USE_STIM)
+   mark_as_advanced(FORCE STIM_BASE STIM_EMBED_VERSION)
+   find_path(STIM_BASE src/stim_version.F90.in HINTS ${CMAKE_CURRENT_LIST_DIR}/extern/stim DOC "Path to STIM source directory.")
+   set(STIM_EMBED_VERSION ${GOTM_EMBED_VERSION} CACHE BOOL "Embed STIM version information" FORCE)
+   add_subdirectory("${STIM_BASE}" extern/stim)
+   mark_as_advanced(CLEAR STIM_BASE)
+endif(GOTM_USE_STIM)
+
 # ----------------------------
 # GOTM itself
 # ----------------------------
@@ -93,6 +103,6 @@ add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/tests" tests)
 
 include(FeatureSummary)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-   feature_summary(WHAT ENABLED_FEATURES DISABLED_FEATURES PACKAGES_FOUND)
+   #feature_summary(WHAT ENABLED_FEATURES DISABLED_FEATURES PACKAGES_FOUND)
    feature_summary(FILENAME ${CMAKE_CURRENT_BINARY_DIR}/features.log WHAT ALL)
 endif()
