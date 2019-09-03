@@ -651,13 +651,13 @@
                    default=43200._rk)
 
    twig => branch%get_typed_child('int_press', 'internal pressure')
-   call twig%get(dsdx, 'dsdx', 'salinity gradient in West-East direction', 'Celsius/m', &
+   call twig%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'Celsius/m', &
+   call twig%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'psu/m', &
+   call twig%get(dsdx, 'dsdx', 'salinity gradient in West-East direction', 'psu/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'psu/m', &
+   call twig%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'psu/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
