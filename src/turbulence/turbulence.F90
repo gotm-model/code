@@ -278,7 +278,7 @@
 ! !IROUTINE: Initialise the turbulence module
 !
 ! !INTERFACE:
-   subroutine init_turbulence_nml(namlst,fn)
+   subroutine init_turbulence_nml(namlst,fn,nlev)
 !
 ! !DESCRIPTION:
 ! Initialises all turbulence related stuff. This routine reads a number
@@ -304,6 +304,7 @@
 ! !INPUT PARAMETERS:
    integer,          intent(in)        :: namlst
    character(len=*), intent(in)        :: fn
+   integer, optional,intent(in)        :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -483,6 +484,9 @@
       close (10)
    endif
    LEVEL2 'done.'
+
+   if (present(nlev)) call post_init_turbulence(nlev)
+
    return
 
 80 FATAL 'I could not open "gotmturb.nml"'
@@ -561,7 +565,7 @@
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
                    options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'Xing and Davies (1995)'), option(4, 'Robert and Ouellet (1987)'), option(5, 'Blackadar (two boundaries) (1962)'), option(6, 'Bougeault and Andre (1986)'), option(7, 'Eifler and Schrimpf (ISPRAMIX) (1992)'), option(8, 'dynamic dissipation rate equation'), option(9, 'dynamic Mellor-Yamada q^2 l-equation'), option(10, 'generic length scale (GLS)')/),default=8)
    call branch%get(stab_method, 'stab_method', 'stability functions', &
-                   options=(/option(1, 'constant'), option(2, 'Munk and Anderson (1954)'), option(3, 'Schumann and Gerz (1995)'), option(4, 'Eifler and Schrimpf (1992)')/),default=3)
+                   options=(/option(1, 'constant'), option(2, 'Munk and Anderson (1954)'), option(3, 'Schumann and Gerz (1995)'), option(4, 'Eifler and Schrimpf (1992)')/),default=1)
 
    twig => branch%get_child('bc', 'boundary conditions', display=display_advanced)
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
@@ -604,9 +608,9 @@
    call twig%get(const_nuh, 'const_nuh', 'constant heat diffusivity', 'm^2/s', &
                    minimum=0._rk,default=0.0005_rk)
    call twig%get(k_min, 'k_min', 'minimum turbulent kinetic energy', 'm^2/s^2', &
-                   minimum=0._rk,default=1.e-6_rk)
+                   minimum=0._rk,default=1.e-10_rk)
    call twig%get(eps_min, 'eps_min', 'minimum dissipation rate', 'm^2/s^3', &
-                   minimum=0._rk,default=1.e-12_rk)
+                   minimum=0._rk,default=1.e-10_rk)
    call twig%get(kb_min, 'kb_min', 'minimum buoyancy variance', 'm^2/s^4', &
                    minimum=0._rk,default=1.e-10_rk)
    call twig%get(epsb_min, 'epsb_min', 'minimum buoyancy variance destruction rate', 'm^2/s^5', &
@@ -674,7 +678,7 @@
 
    twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
    call twig%get(scnd_method, 'method', 'method', &
-                   options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance')/), default=1)
+                   options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance')/), default=2)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
                    options=(/option(1, 'algebraic'), option(2, 'prognostic')/), default=1)
    call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
