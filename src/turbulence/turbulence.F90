@@ -610,7 +610,7 @@
    call twig%get(k_min, 'k_min', 'minimum turbulent kinetic energy', 'm^2/s^2', &
                    minimum=0._rk,default=1.e-10_rk)
    call twig%get(eps_min, 'eps_min', 'minimum dissipation rate', 'm^2/s^3', &
-                   minimum=0._rk,default=1.e-10_rk)
+                   minimum=0._rk,default=1.e-12_rk)
    call twig%get(kb_min, 'kb_min', 'minimum buoyancy variance', 'm^2/s^4', &
                    minimum=0._rk,default=1.e-10_rk)
    call twig%get(epsb_min, 'epsb_min', 'minimum buoyancy variance destruction rate', 'm^2/s^5', &
