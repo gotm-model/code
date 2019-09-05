@@ -1951,7 +1951,7 @@
 
          sig_e= kappa**2/(ce2-ce1)/cm0**2
 
-         ! compute Schmidt-number for Burchard (2001) wave-breaking
+         ! compute Schmidt-number for Burchard (2001) wave-breaking
          if (sig_peps) then
             craig_m=sqrt(1.5*cmsf**2*sig_k/kappa**2)
             sig_e0=(4./3.*craig_m+1.)*(craig_m+1.)*kappa**2/(ce2*cmsf**2)
