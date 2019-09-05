@@ -183,7 +183,7 @@
       input_variable%interior_id = fabm_get_bulk_variable_id(model, pair%name)
       if (fabm_is_variable_used(input_variable%interior_id)) then
          input_variable%stream => self%stream
-         call type_input_create(pair, input_variable%scalar_input, trim(input_variable%interior_id%variable%long_name), trim(input_variable%interior_id%variable%units), default=0._rk, treat_as_path=.false.)
+         call type_input_create(pair, input_variable%scalar_input, trim(input_variable%interior_id%variable%long_name), trim(input_variable%interior_id%variable%units), default=0._rk)
          call append_input(input_variable)
       else
          deallocate(input_variable)
