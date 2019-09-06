@@ -93,10 +93,10 @@
       type (type_stream),                 pointer :: stream
       type (type_stream_input_populator), pointer :: stream_populator
 
-      if (.not. fabm_calc) return
-
       allocate(fabm_input_populator)
       cfg => settings_store%get_child('fabm/input', populator=fabm_input_populator)
+
+      if (.not. fabm_calc) return
 
       cfg => settings_store%get_child('streams')
       stream => first_stream
@@ -137,7 +137,7 @@
 
       if (fabm_is_variable_used(input_variable%interior_id)) then
          fabm_name = fabm_get_variable_name(model, input_variable%interior_id)
-         call type_input_create(pair, input_variable%profile_input, trim(input_variable%interior_id%variable%long_name), trim(input_variable%interior_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
+         call type_input_create(pair, input_variable%profile_input, trim(input_variable%interior_id%variable%long_name), trim(input_variable%interior_id%variable%units), default=0._rk, pchild=branch)
          do i = 1, size(model%state_variables)
             if (fabm_name == model%state_variables(i)%name) then
                call branch%get(input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
@@ -153,7 +153,7 @@
          input_variable%horizontal_id = fabm_get_horizontal_variable_id(model, pair%name)
          if (fabm_is_variable_used(input_variable%horizontal_id)) then
             fabm_name = fabm_get_variable_name(model, input_variable%horizontal_id)
-            call type_input_create(pair, input_variable%scalar_input, trim(input_variable%horizontal_id%variable%long_name), trim(input_variable%horizontal_id%variable%units), default=0._rk, pchild=branch, treat_as_path=.false.)
+            call type_input_create(pair, input_variable%scalar_input, trim(input_variable%horizontal_id%variable%long_name), trim(input_variable%horizontal_id%variable%units), default=0._rk, pchild=branch)
             do i = 1, size(model%bottom_state_variables)
                if (fabm_name == model%bottom_state_variables(i)%name) then
                   call branch%get(input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
@@ -183,7 +183,7 @@
       input_variable%interior_id = fabm_get_bulk_variable_id(model, pair%name)
       if (fabm_is_variable_used(input_variable%interior_id)) then
          input_variable%stream => self%stream
-         call type_input_create(pair, input_variable%scalar_input, trim(input_variable%interior_id%variable%long_name), trim(input_variable%interior_id%variable%units), default=0._rk, treat_as_path=.false.)
+         call type_input_create(pair, input_variable%scalar_input, trim(input_variable%interior_id%variable%long_name), trim(input_variable%interior_id%variable%units), default=0._rk)
          call append_input(input_variable)
       else
          deallocate(input_variable)
@@ -224,6 +224,7 @@
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
                            relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot, &
                            constant_value
+   class (type_settings),       pointer :: branch
    class (type_key_value_pair), pointer :: pair
 !
 !-----------------------------------------------------------------------
@@ -238,6 +239,7 @@
 !  Open the file that contains zero, one or more namelists specifying input observations.
    open(namlst,file=fname,action='read',status='old',err=98)
 
+   branch => settings_store%get_child('fabm/input')
    do
 !     Initialize namelist variables.
       file = ''
@@ -324,7 +326,7 @@
          method = 2
          if (constant_values(i) /= missing_value) method = 0
 
-         pair => settings_store%get_node('fabm/input/'//trim(variables(i)))
+         pair => branch%get_node(trim(variables(i)), treat_as_path=.false.)
          call fabm_input_populator%create(pair)
          if (fabm_is_variable_used(last_input_variable%interior_id)) then
             call last_input_variable%profile_input%configure(method=method, path=trim(file), index=i, constant_value=constant_values(i))

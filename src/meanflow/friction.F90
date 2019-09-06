@@ -145,9 +145,10 @@
       taub(j) = u_taub(j)*u_taub(j)*rho_0
    end do
 
-#if 0
-   drag(1) = drag(1) + rr*rr
+   ! friction by final (flat) bottom
+   drag(1) = drag(1) + rr*rr * Af(0) / Vc(1) * h(1)
 
+#if 0
 !  calculate bottom stress, which is used by sediment resuspension models
    u_taub1 = u_taub(1)
    taub = u_taub(1)*u_taub(1)*rho_0

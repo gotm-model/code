@@ -72,10 +72,10 @@ contains
       integer                             :: istart
 
       node => self%get_node(name, treat_as_path=treat_as_path, istart=istart, order=order)
-      call type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display, default_method)
+      call type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, display, default_method)
    end subroutine
 
-   subroutine type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, treat_as_path, display, default_method)
+   subroutine type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, display, default_method)
       class (type_settings_node), intent(inout) :: node
       class (type_input), target                :: target
       character(len=*),           intent(in)    :: long_name
@@ -87,7 +87,6 @@ contains
       type (type_option),optional,intent(in)    :: extra_options(:)
       integer,           optional,intent(in)    :: method_off, method_constant, method_file
       class (type_gotm_settings), optional, pointer :: pchild
-      logical,           optional,intent(in)    :: treat_as_path
       integer,           optional,intent(in)    :: display
       integer,           optional,intent(in)    :: default_method
 

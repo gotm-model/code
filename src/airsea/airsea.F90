@@ -494,7 +494,7 @@
    call twig%get(ssuv_method, 'ssuv_method', 'wind treatment', &
                 options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=1, display=display_advanced)
 
-   call branch%get(qb, 'back_radiation', 'longwave back radiation', 'W/m^2', &
+   call branch%get(qb, 'back_radiation', 'net longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
                extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand')/), default_method=1)
 

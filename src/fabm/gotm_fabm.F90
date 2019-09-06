@@ -534,13 +534,13 @@
          ! This also tells FABM which diagnostics need computing (through setting of the "save" attribute).
          ! This MUST be done before fabm_check_ready is called.
          do i=1,size(model%diagnostic_variables)
-            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=model%diagnostic_variables(i)%save)
+            call register_field(field_manager, model%diagnostic_variables(i), dimensions=(/id_dim_z/), used=in_output)
          end do
          do i=1,size(model%horizontal_diagnostic_variables)
             if (bottom_everywhere .and. model%horizontal_diagnostic_variables(i)%target%domain==domain_bottom) then
-               call register_field(field_manager, model%horizontal_diagnostic_variables(i), dimensions=(/id_dim_z/), used=model%diagnostic_variables(i)%save)
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), dimensions=(/id_dim_z/), used=model%horizontal_diagnostic_variables(i)%save)
             else
-               call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=model%diagnostic_variables(i)%save)
+               call register_field(field_manager, model%horizontal_diagnostic_variables(i), used=model%horizontal_diagnostic_variables(i)%save)
             end if
          end do
       end if

@@ -227,14 +227,15 @@
    stream%name = pair%name
    select type (child)
       class is (type_gotm_settings)
-         call child%get(stream%method, 'method', 'inflow method', default=1)
-         call child%get(stream%zu, 'zu', 'upper limit','m',default=0._rk)
-         call child%get(stream%zl, 'zl', 'lower limit','m',default=0._rk)
+         call child%get(stream%method, 'method', 'depth of inflow/outflow', options=(/option(surface_flow, 'surface'), &
+            option(bottom_flow, 'bottom'), option(depth_range, 'prescribed depth range'), option(interleaving, 'depth with matching density')/), default=surface_flow)
+         call child%get(stream%zu, 'zu', 'upper depth limit','m',default=0._rk)
+         call child%get(stream%zl, 'zl', 'lower depth limit','m',default=0._rk)
          call child%get(stream%flow,'flow','water flow','m^3/s',default=0._rk)
-         call child%get(stream%temp,'temp','flow temperature','Celcius',default=-1._rk)
+         call child%get(stream%temp,'temp','temperature','Celsius',default=-1._rk)
          stream%has_T = .true.
          if (stream%temp%method .eq. 0 .and. stream%temp%constant_value .lt. 0._rk) stream%has_T = .false.
-         call child%get(stream%salt,'salt','flow salinity','PSU', default=-1._rk)
+         call child%get(stream%salt,'salt','salinity','psu', default=-1._rk)
          stream%has_S = .true.
          if (stream%salt%method .eq. 0 .and. stream%salt%constant_value .lt. 0._rk) stream%has_S = .false.
    end select
