@@ -236,9 +236,9 @@
             Wspeed=sqrt(w*w+wgus*wgus)
             Cd=Wstar*Wstar/(Wspeed*Wspeed)
 
-!           Compute turbulent sensible heat flux (W/m2), qe.
+!           Compute turbulent sensible heat flux (W/m2), qh.
 !           out of ocean is negative
-            qe=cpa*rhoa*Wstar*Tstar
+            qh=cpa*rhoa*Wstar*Tstar
 
 !           compute sensible heatflux due to rain fall
             if (rain_impact) then
@@ -252,12 +252,12 @@
                qe = qe - rainfall * cd_rain
             end if
 
-!           Compute turbulent latent heat flux (W/m2), qh.
-            qh=L*rhoa*Wstar*Qstar
+!           Compute turbulent latent heat flux (W/m2), qe.
+            qe=L*rhoa*Wstar*Qstar
 
 !           Compute Webb correction (Webb effect) to latent heat flux
             upvel=-1.61*Wstar*Qstar-(1.0+1.61*qa)*Wstar*Tstar/ta_k
-            qh=qh-rhoa*L*upvel*qa
+            qe=qe-rhoa*L*upvel*qa
 
 !           calculation of evaporation/condensation in m/s
             if (rain_impact .and. calc_evaporation) then

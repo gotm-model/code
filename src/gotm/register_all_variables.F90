@@ -156,8 +156,8 @@
    call fm%register('int_total','J/m2', 'integrated total surface heat exchange', standard_name='', data0d=int_total, category='surface')
 
    call fm%register('I_0', 'W/m2', 'incoming short wave radiation', standard_name='', data0d=I_0%value, category='surface/heat_fluxes')
-   call fm%register('qe', 'W/m2', 'sensible heat flux', standard_name='', data0d=qe, category='surface/heat_fluxes')
-   call fm%register('qh', 'W/m2', 'latent heat flux', standard_name='', data0d=qh, category='surface/heat_fluxes')
+   call fm%register('qh', 'W/m2', 'sensible heat flux', standard_name='', data0d=qh, category='surface/heat_fluxes')
+   call fm%register('qe', 'W/m2', 'latent heat flux', standard_name='', data0d=qe, category='surface/heat_fluxes')
    call fm%register('qb', 'W/m2', 'long-wave back radiation', standard_name='', data0d=qb%value, category='surface/heat_fluxes')
    call fm%register('heat', 'W/m2', 'net surface heat flux', standard_name='', data0d=heat%value, category='surface/heat_fluxes')
    call fm%register('tx', 'm2/s2', 'wind stress (x)', standard_name='', data0d=tx, category='surface')
