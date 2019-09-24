@@ -66,7 +66,7 @@
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv
    use observations, only: sprof,SRelaxTau
-   use airsea,       only: precip,evap
+   use airsea_driver,only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 

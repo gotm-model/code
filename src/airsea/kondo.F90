@@ -42,7 +42,7 @@
    use airsea_variables, only: kelvin,const06,rgas,rho_0
    use airsea_variables, only: qs,qa,rhoa
    use airsea_variables, only: cpa,cpw
-   use airsea, only: rain_impact,calc_evaporation
+   use airsea_variables, only: rain_impact,calc_evaporation
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:

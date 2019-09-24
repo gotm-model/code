@@ -113,7 +113,7 @@
 !
 ! !USES:
    use airsea_variables, only: es,ea,qs,qa,rhoa
-   use airsea
+   use airsea_driver
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:

@@ -17,7 +17,7 @@
 ! !MODULE: airsea --- atmospheric fluxes \label{sec:airsea}
 !
 ! !INTERFACE:
-   module airsea
+   module airsea_driver
 !
 ! !DESCRIPTION:
 !  This module calculates the heat, momentum
@@ -131,9 +131,6 @@
    REALTYPE, public          :: const_albedo
    integer, public           :: fluxes_method
    integer                   :: ssuv_method
-   logical, public           :: rain_impact
-   logical, public           :: calc_evaporation
-
 
    REALTYPE                  :: dlon,dlat
    integer                   :: mjul,msecs
@@ -1218,7 +1215,7 @@
 
 !-----------------------------------------------------------------------
 
-   end module airsea
+   end module airsea_driver
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
