@@ -10,13 +10,15 @@
 ! !DESCRIPTION:
 !
 ! Here, the long-wave back radiation is calculated by means of one out
-! of four methods, which depend on the value given to the parameter
+! of six methods, which depend on the value given to the parameter
 ! {\tt method}:
 ! {\tt method}=1: \cite{Clarketal74},
 ! {\tt method}=2: \cite{HastenrathLamb78},
 ! {\tt method}=3: \cite{Bignamietal95},
 ! {\tt method}=4: \cite{BerliandBerliand52}.
-! It should ne noted that the latitude must here be given in degrees.
+! {\tt method}=5: \cite{Joseyetal2003} - (J1,9).
+! {\tt method}=6: \cite{Joseyetal2003} - (J2,14).
+! It should be noted that the latitude must here be given in degrees.
 !
 ! !USES:
    use airsea_variables, only: emiss,bolz
@@ -39,7 +41,8 @@
    integer, parameter   :: hastenrath=2 ! Hastenrath and Lamb, 1978
    integer, parameter   :: bignami=3    ! Bignami et al., 1995 - Medsea
    integer, parameter   :: berliand=4   ! Berliand and Berliand, 1952 - ROMS
-
+   integer, parameter   :: josey1=5     ! Josey 2003, (J1,9)
+   integer, parameter   :: josey2=6     ! Josey 2003, (J2,14)
 
    REALTYPE, parameter, dimension(91)  :: cloud_correction_factor = (/ &
      0.497202,     0.501885,     0.506568,     0.511250,     0.515933, &
@@ -101,7 +104,23 @@
          x2=(0.39-0.05*sqrt(0.01*ea))
          x3=4.0*ta**3*(tw-ta)
          qb=-emiss*bolz*(x1*x2+x3)
+      case(josey1)
+!        Use Josey et.al. 2003 - (J1,9)
+         x1=emiss*tw**4
+         x2=(10.77*cloud+2.34)*cloud-18.44
+         x3=0.955*(ta+x2)**4
+         qb=-bolz*(x1-x3)
+      case(josey2)
+!        Use Josey et.al. 2003 - (J2,14)
+         x1=emiss*tw**4
+         ! AS avoid zero trap, limit to about 1% rel. humidity ~ 10Pa
+         if ( ea .lt. 10.0 ) ea = 10.0
+         x2=34.07+4157.0/(log(2.1718e10/ea))
+         x2=(10.77*cloud+2.34)*cloud-18.44+0.84*(x2-ta+4.01)
+         x3=0.955*(ta+x2)**4
+         qb=-bolz*(x1-x3)
       case default
+         stop 'back_radiation: illegal back_radiation_method'
    end select
 
    return
