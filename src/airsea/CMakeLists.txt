@@ -8,13 +8,13 @@ set_property(TARGET airsea_driver PROPERTY FOLDER gotm)
 add_library(airsea
    airsea_fluxes.F90
    airsea_variables.F90
-   back_radiation.F90
-   fairall.F90
    humidity.F90
+   longwave_radiation.F90
+   fairall.F90
    kondo.F90
    solar_zenith_angle.F90
-   short_wave_radiation.F90
    albedo_water.F90
+   shortwave_radiation.F90
 )
 target_compile_definitions(airsea PRIVATE GUSTINESS)
 target_include_directories(airsea PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:airsea,Fortran_MODULE_DIRECTORY>> $<INSTALL_INTERFACE:include>)

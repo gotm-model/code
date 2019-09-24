@@ -576,7 +576,7 @@
 #endif
    IMPLICIT NONE
 #ifdef NETCDF_FMT
-   include "netcdf.inc"
+!KB   include "netcdf.inc"
 #endif
 !
 ! !REVISION HISTORY:

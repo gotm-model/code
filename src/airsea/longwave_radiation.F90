@@ -2,14 +2,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Calculate the long-wave back radiation \label{sec:back-rad}
+! !ROUTINE: Calculate the net longwave radiation \label{sec:back-rad}
 !
 ! !INTERFACE:
-   subroutine back_radiation(method,dlat,tw,ta,cloud,qb)
+   subroutine longwave_radiation(method,dlat,tw,ta,cloud,ql)
 !
 ! !DESCRIPTION:
 !
-! Here, the long-wave back radiation is calculated by means of one out
+! Here, the net longwave radiation is calculated by means of one out
 ! of six methods, which depend on the value given to the parameter
 ! {\tt method}:
 ! {\tt method}=1: \cite{Clarketal74},
@@ -30,7 +30,7 @@
    REALTYPE, intent(in)                :: dlat,tw,ta,cloud
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: qb
+   REALTYPE, intent(out)               :: ql
 !
 ! !REVISION HISTORY:
 !  Original author(s): Adols Stips, Hans Burchard & Karsten Bolding
@@ -83,13 +83,13 @@
          x2=(0.39-0.05*sqrt(ea*0.01))
 !        temperature jump term
          x3=4.0*(tw**3)*(tw-ta)
-         qb=-emiss*bolz*(x1*x2+x3)
+         ql=-emiss*bolz*(x1*x2+x3)
       case(hastenrath) ! qa in g(water)/kg(wet air)
 !        Hastenrath and Lamb (1978) formula.
          x1=(1.0-ccf*cloud*cloud)*(tw**4)
          x2=(0.39-0.056*sqrt(1000.0*qa))
          x3=4.0*(tw**3)*(tw-ta)
-         qb=-emiss*bolz*(x1*x2+x3)
+         ql=-emiss*bolz*(x1*x2+x3)
       case(bignami)
 !        Bignami et al. (1995) formula (Med Sea).
 !        unit of ea is Pascal, must hPa
@@ -97,19 +97,19 @@
          x1=(1.0+ccf*cloud*cloud)*ta**4
          x2=(0.653+0.00535*(ea*0.01))
          x3= emiss*(tw**4)
-         qb=-bolz*(-x1*x2+x3)
+         ql=-bolz*(-x1*x2+x3)
       case(berliand)
 !        Berliand & Berliand (1952) formula (ROMS).
          x1=(1.0-0.6823*cloud*cloud)*ta**4
          x2=(0.39-0.05*sqrt(0.01*ea))
          x3=4.0*ta**3*(tw-ta)
-         qb=-emiss*bolz*(x1*x2+x3)
+         ql=-emiss*bolz*(x1*x2+x3)
       case(josey1)
 !        Use Josey et.al. 2003 - (J1,9)
          x1=emiss*tw**4
          x2=(10.77*cloud+2.34)*cloud-18.44
          x3=0.955*(ta+x2)**4
-         qb=-bolz*(x1-x3)
+         ql=-bolz*(x1-x3)
       case(josey2)
 !        Use Josey et.al. 2003 - (J2,14)
          x1=emiss*tw**4
@@ -118,13 +118,13 @@
          x2=34.07+4157.0/(log(2.1718e10/ea))
          x2=(10.77*cloud+2.34)*cloud-18.44+0.84*(x2-ta+4.01)
          x3=0.955*(ta+x2)**4
-         qb=-bolz*(x1-x3)
+         ql=-bolz*(x1-x3)
       case default
-         stop 'back_radiation: illegal back_radiation_method'
+         stop 'longwave_radiation: illegal longwave_radiation_method'
    end select
 
    return
-   end subroutine back_radiation
+   end subroutine longwave_radiation
 !EOC
 
 !-----------------------------------------------------------------------
