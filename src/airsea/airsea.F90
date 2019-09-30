@@ -249,7 +249,6 @@
    integer                   :: sst_method
    integer                   :: sss_method
    character(len=PATH_MAX)   :: back_radiation_file
-   character(len=PATH_MAX)   :: longwave_radiation_file
    character(len=PATH_MAX)   :: heatflux_file
    character(len=PATH_MAX)   :: momentumflux_file
    character(len=PATH_MAX)   :: precip_file
@@ -263,7 +262,6 @@
    REALTYPE                  :: const_precip
    REALTYPE                  :: precip_factor
    integer                   :: back_radiation_method
-   integer                   :: longwave_radiation_method
    integer                   :: heat_method
 
    namelist /airsea/ calc_fluxes, &
@@ -295,7 +293,7 @@
    calc_fluxes=.false.
    ssuv_method=0
    fluxes_method=1
-   longwave_radiation_method=1
+   back_radiation_method=1
    meteo_file = ''
    wind_factor=_ONE_
    hum_method = 0
@@ -307,7 +305,7 @@
    const_swr=_ZERO_
    swr_file = ''
    swr_factor=_ONE_
-   longwave_radiation_file = ''
+   back_radiation_file = ''
    shf_factor=_ONE_
    const_heat = _ZERO_
    heatflux_file = ''
@@ -329,9 +327,6 @@
    read(10,nml=airsea,err=91)
    close(10)
 
-   longwave_radiation_method = back_radiation_method
-   longwave_radiation_file = back_radiation_file
-
    call I_0%configure(method=swr_method, path=swr_file, index=1, constant_value=const_swr, scale_factor=swr_factor)
 
    call u10%configure(method=2, path=meteo_file, index=1, scale_factor=wind_factor)
@@ -344,7 +339,7 @@
    call tx_%configure(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
    call ty_%configure(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
    call heat%configure(method=heat_method, path=heatflux_file, index=1, scale_factor=shf_factor, constant_value=const_heat)
-   call ql%configure(method=longwave_radiation_method, path=longwave_radiation_file, index=1)
+   call ql%configure(method=back_radiation_method, path=back_radiation_file, index=1)
    call sst_obs%configure(method=sst_method, path=sst_file, index=1)
    call sss%configure(method=sss_method, path=sss_file, index=1)
    call precip%configure(method=precip_method, path=precip_file, index=1, scale_factor=precip_factor, constant_value=const_precip)
