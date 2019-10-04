@@ -9,3 +9,6 @@
 [submodule "extern/stim"]
 	path = extern/stim
 	url = ../../BoldingBruggeman/stim
+[submodule "extern/gsw-fortran"]
+	path = extern/gsw
+	url = https://github.com/TEOS-10/GSW-Fortran.git
