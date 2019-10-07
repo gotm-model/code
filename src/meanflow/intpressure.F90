@@ -121,15 +121,15 @@
 !        buoyancy gradient in x direction
          dSS=dx*dsdx%data(i)
          dTT=dx*dtdx%data(i)
-         Bl=eqstate1(S(i),T(i),z/10.,gravity,rho_0)
-         Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity,rho_0)
+         Bl=eqstate1(S(i),T(i),z/10.,gravity)
+         Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity)
          dxB(i)=(Br-Bl)/dx
 
 !        buoyancy gradient in y direction
          dSS=dy*dsdy%data(i)
          dTT=dy*dtdy%data(i)
-         Bl=eqstate1(S(i),T(i),z/10.,gravity,rho_0)
-         Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity,rho_0)
+         Bl=eqstate1(S(i),T(i),z/10.,gravity)
+         Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity)
          dyB(i)=(Br-Bl)/dy
 
          z=z+0.5*h(i)

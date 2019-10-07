@@ -41,7 +41,12 @@
    REALTYPE, public, dimension(:), allocatable  :: uo,vo
 
 !  potential temperature, salinity
+!  T -> Tc - conservative temperature, S -> Sa - absolute salinity
    REALTYPE, public, dimension(:), allocatable, target  :: T,S,rho
+!  Tp - potential temperature, Sp - practical salinity
+   REALTYPE, public, dimension(:), allocatable, target  :: Tp,Sp
+!  Ti - in-situ temperature
+   REALTYPE, public, dimension(:), allocatable, target  :: Ti
 
 !  boyancy frequency squared
 !  (total, from temperature only, from salinity only)
@@ -387,9 +392,21 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (T)'
    T = _ZERO_
 
+   allocate(Tp(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Tp)'
+   Tp = _ZERO_
+
+   allocate(Ti(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Ti)'
+   Ti = _ZERO_
+
    allocate(S(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (S)'
    S = _ZERO_
+
+   allocate(Sp(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Sp)'
+   Sp = _ZERO_
 
    allocate(rho(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (rho)'

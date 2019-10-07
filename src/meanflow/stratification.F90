@@ -118,7 +118,7 @@
       zCenter = 0.5*h(nlev)
       pCenter = oneTenth*zCenter
 
-      buoy(nlev) = eqstate1(S(nlev),T(nlev),pCenter,gravity,rho_0)
+      buoy(nlev) = eqstate1(S(nlev),T(nlev),pCenter,gravity)
       rho(nlev)  = rho_0 - rho_0/gravity*buoy(nlev)
 
       do i=nlev-1,1,-1
@@ -139,20 +139,20 @@
          Tface  = ( T(i+1)*h(i) + T(i)*h(i+1) ) / ( h(i+1) + h(i) )
 
          ! T contribution to buoyancy frequency
-         buoyp  = eqstate1(Sface,T(i+1),pFace,gravity,rho_0)
-         buoym  = eqstate1(Sface,T(i  ),pFace,gravity,rho_0)
+         buoyp  = eqstate1(Sface,T(i+1),pFace,gravity)
+         buoym  = eqstate1(Sface,T(i  ),pFace,gravity)
          NNT(i) = (buoyp-buoym)/dz
 
          ! S contribution to buoyancy frequency
-         buoyp  = eqstate1(S(i+1),Tface,pFace,gravity,rho_0)
-         buoym  = eqstate1(S(i  ),Tface,pFace,gravity,rho_0)
+         buoyp  = eqstate1(S(i+1),Tface,pFace,gravity)
+         buoym  = eqstate1(S(i  ),Tface,pFace,gravity)
          NNS(i) = (buoyp-buoym)/dz
 
          ! total buoyancy frequency is the sum
          NN(i) = NNT(i) + NNS(i)
 
          ! compute buoyancy and density
-         buoy(i) = eqstate1(S(i),T(i),pCenter,gravity,rho_0)
+         buoy(i) = eqstate1(S(i),T(i),pCenter,gravity)
          rho(i)  = rho_0 - rho_0/gravity*buoy(i)
       end do
 

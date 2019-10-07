@@ -67,8 +67,8 @@
       hint=h(nlev)
       i=nlev
 111   i=i-1
-      buoyupp=eqstate1(Sint,Tint,hint/10.,g,rho_0)
-      buoylow=eqstate1(S(i),T(i),hint/10.,g,rho_0)
+      buoyupp=eqstate1(Sint,Tint,hint/10.,g)
+      buoylow=eqstate1(S(i),T(i),hint/10.,g)
       if (buoyupp.lt.buoylow) then     ! instable stratification
          NN(i)=0.
          Tint=(Tint*hint+T(i)*h(i))/(hint+h(i))
@@ -84,7 +84,7 @@
       do i=ii,nlev
          T(i)=Tint
          S(i)=Sint
-         buoy(i)=eqstate1(Sint,Tint,zero,g,rho_0)
+         buoy(i)=eqstate1(Sint,Tint,zero,g)
       end do
    else   ! if (buoy_method.eq.2)
       buoyint=buoy(nlev)

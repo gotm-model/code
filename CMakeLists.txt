@@ -45,6 +45,13 @@ mark_as_advanced(GOTM_EXTRA_OUTPUT)
 # Dependencies
 # ----------------------------
 
+if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/gsw/CMakeLists.txt")
+   message(FATAL_ERROR "TEOS-10 GSW-Fortran toolbox at extern/gsw. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
+else()
+   set(GSW_BUILD_STATIC_LIBS ON)
+   add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/extern/gsw" extern/gsw)
+endif()
+
 if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/flexout/src/CMakeLists.txt")
    message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
 else()

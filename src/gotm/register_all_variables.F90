@@ -233,8 +233,8 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_observation_variables()'
-   call fm%register('temp_obs', 'Celsius', 'observed temperature', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof%data(1:nlev),category='temperature_and_salinity')
-   call fm%register('salt_obs', 'psu', 'observed salinity', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof%data(1:nlev),category='temperature_and_salinity')
+   call fm%register('temp_obs', 'Celsius', 'temperature (observed)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof%data(1:nlev),category='temperature_and_salinity')
+   call fm%register('salt_obs', 'psu', 'salinity (observed)', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof%data(1:nlev),category='temperature_and_salinity')
    call fm%register('u_obs', 'm/s', 'observed x-velocity', dimensions=(/id_dim_z/), data1d=uprof%data(1:nlev), category='velocities')
    call fm%register('v_obs', 'm/s', 'observed y-velocity', dimensions=(/id_dim_z/), data1d=vprof%data(1:nlev), category='velocities')
    call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta%value,category='surface')
@@ -318,9 +318,12 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_meanflow_variables()'
-   call fm%register('temp', 'Celsius', 'potential temperature', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=T(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
-   call fm%register('salt', 'g/kg', 'salinity', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=S(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
-   call fm%register('rho', 'kg/m3', 'potential density', standard_name='??', dimensions=(/id_dim_z/), data1d=rho(1:nlev),category='temperature_and_salinity')
+   call fm%register('temp', 'Celsius', 'temperature (conservative)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=T(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
+   call fm%register('temp_p', 'Celsius', 'temperature (potential)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Tp(1:nlev),category='temperature_and_salinity')
+   call fm%register('temp_i', 'Celsius', 'temperature (in-situ)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Ti(1:nlev),category='temperature_and_salinity')
+   call fm%register('salt', 'g/kg', 'salinity (absolute)', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=S(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
+   call fm%register('salt_p', 'PSU', 'salinity (practical)', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=Sp(1:nlev),category='temperature_and_salinity')
+   call fm%register('rho', 'kg/m3', 'density (potential)', standard_name='??', dimensions=(/id_dim_z/), data1d=rho(1:nlev),category='temperature_and_salinity')
 
    call fm%register('u', 'm/s', 'x-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=u(1:nlev), category='velocities', part_of_state=.true.)
    call fm%register('uo', 'm/s', 'x-velocity - old time step', standard_name='??', dimensions=(/id_dim_z/), data1d=uo(1:nlev), category='velocities', part_of_state=.true., output_level=output_level_debug)

@@ -44,7 +44,7 @@
    do i=nlev-1,1,-1
 
       pFace    = 0.5/gravity*(z(i+1)+z(i));
-      beta     = eos_beta(S(i+1),T_const,pFace,gravity,rho_0)
+!KB      beta     = eos_beta(S(i+1),T_const,pFace,gravity,rho_0)
 
       S(i) = S(i+1) + _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))
 
