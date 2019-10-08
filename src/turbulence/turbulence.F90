@@ -468,20 +468,20 @@
    numshear=5.e-3
 
    ! read the variables from the namelist file
-   open(10,file='gotmturb.nml',status='old',action='read',err=80)
-   read(10,nml=turbulence,err=81)
+   open(namlst,file=fn,status='old',action='read',err=80)
+   read(namlst,nml=turbulence,err=81)
 
    if (turb_method.eq.99) then
-      close (10)
+      close (namlst)
    else
-      read(10,nml=bc,err=82)
-      read(10,nml=turb_param,err=83)
-      read(10,nml=generic,err=84)
-      read(10,nml=keps,err=85)
-      read(10,nml=my,err=86)
-      read(10,nml=scnd,err=87)
-      read(10,nml=iw,err=88)
-      close (10)
+      read(namlst,nml=bc,err=82)
+      read(namlst,nml=turb_param,err=83)
+      read(namlst,nml=generic,err=84)
+      read(namlst,nml=keps,err=85)
+      read(namlst,nml=my,err=86)
+      read(namlst,nml=scnd,err=87)
+      read(namlst,nml=iw,err=88)
+      close (namlst)
    endif
    LEVEL2 'done.'
 
@@ -1951,7 +1951,7 @@
 
          sig_e= kappa**2/(ce2-ce1)/cm0**2
 
-         ! compute Schmidt-number for Burchard (2001) wave-breaking
+         ! compute Schmidt-number for Burchard (2001) wave-breaking
          if (sig_peps) then
             craig_m=sqrt(1.5*cmsf**2*sig_k/kappa**2)
             sig_e0=(4./3.*craig_m+1.)*(craig_m+1.)*kappa**2/(ce2*cmsf**2)

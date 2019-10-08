@@ -52,6 +52,7 @@ endif()
 # Targets
 # ----------------------------
 
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/airsea airsea)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/util util)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/turbulence turbulence)
 
@@ -65,7 +66,6 @@ endif()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/input input)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/config config)
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/airsea airsea)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/observations observations)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/meanflow meanflow)
 

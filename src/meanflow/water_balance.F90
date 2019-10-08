@@ -17,7 +17,7 @@
    use meanflow,      only: int_water_balance
    use meanflow,      only: lake,Af,Vc
    use streams,       only: int_inflow,int_outflow
-   use airsea,        only: evap,precip
+   use airsea_driver, only: precip,evap
    use observations,  only: Qlayer,Qres,zeta
    use hypsograph,    only: Vc2zi,zi2Vc
 !

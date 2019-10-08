@@ -17,7 +17,7 @@
 ! !MODULE: airsea --- atmospheric fluxes \label{sec:airsea}
 !
 ! !INTERFACE:
-   module airsea
+   module airsea_driver
 !
 ! !DESCRIPTION:
 !  This module calculates the heat, momentum
@@ -73,9 +73,9 @@
 !  wind speed (m/s)
    REALTYPE, public, target            :: w
 !
-!  surface short-wave radiation
+!  surface shortwave radiation
 !  and surface heat flux (W/m^2)
-   type (type_scalar_input), public, target :: I_0, qb
+   type (type_scalar_input), public, target :: I_0, ql
    REALTYPE, public, target            :: albedo
    type (type_scalar_input), public, target            :: heat
    REALTYPE, public                    :: qe,qh
@@ -131,9 +131,6 @@
    REALTYPE, public          :: const_albedo
    integer, public           :: fluxes_method
    integer                   :: ssuv_method
-   logical, public           :: rain_impact
-   logical, public           :: calc_evaporation
-
 
    REALTYPE                  :: dlon,dlat
    integer                   :: mjul,msecs
@@ -175,6 +172,8 @@
 !                          & 2: Hastenrath and Lamb (1978)                                          \\
 !                          & 3: Bignami et al. (1995)                                               \\
 !                          & 4: Berliandand Berliand (1952)                                         \\
+!                          & 5: Josey et al. (2003) - 1                                         \\
+!                          & 6: Josey et al. (2003) - 2                                         \\
 ! {\tt meteo\_file}      & file with meteo data (for {\tt calc\_fluxes=.true.}) with            \\
 !                          & date: {\tt yyyy-mm-dd hh:mm:ss}                                        \\
 !                          & $x$-component of wind (10 m) in m\,s$^{-1}$                            \\
@@ -340,7 +339,7 @@
    call tx_%configure(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
    call ty_%configure(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
    call heat%configure(method=heat_method, path=heatflux_file, index=1, scale_factor=shf_factor, constant_value=const_heat)
-   call qb%configure(method=back_radiation_method, path=back_radiation_file, index=1)
+   call ql%configure(method=back_radiation_method, path=back_radiation_file, index=1)
    call sst_obs%configure(method=sst_method, path=sst_file, index=1)
    call sss%configure(method=sss_method, path=sss_file, index=1)
    call precip%configure(method=precip_method, path=precip_file, index=1, scale_factor=precip_factor, constant_value=const_precip)
@@ -386,6 +385,8 @@
 !                          & 2: Hastenrath and Lamb (1978)                                          \\
 !                          & 3: Bignami et al. (1995)                                               \\
 !                          & 4: Berliandand Berliand (1952)                                         \\
+!                          & 5: Josey et al. (2003) - 1                                         \\
+!                          & 6: Josey et al. (2003) - 2                                         \\
 ! {\tt meteo\_file}      & file with meteo data (for {\tt calc\_fluxes=.true.}) with            \\
 !                          & date: {\tt yyyy-mm-dd hh:mm:ss}                                        \\
 !                          & $x$-component of wind (10 m) in m\,s$^{-1}$                            \\
@@ -494,9 +495,9 @@
    call twig%get(ssuv_method, 'ssuv_method', 'wind treatment', &
                 options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=1, display=display_advanced)
 
-   call branch%get(qb, 'back_radiation', 'net longwave radiation', 'W/m^2', &
+   call branch%get(ql, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand')/), default_method=1)
+               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand'), option(5, 'Josey-1'), option(6, 'Josey-2')/), default_method=1)
 
    twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
@@ -688,10 +689,10 @@
             LEVEL4 'using Fairall et. all formulation'
          case default
       end select
-      LEVEL3 'long-wave back radiation:'
-      select case (qb%method)
+      LEVEL3 'net longwave radiation:'
+      select case (ql%method)
          case(0) ! Read from file instead of calculating
-            call register_input(qb)
+            call register_input(ql)
          case(1)
             LEVEL4 'using Clark formulation'
          case(2)
@@ -700,6 +701,10 @@
             LEVEL4 'using Bignami formulation'
          case(4)
             LEVEL4 'using Berliand formulation'
+         case(5)
+            LEVEL4 'using Josey-1 formulation'
+         case(6)
+            LEVEL4 'using Josey-2 formulation'
          case default
       end select
 
@@ -735,7 +740,7 @@
 
 !-----------------------------------------------------------------------
 !BOP
-   subroutine surface_fluxes(surface_temp,sensible,latent,back_radiation)
+   subroutine surface_fluxes(surface_temp,sensible,latent,longwave_radiation)
 !
 ! !USES:
    IMPLICIT NONE
@@ -743,7 +748,7 @@
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)                :: surface_temp
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: sensible,latent,back_radiation
+   REALTYPE, intent(out)               :: sensible,latent,longwave_radiation
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -757,7 +762,7 @@
       STDERR 'Stefan# ',qh/qe
    end if
 #endif
-   back_radiation = qb%value
+   longwave_radiation = ql%value
    return
    end subroutine surface_fluxes
 !EOC
@@ -792,7 +797,7 @@
 ! !LOCAL VARIABLES:
    REALTYPE        :: hh
    REALTYPE        :: solar_zenith_angle
-   REALTYPE        :: short_wave_radiation
+   REALTYPE        :: shortwave_radiation
    REALTYPE        :: zenith_angle
    REALTYPE        :: albedo_water
    logical         :: have_zenith_angle
@@ -810,7 +815,7 @@
          hh = secs*(_ONE_/3600)
          zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
          have_zenith_angle = .true.
-         I_0%value = I_0%scale_factor*short_wave_radiation(zenith_angle,yearday,dlon,dlat,cloud%value)
+         I_0%value = I_0%scale_factor*shortwave_radiation(zenith_angle,yearday,dlon,dlat,cloud%value)
       end if
       heat%value = heat%scale_factor*heat%value
    end if
@@ -882,8 +887,8 @@
 !  For {\tt calc\_fluxes=.true.}, this routine reads meteo data
 !  from {\tt meteo\_file} and calculates for each time step
 !  in  {\tt meteo\_file} the
-!  fluxes of heat and momentum, and the
-!  long-wave back radiation by calling the routines {\tt humidity},
+!  fluxes of heat and momentum, and the net
+!  longwave radiation by calling the routines {\tt humidity},
 !  {\tt back\_radiation} and {\tt airsea\_fluxes}, see sections
 !  \sect{sec:humidity}, \sect{sec:back-rad}, and \sect{sec:airsea-fluxes},
 !  a wrapper routine for using the bulk fomulae from either \cite{Kondo75}
@@ -979,9 +984,9 @@
       cloud1 = cloud2
 
       call humidity(hum_method,hum,airp,tw,ta)
-      if (qb%method .gt. 0) then
-         call back_radiation(qb%method, &
-                             dlat,tw_k,ta_k,cloud,qb)
+      if (ql%method .gt. 0) then
+         call longwave_radiation(ql%method, &
+                                 dlat,tw_k,ta_k,cloud,ql)
       end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
@@ -990,7 +995,7 @@
       call airsea_fluxes(fluxes_method, &
                          tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)
 #endif
-      h2     = qb%value+qe+qh
+      h2     = ql%value+qe+qh
       cloud2 = cloud%value
 
       if (init_saved_vars) then
@@ -1031,13 +1036,13 @@
    end if
 
    call humidity(hum_method,hum%value,airp%value,tw,ta)
-   if (qb%method .gt. 0) then
-      call back_radiation(qb%method, &
-                          dlat,tw_k,ta_k,cloud%value,qb%value)
+   if (ql%method .gt. 0) then
+      call longwave_radiation(ql%method, &
+                          dlat,tw_k,ta_k,cloud%value,ql%value)
    endif
    call airsea_fluxes(fluxes_method, &
                       tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx_%value,ty_%value,qe,qh)
-   heat%value = (qb%value+qe+qh)
+   heat%value = (ql%value+qe+qh)
 #endif
 
    w = sqrt((u10%value-ssu)*(u10%value-ssu)+(v10%value-ssv)*(v10%value-ssv))
@@ -1177,7 +1182,7 @@
 
    LEVEL2 'swr_method',swr_method
    LEVEL2 'fluxes_method',fluxes_method
-   LEVEL2 'back_radiation_method',back_radiation_method
+   LEVEL2 'longwave_radiation_method',longwave_radiation_method
    LEVEL2 'heat_method',heat_method
    LEVEL2 'momentum_method',momentum_method
    LEVEL2 'precip_method',precip_method
@@ -1218,7 +1223,7 @@
 
 !-----------------------------------------------------------------------
 
-   end module airsea
+   end module airsea_driver
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org

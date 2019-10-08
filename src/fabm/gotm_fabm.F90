@@ -1085,6 +1085,8 @@
       end do
    end if
 
+   airp => model%get_data(model%get_horizontal_variable_id(standard_variables%surface_air_pressure))
+
    ! Compute pressure, depth, day of the year
    call calculate_derived_input(nlev,_ZERO_)
 
@@ -1187,7 +1189,6 @@
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
    rho      => rho_        ! density [1d array] - used to calculate pressure.
-   airp => model%get_data(model%get_horizontal_variable_id(standard_variables%surface_air_pressure))
 
    if (biodrag_feedback.and.present(bio_drag_scale_)) then
       bio_drag_scale => bio_drag_scale_

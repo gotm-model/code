@@ -88,7 +88,7 @@
 !  This subroutine calculates the following diagnostic/integrated variables.
 !
 ! !USES:
-   use airsea,       only: sst,tx,ty
+   use airsea_driver,only: sst,tx,ty
    use meanflow,     only: gravity,rho_0,cp,drag
    use meanflow,     only: h,u,v,s,t,rho,NN,SS,buoy,rad
    use turbulence,   only: turb_method

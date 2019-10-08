@@ -22,7 +22,7 @@
    REALTYPE, public, parameter         :: cpw=3985.
    REALTYPE, public, parameter         :: emiss=0.97
    REALTYPE, public, parameter         :: bolz=5.67e-8
-   REALTYPE, public, parameter         :: kelvin=273.16
+   REALTYPE, public, parameter         :: kelvin=273.15
    REALTYPE, public, parameter         :: const06=0.62198
    REALTYPE, public, parameter         :: rgas = 287.1    !
    REALTYPE, public, parameter         :: g = 9.81        ! [m/s2]
@@ -35,6 +35,8 @@
    REALTYPE, public                    :: L
    REALTYPE, public                    :: rhoa
    REALTYPE, public, target            :: ta              ! 2m air temperature (degree_Celsius)
+   logical, public                     :: rain_impact
+   logical, public                     :: calc_evaporation
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard

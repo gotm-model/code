@@ -47,18 +47,18 @@
    use observations
    use time
 
-   use airsea,      only: init_airsea,post_init_airsea,do_airsea,clean_airsea
-   use airsea,      only: surface_fluxes
-   use airsea,      only: set_sst,set_ssuv,integrated_fluxes
-   use airsea,      only: fluxes_method
-   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
-   use airsea,      only: int_net_precip
-   use airsea,      only: bio_albedo,bio_drag_scale
+   use airsea_driver, only: init_airsea,post_init_airsea,do_airsea,clean_airsea
+   use airsea_driver, only: surface_fluxes
+   use airsea_driver, only: set_sst,set_ssuv,integrated_fluxes
+   use airsea_driver, only: fluxes_method
+   use airsea_driver, only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
+   use airsea_driver, only: int_net_precip
+   use airsea_driver, only: bio_albedo,bio_drag_scale
    use airsea_variables, only: qa,ta
 
 #ifdef _ICE_
    use ice,         only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
-   use stim_variables, only: Tice_surface,albedo_ice,attenuation_ice
+   use stim_variables, only: Tice_surface,albedo_ice,transmissivity
 #endif
 
    use turbulence,  only: turb_method
@@ -479,8 +479,10 @@
    v(1:nlev) = vprof%data(1:nlev)
 
    call post_init_airsea(latitude,longitude)
+#if 0
 #ifdef _ICE_
    call post_init_ice(ta,S(nlev))
+#endif
 #endif
    call init_diagnostics(nlev)
 
@@ -555,6 +557,9 @@
 !   call init_output(title,nlev,latitude,longitude)
 
    call do_airsea(julianday,secondsofday)
+#ifdef _ICE_
+   call post_init_ice(ta,S(nlev))
+#endif
 
    ! Call stratification to make sure density has sensible value.
    ! This is needed to ensure the initial density is saved correctly, and also for FABM.
@@ -574,7 +579,6 @@
 #ifdef _PRINTSTATE_
    call print_state
 #endif
-
    return
 
 90 FATAL 'I could not open gotmrun.nml for reading'
@@ -700,7 +704,7 @@
          tx = _ZERO_
          ty = _ZERO_
          heat%value = _ZERO_
-         I_0%value = attenuation_ice*I_0%value
+         I_0%value = transmissivity*I_0%value
       else
 #endif
          tx = tx/rho_0
