@@ -42,7 +42,7 @@
    use airsea_variables, only: kelvin,const06,rgas,rho_0
    use airsea_variables, only: qs,qa,rhoa
    use airsea_variables, only: cpa,cpw
-   use airsea, only: rain_impact,calc_evaporation
+   use airsea_variables, only: rain_impact,calc_evaporation
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -60,9 +60,28 @@
 ! !LOCAL VARIABLES:
    REALTYPE                  :: w,L
    REALTYPE                  :: s,s0
+!#define OLD_KONDO
+#ifdef OLD_KONDO
    REALTYPE                  :: ae_d,be_d,pe_d
    REALTYPE                  :: ae_h,be_h,ce_h,pe_h
    REALTYPE                  :: ae_e,be_e,ce_e,pe_e
+#else
+   ! Numbers from Table AI
+   REALTYPE, parameter, dimension(5) :: ae_d=(/ 0., 0.771, 0.867, 1.2  , 0.    /)
+   REALTYPE, parameter, dimension(5) :: ae_h=(/ 0., 0.927, 1.15 , 1.17 , 1.652 /)
+   REALTYPE, parameter, dimension(5) :: ae_e=(/ 0., 0.969, 1.18 , 1.196, 1.68  /)
+
+   REALTYPE, parameter, dimension(5) :: be_d=(/ 1.08 , 0.0858, 0.0667, 0.025 ,  0.073 /)
+   REALTYPE, parameter, dimension(5) :: be_h=(/ 1.185, 0.0546, 0.01  , 0.0075, -0.017 /)
+   REALTYPE, parameter, dimension(5) :: be_e=(/ 1.23 , 0.0521, 0.01  , 0.008 , -0.016 /)
+
+   REALTYPE, parameter, dimension(5) :: ce_h=(/ 0., 0., 0., -0.00045, 0. /)
+   REALTYPE, parameter, dimension(5) :: ce_e=(/ 0., 0., 0., -0.0004 , 0. /)
+
+   REALTYPE, parameter, dimension(5) :: pe_d=(/ -0.15 , 1., 1., 1., 1. /)
+   REALTYPE, parameter, dimension(5) :: pe_h=(/ -0.157, 1., 1., 1., 1. /)
+   REALTYPE, parameter, dimension(5) :: pe_e=(/ -0.16 , 1., 1., 1., 1. /)
+#endif
    REALTYPE                  :: x,x1,x2,x3
    REALTYPE                  :: ta,ta_k,tw,tw_k
    REALTYPE                  :: cdd,chd,ced
@@ -94,7 +113,9 @@
    s0=0.25*(sst-airt)/(w+1.0e-10)**2
    s=s0*abs(s0)/(abs(s0)+0.01)
 
-!  Transfer coefficient for heat and momentum
+! Formulae A1, A2, A3
+! Transfer coefficient for heat and momentum
+#ifdef OLD_KONDO
    if (w .lt. 2.2) then
       ae_d=0.0;   be_d=1.08;                  pe_d=-0.15;
       ae_h=0.0;   be_h=1.185;  ce_h=0.0;      pe_h=-0.157;
@@ -120,6 +141,35 @@
    cdd=(ae_d+be_d*exp(pe_d*log(w+eps)))*1.0e-3
    chd=(ae_h+be_h*exp(pe_h*log(w+eps))+ce_h*(w-8.0)**2)*1.0e-3
    ced=(ae_e+be_e*exp(pe_e*log(w+eps))+ce_e*(w-8.0)**2)*1.0e-3
+#else
+!   if (w .lt. 0.3) then
+   if (w .lt. 2.2) then
+      x = log(w+eps)
+      cdd=(be_d(1)*exp(pe_d(1)*x))*1.0e-3
+      chd=(be_h(1)*exp(pe_h(1)*x))*1.0e-3
+      ced=(be_e(1)*exp(pe_e(1)*x))*1.0e-3
+   else if (w .lt. 5.0) then
+      x = exp(log(w+eps))
+      cdd=(ae_d(2)+be_d(2)*x)*1.0e-3
+      chd=(ae_h(2)+be_h(2)*x)*1.0e-3
+      ced=(ae_e(2)+be_e(2)*x)*1.0e-3
+   else if (w .lt. 8.0) then
+      x = exp(log(w+eps))
+      cdd=(ae_d(3)+be_d(3)*x)*1.0e-3
+      chd=(ae_h(3)+be_h(3)*x)*1.0e-3
+      ced=(ae_e(3)+be_e(3)*x)*1.0e-3
+   else if (w .lt. 25.0) then
+      x = exp(log(w+eps))
+      cdd=(ae_d(4)+be_d(4)*x)*1.0e-3
+      chd=(ae_h(4)+be_h(4)*x+ce_h(4)*(w-8.0)**2)*1.0e-3
+      ced=(ae_e(4)+be_e(4)*x+ce_e(4)*(w-8.0)**2)*1.0e-3
+   else
+      x = exp(log(w+eps))
+      cdd=(ae_d(5)+be_d(5)*x)*1.0e-3
+      chd=(ae_h(5)+be_h(5)*x)*1.0e-3
+      ced=(ae_e(5)+be_e(5)*x)*1.0e-3
+   end if
+#endif
 
    if(s .lt. 0.) then
       if (s .gt. -3.3) then
@@ -136,9 +186,8 @@
       ced=ced*(1.0+0.63*sqrt(s))
    end if
 
-   qh=-ced*L*rhoa*w*(qs-qa)            ! latent
-
-   qe=-chd*cpa*rhoa*w*(sst-airt)       ! sensible
+   qh=-chd*cpa*rhoa*w*(sst-airt)       ! sensible
+   qe=-ced*L*rhoa*w*(qs-qa)            ! latent
 
 !  compute sensible heatflux correction due to rain fall
    if (rain_impact) then

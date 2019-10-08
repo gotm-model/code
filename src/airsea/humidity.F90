@@ -58,7 +58,7 @@
 !  must be also calcuated for airtemperature, depending on humidity input
 !  see ../ncdf/ncdf_meteo.F90 for defined constants
    select case (hum_method)
-      case (1) ! relative humidity in % given
+      case (1)  ! relative humidity in % given
          rh = 0.01 * hum
 !        saturation vapor pressure at that air temperature
          ea = a1 +ta*(a2+ta*(a3+ta*(a4+ta*(a5+ta*(a6+ta*a7)))))
@@ -97,8 +97,7 @@
          ea = a1 +dew*(a2+dew*(a3+dew*(a4+dew*(a5+dew*(a6+dew*a7)))))
          ea = ea * 100.0 ! Conversion millibar --> Pascal
          qa = const06*ea/(airp-0.377*ea)
-      case (4)
-!        specific humidity in kg/kg is given
+      case (4)  ! specific humidity in kg/kg is given
          qa = hum
 !        actual water vapor pressure in Pascal
          ea = qa *airp/(const06+0.378*qa)

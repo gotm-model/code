@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+<converter source="gotm-5.0" target="gotm-5.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlstore/converter-1.0.xsd">
+   <links>
+   </links>
+</converter>

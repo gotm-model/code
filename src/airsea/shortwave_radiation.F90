@@ -5,13 +5,13 @@
 ! !ROUTINE: Calculate the short--wave radiation \label{sec:swr}
 !
 ! !INTERFACE:
-   REALTYPE function short_wave_radiation(zenith_angle,yday,dlon,dlat,cloud)
+   REALTYPE function shortwave_radiation(zenith_angle,yday,dlon,dlat,cloud)
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the short--wave net radiation based on
 !  solar zenith angle, year day, longitude, latitude, and fractional cloud cover.
-!  No corrections for albedo - must be done by calls to albedo\_water() and
-!  if ice is included albedo\_ice().
+!  No corrections for albedo - must be done by calls to {\tt albedo\_water()} and
+!  if ice is included {\tt albedo\_ice()}.
 !  The basic formula for the short-wave radiation at the surface, $Q_s$,
 !  has been taken from \cite{RosatiMiyacoda88}, who adapted the work
 !  of \cite{Reed77} and \cite{SimpsonPaulson99}:
@@ -97,10 +97,10 @@
       qshort  = qtot*(1-0.62*cloud + 0.0019*sunbet)
    endif
 #endif
-   short_wave_radiation = qshort
+   shortwave_radiation = qshort
 
    return
-   end function short_wave_radiation
+   end function shortwave_radiation
 !EOC
 
 !-----------------------------------------------------------------------
