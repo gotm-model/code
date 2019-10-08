@@ -81,7 +81,7 @@
    use observations, only: tprof,TRelaxTau
    use observations, only: A_,g1_,g2_
    use observations, only: Qt, Lt, Qres, wq
-   use airsea,       only: precip,evap
+   use airsea_driver,only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence,flux
 
