@@ -15,6 +15,7 @@
    use gotm_version, only: gotm_commit_id=>git_commit_id, &
                            gotm_branch_name=>git_branch_name
    use gotm_compilation
+   use gsw_mod_version, only: gsw_version
    use yaml_version, only: yaml_commit_id=>git_commit_id, &
                            yaml_branch_name=>git_branch_name
    use flexout_version, only: flexout_commit_id=>git_commit_id, &
@@ -43,6 +44,7 @@
 !BOC
    LEVEL0 LINE
    LEVEL0 'GOTM:    ',gotm_commit_id,' (',gotm_branch_name,' branch)'
+   LEVEL0 'TEOS-10  ',gsw_version
    LEVEL0 'YAML:    ',yaml_commit_id,' (',yaml_branch_name,' branch)'
    LEVEL0 'flexout: ',flexout_commit_id,' (',flexout_branch_name,' branch)'
 #ifdef _ICE_
