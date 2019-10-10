@@ -19,3 +19,4 @@ add_library(jmfwg06
    jmfwg06/theta_from_ct.f90
    jmfwg06/theta_from_t.f90
 )
+set_property(TARGET jmfwg06 PROPERTY FOLDER jmfwg06)
