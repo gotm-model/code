@@ -402,7 +402,6 @@
          call register_input(curvariable%scalar_input)
          call register_stream_concentration(curvariable%interior_id, curvariable%stream%name, curvariable%scalar_input%value)
       elseif (fabm_is_variable_used(curvariable%interior_id)) then
-         allocate(curvariable%profile_input%data(0:nlev))
          call register_input(curvariable%profile_input)
 
          allocate(curvariable%relax_tau_1d(0:nlev))
