@@ -184,6 +184,8 @@
    use ice, only: ice_model
    use stim_variables, only: Tice_surface,Tice,Tf
    use stim_variables, only: Hice, Hfrazil, dHis, dHib
+   use stim_variables, only: surface_ice_energy,bottom_ice_energy
+   use stim_variables, only: ocean_ice_flux
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -195,13 +197,16 @@
 !BOC
    LEVEL2 'register_stim_variables()'
 
-   call fm%register('Tice_surface', 'celcius', 'ice temperature (surface)', standard_name='', data0d=Tice_surface, category='ice')
+   call fm%register('Tice_surface', 'celsius', 'ice temperature (surface)', standard_name='', data0d=Tice_surface, category='ice')
    if (ice_model .eq. 3) then
-      call fm%register('T1', 'celcius', 'ice temperature (upper)', standard_name='', data0d=Tice(1), category='ice')
-      call fm%register('T2', 'celcius', 'ice temperature (lower)', standard_name='', data0d=Tice(2), category='ice')
+      call fm%register('T1', 'celsius', 'ice temperature (upper)', standard_name='', data0d=Tice(1), category='ice')
+      call fm%register('T2', 'celsius', 'ice temperature (lower)', standard_name='', data0d=Tice(2), category='ice')
    end if
-   call fm%register('Tf', 'celcius', 'ice freezing temperature', standard_name='', data0d=Tf, category='ice')
+   call fm%register('Tf', 'celsius', 'ice freezing temperature', standard_name='', data0d=Tf, category='ice')
    call fm%register('Hice', 'm', 'ice thickness', standard_name='', data0d=Hice, category='ice')
+   call fm%register('surface_ice_energy', 'J/m2', 'ice energy (surface)', standard_name='', data0d=surface_ice_energy, category='ice')
+   call fm%register('bottom_ice_energy', 'J/m2', 'ice energy (bottom)', standard_name='', data0d=bottom_ice_energy, category='ice')
+   call fm%register('ocean_ice_flux', 'W/m2', 'ocean-ice heat flux', standard_name='', data0d=ocean_ice_flux, category='ice')
    call fm%register('Hfrazil', 'm', 'ice thickness (frazil)', standard_name='', data0d=Hfrazil, category='ice')
    call fm%register('dHis', 'm', 'ice growth (surface)', standard_name='', data0d=dHis, category='ice')
    call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice')
