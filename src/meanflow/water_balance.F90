@@ -41,15 +41,8 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-
    if (lake) then
-#if 0
-      int_flows = int_inflow + int_outflow
-#else
       int_flows = (int_inflow + int_outflow)/Af(size(Af)-1)
-#endif
-!STDERR Af
-!STDERR size(Af),nlev
       int_fwf = int_fwf + int_flows
 
       sumVc = sum(Vc(1:nlev))
@@ -61,7 +54,6 @@
          sumVcn = Vc1(1)
          net_water_balance = net_water_balance - (sumVcn-sumVc)/dt
       end if
-!KBSTDERR 'net ',net_water_balance
       select case (water_balance_method)
          case(WATER_BALANCE_SURFACE)
             Qres(nlev) = -net_water_balance
@@ -78,7 +70,6 @@
       net_water_balance = evap + precip%value
       int_water_balance = int_water_balance + dt*net_water_balance
    end if
-
 
    return
    end subroutine water_balance

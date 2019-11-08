@@ -282,7 +282,6 @@
       call fm%register('Qres', 'm3/s', 'residual water balance inflows', standard_name='??', dimensions=(/id_dim_z/), data1d=Qres(1:nlev), category='streams')
    end if
 
-#if 0
    current_stream => first_stream
    do while (associated(current_stream))
       call fm%register('Q_'//trim(current_stream%name), 'm3/s', 'stream (Q): '//trim(current_stream%name),data0d=current_stream%flow%value, category='streams')
@@ -291,10 +290,10 @@
       end if
       current_stream => current_stream%next
    end do
-#endif
 
-   call fm%register('int_inflow', 'm3', 'integrated inflow', data0d=int_inflow, category='streams')
-   call fm%register('int_outflow', 'm3', 'integrated outflow', data0d=int_outflow, category='streams')
+   call fm%register('int_inflow', 'm3', 'stream: integrated inflow(s)', data0d=int_inflow, category='streams')
+   call fm%register('int_outflow', 'm3', 'stream: integrated outflow(s)', data0d=int_outflow, category='streams')
+   
 
    return
    end subroutine register_stream_variables
@@ -354,6 +353,7 @@
    call fm%register('ga', '', 'coordinate scaling', standard_name='??', dimensions=(/id_dim_z/), data1d=ga(1:nlev),category='column_structure')
    if (lake) then
       call fm%register('Af', 'm^2', 'hypsograph at grid interfaces', standard_name='??', dimensions=(/id_dim_z/), data1d=Af(1:nlev), category='column_structure')
+      call fm%register('int_flow', 'm3', 'stream: integrated', data0d=int_flows, category='meanflow/waterbalance')
       call fm%register('int_water_balance', 'm3', 'integrated total water balance', data0d=int_water_balance, category='meanflow/waterbalance')
    else
       call fm%register('int_water_balance', 'm', 'integrated total water balance', data0d=int_water_balance, category='meanflow/waterbalance')

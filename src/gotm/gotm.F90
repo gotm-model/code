@@ -216,7 +216,6 @@
 
    call settings_store%get(title, 'title', 'simulation title used in output', &
                            default='GOTM simulation')
-
    branch => settings_store%get_child('location')
    call branch%get(name, 'name', 'station name used in output', &
                    default='GOTM site')
@@ -226,7 +225,8 @@
                    minimum=-360._rk, maximum=360._rk, default=0._rk)
    call branch%get(depth, 'depth', 'water depth', 'm', &
                    minimum=0._rk, default=100._rk)
-
+   call settings_store%get(water_balance_method, 'water_balance_method', 'residual stream to correct water balance due to evap, precip, in- and outflows', &
+                           options=(/option(0, 'none'), option(1, 'surface'), option(2, 'all layers'), option(3, 'free surface')/), default=0)
    branch => settings_store%get_child('time')
    call branch%get(timefmt, 'method', 'method to specify simulated period', default=2, &
                    options=(/option(1, 'number of time steps'), option(2, 'start and stop'), option(3, 'start and number of time steps')/), display=display_advanced)

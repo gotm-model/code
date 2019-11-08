@@ -667,7 +667,7 @@
    call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
 
-   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=twig)
+   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents'), option(3, 'water balance')/), pchild=twig)
    call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
                    default=44714._rk)
    call twig%get(amp_1, 'amp_1', 'amplitude of 1st harmonic', 'm', &
