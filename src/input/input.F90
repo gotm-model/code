@@ -19,6 +19,7 @@
    public init_input, do_input, close_input, register_input
    public read_obs
    public type_input, type_scalar_input, type_profile_input
+   public type_scalar_input_list
 
    integer, parameter, public :: method_unsupported = huge(1)
 !
@@ -141,11 +142,12 @@
 
    contains
 
-   subroutine configure(self, method, path, index, constant_value, scale_factor, add_offset)
-      class (type_input), intent(inout) :: self
-      integer, optional :: method, index
-      character(len=*), optional :: path
-      REALTYPE, optional :: constant_value, scale_factor, add_offset
+   subroutine configure(self, method, path, index, constant_value, scale_factor, add_offset, name)
+      class (type_input),         intent(inout) :: self
+      integer,          optional, intent(in)    :: method, index
+      character(len=*), optional, intent(in)    :: path
+      REALTYPE,         optional, intent(in)    :: constant_value, scale_factor, add_offset
+      character(len=*), optional, intent(in)    :: name
 
       if (present(method)) self%method = method
       if (present(path)) self%path = path
@@ -153,6 +155,7 @@
       if (present(constant_value)) self%constant_value = constant_value
       if (present(scale_factor)) self%scale_factor = scale_factor
       if (present(add_offset)) self%add_offset = add_offset
+      if (present(name)) self%name = name
    end subroutine
 
 !-----------------------------------------------------------------------
