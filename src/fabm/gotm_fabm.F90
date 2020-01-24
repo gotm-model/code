@@ -489,7 +489,7 @@
 
          do i=1,size(model%state_variables)
             call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i), part_of_state=.true.)
-            call field_manager%register(trim(model%state_variables(i)%name)//'_diff',  trim(model%state_variables(i)%units)//'m/s', &
+            call field_manager%register(trim(model%state_variables(i)%name)//'_diff',  trim(model%state_variables(i)%units)//'*m/s', &
                 'diffusive flux of '//trim(model%state_variables(i)%long_name), &
                 dimensions=(/id_dim_zi/), category='fabm', output_level=output_level_debug, used=in_output)
             if (in_output) then
