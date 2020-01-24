@@ -64,21 +64,22 @@
    REALTYPE,allocatable,dimension(:),  public        :: cc_diag_hz
 
 !  Arrays for observations, relaxation times and FABM variable identifiers associated with the observations.
-   type type_forced_1d_state
-      REALTYPE, pointer,dimension(:) :: data      => null()
-      REALTYPE, pointer,dimension(:) :: relax_tau => null()
+   type type_1d_state_info
+      REALTYPE, pointer, dimension(:) :: obs       => null()
+      REALTYPE, pointer, dimension(:) :: relax_tau => null()
+      REALTYPE, allocatable, dimension(:) :: diff_flux
    end type
 
-   type type_forced_0d_state
-      REALTYPE, pointer :: data      => null()
+   type type_0d_state_info
+      REALTYPE, pointer :: obs       => null()
       REALTYPE, pointer :: relax_tau => null()
    end type
 
    REALTYPE,allocatable,dimension(:),target :: horizontal_expression_data
 
 !  Observation indices (from obs_0d, obs_1d) for pelagic and benthic state variables.
-   type (type_forced_1d_state),allocatable :: cc_obs(:)
-   type (type_forced_0d_state),allocatable :: cc_ben_obs(:)
+   type (type_1d_state_info), allocatable :: cc_info(:)
+   type (type_0d_state_info), allocatable :: cc_ben_info(:)
 
    interface register_observation
       module procedure register_bulk_observation
@@ -103,7 +104,7 @@
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
    REALTYPE,allocatable,dimension(:,:) :: ws
-   REALTYPE,allocatable,dimension(:)   :: sfl,bfl,Qsour,Lsour,DefaultRelaxTau,curh,curnuh,iweights
+   REALTYPE,allocatable,dimension(:)   :: sfl,bfl,Qsour,Lsour,DefaultRelaxTau,cc_old,curh,curnuh,iweights
    logical,allocatable, dimension(:)   :: cc_transport
    integer,allocatable, dimension(:)   :: posconc
 
@@ -481,13 +482,21 @@
          do i=1,size(model%conserved_quantities)
             call field_manager%register(trim(model%conserved_quantities(i)%name)//'_ini',  model%conserved_quantities(i)%units, &
                 trim(model%conserved_quantities(i)%long_name)//' at simulation start', minimum=model%conserved_quantities(i)%minimum, &
-                maximum=model%conserved_quantities(i)%maximum, fill_value= model%conserved_quantities(i)%missing_value, &
+                maximum=model%conserved_quantities(i)%maximum, fill_value=model%conserved_quantities(i)%missing_value, &
                 no_default_dimensions=.true., dimensions=(/id_dim_lon, id_dim_lat/), data0d=total0(i), category='fabm', &
                 output_level=output_level_debug, part_of_state=.true.)
          end do
 
          do i=1,size(model%state_variables)
             call register_field(field_manager, model%state_variables(i), dimensions=(/id_dim_z/), data1d=cc(1:,i), part_of_state=.true.)
+            call field_manager%register(trim(model%state_variables(i)%name)//'_diff',  trim(model%state_variables(i)%units)//'m/s', &
+                'diffusive flux of '//trim(model%state_variables(i)%long_name), &
+                dimensions=(/id_dim_zi/), category='fabm', output_level=output_level_debug, used=in_output)
+            if (in_output) then
+               allocate(cc_info(i)%diff_flux(0:nlev))
+               cc_info(i)%diff_flux = _ZERO_
+               call field_manager%send_data(trim(model%state_variables(i)%name)//'_diff', cc_info(i)%diff_flux)
+            end if
          end do
          do i=1,size(model%bottom_state_variables)
             call register_field(field_manager, model%bottom_state_variables(i), data0d=cc(1,size(model%state_variables)+i), part_of_state=.true.)
@@ -576,10 +585,10 @@
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indices to -1 (no external observations provided)
-   allocate(cc_obs(1:size(model%state_variables)),stat=rc)
-   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_obs)'
-   allocate(cc_ben_obs(1:size(model%bottom_state_variables)),stat=rc)
-   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_ben_obs)'
+   allocate(cc_info(1:size(model%state_variables)),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_info)'
+   allocate(cc_ben_info(1:size(model%bottom_state_variables)),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_ben_info)'
 
    if (save_diag) then
       ! Allocate array for pelagic diagnostic variables; set all values to zero.
@@ -682,6 +691,9 @@
    allocate(curnuh(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (curnuh)'
    curnuh = _ZERO_
+
+   allocate(cc_old(1:nlev),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_old)'
 
    allocate(iweights(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (iweights)'
@@ -791,8 +803,8 @@
    do i=1,size(model%state_variables)
       if (varname==model%state_variables(i)%name) then
          ! This is a state variable. Register the link between the state variable and the observations.
-         cc_obs(i)%data => data
-         cc_obs(i)%relax_tau => relax_tau
+         cc_info(i)%obs => data
+         cc_info(i)%relax_tau => relax_tau
          return
       end if
    end do
@@ -830,8 +842,8 @@
    do i=1,size(model%bottom_state_variables)
       if (varname==model%bottom_state_variables(i)%name) then
          ! This is a state variable. Register the link between the state variable and the observations.
-         cc_ben_obs(i)%data => data
-         cc_ben_obs(i)%relax_tau => relax_tau
+         cc_ben_info(i)%obs => data
+         cc_ben_info(i)%relax_tau => relax_tau
          return
       end if
    end do
@@ -872,10 +884,10 @@
 
    ! If custom initial state have been provided through fabm_input.nml, use these to override the current initial state.
    do i=1,size(model%state_variables)
-      if (associated(cc_obs(i)%data)) cc(:,i) = cc_obs(i)%data
+      if (associated(cc_info(i)%obs)) cc(:,i) = cc_info(i)%obs
    end do
    do i=1,size(model%bottom_state_variables)
-      if (associated(cc_ben_obs(i)%data)) cc(1,size(model%state_variables,1)+i) = cc_ben_obs(i)%data
+      if (associated(cc_ben_info(i)%obs)) cc(1,size(model%state_variables,1)+i) = cc_ben_info(i)%obs
    end do
 
    end subroutine init_gotm_fabm_state
@@ -1160,7 +1172,7 @@
    integer, parameter        :: adv_mode_1=1
    REALTYPE,dimension(0:nlev):: ws1d
    REALTYPE                  :: dilution,virtual_dilution
-   integer                   :: i
+   integer                   :: i, ilev
    integer                   :: split
    integer(8)                :: clock_start,clock_end
    REALTYPE                  :: bioext
@@ -1224,14 +1236,20 @@
    do i=1,size(model%state_variables)
       if (cc_transport(i)) then
          ! Do diffusion step
-         if (associated(cc_obs(i)%data)) then
+         if (allocated(cc_info(i)%diff_flux)) cc_old(:) = cc(1:nlev,i)
+         if (associated(cc_info(i)%obs)) then
    !        Observations on this variable are available.
             call diff_center(nlev,dt,cnpar,posconc(i),curh,Neumann,Neumann,&
-               sfl(i),bfl(i),curnuh,Lsour,Qsour,cc_obs(i)%relax_tau,cc_obs(i)%data,cc(:,i))
+               sfl(i),bfl(i),curnuh,Lsour,Qsour,cc_info(i)%relax_tau,cc_info(i)%obs,cc(:,i))
          else
    !        Observations on this variable are not available.
             call diff_center(nlev,dt,cnpar,posconc(i),curh,Neumann,Neumann,&
                sfl(i),bfl(i),curnuh,Lsour,Qsour,DefaultRelaxTau,cc(:,i),cc(:,i))
+         end if
+         if (allocated(cc_info(i)%diff_flux)) then
+            do ilev=1,nlev-1
+               cc_info(i)%diff_flux(ilev) = (cc_old(ilev) - cc(ilev,i)) * curh(ilev) / dt + cc_info(i)%diff_flux(ilev - 1)
+            end do
          end if
       end if
    end do
@@ -1392,8 +1410,8 @@
 
    ! Relax bottom-attached variables to observed values, if specified in fabm_input.nml.
    do i=1,size(model%bottom_state_variables)
-      if (associated(cc_ben_obs(i)%data)) then
-         if (cc_ben_obs(i)%relax_tau < 1.e15_gotmrk) rhs(1,n+i) = rhs(1,n+i) + (cc_ben_obs(i)%data - cc(1,n+i))/cc_ben_obs(i)%relax_tau
+      if (associated(cc_ben_info(i)%obs)) then
+         if (cc_ben_info(i)%relax_tau < 1.e15_gotmrk) rhs(1,n+i) = rhs(1,n+i) + (cc_ben_info(i)%obs - cc(1,n+i))/cc_ben_info(i)%relax_tau
       end if
    end do
 
@@ -1602,11 +1620,11 @@
    LEVEL1 'Time spent on sink/source terms of FABM variables:',clock_source*tick_rate
 
    ! Deallocate internal arrays
-   if (allocated(cc))         deallocate(cc)
-   if (allocated(cc_obs))     deallocate(cc_obs)
-   if (allocated(cc_ben_obs)) deallocate(cc_ben_obs)
-   if (allocated(cc_diag))    deallocate(cc_diag)
-   if (allocated(cc_diag_hz)) deallocate(cc_diag_hz)
+   if (allocated(cc))          deallocate(cc)
+   if (allocated(cc_info))     deallocate(cc_info)
+   if (allocated(cc_ben_info)) deallocate(cc_ben_info)
+   if (allocated(cc_diag))     deallocate(cc_diag)
+   if (allocated(cc_diag_hz))  deallocate(cc_diag_hz)
    if (allocated(horizontal_expression_data)) deallocate(horizontal_expression_data)
 
    ! Deallocate work arrays used from do_gotm_fabm.
@@ -1618,6 +1636,7 @@
    if (allocated(DefaultRelaxTau)) deallocate(DefaultRelaxTau)
    if (allocated(curh))            deallocate(curh)
    if (allocated(curnuh))          deallocate(curnuh)
+   if (allocated(cc_old))          deallocate(cc_old)
    if (allocated(cc_transport))    deallocate(cc_transport)
    if (allocated(posconc))         deallocate(posconc)
    if (allocated(local))           deallocate(local)
