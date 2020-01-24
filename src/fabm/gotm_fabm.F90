@@ -1,4 +1,5 @@
 #include "cppdefs.h"
+#include "fabm_version.h"
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -42,6 +43,9 @@
 
    ! Variables below must be accessible for getm_fabm
    public cc_transport
+
+   ! Optional additional forcing
+   public fabm_airp  ! air pressure in Pa
 
 !
 ! !PUBLIC DATA MEMBERS:
@@ -114,10 +118,11 @@
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
    REALTYPE,pointer :: I_0,A,g1,g2
-   REALTYPE,pointer :: airp
    integer,pointer  :: yearday,secondsofday
    REALTYPE, target :: decimal_yearday
    logical          :: fabm_ready
+
+   REALTYPE,pointer :: fabm_airp
 
    logical              :: check_conservation
    REALTYPE,allocatable :: local(:,:)
@@ -127,6 +132,11 @@
    integer :: repair_interior_count
    integer :: repair_surface_count
    integer :: repair_bottom_count
+
+   logical, save :: save_diag = .true.
+   logical, save :: compute_light = .false.
+
+   integer, parameter :: gotmrk = kind(_ONE_)
 
 !-----------------------------------------------------------------------
 
@@ -265,7 +275,7 @@
                 option(Superbee, 'third-order TVD with Superbee limiter'), option(MUSCL, 'third-order TVD with MUSCL limiter'), &
                 option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter') /), default=P2_PDM)
    call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
-                minimum=0._rk,default=1._rk)
+                minimum=_ZERO_,default=_ONE_)
 #if 0
    call cfg%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', '', &
                 default=.false.)
@@ -308,6 +318,10 @@
 
    fabm_ready = .false.
 
+#if _FABM_API_VERSION_ > 0
+   allocate(model)
+   call fabm_create_model_from_yaml_file(model)
+#else
    ! Create model tree
    if (configuration_method==-1) then
       configuration_method = 1
@@ -326,6 +340,7 @@
       allocate(model)
       call fabm_create_model_from_yaml_file(model)
    end select   
+#endif
 
    end subroutine
 
@@ -341,10 +356,10 @@
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
 ! !INPUT PARAMETERS:
-   integer,                   intent(in)             :: nlev
-!   character(len=*),          intent(in)             :: fname
-   REALTYPE,optional,         intent(in)             :: dt
-   class (type_field_manager),intent(inout),optional :: field_manager
+   integer,                   intent(in)              :: nlev
+!   character(len=*),         intent(in)              :: fname
+   REALTYPE,optional,         intent(in)              :: dt
+   class (type_field_manager),intent(inout), optional :: field_manager
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -453,6 +468,12 @@
       cloud_id     = model%get_horizontal_variable_id(standard_variables%cloud_area_fraction)
       taub_id      = model%get_horizontal_variable_id(standard_variables%bottom_stress)
 
+      ! Initialize optional forcings to "off"
+      fabm_airp => null()
+
+      ! Manage diagnostics internally only if no field/output manager attached
+      save_diag = .not. present(field_manager)
+
       ! Initialize spatially explicit variables
       call init_var_gotm_fabm(nlev)
 
@@ -493,9 +514,6 @@
             call register_field(field_manager, model%horizontal_diagnostic_variables(i), used= model%horizontal_diagnostic_variables(i)%save)
          end do
       end if
-
-      ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
-      call check_fabm_expressions()
    end if
 
    LEVEL2 'done.'
@@ -530,21 +548,21 @@
    ! the entire column. However, it is important that all values at a given point in time are integrated simultaneously
    ! in multi-step algorithms. Due to the design of the integration schemes, this currently can only be achieved by
    ! storing bottom-bound and surface-bound values together with the pelagic, in a fully depth-explicit array.
-   allocate(cc(0:nlev,1:size(model%state_variables)+size(model%bottom_state_variables)+size(model%surface_state_variables)),stat=rc)
+   allocate(cc(0:nlev, 1:size(model%state_variables) + size(model%bottom_state_variables) + size(model%surface_state_variables)), stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc)'
    cc = _ZERO_
-   do i=1,size(model%state_variables)
-      cc(:,i) = model%state_variables(i)%initial_value
-      call fabm_link_bulk_state_data(model,i,cc(1:,i))
+   do i = 1, size(model%state_variables)
+      cc(:, i) = model%state_variables(i)%initial_value
    end do
-   do i=1,size(model%bottom_state_variables)
-      cc(1,size(model%state_variables)+i) = model%bottom_state_variables(i)%initial_value
-      call fabm_link_bottom_state_data(model,i,cc(1,size(model%state_variables)+i))
+   do i = 1, size(model%bottom_state_variables)
+      cc(1, size(model%state_variables) + i) = model%bottom_state_variables(i)%initial_value
    end do
-   do i=1,size(model%surface_state_variables)
-      cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i) = model%surface_state_variables(i)%initial_value
-      call fabm_link_surface_state_data(model,i,cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i))
+   do i = 1,size(model%surface_state_variables)
+      cc(1, size(model%state_variables) + size(model%bottom_state_variables) + i) = model%surface_state_variables(i)%initial_value
    end do
+   call model%link_all_interior_state_data(cc(1:nlev, 1:size(model%state_variables)))
+   call model%link_all_bottom_state_data(cc(1, size(model%state_variables) + 1:size(model%state_variables) + size(model%bottom_state_variables)))
+   call model%link_all_surface_state_data(cc(nlev, size(model%state_variables) + size(model%bottom_state_variables) + 1:))
 
    ! Allocate arrays for conserved quantity management
    allocate(local(1:nlev,1:size(model%conserved_quantities)),stat=rc)
@@ -563,25 +581,24 @@
    allocate(cc_ben_obs(1:size(model%bottom_state_variables)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_ben_obs)'
 
-   ! Allocate array for pelagic diagnostic variables; set all values to zero.
-   ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
-   allocate(cc_diag(1:nlev,1:size(model%diagnostic_variables)),stat=rc)
-   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_diag)'
-   cc_diag = _ZERO_
+   if (save_diag) then
+      ! Allocate array for pelagic diagnostic variables; set all values to zero.
+      ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
+      allocate(cc_diag(1:nlev,1:size(model%diagnostic_variables)),stat=rc)
+      if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_diag)'
+      cc_diag = _ZERO_
 
-   ! Allocate array for diagnostic variables on horizontal surfaces; set all values to zero.
-   ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
-   allocate(cc_diag_hz(1:size(model%horizontal_diagnostic_variables)),stat=rc)
-   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_diag_hz)'
-   cc_diag_hz = _ZERO_
+      ! Allocate array for diagnostic variables on horizontal surfaces; set all values to zero.
+      ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
+      allocate(cc_diag_hz(1:size(model%horizontal_diagnostic_variables)),stat=rc)
+      if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_diag_hz)'
+      cc_diag_hz = _ZERO_
+   end if
 
-   ! Allocate array for vertical movement rates (m/s, positive for upwards),
-   ! and set these to the values provided by the model.
+   ! Allocate array for vertical movement rates (m/s, positive for upwards)
    allocate(ws(0:nlev,1:size(model%state_variables)),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (ws)'
-   do i=1,size(model%state_variables)
-      ws(:,i) = model%state_variables(i)%vertical_movement
-   end do
+   ws = _ZERO_
 
    ! Allocate array for surface fluxes and initialize these to zero (no flux).
    allocate(sfl(1:size(model%state_variables)),stat=rc)
@@ -601,26 +618,29 @@
       cc_transport(i) = .not.model%state_variables(i)%properties%get_logical('disable_transport',default=.false.)
    end do
 
+   compute_light = fabm_variable_needs_values(model,par_id) .or. fabm_variable_needs_values(model,swr_id) &
+      .or. fabm_variable_needs_values(model,model%get_bulk_variable_id(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux))
+
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(par(1:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (par)'
    par = _ZERO_
-   if (fabm_variable_needs_values(model,par_id)) call fabm_link_bulk_data(model,par_id,par)
+   if (fabm_variable_needs_values(model,par_id)) call model%link_interior_data(par_id,par)
 
    ! Allocate array for attenuation coefficient pf photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(k_par(1:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (k_par)'
    k_par = _ZERO_
-   call fabm_link_bulk_data(model,standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux,k_par)
+   call model%link_interior_data(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux,k_par)
 
    ! Allocate array for shortwave radiation (swr).
    ! This will be calculated internally during each time step.
    allocate(swr(1:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (swr)'
    swr = _ZERO_
-   if (fabm_variable_needs_values(model,swr_id)) call fabm_link_bulk_data(model,swr_id,swr)
+   if (fabm_variable_needs_values(model,swr_id)) call model%link_interior_data(swr_id,swr)
 
    ! Allocate array for local pressure.
    ! This will be calculated from layer depths and density internally during each time step.
@@ -628,7 +648,7 @@
       allocate(pres(1:nlev),stat=rc)
       if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (pres)'
       pres = _ZERO_
-      call fabm_link_bulk_data(model,pres_id,pres)
+      call model%link_interior_data(pres_id,pres)
    end if
 
    ! Allocate array for local depth (below water surface).
@@ -636,12 +656,12 @@
    allocate(z(1:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (z)'
    z = _ZERO_
-   call fabm_link_bulk_data(model,standard_variables%depth,z)
+   call model%link_interior_data(standard_variables%depth,z)
 
    ! Initialize scalar to hold day of the year (floating point value),
    ! and link it to FABM.
    decimal_yearday = _ZERO_
-   call fabm_link_scalar_data(model,standard_variables%number_of_days_since_start_of_the_year,decimal_yearday)
+   call model%link_scalar(standard_variables%number_of_days_since_start_of_the_year,decimal_yearday)
 
    allocate(Qsour(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (Qsour)'
@@ -694,7 +714,7 @@
    class (type_external_variable), intent(in)    :: variable
    character(len=*),optional,      intent(in)    :: prefix
    integer,         optional,      intent(in)    :: dimensions(:)
-   real(rk),target, optional                     :: data0d, data1d(:)
+   REALTYPE,target, optional                     :: data0d, data1d(:)
    logical,         optional,      intent(in)    :: part_of_state
    logical,         optional,      intent(out)   :: used
 !
@@ -776,7 +796,7 @@
          return
       end if
    end do
-   call fabm_link_bulk_data(model,id,data(1:))
+   call model%link_interior_data(id,data(1:))
    end subroutine register_bulk_observation
 !EOC
 
@@ -815,7 +835,7 @@
          return
       end if
    end do
-   call fabm_link_horizontal_data(model,horizontal_id,data)
+   call model%link_horizontal_data(horizontal_id,data)
    end subroutine register_horizontal_observation
 !EOC
 
@@ -908,34 +928,35 @@
       end do
    end if
 
-   airp => model%get_data(model%get_horizontal_variable_id(standard_variables%surface_air_pressure))
-
    ! Compute pressure, depth, day of the year
    call calculate_derived_input(nlev,_ZERO_)
 
-   ! Update derived expressions (vertical means, etc.)
-   call update_fabm_expressions(nlev)
-
-   ! Update the light field
-   call light(nlev,bioshade_feedback)
+#if _FABM_API_VERSION_ > 0
+   call model%prepare_inputs()
+#else
+   call fabm_get_light_extinction(model,1,nlev,k_par(1:nlev))
+   call fabm_get_light(model,1,nlev)
+#endif
 
    ! Call fabm_do here to make sure diagnostic variables all have an initial value.
    ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
    rhs = _ZERO_
    call fabm_do_bottom(model,rhs(1,:),bottom_flux)
-   call fabm_do_surface(model,rhs(nlev,:))
+   call fabm_do_surface(model,rhs(nlev,:),surface_flux)
    call fabm_do(model,1,nlev,rhs)
 
-   ! Obtain current values of diagnostic variables from FABM.
-   do i=1,size(model%horizontal_diagnostic_variables)
-      if (model%horizontal_diagnostic_variables(i)%output/=output_time_integrated &
-          .and.model%horizontal_diagnostic_variables(i)%output/=output_none) &
-         cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
-   end do
-   do i=1,size(model%diagnostic_variables)
-      if (model%diagnostic_variables(i)%output/=output_time_integrated.and.model%diagnostic_variables(i)%output/=output_none) &
-         cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
-   end do
+   if (save_diag) then
+      ! Obtain current values of diagnostic variables from FABM.
+      do i=1,size(model%horizontal_diagnostic_variables)
+         if (model%horizontal_diagnostic_variables(i)%output/=output_time_integrated &
+             .and.model%horizontal_diagnostic_variables(i)%output/=output_none) &
+            cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
+      end do
+      do i=1,size(model%diagnostic_variables)
+         if (model%diagnostic_variables(i)%output/=output_time_integrated.and.model%diagnostic_variables(i)%output/=output_none) &
+            cc_diag(:,i) = fabm_get_interior_diagnostic_data(model,i)
+      end do
+   end if
 
    ! Compute current totals of conserved quantities (to be used in outputs related to mass conservation checks)
    call calculate_conserved_quantities(nlev, total)
@@ -982,17 +1003,17 @@
    if (.not. fabm_calc) return
 
    ! Provide pointers to arrays with environmental variables to FABM.
-   call fabm_link_bulk_data      (model,temp_id,     temp)
-   call fabm_link_bulk_data      (model,salt_id,     salt_)
-   call fabm_link_bulk_data      (model,rho_id,      rho_)
-   call fabm_link_bulk_data      (model,h_id,        h_(2:))
-   call fabm_link_horizontal_data(model,lon_id,      longitude)
-   call fabm_link_horizontal_data(model,lat_id,      latitude)
-   call fabm_link_horizontal_data(model,windspeed_id,wnd)
-   call fabm_link_horizontal_data(model,par_sf_id,   I_0_)
-   call fabm_link_horizontal_data(model,swr_sf_id,   I_0_)
-   call fabm_link_horizontal_data(model,cloud_id,    cloud)
-   call fabm_link_horizontal_data(model,taub_id,     taub)
+   call model%link_interior_data  (temp_id,     temp)
+   call model%link_interior_data  (salt_id,     salt_)
+   call model%link_interior_data  (rho_id,      rho_)
+   call model%link_interior_data  (h_id,        h_(2:))
+   call model%link_horizontal_data(lon_id,      longitude)
+   call model%link_horizontal_data(lat_id,      latitude)
+   call model%link_horizontal_data(windspeed_id,wnd)
+   call model%link_horizontal_data(par_sf_id,   I_0_)
+   call model%link_horizontal_data(swr_sf_id,   I_0_)
+   call model%link_horizontal_data(cloud_id,    cloud)
+   call model%link_horizontal_data(taub_id,     taub)
 
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
@@ -1052,6 +1073,9 @@
 !
 ! !INTERFACE:
    subroutine calculate_derived_input(nlev,itime)
+
+   use time   
+   integer :: yyyy, mm, dd
 !
 ! !DESCRIPTION:
 !  TODO
@@ -1064,7 +1088,7 @@
 !
 ! !LOCAL VARIABLES:
    integer :: i
-   REALTYPE,parameter :: gravity = 9.81d0
+   REALTYPE,parameter :: gravity = 9.81_gotmrk
    REALTYPE :: p0
 !
 !EOP
@@ -1076,10 +1100,10 @@
 
    if (allocated(pres)) then
       ! Start with air pressure (in dbar = 10 kPa)
-      if (associated(airp)) then
-          p0 = airp * 1e-4_rk
+      if (associated(fabm_airp)) then
+          p0 = fabm_airp * 1e-4_gotmrk
       else
-          p0 = 10.1325_rk
+          p0 = 10.1325_gotmrk
       end if
 
       ! Calculate local pressure in dbar (10 kPa) from layer height and density
@@ -1099,9 +1123,10 @@
    end do
 
 !  Calculate decimal day of the year (1 jan 00:00 = 0.)
-   decimal_yearday = yearday-1 + dble(secondsofday)/86400
+   decimal_yearday = yearday - 1 + real(secondsofday, gotmrk) / 86400
 
-   call fabm_update_time(model,itime)
+   call calendar_date(julianday, yyyy, mm, dd)
+   call fabm_update_time(model, itime, yyyy, mm, dd, real(secondsofday, gotmrk))
 
    end subroutine calculate_derived_input
 !EOC
@@ -1134,6 +1159,8 @@
    integer                   :: i
    integer                   :: split
    integer(8)                :: clock_start,clock_end
+   REALTYPE                  :: bioext
+   REALTYPE                  :: localexts(1:nlev)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1214,22 +1241,23 @@
 
    do split=1,split_factor
       ! Update local light field (self-shading may have changed through changes in biological state variables)
-      call light(nlev,bioshade_feedback)
+      if (compute_light) call light(nlev)
+
+#if _FABM_API_VERSION_ > 0
+      call model%prepare_inputs()
+#else
+      call fabm_get_light_extinction(model,1,nlev,k_par(1:nlev))
+      call fabm_get_light(model,1,nlev)
+#endif
 
       ! Time-integrate one biological time step
       call ode_solver(ode_method,size(cc,2),nlev,dt_eff,cc,right_hand_side_rhs,right_hand_side_ppdd)
 
       ! Provide FABM with (pointers to) updated state variables.
       ! (integration scheme has redirected FABM to a temporary biogeochemical state)
-      do i=1,size(model%state_variables)
-         call fabm_link_bulk_state_data(model,i,cc(1:nlev,i))
-      end do
-      do i=1,size(model%bottom_state_variables)
-         call fabm_link_bottom_state_data(model,i,cc(1,size(model%state_variables)+i))
-      end do
-      do i=1,size(model%surface_state_variables)
-         call fabm_link_surface_state_data(model,i,cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i))
-      end do
+      call model%link_all_interior_state_data(cc(1:nlev, 1:size(model%state_variables)))
+      call model%link_all_bottom_state_data(cc(1, size(model%state_variables) + 1:size(model%state_variables) + size(model%bottom_state_variables)))
+      call model%link_all_surface_state_data(cc(nlev, size(model%state_variables) + size(model%bottom_state_variables) + 1:))
 
       ! Repair state
       call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after time integration')
@@ -1246,126 +1274,20 @@
    if (associated(bio_albedo))     call fabm_get_albedo(model,bio_albedo)
    if (associated(bio_drag_scale)) call fabm_get_drag(model,bio_drag_scale)
 
+   if (bioshade_feedback) then
+      bioext = 0
+      call fabm_get_light_extinction(model, 1, nlev, localexts(1:nlev))
+      do i = nlev, 1, -1
+         bioext = bioext + localexts(i) * curh(i)
+         bioshade(i) = exp(-bioext)
+      end do
+   end if
+
+#if _FABM_API_VERSION_ > 0
+   call model%finalize_outputs()
+#endif
+
    end subroutine do_gotm_fabm
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the FABM driver
-!
-! !INTERFACE:
-   subroutine check_fabm_expressions()
-!
-! !DESCRIPTION:
-! TODO
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-! !LOCAL VARIABLES:
-   class (type_expression),pointer :: expression
-   integer :: n
-!
-!EOP
-!-----------------------------------------------------------------------!
-!BOC
-   n = 0
-   expression => model%root%first_expression
-   do while (associated(expression))
-      select type (expression)
-         class is (type_vertical_integral)
-            n = n + 1
-      end select
-      expression => expression%next
-   end do
-
-   allocate(horizontal_expression_data(n))
-   horizontal_expression_data = _ZERO_
-
-   n = 0
-   expression => model%root%first_expression
-   do while (associated(expression))
-      select type (expression)
-         class is (type_vertical_integral)
-            n = n + 1
-            call fabm_link_horizontal_data(model,trim(expression%output_name),horizontal_expression_data(n))
-      end select
-      expression => expression%next
-   end do
-   end subroutine check_fabm_expressions
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the FABM driver
-!
-! !INTERFACE:
-   subroutine update_fabm_expressions(nlev)
-!
-! !DESCRIPTION:
-! TODO
-!
-! !INPUT PARAMETERS:
-   integer,intent(in)             :: nlev
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-! !LOCAL VARIABLES:
-   class (type_expression),pointer :: expression
-   real(rk)                       :: depth,weights(nlev)
-   logical                        :: started
-   integer                        :: n,k
-!
-!EOP
-!-----------------------------------------------------------------------!
-!BOC
-   n = 0
-   expression => model%root%first_expression
-   do while (associated(expression))
-      select type (expression)
-         class is (type_vertical_integral)
-            n = n + 1
-            horizontal_expression_data(n) = calculate_vertical_mean(expression)
-      end select
-      expression => expression%next
-   end do
-
-   contains
-
-   REALTYPE function calculate_vertical_mean(expression)
-   class (type_vertical_integral),intent(in) :: expression
-
-   ! Loop over all levels, surface to bottom, and compute vertical mean.
-   depth = _ZERO_
-   weights = _ZERO_
-   started = .false.
-   do k=nlev,1,-1
-      depth = depth + curh(k)
-      if (.not.started) then
-         ! Not yet at minimum depth before
-         if (depth>=expression%minimum_depth) then
-            ! Now crossing minimum depth interface
-            started = .true.
-            weights(k) = depth-expression%minimum_depth
-         end if
-      else
-         ! Beyond minimum depth, not yet at maximum depth before
-         weights(k) = curh(k)
-      end if
-      if (depth>expression%maximum_depth) then
-         ! Now crossing maximum depth interface; subtract part of layer height that is not included
-         weights(k) = weights(k) - (depth-expression%maximum_depth)
-         exit
-      end if
-   end do
-   if (expression%average) weights = weights/(min(expression%maximum_depth,depth)-expression%minimum_depth)
-   calculate_vertical_mean = sum(model%data(expression%in)%p(1:nlev)*weights)
-   end function calculate_vertical_mean
-
-   end subroutine update_fabm_expressions
 !EOC
 
 !-----------------------------------------------------------------------
@@ -1446,16 +1368,9 @@
    n = size(model%state_variables)
 
    ! Provide FABM with (pointers to) the current state.
-   do i=1,size(model%state_variables)
-      call fabm_link_bulk_state_data(model,i,cc(1:nlev,i))
-   end do
-   do i=1,size(model%bottom_state_variables)
-      call fabm_link_bottom_state_data(model,i,cc(1,n+i))
-   end do
-   do i=1,size(model%surface_state_variables)
-      call fabm_link_surface_state_data(model,i,cc(nlev,n+size(model%bottom_state_variables)+i))
-   end do
-   call update_fabm_expressions(nlev)
+   call model%link_all_interior_state_data(cc(1:nlev, 1:n))
+   call model%link_all_bottom_state_data(cc(1, n + 1:n + size(model%bottom_state_variables)))
+   call model%link_all_surface_state_data(cc(nlev, n + size(model%bottom_state_variables) + 1:))
 
    ! If this is not the first step in the (multi-step) integration scheme,
    ! then first make sure that the intermediate state variable values are valid.
@@ -1474,7 +1389,7 @@
    ! Relax bottom-attached variables to observed values, if specified in fabm_input.nml.
    do i=1,size(model%bottom_state_variables)
       if (associated(cc_ben_obs(i)%data)) then
-         if (cc_ben_obs(i)%relax_tau < 1.e15_rk) rhs(1,n+i) = rhs(1,n+i) + (cc_ben_obs(i)%data - cc(1,n+i))/cc_ben_obs(i)%relax_tau
+         if (cc_ben_obs(i)%relax_tau < 1.e15_gotmrk) rhs(1,n+i) = rhs(1,n+i) + (cc_ben_obs(i)%data - cc(1,n+i))/cc_ben_obs(i)%relax_tau
       end if
    end do
 
@@ -1489,7 +1404,7 @@
    ! Add pelagic sink and source terms for all depth levels.
    call fabm_do(model,1,nlev,rhs(1:nlev,1:n))
 
-   if (first) call save_diagnostics()
+   if (first .and. save_diag) call save_diagnostics()
 
    end subroutine right_hand_side_rhs
 !EOC
@@ -1526,16 +1441,9 @@
    n = size(model%state_variables)
 
    ! Provide FABM with (pointers to) the current state.
-   do i=1,size(model%state_variables)
-      call fabm_link_bulk_state_data(model,i,cc(1:nlev,i))
-   end do
-   do i=1,size(model%bottom_state_variables)
-      call fabm_link_bottom_state_data(model,i,cc(1,n+i))
-   end do
-   do i=1,size(model%surface_state_variables)
-      call fabm_link_surface_state_data(model,i,cc(nlev,n+size(model%bottom_state_variables)+i))
-   end do
-   call update_fabm_expressions(nlev)
+   call model%link_all_interior_state_data(cc(1:nlev, 1:n))
+   call model%link_all_bottom_state_data(cc(1, n + 1:n + size(model%bottom_state_variables)))
+   call model%link_all_surface_state_data(cc(nlev, n + size(model%bottom_state_variables) + 1:))
 
    ! If this is not the first step in the (multi-step) integration scheme,
    ! then first make sure that the intermediate state variable values are valid.
@@ -1556,7 +1464,7 @@
    ! Add pelagic sink and source terms for all depth levels.
    call fabm_do(model,1,nlev,pp(1:nlev,1:n,1:n),dd(1:nlev,1:n,1:n))
 
-   if (first) call save_diagnostics()
+   if (first .and. save_diag) call save_diagnostics()
 
    end subroutine right_hand_side_ppdd
 !EOC
@@ -1567,7 +1475,7 @@
 ! !IROUTINE: Calculate light over entire column
 !
 ! !INTERFACE:
-   subroutine light(nlev,bioshade_feedback)
+   subroutine light(nlev)
 !
 ! !DESCRIPTION:
 ! Calculate photosynthetically active radiation (PAR) and short wave
@@ -1575,8 +1483,7 @@
 ! and background and biotic extinction.
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
-   logical, intent(in)                 :: bioshade_feedback
+   integer, intent(in) :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -1588,10 +1495,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   bioext = _ZERO_
-
-   call fabm_get_light_extinction(model,1,nlev,k_par(1:nlev))
-   call fabm_get_light(model,1,nlev)
+   bioext = 0
 
    call fabm_get_light_extinction(model,1,nlev,localexts(1:nlev))
    do i=nlev,1,-1
@@ -1606,8 +1510,6 @@
 
       ! Add the extinction of the second half of the grid box.
       bioext = bioext+localexts(i)*curh(i)/2
-
-      if (bioshade_feedback) bioshade(i)=exp(-bioext)
    end do
    end subroutine light
 !EOC
@@ -1648,11 +1550,11 @@
    do i=1,size(model%diagnostic_variables)
       if (model%diagnostic_variables(i)%output==output_instantaneous) then
          ! Simply use last value
-         cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
+         cc_diag(:,i) = fabm_get_interior_diagnostic_data(model,i)
       elseif (model%diagnostic_variables(i)%output/=output_none) then
          ! Integration or averaging in time needed: for now do simple Forward Euler integration.
          ! If averaging is required, this will be done upon output by dividing by the elapsed period.
-         cc_diag(:,i) = cc_diag(:,i) + fabm_get_bulk_diagnostic_data(model,i)*dt_eff
+         cc_diag(:,i) = cc_diag(:,i) + fabm_get_interior_diagnostic_data(model,i)*dt_eff
       end if
    end do
    end subroutine save_diagnostics
