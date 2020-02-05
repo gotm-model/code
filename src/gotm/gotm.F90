@@ -82,7 +82,7 @@
 #endif
 #ifdef _FABM_
    use gotm_fabm,only:configure_gotm_fabm,configure_gotm_fabm_from_nml,gotm_fabm_create_model,init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
-   use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
+   use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables,fabm_airp
    use gotm_fabm_input,only: configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
 #endif
 
@@ -480,6 +480,7 @@
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp%value)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
+         fabm_airp => airp%value
       end if
       call set_env_gotm_fabm(latitude,longitude,dt,w_adv%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                              nuh,h,w,bioshade(1:nlev),I_0%value,cloud%value,taub,wind,precip%value,evap,z(1:nlev), &
