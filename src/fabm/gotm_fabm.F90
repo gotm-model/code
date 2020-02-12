@@ -45,8 +45,9 @@
    public cc_transport
 
    ! Optional additional forcing
-   public fabm_airp  ! air pressure in Pa
-
+   public fabm_airp          ! air pressure in Pa
+   public fabm_julianday     ! Julian day
+   public fabm_calendar_date ! Subroutine that computes y/m/d from Julian day
 !
 ! !PUBLIC DATA MEMBERS:
 !  The one and only model
@@ -124,6 +125,7 @@
    logical          :: fabm_ready
 
    REALTYPE,pointer :: fabm_airp
+   integer, pointer :: fabm_julianday
 
    logical              :: check_conservation
    REALTYPE,allocatable :: local(:,:)
@@ -138,6 +140,15 @@
    logical, save :: compute_light = .false.
 
    integer, parameter :: gotmrk = kind(_ONE_)
+
+   interface 
+      subroutine calendar_date_interface(julian,yyyy,mm,dd)
+         integer :: julian
+         integer :: yyyy,mm,dd
+      end subroutine
+   end interface   
+
+   procedure(calendar_date_interface), pointer :: fabm_calendar_date
 
 !-----------------------------------------------------------------------
 
@@ -471,6 +482,8 @@
 
       ! Initialize optional forcings to "off"
       fabm_airp => null()
+      fabm_julianday => null()
+      fabm_calendar_date => null()
 
       ! Manage diagnostics internally only if no field/output manager attached
       save_diag = .not. present(field_manager)
@@ -1090,7 +1103,6 @@
 ! !INTERFACE:
    subroutine calculate_derived_input(nlev,itime)
 
-   use time   
    integer :: yyyy, mm, dd
 !
 ! !DESCRIPTION:
@@ -1141,8 +1153,12 @@
 !  Calculate decimal day of the year (1 jan 00:00 = 0.)
    decimal_yearday = yearday - 1 + real(secondsofday, gotmrk) / 86400
 
-   call calendar_date(julianday, yyyy, mm, dd)
-   call fabm_update_time(model, itime, yyyy, mm, dd, real(secondsofday, gotmrk))
+   if (associated(fabm_calendar_date) .and. associated(fabm_julianday)) then
+      call fabm_calendar_date(fabm_julianday, yyyy, mm, dd)
+      call fabm_update_time(model, itime, yyyy, mm, dd, real(secondsofday, gotmrk))
+   else
+      call fabm_update_time(model, itime)
+   end if
 
    end subroutine calculate_derived_input
 !EOC
