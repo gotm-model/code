@@ -18,6 +18,9 @@
    use fabm_expressions
    use fabm_config
    use fabm_driver
+#if _FABM_API_VERSION_ > 0
+   use fabm_v0_compatibility
+#endif
 
    use field_manager
 
@@ -640,15 +643,15 @@
       cc_transport(i) = .not.model%state_variables(i)%properties%get_logical('disable_transport',default=.false.)
    end do
 
-   compute_light = fabm_variable_needs_values(model,par_id) .or. fabm_variable_needs_values(model,swr_id) &
-      .or. fabm_variable_needs_values(model,model%get_bulk_variable_id(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux))
+   compute_light = model%variable_needs_values(par_id) .or. model%variable_needs_values(swr_id) &
+      .or. model%variable_needs_values(model%get_bulk_variable_id(standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux))
 
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(par(1:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (par)'
    par = _ZERO_
-   if (fabm_variable_needs_values(model,par_id)) call model%link_interior_data(par_id,par)
+   if (model%variable_needs_values(par_id)) call model%link_interior_data(par_id,par)
 
    ! Allocate array for attenuation coefficient pf photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
@@ -662,11 +665,11 @@
    allocate(swr(1:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (swr)'
    swr = _ZERO_
-   if (fabm_variable_needs_values(model,swr_id)) call model%link_interior_data(swr_id,swr)
+   if (model%variable_needs_values(swr_id)) call model%link_interior_data(swr_id,swr)
 
    ! Allocate array for local pressure.
    ! This will be calculated from layer depths and density internally during each time step.
-   if (fabm_variable_needs_values(model,pres_id)) then
+   if (model%variable_needs_values(pres_id)) then
       allocate(pres(1:nlev),stat=rc)
       if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (pres)'
       pres = _ZERO_
@@ -783,7 +786,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call fabm_link_scalar_data(model,scalar_id,data)
+   call model%link_scalar(scalar_id,data)
    end subroutine register_scalar_observation
 !EOC
 
