@@ -49,9 +49,6 @@
 !  Surface wind for computing Stokes drift
    type (type_scalar_input), public, target :: uwnd, vwnd
 
-!  Wave age, for computing Stokes drift from the Donelan et al., 1985 spectrum
-   type (type_scalar_input), public, target :: wave_age
-
 ! !DEFINED PARAMETERS:
 
 !  pre-defined parameters
@@ -59,8 +56,7 @@
    integer, parameter        :: CONSTANT=1
    integer, parameter        :: FROMFILE=2
    integer, parameter        :: EXPONENTIAL=3
-   integer, parameter        :: DHH85SPEC=4
-   integer, parameter        :: THEORYWAVE=5
+   integer, parameter        :: THEORYWAVE=4
 
    REALTYPE, parameter, public    :: pi = 4.*atan(_ONE_)
 
@@ -116,17 +112,12 @@
    character(LEN=PATH_MAX)   :: wnd_file
    REALTYPE                  :: const_uwnd, const_vwnd
 
-   integer                   :: wave_age_method
-   character(LEN=PATH_MAX)   :: wave_age_file
-   REALTYPE                  :: const_wave_age
-
 !  Stokes drift namelist
    namelist /stokes_drift/                                      &
             us_prof_method,us_prof_file,                        &
             dusdz_prof_method,dusdz_prof_file,                  &
             us0_method,us0_file,const_us0,const_vs0,const_ds,   &
-            wnd_method,wnd_file,const_uwnd,const_vwnd,          &
-            wave_age_method,wave_age_file,const_wave_age
+            wnd_method,wnd_file,const_uwnd,const_vwnd
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -146,9 +137,6 @@
    wnd_file='wnd_file.dat'
    const_uwnd=5.0
    const_vwnd=_ZERO_
-   wave_age_method=0
-   wave_age_file='wave_age_file.dat'
-   const_wave_age=1.2
 
    open(namlst,file=fn,status='old',action='read',err=91)
    read(namlst,nml=stokes_drift,err=92)
@@ -166,8 +154,6 @@
 
    call uwnd%configure(method=wnd_method, path=wnd_file, index=1, constant_value=const_uwnd)
    call vwnd%configure(method=wnd_method, path=wnd_file, index=2, constant_value=const_vwnd)
-
-   call wave_age%configure(method=wave_age_method, path=wave_age_file, index=1, constant_value=const_wave_age)
 
    LEVEL2 'done'
 
@@ -213,12 +199,10 @@
    call branch%get(usprof, 'us', 'Stokes drift in West-East direction', 'm/s', default=0._rk,    &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(EXPONENTIAL, 'exponential profile'), &
-                                   option(DHH85SPEC, 'Donelan et al., 1985 spectrum'), &
                                    option(THEORYWAVE, 'theory-wave of Li et al., 2017')/))
    call branch%get(vsprof, 'vs', 'Stokes drift in South-North direction', 'm/s', default=0._rk,  &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(EXPONENTIAL, 'exponential profile'), &
-                                   option(DHH85SPEC, 'Donelan et al., 1985 spectrum'), &
                                    option(THEORYWAVE, 'theory-wave of Li et al., 2017')/))
    call branch%get(dusdz, 'dusdz', 'Stokes drift shear in West-East direction', '1/s', default=0._rk,    &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
@@ -241,9 +225,6 @@
    call twig%get(vwnd, 'vwnd', 'Surface wind for Stokes drift in South-North direction', 'm/s',   &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE,              &
                  minimum=0._rk, default=0._rk)
-   call twig%get(wave_age, 'wave_age', 'wave age for Stokes drift', 'm/s',                        &
-                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE,              &
-                 minimum=0._rk, default=1.2_rk)
 
    LEVEL2 'done'
 
@@ -274,7 +255,7 @@
 !  Original author(s): Qing Li
 !
 ! !LOCAL VARIABLES:
-   integer                   :: rc
+!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -295,15 +276,10 @@
          call register_input(us0)
          call register_input(vs0)
          call register_input(ds)
-      case (DHH85SPEC)
-         LEVEL2 'Using Stokes drift estimated from Donelan et al. (1985) spectrum.'
-         call register_input(uwnd)
-         call register_input(vwnd)
-         call register_input(wave_age)
       case (THEORYWAVE)
+         LEVEL2 'Using Stokes drift estimated from the theory-wave of Li et al. (2017)'
          call register_input(uwnd)
          call register_input(vwnd)
-         LEVEL2 'Using Stokes drift estimated from the theory-wave of Li et al. (2017)'
       case (CONSTANT)
          LEVEL1 'The following us_prof_method has yet been supported: ', usprof%method
          stop 'init_stokes_drift()'
@@ -368,12 +344,6 @@
          ds%value = ustran/max(SMALL, sqrt(us0%value**2.+us0%value**2.))
       case (EXPONENTIAL)
          call stokes_drift_exp(nlev,z,zi)
-      case (DHH85SPEC)
-         if (uwnd%method .eq. NOTHING) then
-            call stokes_drift_dhh85(nlev,z,zi,u10%value,v10%value,gravity)
-         else
-            call stokes_drift_dhh85(nlev,z,zi,uwnd%value,vwnd%value,gravity)
-         endif
       case (THEORYWAVE)
          if (uwnd%method .eq. NOTHING) then
             call stokes_drift_theory(nlev,z,zi,u10%value,v10%value,gravity)

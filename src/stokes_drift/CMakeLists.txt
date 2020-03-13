@@ -1,6 +1,5 @@
 add_library(stokes_drift
    stokes_drift_theory.F90
-   stokes_drift_dhh85.F90
    stokes_drift_exp.F90
    stokes_drift.F90
 )
