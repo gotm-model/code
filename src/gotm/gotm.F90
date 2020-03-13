@@ -45,6 +45,7 @@
    use input
    use input_netcdf
    use observations
+   use stokes_drift
    use time
 
    use airsea_driver, only: init_airsea,post_init_airsea,do_airsea,clean_airsea
@@ -297,6 +298,7 @@
    call init_ice()
 #endif
    call init_observations()
+   call init_stokes_drift()
    branch => settings_store%get_child('turbulence')
    call init_turbulence(branch)
 #ifdef _FABM_
@@ -332,6 +334,8 @@
       call init_meanflow(namlst,'gotmmean.nml')
 
       call init_observations(namlst,'obs.nml')
+
+      call init_stokes_drift(namlst,'stokes_drift.nml')
 
       call init_turbulence(namlst,'gotmturb.nml')
       if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
@@ -442,8 +446,14 @@
    call post_init_observations(depth,nlev,z,h,gravity,rho_0)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
+!  Stokes drift
+   call post_init_stokes_drift(nlev)
+
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
+
+!  update Stokes drift
+   call do_stokes_drift(nlev,z,zi,gravity)
 
    ! Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta%value)
@@ -644,6 +654,7 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
+      call do_stokes_drift(nlev,z,zi,gravity)
 
 !     external forcing
       if(fluxes_method /= 0) then
