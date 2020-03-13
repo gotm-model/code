@@ -64,6 +64,7 @@
    call register_stim_variables(nlev)
 #endif
    call register_observation_variables(nlev)
+   call register_stokes_drift_variables(nlev)
 #if 0
    call register_stream_variables(nlev)
 #endif
@@ -249,6 +250,40 @@
 
    return
    end subroutine register_observation_variables
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Stokes drift variable registration
+!
+! !INTERFACE:
+   subroutine register_stokes_drift_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+  use stokes_drift
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_stokes_drift_variables()'
+   call fm%register('us', 'm/s', 'Stokes drift x-component', dimensions=(/id_dim_z/), data1d=usprof%data(1:nlev),category='stokes_drift')
+   call fm%register('vs', 'm/s', 'Stokes drift y-component', dimensions=(/id_dim_z/), data1d=vsprof%data(1:nlev),category='stokes_drift')
+   call fm%register('dusdz', '1/s', 'Stokes drift shear x-component', dimensions=(/id_dim_z/), data1d=dusdz%data(1:nlev),category='stokes_drift')
+   call fm%register('dvsdz', '1/s', 'Stokes drift shear y-component', dimensions=(/id_dim_z/), data1d=dvsdz%data(1:nlev),category='stokes_drift')
+   call fm%register('us0', 'm/s', 'surface Stokes drift x-component', data0d=us0%value, category='stokes_drift')
+   call fm%register('vs0', 'm/s', 'surface Stokes drift y-component', data0d=vs0%value, category='stokes_drift')
+   call fm%register('ds', 'm', 'Stokes drift penetration depth', data0d=ds%value, category='stokes_drift')
+
+   return
+   end subroutine register_stokes_drift_variables
 !EOC
 
 #if 0
