@@ -450,7 +450,6 @@
 !
 ! !LOCAL VARIABLES:
    class (type_gotm_settings), pointer :: branch, twig, leaf
-   integer, parameter :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
