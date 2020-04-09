@@ -1281,8 +1281,6 @@
    call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after advection/diffusion')
 
    do split=1,split_factor
-      ! Update local light field (self-shading may have changed through changes in biological state variables)
-      if (compute_light) call light(nlev)
 
 #if _FABM_API_VERSION_ > 0
       call model%prepare_inputs()
@@ -1290,6 +1288,9 @@
       call fabm_get_light_extinction(model,1,nlev,k_par(1:nlev))
       call fabm_get_light(model,1,nlev)
 #endif
+
+      ! Update local light field (self-shading may have changed through changes in biological state variables)
+      if (compute_light) call light(nlev)
 
       ! Time-integrate one biological time step
       call ode_solver(ode_method,size(cc,2),nlev,dt_eff,cc,right_hand_side_rhs,right_hand_side_ppdd)
