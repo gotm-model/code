@@ -337,7 +337,7 @@
    call fm%register('drag', '', 'drag coefficient in water column', standard_name='??', dimensions=(/id_dim_z/), data1d=drag(1:nlev),category='turbulence/shear')
    call fm%register('u_taus', 'm/s', 'surface friction velocity', data0d=u_taus,category='surface')
    call fm%register('u_taub', 'm/s', 'bottom friction velocity', data0d=u_taub,category='bottom')
-   call fm%register('u_taubo', 'm/s', 'bottom friction velocity', data0d=u_taubo,category='bottom', part_of_state=.true.)
+   call fm%register('u_taubo', 'm/s', 'bottom friction velocity - old time step', data0d=u_taubo,category='bottom', part_of_state=.true., output_level=output_level_debug)
    call fm%register('taub', 'Pa', 'bottom stress', data0d=taub,category='bottom')
    call fm%register('NN', '1/s2', 'buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NN(1:nlev),category='turbulence/buoyancy')
    call fm%register('NNT', '1/s2', 'contribution of T-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNT(1:nlev),category='turbulence/buoyancy')
