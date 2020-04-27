@@ -398,8 +398,10 @@
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call fabm_set_domain(model,nlev,dt)
+#if _FABM_API_VERSION_ == 0
       call model%set_bottom_index(1)
       call model%set_surface_index(nlev)
+#endif
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
