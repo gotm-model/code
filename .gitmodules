@@ -11,4 +11,5 @@
 	url = ../../BoldingBruggeman/stim
 [submodule "extern/CVMix-src"]
 	path = extern/CVMix-src
-	url = https://github.com/CVMix/CVMix-src.git
+    url = https://github.com/qingli411/CVMix-src.git
+#    url = https://github.com/CVMix/CVMix-src.git
