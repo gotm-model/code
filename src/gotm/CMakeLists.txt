@@ -6,6 +6,10 @@ add_library(gotm
    print_version.F90
 )
 target_link_libraries(gotm PUBLIC util airsea_driver input_manager config meanflow stokes_drift turbulence output_manager input_manager)
+if(GOTM_USE_CVMIX)
+   target_compile_definitions(gotm PRIVATE -D_CVMIX_)
+   target_link_libraries(gotm PRIVATE cvmix_static)
+endif()
 if(GOTM_USE_FABM)
    target_link_libraries(gotm PUBLIC gotm_fabm gotm_fabm_io)
 endif()
