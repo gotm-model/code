@@ -37,25 +37,41 @@
 !
 ! !PUBLIC DATA MEMBERS:
 !
+! z-position of surface boundary layer depth
+  REALTYPE, public                       ::    zsbl
+
+! z-position of bottom boundary layer depth
+  REALTYPE, public                       ::    zbbl
+
 ! !DEFINED PARAMETERS:
 !
 !  method of Langmuir turbulence parameterization
-   integer, parameter                    ::  CVMIX_LT_NOLANGMUIR = 0
-   integer, parameter                    ::  CVMIX_LT_LWF16 = 1
-   integer, parameter                    ::  CVMIX_LT_LF17 = 2
-   integer, parameter                    ::  CVMIX_LT_RWHGK16 = 3
-!
+   integer, parameter                    ::    CVMIX_LT_NOLANGMUIR = 0
+   integer, parameter                    ::    CVMIX_LT_LWF16 = 1
+   integer, parameter                    ::    CVMIX_LT_LF17 = 2
+   integer, parameter                    ::    CVMIX_LT_RWHGK16 = 3
+   REALTYPE, parameter                   ::    eps = 1.0e-14
+
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !   Adapted for CVMix: Qing Li
 !
 ! !LOCAL VARIABLES:
 !
+!  acceleration of gravity
+   REALTYPE                              ::    cvmix_g
+
+!  reference density
+   REALTYPE                              ::    cvmix_rho0
+
+!  g/rho0
+   REALTYPE                              ::    cvmix_gorho0
+
 !  compute surface and bottom boundary layer mixing and internal mixing
    logical                               ::    use_surface_layer,      &
                                                use_bottom_layer,       &
                                                use_interior
-!
+
 !  flags for different components of CVMix
    logical                               ::    use_kpp,                &
                                                use_background,         &
@@ -65,37 +81,37 @@
                                                use_double_diffusion
 !
 !  G'(1) = 0 (shape function) if true, otherwise compute G'(1) as in LMD94
-   logical                               ::    use_noDGat1
-!
+   logical                               ::    kpp_use_noDGat1
+
 !  limit the OBL by the Ekman depth / Monin-Obukhov length if true
-   logical                               ::    check_Ekman_length,     &
-                                               check_MonOb_length
+   logical                               ::    kpp_check_Ekman_length, &
+                                               kpp_check_MonOb_length
 !  enhance diffusivity at OBL
-   logical                               ::    use_enhanced_diff
-!
+   logical                               ::    kpp_use_enhanced_diff
+
 !  method to parameterize the effects of Langmuir turbulence
 !  options are
 !  (1)  0  => no Langmuir turbulence parameterization
 !  (2)  1  => Langmuir mixing following Li et al., 2016
 !  (3)  2  => Langmuir enhanced entrainment following Li & Fox-Kemper, 2017
 !  (4)  3  => Langmuir turbulence in hurricanes following Reichl et al., 2016
-   integer                               ::    langmuir_method
-!
+   integer                               ::    kpp_langmuir_method
+
 !  interpolation type used to interpolate bulk Richardson number
 !  options are
 !  (1)   linear
 !  (2)   quadratic
 !  (3)   cubic
-   character(len=32)                     ::    bulk_Ri_interp_type
-!
+   character(len=32)                     ::    kpp_bulk_Ri_interp_type
+
 !  interpolation type used to interpolate diff and visc at OBL_depth
 !  options are
 !  (1)   linear
 !  (2)   quadratic
 !  (3)   cubic
 !  (4)   LMD94
-   character(len=32)                     ::    OBL_interp_type
-!
+   character(len=32)                     ::    kpp_OBL_interp_type
+
 !  matching technique between the boundary layer and the ocean interior
 !  options are
 !  (1) SimpleShapes      => Shape functions for both the gradient and nonlocal
@@ -107,24 +123,27 @@
 !                           term match interior values at interface
 !  (4) ParabolicNonLocal => Shape function for the nonlocal term is
 !                           (1-sigma)^2, gradient term is sigma*(1-sigma)^2
-   character(len=32)                     ::    match_technique
-!
+   character(len=32)                     ::    kpp_match_technique
+
 !  surface layer extent
-   REALTYPE                              ::    surface_layer_extent
-!
+   REALTYPE                              ::    kpp_surface_layer_extent
+
 !  critical Richardson number
-   REALTYPE                              ::    Ri_c
-!
+   REALTYPE                              ::    kpp_Ri_c
+
 !  background diffusivity and viscosity
    REALTYPE                              ::    background_diffusivity, &
                                                background_viscosity
-!
+
 !  shear mixing scheme
 !  options are
 !  (1) PP   => Pacanowski-Philander, 1981
 !  (2) KPP  => KPP, Large et al, 1994
    character(len=32)                     ::    shear_mix_scheme
-!
+
+!  number of loops to smooth the gradient Richardson number
+   integer                               ::    shear_num_smooth_Ri
+
 !  parameters in PP:
 !   - numerator in viscosity term
 !   - coefficient of Richardson number in denominator of visc / diff terms
@@ -148,28 +167,31 @@
 !  threshold in s^-2
    logical                               ::    convection_basedOnBVF
    REALTYPE                              ::    convection_triggerBVF
-!
+
 !  turbulent diffusivities
 !  of momentum, temperature, salinity
    REALTYPE, dimension(:), allocatable   ::    cvmix_num
    REALTYPE, dimension(:), allocatable   ::    cvmix_nuh
    REALTYPE, dimension(:), allocatable   ::    cvmix_nus
-!
+
 !  non-local fluxes of momentum
    REALTYPE, dimension(:), allocatable   ::    cvmix_gamu,             &
                                                cvmix_gamv
-!
+
 !  non-local fluxes of buoyancy, temperature, salinity
    REALTYPE, dimension(:), allocatable   ::    cvmix_gamb,             &
                                                cvmix_gamh,             &
                                                cvmix_gams
-!
+
+!  gradient Richardson number
+   REALTYPE, dimension(:), allocatable   ::    cvmix_Rig
+
 !  positions of grid faces and centers
    REALTYPE, dimension(:), allocatable   ::    z_w, z_r
 
 !  distance between centers
    REALTYPE, dimension(:), allocatable   ::    h_r
-!
+
 !  CVMix datatypes
    type(cvmix_data_type)                 ::    CVmix_vars
 
@@ -185,7 +207,7 @@
 ! !IROUTINE: Initialise the CVMix module
 !
 ! !INTERFACE:
-   subroutine init_cvmix_nml(namlst, fn, nlev, h0)
+   subroutine init_cvmix_nml(namlst, fn, nlev, h0, g, rho0)
 !
 ! !DESCRIPTION:
 !
@@ -196,13 +218,17 @@
 !
 !  namelist reference
    integer, intent(in)                 :: namlst
-!
+
 !  filename containing namelist
    character(len=*), intent(in)        :: fn
-!  number of levels and water depth, optional
-!  if present, call post_init_cvmix() after reading the namelist
+
+!  optional arguments, if present, call post_init_cvmix() after reading the namelist
+!   - number of levels
+!   - water depth (m)
+!   - acceleration of gravity (m/s^2)
+!   - reference density (kg/m^3)
    integer, optional, intent(in)       :: nlev
-   REALTYPE, optional, intent(in)      :: h0
+   REALTYPE, optional, intent(in)      :: h0, g, rho0
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -215,20 +241,21 @@
                         use_bottom_layer,            &
                         use_interior,                &
                         use_kpp,                     &
-                        langmuir_method,             &
-                        Ri_c,                        &
-                        surface_layer_extent,        &
-                        check_Ekman_length,          &
-                        check_MonOb_length,          &
-                        use_enhanced_diff,           &
-                        use_noDGat1,                 &
-                        match_technique,             &
-                        bulk_Ri_interp_type,         &
-                        OBL_interp_type,             &
+                        kpp_langmuir_method,         &
+                        kpp_Ri_c,                    &
+                        kpp_surface_layer_extent,    &
+                        kpp_check_Ekman_length,      &
+                        kpp_check_MonOb_length,      &
+                        kpp_use_enhanced_diff,       &
+                        kpp_use_noDGat1,             &
+                        kpp_match_technique,         &
+                        kpp_bulk_Ri_interp_type,     &
+                        kpp_OBL_interp_type,         &
                         use_background,              &
                         background_diffusivity,      &
                         background_viscosity,        &
                         use_shear,                   &
+                        shear_num_smooth_Ri,         &
                         shear_mix_scheme,            &
                         shear_PP_nu_zero,            &
                         shear_PP_alpha,              &
@@ -255,22 +282,23 @@
    use_interior = .false.
    ! kpp
    use_kpp = .true.
-   langmuir_method = 0
-   surface_layer_extent = 0.1
-   Ri_c = 0.3
-   check_Ekman_length = .false.
-   check_MonOb_length = .false.
-   use_enhanced_diff = .true.
-   use_noDGat1 = .true.
-   match_technique = 'SimpleShapes'
-   bulk_Ri_interp_type = 'quadratic'
-   OBL_interp_type = 'LMD94'
+   kpp_langmuir_method = 0
+   kpp_surface_layer_extent = 0.1
+   kpp_Ri_c = 0.3
+   kpp_check_Ekman_length = .false.
+   kpp_check_MonOb_length = .false.
+   kpp_use_enhanced_diff = .true.
+   kpp_use_noDGat1 = .true.
+   kpp_match_technique = 'SimpleShapes'
+   kpp_bulk_Ri_interp_type = 'quadratic'
+   kpp_OBL_interp_type = 'LMD94'
    ! background
    use_background = .false.
    background_diffusivity = 1.0e-5
    background_viscosity = 1.0e-4
    ! shear
    use_shear = .false.
+   shear_num_smooth_Ri = 1
    shear_mix_scheme = 'KPP'
    shear_PP_nu_zero = 0.005
    shear_PP_alpha = 5.0
@@ -297,7 +325,10 @@
    LEVEL2 'done.'
 
    ! provide an interface to use init_cvmix() for all initialization steps
-   if (present(nlev) .and. present(h0)) call post_init_cvmix(nlev, h0)
+   if (present(nlev) .and. present(h0)  &
+      .and. present(g) .and. present(rho0)) then
+      call post_init_cvmix(nlev, h0, g, rho0)
+   endif
 
    return
 
@@ -342,6 +373,7 @@
    LEVEL1 'init_cvmix_yaml'
 
    LEVEL2 'done.'
+
    return
 
  end subroutine init_cvmix_yaml
@@ -353,7 +385,7 @@
 ! !IROUTINE: Initialisation of the CVMix variables
 !
 ! !INTERFACE:
-   subroutine post_init_cvmix(nlev, h0)
+   subroutine post_init_cvmix(nlev, h0, g, rho0)
 !
 ! !DESCRIPTION:
 !  Allocates memory and initialises everything related
@@ -364,9 +396,15 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-!
+
 !  bathymetry (m)
    REALTYPE, intent(in)                :: h0
+
+!  acceleration of gravity (m/s^2)
+   REALTYPE, intent(in)                :: g
+
+!  reference density (kg/m^3)
+   REALTYPE, intent(in)                :: rho0
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -375,14 +413,14 @@
 ! !LOCAL VARIABLES:
    integer                             :: k
    integer                             :: rc
-!
+
 !  Langmuir mixing method: scheme to enhance the velocity scale used
 !  in turbulent mixing coefficient calculation
 !  'NONE'    - No enhancement
 !  'LWF16'   - Enhancement based on Van Roekel et al. 2012 and Li et al. 2016
 !  'RWHGK16' - Enhancement based on Reichl et al. 2016
    character(len=32)                   :: langmuir_mixing_method
-!
+
 !  Langmuiri entrainment method: scheme to enhance the entrainment used
 !  in the mixing layer depth calculation
 !  'NONE'    - No enhancement
@@ -426,6 +464,10 @@
    allocate(cvmix_gams(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_gams)'
    cvmix_gams = _ZERO_
+
+   allocate(cvmix_Rig(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_Rig)'
+   cvmix_Rig = _ZERO_
 
    allocate(z_w(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_cvmix: Error allocating (z_w)'
@@ -492,49 +534,49 @@
 
    if (use_surface_layer) then
       LEVEL3 'Surface layer mixing algorithm             - active -'
-      if (check_Ekman_length) then
+      if (kpp_check_Ekman_length) then
          LEVEL4 'Clipping at Ekman scale                - active -'
       else
          LEVEL4 'Clipping at Ekman scale            - not active -'
       endif
-      if (check_MonOb_length) then
+      if (kpp_check_MonOb_length) then
          LEVEL4 'Clipping at Monin-Obukhov scale        - active -'
       else
          LEVEL4 'Clipping at Monin-Obukhov scale    - not active -'
       endif
-      if (use_noDGat1) then
+      if (kpp_use_noDGat1) then
          LEVEL4 "Set shape function G'(1) = 0           - active -"
       else
          LEVEL4 "Set shape function G'(1) = 0       - not active -"
       endif
-      LEVEL4 'Matching technique: ', trim(match_technique)
-      LEVEL4 'Interpolation type for Ri: ', trim(bulk_Ri_interp_type)
-      LEVEL4 'Interpolation type for diff and visc: ', trim(OBL_interp_type)
-      LEVEL4 'Ri_c: ', Ri_c
+      LEVEL4 'Matching technique: ', trim(kpp_match_technique)
+      LEVEL4 'Interpolation type for Ri: ', trim(kpp_bulk_Ri_interp_type)
+      LEVEL4 'Interpolation type for diff and visc: ', trim(kpp_OBL_interp_type)
+      LEVEL4 'Ri_c: ', kpp_Ri_c
 
    !  message of Langmuir turbulence parameterization
-      select case (langmuir_method)
-      case (KPP_LT_NOLANGMUIR)
+      select case (kpp_langmuir_method)
+      case (CVMIX_LT_NOLANGMUIR)
          Langmuir_mixing_method = 'NONE'
          Langmuir_entrainment_method = 'NONE'
          LEVEL4 'Langmuir turbulence                - not active -'
-      case (KPP_LT_LWF16)
+      case (CVMIX_LT_LWF16)
          Langmuir_mixing_method = 'LWF16'
          Langmuir_entrainment_method = 'LWF16'
          LEVEL4 'Langmuir turbulence                    - active -'
          LEVEL4 ' - Langmuir mixing (Li et al., 2016)'
-      case (KPP_LT_LF17)
+      case (CVMIX_LT_LF17)
          Langmuir_mixing_method = 'LWF16'
          Langmuir_entrainment_method = 'LF17'
          LEVEL4 'Langmuir turbulence                    - active -'
          LEVEL4 ' - Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)'
-      case (KPP_LT_RWHGK16)
+      case (CVMIX_LT_RWHGK16)
          Langmuir_mixing_method = 'RWHGK16'
          Langmuir_entrainment_method = 'RWHGK16'
          LEVEL3 'Langmuir turbulence                    - active -'
          LEVEL4 ' - Langmuir mixing in hurricanes (Reichl et al. 2016)'
       case default
-         STDERR 'Unsupported langmuir_method: ', langmuir_method
+         STDERR 'Unsupported langmuir_method: ', kpp_langmuir_method
          stop 'init_cvmix'
       end select
    else
@@ -547,7 +589,6 @@
    else
       LEVEL3 'Bottom layer mixing algorithm          - not active -'
    endif
-
 
    LEVEL2 '--------------------------------------------------------'
 
@@ -590,28 +631,34 @@
 
    ! initialize KPP
    if (use_kpp) then
-      call cvmix_init_kpp(Ri_crit=Ri_c,                                       &
-                          interp_type=trim(bulk_Ri_interp_type),              &
-                          interp_type2=trim(OBL_interp_type),                 &
-                          MatchTechnique=trim(match_technique),               &
+      call cvmix_init_kpp(Ri_crit=kpp_Ri_c,                                   &
+                          interp_type=trim(kpp_bulk_Ri_interp_type),          &
+                          interp_type2=trim(kpp_OBL_interp_type),             &
+                          MatchTechnique=trim(kpp_match_technique),           &
                           minVtsqr=_ZERO_,                                    &
-                          lEkman=check_Ekman_length,                          &
-                          lMonOb=check_MonOb_length,                          &
-                          lnoDGat1=use_noDGat1,                               &
-                          lenhenced_diff=use_enhanced_diff,                   &
-                          surf_layer_ext=surface_layer_extent,                &
+                          lEkman=kpp_check_Ekman_length,                      &
+                          lMonOb=kpp_check_MonOb_length,                      &
+                          lnoDGat1=kpp_use_noDGat1,                           &
+                          lenhanced_diff=kpp_use_enhanced_diff,               &
+                          surf_layer_ext=kpp_surface_layer_extent,            &
                           langmuir_mixing_str=trim(langmuir_mixing_method),   &
                           langmuir_entrainment_str=                           &
                                     trim(langmuir_entrainment_method))
    endif
 
-   ! initialize CVMix variabels
+   ! initialize constants
+   cvmix_g = g
+   cvmix_rho0 = rho0
+   cvmix_gorho0 = g/rho0
+
+   ! initialize CVMix variables
    call cvmix_put(CVmix_vars, 'nlev', nlev)
    call cvmix_put(CVmix_vars, 'max_nlev', nlev)
-   call cvmix_put(CVmix_vars, 'ocn_depth', h0)
+   call cvmix_put(CVmix_vars, 'OceanDepth', h0)
    call cvmix_put(CVmix_vars, 'Mdiff', cvmix_num)
    call cvmix_put(CVmix_vars, 'Tdiff', cvmix_nuh)
    call cvmix_put(CVmix_vars, 'Sdiff', cvmix_nus)
+   call cvmix_put(CVmix_vars, 'Gravity', cvmix_g)
 
    LEVEL1 'done.'
 
@@ -627,7 +674,7 @@
 !
 ! !INTERFACE:
    subroutine do_cvmix(nlev,h0,h,rho,u,v,NN,NNT,NNS,SS,u_taus,u_taub,  &
-                     tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+                     tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,EFactor,LaSL)
 !
 ! !DESCRIPTION:
 !  TODO
@@ -679,6 +726,13 @@
 !  Coriolis parameter (rad/s)
    REALTYPE                                      :: f
 
+!  Langmuir enhancement factor
+   REALTYPE                                      :: EFactor
+
+!  Surface layer averaged Langmuir number to be passed in CVMix
+!  for Langmuir enhanced entrainment
+   REALTYPE                                      :: LaSL
+
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !   Adapted for CVMix: Qing Li
@@ -686,7 +740,6 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   REALTYPE                            :: cff
    integer                             :: k
 
 !
@@ -722,9 +775,9 @@
    if (use_interior) then
       call interior(nlev,NN,NNT,NNS,SS)
    else
-      num = _ZERO_
-      nuh = _ZERO_
-      nus = _ZERO_
+      cvmix_num = _ZERO_
+      cvmix_nuh = _ZERO_
+      cvmix_nus = _ZERO_
    endif
 
 !-----------------------------------------------------------------------
@@ -732,8 +785,9 @@
 !-----------------------------------------------------------------------
 
    if (use_surface_layer) then
-      call surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,   &
-                         tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+      call surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,            &
+                         tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,      &
+                         EFactor, LaSL)
    endif
 
 !-----------------------------------------------------------------------
@@ -745,35 +799,21 @@
                         _ZERO_,_ZERO_,_ZERO_,_ZERO_,tRad,bRad,f)
    endif
 
+   return
+
  end subroutine do_cvmix
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Compute interior fluxes \label{sec:kppInterior}
+! !IROUTINE: Compute interior fluxes
 !
 ! !INTERFACE:
    subroutine interior(nlev,NN,NNT,NNS,SS)
 !
 ! !DESCRIPTION:
-! Here, the interior diffusivities (defined as the diffusivities outside the
-! surface and bottom boundary layers) are computed. The algorithms are identical
-! to those suggested by \cite{Largeetal94}. For numerical efficiency, the
-! algorithms for different physical processes are active only if certain
-! pre-processor macros are defined in {\tt cppdefs.h}.
-! \begin{itemize}
-!  \item The shear instability algorithm is active if the macro
-!        {\tt KPP\_SHEAR} is defined.
-!  \item The internal wave algorithm is active if the macro
-!        {\tt KPP\_INTERNAL\_WAVE} is defined.
-!  \item The convective instability algorithm is active if the macro
-!        {\tt KPP\_CONVEC} is defined.
-!  \item The double-diffusion algorithm is active if the macro
-!        {\tt KPP\_DDMIX} is defined. Note that in this case, the
-!        macro {\tt SALINITY} has to be defined as well.
-! \end{itemize}
-
+!  TODO
 !
 ! !USES:
    IMPLICIT NONE
@@ -793,7 +833,7 @@
 !  square of shear frequency (1/s^2)
    REALTYPE                                      :: SS(0:nlev)
 
-
+!
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !   Adapted for CVMix: Qing Li
@@ -801,148 +841,97 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   REALTYPE , parameter       :: eps=1.0E-14
 
-   integer                    :: i
-   REALTYPE                   :: cff,shear2
-   REALTYPE                   :: nu_sx,nu_sxc
-   REALTYPE                   :: iwm,iws
-   REALTYPE                   :: drhoT,drhoS,Rrho,nu_dds,nu_ddt
+   integer                      :: i, k
+   REALTYPE                     :: cff,shear2
+   REALTYPE                     :: nu_sx,nu_sxc
+   REALTYPE                     :: iwm,iws
+   REALTYPE                     :: drhoT,drhoS,Rrho,nu_dds,nu_ddt
+   REALTYPE, dimension(0:nlev)  :: work
 
 !
 !-----------------------------------------------------------------------
 !BOC
 !
+!  initialize turbulent viscosity and diffusivity
+   CVmix_vars%Mdiff_iface = _ZERO_
+   CVmix_vars%Tdiff_iface = _ZERO_
+
+!-----------------------------------------------------------------------
+! Background mixing
+!-----------------------------------------------------------------------
+
+   if (use_background) then
+
+      ! CVMix subroutine for background mixing
+      call cvmix_coeffs_bkgnd(CVmix_vars)
+
+      ! update turbulent viscosity and diffusivity
+      cvmix_num(0:nlev) = CVmix_vars%Mdiff_iface(nlev+1:1:-1)
+      cvmix_nuh(0:nlev) = CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+
+      ! same background diffusivity for salinity
+      cvmix_nus = cvmix_nuh
+   endif
+
 !-----------------------------------------------------------------------
 ! Compute gradient Richardson number
 !-----------------------------------------------------------------------
-!
-   do i=1,nlev-1
-      Rig(i) = NN(i)/(SS(i) + eps)
+
+!  Save Ri in a temporary array
+   do k=1,nlev-1
+      work(k) = NN(k)/(SS(k) + eps)
    enddo
 
-   Rig(0)    = _ZERO_
-   Rig(nlev) = _ZERO_
-!
+   work(0)    = _ZERO_
+   work(nlev) = _ZERO_
+
+!  Smooth gradient Richardson number
+   do i=1,shear_num_smooth_Ri
+      do k=1,nlev-1
+         cvmix_Rig(k) = 0.25*work(k-1) + 0.50*work(k) + 0.25*work(k+1)
+      enddo
+      work(1:nlev-1) = cvmix_Rig(1:nlev-1)
+   enddo
+   cvmix_Rig(0) = _ZERO_
+   cvmix_Rig(nlev) = _ZERO_
+
 !-----------------------------------------------------------------------
-!  Compute "interior" viscosities and diffusivities everywhere as
-!  the superposition of three processes: local Richardson number
-!  instability due to resolved vertical shear, internal wave
-!  breaking, and double diffusion.
+! Shear mixing
 !-----------------------------------------------------------------------
-!
-   do i=1,nlev-1
-!
-!     Smooth gradient Richardson number
-      Rig(i)=0.25*Rig(i-1) + 0.50*Rig(i) + 0.25*Rig(i+1)
-!
-!     Compute interior diffusivity due to shear instability mixing.
-# ifdef KPP_SHEAR
-      cff=min(_ONE_,max(_ZERO_,Rig(i))/Ri0)
-      nu_sx  = _ONE_-cff*cff
-      nu_sx  = nu_sx*nu_sx*nu_sx
-!
-!     The shear mixing should be also a function of the actual magnitude
-!     of the shear, see Polzin (1996, JPO, 1409-1425).
-      shear2 = SS(i)
-      cff    = shear2*shear2/(shear2*shear2+16.0E-10)
-      nu_sx  = cff*nu_sx
-# else
-      nu_sx=_ZERO_
-# endif
 
-#ifdef KPP_INTERNAL_WAVE
-!
-!      Compute interior diffusivity due to wave breaking
-!
-!      Version A, see Gargett and Holloway (1984)
-!      cff  =  _ONE_/sqrt(max(NN(i),1.0d-7))
-!      iwm  =  1.0E-6*cff
-!      iws  =  1.0E-7*cff
+   if (use_shear) then
+      ! Fill the gradient Richardson number
+      ! Note that arrays at the cell interface in CVMix have indices (1:nlev+1)
+      ! from the surface to the bottom, whereas those in GOTM have indices (nlev:0)
+      CVmix_vars%ShearRichardson_iface(1:nlev+1) = cvmix_Rig(nlev:0:-1)
 
-!     Version B, see Large et al. (1994)
-      iwm  =  nuwm
-      iws  =  nuws
-#else
-      iwm  =  _ZERO_
-      iws  =  _ZERO_
-#endif
+      ! CVMix subroutine for shear mixing
+      call cvmix_coeffs_shear(CVmix_vars)
 
+      ! update turbulent viscosity and diffusivity
+      cvmix_num(0:nlev) = cvmix_num(0:nlev) + CVmix_vars%Mdiff_iface(nlev+1:1:-1)
+      cvmix_nuh(0:nlev) = cvmix_nuh(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+      cvmix_nus(0:nlev) = cvmix_nus(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+   endif
 
-# ifdef KPP_CONVEC
-!     Compute interior convective diffusivity due to static instability
-!     mixing
-      cff    =  max(NN(i),bvfcon)
-      cff    =  min(_ONE_,(bvfcon-cff)/bvfcon)
-      nu_sxc =  _ONE_-cff*cff
-      nu_sxc =  nu_sxc*nu_sxc*nu_sxc
-# else
-      nu_sxc =  _ZERO_
-# endif
-!
-!     Sum contributions due to internal wave breaking, shear instability
-!     and convective diffusivity due to shear instability.
-      num(i)=iwm+nu0m*nu_sx+nu0c*nu_sxc
-      nuh(i)=iws+nu0s*nu_sx+nu0c*nu_sxc
-      nus(i)=nuh(i)
-!
-# ifdef KPP_DDMIX
-!
 !-----------------------------------------------------------------------
-!  Compute double-diffusive mixing.  It can occur when vertical
-!  gradient of density is stable but the vertical gradient of
-!  salinity (salt figering) or temperature (diffusive convection)
-!  is unstable.
+! convective mixing
 !-----------------------------------------------------------------------
-!
-!     Compute double-diffusive density ratio, Rrho.
-      drhoT =  NNT(i)
-      drhoS = -NNS(i)
-      Rrho  = drhoT/drhoS
-!
-!
-!     Salt fingering case.
-      if ((Rrho.gt._ONE_).and.(drhoS.gt._ZERO_)) then
-!
-!        Compute interior diffusivity for double diffusive mixing of
-!        salinity.  Upper bound "Rrho" by "Rrho0"; (Rrho0=1.9, nuf=0.001).
-         Rrho=min(Rrho,Rrho0)
-         nu_dds=_ONE_-((Rrho-_ONE_)/(Rrho0-_ONE_))**2.0
-         nu_dds=nuf*nu_dds*nu_dds*nu_dds
-!
-!        Compute interior diffusivity for double diffusive mixing
-!        of temperature (fdd=0.7).
-         nu_ddt=fdd*nu_dds
-!
-!
-!     Diffusive convection case.
-      elseif ((Rrho.gt._ZERO_).and.(Rrho.lt._ONE_).and.(drhoS.lt._ZERO_)) then
-!
-!        Compute interior diffusivity for double diffusive mixing of
-!        temperature (Marmorino and Caldwell, 1976); (nu=1.5e-6,
-!        tdd1=0.909, tdd2=4.6, tdd3=0.54).
-         nu_ddt=nu*tdd1*exp(tdd2*exp(-tdd3*((_ONE_/Rrho)-_ONE_)))
 
-!        Compute interior diffusivity for double diffusive mixing
-!        of salinity (sdd1=0.15, sdd2=1.85, sdd3=0.85).
-         if (Rrho.lt.0.5) then
-            nu_dds=nu_ddt*sdd1*Rrho
-         else
-            nu_dds=nu_ddt*(sdd2*Rrho-sdd3)
-         endif
-      else
-         nu_ddt=_ZERO_
-         nu_dds=_ZERO_
-      endif
-!
-!     Add double diffusion contribution to temperature and salinity
-!     mixing coefficients.
-      nuh(i)=nuh(i)  + nu_ddt
-      nus(i)=nuh(i)  + nu_dds
+   ! call cvmix_coeffs_conv(CVmix_vars)
 
-# endif
 
-   enddo ! loop over interior points
+!-----------------------------------------------------------------------
+! Double diffusion
+!-----------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------
+! Tidal mixing
+!-----------------------------------------------------------------------
+
+   return
 
  end subroutine interior
 !EOC
@@ -951,11 +940,11 @@
 !BOP
 !
 ! !IROUTINE: Compute turbulence in the surface layer with CVMix
-!            \label{sec:kppSurface}
 !
 ! !INTERFACE:
-   subroutine surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,    &
-                            tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+   subroutine surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,           &
+                            tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,     &
+                            EFactor,LaSL)
 !
 ! !DESCRIPTION:
 ! In this routine all computations related to turbulence in the surface layer
@@ -998,6 +987,14 @@
 !  Coriolis parameter (rad/s)
    REALTYPE                                      :: f
 
+!  Langmuir enhancement factor
+   REALTYPE                                      :: EFactor
+
+!  Surface layer averaged Langmuir number to be passed in CVMix
+!  for Langmuir enhanced entrainment
+   REALTYPE                                      :: LaSL
+
+
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -1006,8 +1003,6 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   REALTYPE, parameter          :: eps      = 1.0E-10
-
    integer                      :: k,ksbl
    integer                      :: kk,kref,kp1
 
@@ -1023,14 +1018,6 @@
 
    REALTYPE, dimension (0:nlev) :: Bflux
    REALTYPE, dimension (0:nlev) :: RiBulk
-
-!  Langmuir enhancement factor
-   REALTYPE                     :: EFactor
-!  Surface layer averaged Langmuir number to be passed in CVMix
-!  for Langmuir enhanced entrainment
-!  Projected if Langmuir_entrainment_method = 'RWHGK16'
-!  Not projected if Langmuir_entrainment_method = 'L17'
-   REALTYPE                     :: LaSL
 
 !  Thickness of surface layer
    REALTYPE                     :: surfthick
@@ -1068,17 +1055,6 @@
    call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(nlev:1:-1))
 
 !-----------------------------------------------------------------------
-!  Get Langmuir enhancement factor and Langmuir number
-!-----------------------------------------------------------------------
-
-   ! update Langmuir number
-   call langmuir_number(nlev, u_taus, z_w(nlev)-zsbl)
-   ! get Langmuir number for Langmuir-enhanced entrainment
-   call kpp_langmuir_number(LaSL)
-   ! get Langmuir enhancement factor
-   call kpp_enhancement_factor(EFactor)
-
-!-----------------------------------------------------------------------
 !  Compute potential density and velocity components surface reference
 !  values.
 !-----------------------------------------------------------------------
@@ -1105,18 +1081,13 @@
       ! update potential density and velocity components surface
       ! reference values with the surface layer averaged values
       ! determine which layer contains surface layer
-      surfthick = epsilon*depth
+      surfthick = kpp_surface_layer_extent*depth
       do kk = nlev,k,-1
          if (z_w(nlev)-z_w(kk-1) .ge. surfthick) then
             kref = kk
             exit
          end if
       end do
-      ! update Rref, Uref and Vref
-      if (langmuir_method == KPP_LT_RWHGK16) then
-         u=u+ustokes
-         v=v+vstokes
-      endif
       if (kref < nlev) then
          Rref = rho(kref)*(surfthick+z_w(kref))
          Uref =   u(kref)*(surfthick+z_w(kref))
@@ -1134,15 +1105,12 @@
       Rk = rho(kp1)
       Uk =   u(kp1)
       Vk =   v(kp1)
-      if (langmuir_method == KPP_LT_RWHGK16) then
-         u=u-ustokes
-         v=v-vstokes
-      endif
       ! compute the Bulk Richardson number
+      ! TODO: make sure this choice of NN following Van Roekel et al., 2019 is documented.<20200509, Qing Li> !
       NN_max = max(NN(kp1), NN(k))
       RiBulk(kp1:kp1) = cvmix_kpp_compute_bulk_Richardson(           &
                 zt_cntr = (/-depth/),                                &
-                delta_buoy_cntr = (/-gorho0*(Rref-Rk)/),             &
+                delta_buoy_cntr = (/-cvmix_gorho0*(Rref-Rk)/),       &
                 delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
                 ws_cntr = (/ws/),                                    &
                 Nsqr_iface = (/NN_max, NN_max/),                     &
@@ -1205,34 +1173,25 @@
    CVmix_vars%SurfaceBuoyancyForcing = Bfsfc
 
 !-----------------------------------------------------------------------
-!  Update Langmuir enhancement factor and Langmuir number
-!-----------------------------------------------------------------------
-
-   ! update Langmuir number
-   call langmuir_number(nlev, u_taus, z_w(nlev)-zsbl)
-   ! update Langmuir enhancement factor
-   call kpp_enhancement_factor(EFactor)
-
-!-----------------------------------------------------------------------
 !  Compute the mixing coefficients within the surface boundary layer
 !-----------------------------------------------------------------------
 
    ! set Langmuir enhancement factor
    CVmix_vars%LangmuirEnhancementFactor = EFactor
 
-   ! Note that arrays at the cell interface in CVMix have indices (1:nlev)
+   ! Note that arrays at the cell interface in CVMix have indices (1:nlev+1)
    ! from the surface to the bottom, whereas those in GOTM have indices (nlev:0)
-   CVmix_vars%Mdiff_iface(1:nlev+1) = num(nlev:0:-1)
-   CVmix_vars%Tdiff_iface(1:nlev+1) = nuh(nlev:0:-1)
-   CVmix_vars%Sdiff_iface(1:nlev+1) = nus(nlev:0:-1)
+   CVmix_vars%Mdiff_iface(1:nlev+1) = cvmix_num(nlev:0:-1)
+   CVmix_vars%Tdiff_iface(1:nlev+1) = cvmix_nuh(nlev:0:-1)
+   CVmix_vars%Sdiff_iface(1:nlev+1) = cvmix_nus(nlev:0:-1)
 
    call cvmix_coeffs_kpp(CVmix_vars)
 
-   num(0:nlev) = CVmix_vars%Mdiff_iface(nlev+1:1:-1)
-   nuh(0:nlev) = CVmix_vars%Tdiff_iface(nlev+1:1:-1)
-   nus(0:nlev) = CVmix_vars%Sdiff_iface(nlev+1:1:-1)
-   gamh(0:nlev) = CVmix_vars%kpp_Tnonlocal_iface(nlev+1:1:-1)
-   gams(0:nlev) = CVmix_vars%kpp_Snonlocal_iface(nlev+1:1:-1)
+   cvmix_num(0:nlev) = CVmix_vars%Mdiff_iface(nlev+1:1:-1)
+   cvmix_nuh(0:nlev) = CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+   cvmix_nus(0:nlev) = CVmix_vars%Sdiff_iface(nlev+1:1:-1)
+   cvmix_gamh(0:nlev) = CVmix_vars%kpp_Tnonlocal_iface(nlev+1:1:-1)
+   cvmix_gams(0:nlev) = CVmix_vars%kpp_Snonlocal_iface(nlev+1:1:-1)
 
    ! Note that kpp_transport_iface in CVMix is the value of K_x*gamma_x/flux_x,
    ! in other words, the user must multiply this value by either the freshwater
@@ -1241,15 +1200,17 @@
    ! include the effect of penetrating solar radiation
    tRadSrf   =   tRad(nlev)
    do k = 0,nlev
-      gamh(k)   = -gamh(k)*(tFlux+tRadSrf-tRad(k))
-      gams(k)   = -gams(k)*sFlux
+      cvmix_gamh(k)   = -cvmix_gamh(k)*(tFlux+tRadSrf-tRad(k))
+      cvmix_gams(k)   = -cvmix_gams(k)*sFlux
    enddo
 
 !  no non-local fluxes at top and bottom
-   gamh(0   ) = _ZERO_
-   gams(0   ) = _ZERO_
-   gamh(nlev) = _ZERO_
-   gams(nlev) = _ZERO_
+   cvmix_gamh(0   ) = _ZERO_
+   cvmix_gams(0   ) = _ZERO_
+   cvmix_gamh(nlev) = _ZERO_
+   cvmix_gams(nlev) = _ZERO_
+
+   return
 
  end subroutine surface_layer
 !EOC
@@ -1264,24 +1225,7 @@
                             tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
 !
 ! !DESCRIPTION:
-! In this routine all computations related to turbulence in the bottom layer
-! are performed. The algorithms are described in \sect{sec:kpp}. Note that these
-! algorithms are affected by some pre-processor macros defined in {\tt cppdefs.inp},
-! and by the parameters set in {\tt kpp.nml}, see \sect{sec:kpp}.
-
-! The computation of the bulk Richardson number is slightly different from the
-! surface boundary layer, since for the bottom boundary layer this quantity
-! is defined as,
-! \begin{equation}
-!   \label{RibBottom}
-!   Ri_b = \dfrac{(B(z_{bl})-B_r) d}
-!                {\magn{\V U(z_{bl})-\V U_r}^2 + V_t^2(z_{bl})}
-! \comma
-! \end{equation}
-! where $z_{bl}$ denotes the position of the edge of the bottom boundary layer.
-!
-! Also different from the surface layer computations is the absence of non-local
-! fluxes.
+! TODO
 
 ! !USES:
    IMPLICIT NONE
@@ -1329,325 +1273,27 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   REALTYPE, parameter          :: eps      = 1.0E-10
+   integer                      :: k,ksbl
+   integer                      :: kk,kref,kp1
 
-   integer                      :: k,kbbl
-
-   REALTYPE                     :: Bo
-   REALTYPE                     :: Bfbot
-   REALTYPE                     :: tRadBot,tRadBbl
-   REALTYPE                     :: bRadBot,bRadBbl
-   REALTYPE                     :: Gm1
-   REALTYPE                     :: Gt1
-   REALTYPE                     :: Gs1
-   REALTYPE                     :: dGm1dS
-   REALTYPE                     :: dGt1dS
-   REALTYPE                     :: dGs1dS
-   REALTYPE                     :: f1
-   REALTYPE                     :: bl_dpth,bl_z
-   REALTYPE                     :: wm
-   REALTYPE                     :: ws
+   REALTYPE                     :: Bo,Bfsfc
+   REALTYPE                     :: tRadSrf
+   REALTYPE                     :: bRadSrf,bRadSbl
+   REALTYPE                     :: wm, ws
    REALTYPE                     :: depth
-
-   REALTYPE                     :: Gm, Gt, Gs, K_bl, Ribot, Ritop, Rk, Rref
-   REALTYPE                     :: Uk, Uref, Ustarb, Vk, Vref
-   REALTYPE                     :: dR,dU,dV
-   REALTYPE                     :: a1, a2, a3
-   REALTYPE                     :: cff,cff_up, cff_dn
-   REALTYPE                     :: dK_bl, hekman, hmonob, sigma, zbl
+   REALTYPE                     :: Rk, Rref
+   REALTYPE                     :: Uk, Uref, Vk, Vref
+   REALTYPE                     :: bRad_cntr
+   REALTYPE                     :: NN_max
 
    REALTYPE, dimension (0:nlev) :: Bflux
-   REALTYPE, dimension (0:nlev) :: FC
-
+   REALTYPE, dimension (0:nlev) :: RiBulk
 
 !-----------------------------------------------------------------------
 !BOC
 !
-!
-!-----------------------------------------------------------------------
-!  Get approximation of bottom layer depth using "epsilon" and
-!  boundary layer depth from previous time step.
-!-----------------------------------------------------------------------
-!
-   bl_dpth = epsilon*(zbbl-z_w(0))
-   bl_z    = epsilon*zbbl
 
-!-----------------------------------------------------------------------
-!  Compute total buoyancy flux (m2/s3) at W-points.
-!-----------------------------------------------------------------------
-!
-    tRadBot   =   tRad(0)
-    bRadBot   =   bRad(0)
-
-!  bottom buoyancy flux
-!  (negative for buoyancy gain)
-   Bo         = - (btFlux + bsFlux)
-
-!  include effect of short-wave radiation
-   do k = 0,nlev
-      Bflux(k)  = Bo + ( bRad(k) - bRadBot )
-   enddo
-
-
-!-----------------------------------------------------------------------
-!  Compute potential density and velocity components bottom reference
-!  values.
-!-----------------------------------------------------------------------
-
-
-!  simply use lowest value
-   Rref = rho(1)
-   Uref =   u(1)
-   Vref =   v(1)
-
-!-----------------------------------------------------------------------
-!  Compute critical function, FC, for bulk Richardson number
-!-----------------------------------------------------------------------
-
-   FC(0   ) = _ZERO_
-   FC(nlev) = _ZERO_
-
-   do k=1,nlev-1
-
-      depth=z_w(k)-z_w(0)
-
-      if (Bflux(k).lt._ZERO_) then
-         sigma=min(bl_dpth,depth)
-      else
-         sigma=depth
-      endif
-
-      call wscale (Bflux(k),u_taub,sigma,wm,ws)
-
-
-
-#ifdef KPP_TWOPOINT_REF
-
-!     interpolate reference value at grid face "k"
-!     from values at grid centers
-
-      cff = _ONE_/h_r(k)
-
-      dR  = cff*( rho(k+1) - rho(k) )
-      dU  = cff*( u  (k+1) - u  (k) )
-      dV  = cff*( v  (k+1) - v  (k) )
-
-      cff = _ONE_/2.0
-
-      Rk  = rho(k) + h(k)*cff*dR
-      Uk  =   u(k) + h(k)*cff*dU
-      Vk  =   v(k) + h(k)*cff*dV
-
-#else
-!     identify reference value at grid face "k"
-!     with value at center below
-      Rk  = rho(k)
-      Uk  =   u(k)
-      Vk  =   v(k)
-#endif
-
-!     compute numerator and denominator of Ri_b
-      Ritop = -gorho0*(Rk-Rref)*depth
-      Ribot = (Uk-Uref)**2+(Vk-Vref)**2 +                              &
-              Vtc*depth*ws*sqrt(abs(NN(k)) )
-
-# ifdef KPP_IP_FC
-      FC(k)=Ritop-Ric*Ribot
-# else
-      FC(k)=Ritop/(Ribot+eps)
-# endif
-
-   enddo ! inner grid faces
-
-
-
-!-----------------------------------------------------------------------
-! Linearly interpolate to find "zbbl" where Rib/Ric=1.
-!-----------------------------------------------------------------------
-
-   kbbl = nlev           ! kbbl is  index of cell containing zbbl
-   zbbl = z_w(nlev)
-
-# ifdef KPP_IP_FC
-!  look for position of vanishing F_crit
-   do k=1,nlev-1
-      if ((kbbl.eq.nlev).and.(FC(k).gt._ZERO_)) then
-         zbbl = (z_w(k)*FC(k-1)-z_w(k-1)*FC(k))/(FC(k-1)-FC(k))
-         kbbl = k
-      endif
-   enddo
-# else
-!  look for position of vanishing Ri_b
-   do k=1,nlev-1
-      if ((kbbl.eq.nlev).and.((FC(k-1).lt.Ric).and.(FC(k).ge.Ric))) then
-         zbbl = ( (Ric  -  FC(k-1) )*z_w(k  ) +                         &
-                  (FC(k) - Ric     )*z_w(k-1) )/(FC(k)-FC(k-1))
-         kbbl = k
-      endif
-   enddo
-# endif
-
-
-!-----------------------------------------------------------------------
-!  Limit boundary layer thickness by Ekman scale
-!-----------------------------------------------------------------------
-
-   if (clip_mld) then
-      if (u_taub.gt._ZERO_) then
-         hekman = cekman*u_taub/max(abs(f),eps)
-         zbbl   = min(z_w(0)+hekman,zbbl)
-      endif
-   endif
-
-   zbbl = min(zbbl,z_w(nlev))
-   zbbl = max(zbbl,z_w(0   ))
-
-!  find new boundary layer index "kbbl".
-   kbbl=nlev
-   do k=1,nlev-1
-      if ((kbbl.eq.nlev).and.(z_w(k).gt.zbbl)) then
-         kbbl = k
-      endif
-   enddo
-
-!-----------------------------------------------------------------------
-!  Compute total buoyancy flux at bottom boundary layer depth
-!-----------------------------------------------------------------------
-
-   bRadBbl = ( bRad(kbbl-1)*(z_w(kbbl)-zbbl)  +                         &
-               bRad(kbbl  )*(zbbl-z_w(kbbl-1) ) )/ h(kbbl)
-
-   Bfbot   = Bo + (bRadBbl-bRadBot)
-
-
-!-----------------------------------------------------------------------
-!  Compute tubulent velocity scales (wm,ws) at "zbbl".
-!-----------------------------------------------------------------------
-
-   zbl     = zbbl-z_w(0)
-   bl_dpth = epsilon*zbl
-
-   if (Bfbot.gt._ZERO_) then
-      cff  = _ONE_
-   else
-      cff  = epsilon
-   endif
-
-   sigma=cff*zbl
-
-   call wscale (Bfbot,u_taub,sigma,wm,ws)
-
-
-!-----------------------------------------------------------------------
-!  Compute nondimensional shape function Gx(sigma) in terms of the
-!  interior diffusivities at sigma=1 (Gm1, Gs1, Gt1) and its vertical
-!  derivative evaluated "zbbl" via interpolation.
-!-----------------------------------------------------------------------
-
-!  original code with kappa-bug
-!   f1 = 5.0*max(_ZERO_,Bfbot)*kappa/(u_taub*u_taub*u_taub*u_taub+eps)
-
-!   new code without kappa-bug
-   f1 = 5.0*max(_ZERO_,Bfbot)/(u_taub*u_taub*u_taub*u_taub+eps)
-
-   k      = kbbl
-   cff    = _ONE_/h(k)
-   cff_dn = cff*(zbbl-z_w(k-1))
-   cff_up = cff*(z_w(k)-zbbl  )
-
-!  Compute nondimensional shape function for viscosity "Gm1" and its
-!  vertical derivative "dGm1dS" evaluated at "zbbl".
-
-   K_bl   =  cff_dn*num(k)+cff_up*num(k-1)
-   dK_bl  =  cff*(num(k)-num(k-1))
-   Gm1    =  K_bl/(zbl*wm+eps)
-
-# ifdef KPP_CLIP_GS
-   dGm1dS = min(_ZERO_,dK_bl/(wm+eps)+K_bl*f1)
-# else
-   dGm1dS = dK_bl/(wm+eps) + K_bl*f1
-# endif
-
-!
-!  Compute nondimensional shape function for diffusion of temperature
-!  "Gt1" and its vertical derivative "dGt1dS" evaluated at "zbbl".
-!
-   K_bl   =  cff_dn*nuh(k)+cff_up*nuh(k-1)
-   dK_bl  =  cff*(nuh(k)-nuh(k-1))
-   Gt1    =   K_bl/(zbl*ws+eps)
-
-
-# ifdef KPP_CLIP_GS
-   dGt1dS = min(_ZERO_,dK_bl/(ws+eps)+K_bl*f1)
-# else
-   dGt1dS = dK_bl/(ws+eps) + K_bl*f1
-# endif
-
-# ifdef KPP_SALINITY
-!
-!  Compute nondimensional shape function for diffusion of salinity
-!  "Gs1" and its vertical derivative "dGs1dS" evaluated at "zbbl".
-!
-   K_bl   =  cff_dn*nus(k)+cff_up*nus(k-1)
-   dK_bl  =  cff*(nus(k)-nus(k-1))
-   Gs1    =   K_bl/(zbl*ws+eps)
-
-# ifdef KPP_CLIP_GS
-   dGs1dS = min(_ZERO_,dK_bl/(ws+eps)+K_bl*f1)
-# else
-   dGs1dS = dK_bl/(ws+eps) + K_bl*f1
-# endif
-
-# endif
-
-!
-!-----------------------------------------------------------------------
-!  Compute bottom boundary layer mixing coefficients
-!-----------------------------------------------------------------------
-!
-!  loop over the inner interfaces
-!  (the outermost are not needed)
-   do k=1,nlev-1
-
-      if (k.lt.kbbl) then
-
-!        Compute turbulent velocity scales at vertical W-points.
-         depth=z_w(k)-z_w(0)
-         if (Bflux(k).lt._ZERO_) then
-            sigma=min(bl_dpth,depth)
-         else
-            sigma=depth
-         endif
-
-         call wscale(Bflux(k),u_taub,sigma,wm, ws)
-!
-!        Set polynomial coefficients for shape function.
-         sigma = depth/(zbl+eps)
-
-         a1    = sigma-2.0
-         a2    = 3.0-2.0*sigma
-         a3    = sigma-1.0
-!
-!        Compute nondimesional shape functions.
-
-         Gm = a1+a2*Gm1+a3*dGm1dS
-         Gt = a1+a2*Gt1+a3*dGt1dS
-# ifdef KPP_SALINITY
-         Gs = a1+a2*Gs1+a3*dGs1dS
-# endif
-!
-!        Compute boundary layer mixing coefficients, combine them
-!        with interior mixing coefficients.
-         num(k) = depth*wm*(_ONE_+sigma*Gm)
-         nuh(k) = depth*ws*(_ONE_+sigma*Gt)
-# ifdef KPP_SALINITY
-         nus(k) = depth*ws*(_ONE_+sigma*Gs)
-# endif
-
-      endif
-   enddo
-
-
+   return
 
  end subroutine bottom_layer
 !EOC
@@ -1676,22 +1322,21 @@
    LEVEL1 'clean_cvmix'
 
    LEVEL2 'de-allocating CVMix memory ...'
-   if (allocated(num)) deallocate(num)
-   if (allocated(nuh)) deallocate(nuh)
-   if (allocated(nus)) deallocate(nus)
-   if (allocated(nucl)) deallocate(nucl)
-   if (allocated(gamu)) deallocate(gamu)
-   if (allocated(gamv)) deallocate(gamv)
-   if (allocated(gamh)) deallocate(gamh)
-   if (allocated(gams)) deallocate(gams)
-   if (allocated(Rig)) deallocate(Rig)
-   if (allocated(tke)) deallocate(tke)
+   if (allocated(cvmix_num))  deallocate(cvmix_num)
+   if (allocated(cvmix_nuh))  deallocate(cvmix_nuh)
+   if (allocated(cvmix_nus))  deallocate(cvmix_nus)
+   if (allocated(cvmix_gamu)) deallocate(cvmix_gamu)
+   if (allocated(cvmix_gamv)) deallocate(cvmix_gamv)
+   if (allocated(cvmix_gamh)) deallocate(cvmix_gamh)
+   if (allocated(cvmix_gams)) deallocate(cvmix_gams)
+   if (allocated(cvmix_Rig))  deallocate(cvmix_Rig)
    if (allocated(z_w)) deallocate(z_w)
    if (allocated(z_r)) deallocate(z_r)
    if (allocated(h_r)) deallocate(h_r)
 
    return
-   end subroutine clean_cvmix
+
+ end subroutine clean_cvmix
 !EOC
 
  end module gotm_cvmix
