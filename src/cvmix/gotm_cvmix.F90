@@ -165,7 +165,7 @@
 !  parameters in KPP
 !   - leading coefficient of shear mixing formula
 !   - critical Richardson number value
-!   - exponent of unitless factor of diffusities
+!   - exponent of unitless factor of diffusivity
    REALTYPE                              ::    shear_KPP_nu_zero,      &
                                                shear_KPP_Ri_zero,      &
                                                shear_KPP_exp
@@ -424,9 +424,11 @@
       option(3, 'cubic'), option(4, 'LMD94')/))
 
    twig => branch%get_child('interior', 'interior mixing')
-   call twig%get(use_interior, 'use', 'compute interior mixing coefficients', default=.false.)
+   call twig%get(use_interior, 'use',                                  &
+      'compute interior mixing coefficients', default=.false.)
    leaf => twig%get_child('shear')
-   call leaf%get(use_shear, 'use', 'compute interior shear mixing coefficients', default=.false.)
+   call leaf%get(use_shear, 'use',                                     &
+      'compute interior shear mixing coefficients', default=.false.)
    call leaf%get(shear_num_smooth_Ri, 'num_smooth_Ri',                 &
       'number of iterations to smooth the gradient Richardson number', &
       default=1)
@@ -436,16 +438,50 @@
       option(2, 'KPP, Large et al. (1994)')/))
    call leaf%get(shear_PP_nu_zero, 'PP_nu_zero',                       &
       'numerator in viscosity term in PP', 'm^2/s',                    &
-      minimum=0._rk, default=0.005_rk)
+      default=0.005_rk)
    call leaf%get(shear_PP_alpha, 'PP_alpha',                           &
       'coefficient of Ri in denominator of visc / diff terms', '-',    &
       default=5.0_rk)
    call leaf%get(shear_PP_exp, 'PP_exp',                               &
       'exponent of denominator in viscosity term', '-',                &
       default=2.0_rk)
+   call leaf%get(shear_KPP_nu_zero, 'KPP_nu_zero',                     &
+      'leading coefficient of the KPP shear mixing formula', 'm^2/s',  &
+      default=0.005_rk)
+   call leaf%get(shear_KPP_Ri_zero, 'KPP_Ri_zero',                     &
+      'critical Richardson number for KPP shear mixing', '-',          &
+      default=0.7_rk)
+   call leaf%get(shear_KPP_exp, 'KPP_exp',                             &
+      'exponent of unitless factor of diffusivity', '-',               &
+      default=3.0_rk)
+   leaf => twig%get_child('convection')
+   call leaf%get(use_convection, 'use',                                &
+      'compute interior convective mixing coefficients',               &
+      default=.false.)
+   call leaf%get(convection_diffusivity, 'diffusivity',                &
+      'convective diffusivity', 'm^2/s',                               &
+      default=1.0_rk)
+   call leaf%get(convection_viscosity, 'viscosity',                    &
+      'convective viscosity', 'm^2/s',                                 &
+      default=1.0_rk)
+   call leaf%get(convection_basedOnBVF, 'basedOnBVF',                  &
+      'triger convection based on the squared Brunt-Vaisala frequency',&
+      default=.true.)
+   call leaf%get(convection_triggerBVF, 'triggerBVF',                  &
+      'threshold of squared Brunt-Vaisala frequency', '1/s^2',         &
+      default=0.0_rk)
+   leaf => twig%get_child('tidal_mixing')
+   call leaf%get(use_tidal_mixing, 'use',                              &
+      'compute interior tidal mixing coefficients',                    &
+      default=.false.)
+   leaf => twig%get_child('double_diffusion')
+   call leaf%get(use_double_diffusion, 'use',                          &
+      'compute interior double diffusion mixing coefficients',         &
+      default=.false.)
 
    twig => branch%get_child('bottom_layer', 'bottom layer mixing')
-   call twig%get(use_bottom_layer, 'use', 'compute bottom layer mixing coefficients', default=.false.)
+   call twig%get(use_bottom_layer, 'use',                              &
+      'compute bottom layer mixing coefficients', default=.false.)
 
    LEVEL2 'done.'
 
