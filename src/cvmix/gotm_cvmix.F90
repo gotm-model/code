@@ -50,6 +50,16 @@
    integer, parameter                    ::    CVMIX_LT_LWF16 = 1
    integer, parameter                    ::    CVMIX_LT_LF17 = 2
    integer, parameter                    ::    CVMIX_LT_RWHGK16 = 3
+   integer, parameter                    ::    CVMIX_INTERP_LINEAR = 1
+   integer, parameter                    ::    CVMIX_INTERP_QUADRATIC = 2
+   integer, parameter                    ::    CVMIX_INTERP_CUBIC = 3
+   integer, parameter                    ::    CVMIX_INTERP_LMD94 = 4
+   integer, parameter                    ::    CVMIX_MATCH_SIMPLE = 1
+   integer, parameter                    ::    CVMIX_MATCH_GRADIENT = 2
+   integer, parameter                    ::    CVMIX_MATCH_BOTH = 3
+   integer, parameter                    ::    CVMIX_MATCH_PARABOLIC = 4
+   integer, parameter                    ::    CVMIX_SHEAR_PP = 1
+   integer, parameter                    ::    CVMIX_SHEAR_KPP = 2
    REALTYPE, parameter                   ::    eps = 1.0e-14
 
 ! !REVISION HISTORY:
@@ -91,26 +101,26 @@
 
 !  method to parameterize the effects of Langmuir turbulence
 !  options are
-!  (1)  0  => no Langmuir turbulence parameterization
-!  (2)  1  => Langmuir mixing following Li et al., 2016
-!  (3)  2  => Langmuir enhanced entrainment following Li & Fox-Kemper, 2017
-!  (4)  3  => Langmuir turbulence in hurricanes following Reichl et al., 2016
+!  (0)   no Langmuir turbulence parameterization
+!  (1)   Langmuir mixing following Li et al., 2016
+!  (2)   Langmuir enhanced entrainment following Li & Fox-Kemper, 2017
+!  (3)   Langmuir turbulence in hurricanes following Reichl et al., 2016
    integer                               ::    kpp_langmuir_method
 
 !  interpolation type used to interpolate bulk Richardson number
 !  options are
-!  (1)   linear
-!  (2)   quadratic
-!  (3)   cubic
-   character(len=32)                     ::    kpp_bulk_Ri_interp_type
+!  (1) linear
+!  (2) quadratic
+!  (3) cubic
+   integer                               ::    kpp_bulk_Ri_interp_type
 
 !  interpolation type used to interpolate diff and visc at OBL_depth
 !  options are
-!  (1)   linear
-!  (2)   quadratic
-!  (3)   cubic
-!  (4)   LMD94
-   character(len=32)                     ::    kpp_OBL_interp_type
+!  (1) linear
+!  (2) quadratic
+!  (3) cubic
+!  (4) LMD94
+   integer                               ::    kpp_OBL_interp_type
 
 !  matching technique between the boundary layer and the ocean interior
 !  options are
@@ -123,7 +133,7 @@
 !                           term match interior values at interface
 !  (4) ParabolicNonLocal => Shape function for the nonlocal term is
 !                           (1-sigma)^2, gradient term is sigma*(1-sigma)^2
-   character(len=32)                     ::    kpp_match_technique
+   integer                               ::    kpp_match_technique
 
 !  surface layer extent
    REALTYPE                              ::    kpp_surface_layer_extent
@@ -139,7 +149,7 @@
 !  options are
 !  (1) PP   => Pacanowski-Philander, 1981
 !  (2) KPP  => KPP, Large et al, 1994
-   character(len=32)                     ::    shear_mix_scheme
+   integer                               ::    shear_mix_scheme
 
 !  number of loops to smooth the gradient Richardson number
    integer                               ::    shear_num_smooth_Ri
@@ -289,9 +299,9 @@
    kpp_check_MonOb_length = .false.
    kpp_use_enhanced_diff = .true.
    kpp_use_noDGat1 = .true.
-   kpp_match_technique = 'SimpleShapes'
-   kpp_bulk_Ri_interp_type = 'quadratic'
-   kpp_OBL_interp_type = 'LMD94'
+   kpp_match_technique = 1
+   kpp_bulk_Ri_interp_type = 2
+   kpp_OBL_interp_type = 4
    ! background
    use_background = .false.
    background_diffusivity = 1.0e-5
@@ -299,7 +309,7 @@
    ! shear
    use_shear = .false.
    shear_num_smooth_Ri = 1
-   shear_mix_scheme = 'KPP'
+   shear_mix_scheme = 2
    shear_PP_nu_zero = 0.005
    shear_PP_alpha = 5.0
    shear_PP_exp = 2.0
@@ -364,13 +374,78 @@
 !   Adapted for CVMix: Qing Li
 !
 ! !LOCAL VARIABLES:
-   class (type_settings), pointer      :: twig
+   class (type_settings), pointer      :: twig, leaf
    integer, parameter                  :: rk = kind(_ONE_)
    integer                             :: rc
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_cvmix_yaml'
+
+   twig => branch%get_child('surface_layer', 'surface layer mixing')
+   call twig%get(use_surface_layer, 'use',                             &
+      'compute surface layer mixing coefficients', default=.true.)
+   leaf => twig%get_child('kpp', 'K-Profile Parameterization')
+   call leaf%get(use_kpp, 'use', 'use the K-Profile Parameterization', &
+      default=.true.)
+   call leaf%get(kpp_langmuir_method, 'langmuir_method',               &
+      'method of Langmuir turbulence pararmeterization', default=0,    &
+      options=(/option(0, 'none'), option(1, 'Li et al. (2016)'),      &
+      option(2, 'Li and Fox-Kemper (2017)'),                           &
+      option(3, 'Reichl et al. (2016)')/))
+   call leaf%get(kpp_surface_layer_extent, 'surface_layer_extent',     &
+      'extent of surface layer in fraction of the boundary layer', '-',&
+      minimum=0._rk, maximum=1._rk, default=0.1_rk)
+   call leaf%get(kpp_Ri_c, 'Ri_c', 'critical Richardson number', '-',  &
+      minimum=0._rk, default=0.3_rk)
+   call leaf%get(kpp_check_Ekman_length, 'check_Ekman_length',         &
+      'limit the OBL by the Ekman depth', default=.false.)
+   call leaf%get(kpp_check_MonOb_length, 'check_MonOb_length',         &
+      'limit the OBL by the Monin-Obukhov depth', default=.false.)
+   call leaf%get(kpp_use_enhanced_diff, 'use_enhanced_diff',           &
+      'enhance diffusivity at OBL', default=.true.)
+   call leaf%get(kpp_use_noDGat1, 'use_noDGat1',                       &
+      'zero gradient of the shape function at OBL', default=.true.)
+   call leaf%get(kpp_match_technique, 'match_technique',               &
+      'matching technique with the ocean interior',                    &
+      default=1, options=(/                                            &
+      option(1, 'SimpleShapes'),                                       &
+      option(2, 'MatchGradient'),                                      &
+      option(3, 'MatchBoth'),                                          &
+      option(4, 'ParabolicNonLocal')/))
+   call leaf%get(kpp_bulk_Ri_interp_type, 'bulk_Ri_interp_type',       &
+      'interpolation type for the bulk Richardson number',             &
+      default=2, options=(/                                            &
+      option(1, 'linear'), option(2, 'quadratic'), option(3, 'cubic')/))
+   call leaf%get(kpp_OBL_interp_type, 'OBL_interp_type',               &
+      'interpolation type for diffusivity and viscosity at OBL',       &
+      default=4, options=(/                                            &
+      option(1, 'linear'), option(2, 'quadratic'),                     &
+      option(3, 'cubic'), option(4, 'LMD94')/))
+
+   twig => branch%get_child('interior', 'interior mixing')
+   call twig%get(use_interior, 'use', 'compute interior mixing coefficients', default=.false.)
+   leaf => twig%get_child('shear')
+   call leaf%get(use_shear, 'use', 'compute interior shear mixing coefficients', default=.false.)
+   call leaf%get(shear_num_smooth_Ri, 'num_smooth_Ri',                 &
+      'number of iterations to smooth the gradient Richardson number', &
+      default=1)
+   call leaf%get(shear_mix_scheme, 'mix_scheme', 'shear mixing scheme',&
+      default=2, options=(/                                            &
+      option(1, 'PP, Pacanowski and Philander (1981)'),                &
+      option(2, 'KPP, Large et al. (1994)')/))
+   call leaf%get(shear_PP_nu_zero, 'PP_nu_zero',                       &
+      'numerator in viscosity term in PP', 'm^2/s',                    &
+      minimum=0._rk, default=0.005_rk)
+   call leaf%get(shear_PP_alpha, 'PP_alpha',                           &
+      'coefficient of Ri in denominator of visc / diff terms', '-',    &
+      default=5.0_rk)
+   call leaf%get(shear_PP_exp, 'PP_exp',                               &
+      'exponent of denominator in viscosity term', '-',                &
+      default=2.0_rk)
+
+   twig => branch%get_child('bottom_layer', 'bottom layer mixing')
+   call twig%get(use_bottom_layer, 'use', 'compute bottom layer mixing coefficients', default=.false.)
 
    LEVEL2 'done.'
 
@@ -428,6 +503,36 @@
 !  'LF17'    - Enhancement based on Li and Fox-Kemper 2017
 !  'RWHGK16' - Enhancement based on Reichl et al. 2016
    character(len=32)                   :: langmuir_entrainment_method
+
+!  interpolation type used to interpolate bulk Richardson number
+!  'linear'
+!  'quadratic'
+!  'cubic'
+   character(len=32)                   ::  bulk_Ri_interp_method
+
+!  interpolation type used to interpolate diff and visc at OBL_depth
+!  'linear'
+!  'quadratic'
+!  'cubic'
+!  'LMD94'
+   character(len=32)                   ::  OBL_interp_method
+
+!  matching technique between the boundary layer and the ocean interior
+!  'SimpleShapes'      - Shape functions for both the gradient and nonlocal
+!                        terms vanish at interface
+!  'MatchGradient'     - Shape function for nonlocal term vanishes at
+!                        interface, but gradient term matches interior
+!                        values.
+!  'MatchBoth'         - Shape functions for both the gradient and nonlocal
+!                        term match interior values at interface
+!  'ParabolicNonLocal' - Shape function for the nonlocal term is
+!                        (1-sigma)^2, gradient term is sigma*(1-sigma)^2
+   character(len=32)                   ::  match_technique
+!
+!  shear mixing scheme
+!  'PP'   - Pacanowski-Philander, 1981
+!  'KPP'  - KPP, Large et al, 1994
+   character(len=32)                   ::  shear_mix_scheme_name
 
 !EOP
 !-----------------------------------------------------------------------
@@ -499,8 +604,18 @@
       endif
       if (use_shear) then
          LEVEL4 'shear instability mixing               - active -'
-         LEVEL4 ' - mixing scheme: ', trim(shear_mix_scheme)
-         if (.not. use_background .and. trim(shear_mix_scheme)=='PP') then
+         select case (shear_mix_scheme)
+         case (CVMIX_SHEAR_PP)
+            shear_mix_scheme_name = 'PP'
+         case (CVMIX_SHEAR_KPP)
+            shear_mix_scheme_name = 'KPP'
+         case default
+            STDERR 'Unsupported shear_mix_scheme: ', shear_mix_scheme
+            stop 'init_cvmix'
+         end select
+         LEVEL4 ' - mixing scheme: ', trim(shear_mix_scheme_name)
+         if (.not. use_background .and.                                &
+            shear_mix_scheme==CVMIX_SHEAR_PP) then
             STDERR 'Pacanowski-Philander shear mixing scheme requires'
             STDERR 'use_background = .true.'
             stop 'init_cvmix'
@@ -549,12 +664,51 @@
       else
          LEVEL4 "Set shape function G'(1) = 0       - not active -"
       endif
-      LEVEL4 'Matching technique: ', trim(kpp_match_technique)
-      LEVEL4 'Interpolation type for Ri: ', trim(kpp_bulk_Ri_interp_type)
-      LEVEL4 'Interpolation type for diff and visc: ', trim(kpp_OBL_interp_type)
       LEVEL4 'Ri_c: ', kpp_Ri_c
 
-   !  message of Langmuir turbulence parameterization
+      select case (kpp_match_technique)
+      case (CVMIX_MATCH_SIMPLE)
+         match_technique = 'SimpleShapes'
+      case (CVMIX_MATCH_GRADIENT)
+         match_technique = 'MatchGradient'
+      case (CVMIX_MATCH_BOTH)
+         match_technique = 'MatchBoth'
+      case (CVMIX_MATCH_PARABOLIC)
+         match_technique = 'ParabolicNonLocal'
+      case default
+         STDERR 'Unsupported kpp_match_technique: ', kpp_match_technique
+         stop 'init_cvmix'
+      end select
+
+      LEVEL4 'Matching technique: ', trim(match_technique)
+      select case (kpp_bulk_Ri_interp_type)
+      case (CVMIX_INTERP_LINEAR)
+         bulk_Ri_interp_method = 'linear'
+      case (CVMIX_INTERP_QUADRATIC)
+         bulk_Ri_interp_method = 'quadratic'
+      case (CVMIX_INTERP_CUBIC)
+         bulk_Ri_interp_method = 'cubic'
+      case default
+         STDERR 'Unsupported kpp_bulk_Ri_interp_type: ', kpp_bulk_Ri_interp_type
+         stop 'init_cvmix'
+      end select
+      LEVEL4 'Interpolation type for Ri: ', trim(bulk_Ri_interp_method)
+
+      select case (kpp_OBL_interp_type)
+      case (CVMIX_INTERP_LINEAR)
+         OBL_interp_method = 'linear'
+      case (CVMIX_INTERP_QUADRATIC)
+         OBL_interp_method = 'quadratic'
+      case (CVMIX_INTERP_CUBIC)
+         OBL_interp_method = 'cubic'
+      case (CVMIX_INTERP_LMD94)
+         OBL_interp_method = 'LMD94'
+      case default
+         STDERR 'Unsupported kpp_OBL_interp_type: ', kpp_OBL_interp_type
+         stop 'init_cvmix'
+      end select
+      LEVEL4 'Interpolation type for diff and visc: ', trim(OBL_interp_method)
+
       select case (kpp_langmuir_method)
       case (CVMIX_LT_NOLANGMUIR)
          Langmuir_mixing_method = 'NONE'
@@ -576,7 +730,7 @@
          LEVEL3 'Langmuir turbulence                    - active -'
          LEVEL4 ' - Langmuir mixing in hurricanes (Reichl et al. 2016)'
       case default
-         STDERR 'Unsupported langmuir_method: ', kpp_langmuir_method
+         STDERR 'Unsupported kpp_langmuir_method: ', kpp_langmuir_method
          stop 'init_cvmix'
       end select
    else
@@ -600,7 +754,7 @@
 
    ! initialize shear mixing
    if (use_shear) then
-      call cvmix_init_shear(mix_scheme=trim(shear_mix_scheme),                &
+      call cvmix_init_shear(mix_scheme=trim(shear_mix_scheme_name),           &
                             PP_nu_zero=shear_PP_nu_zero,                      &
                             PP_alpha=shear_PP_alpha,                          &
                             PP_exp=shear_PP_exp,                              &
@@ -632,9 +786,9 @@
    ! initialize KPP
    if (use_kpp) then
       call cvmix_init_kpp(Ri_crit=kpp_Ri_c,                                   &
-                          interp_type=trim(kpp_bulk_Ri_interp_type),          &
-                          interp_type2=trim(kpp_OBL_interp_type),             &
-                          MatchTechnique=trim(kpp_match_technique),           &
+                          interp_type=trim(bulk_Ri_interp_method),            &
+                          interp_type2=trim(OBL_interp_method),               &
+                          MatchTechnique=trim(match_technique),               &
                           minVtsqr=_ZERO_,                                    &
                           lEkman=kpp_check_Ekman_length,                      &
                           lMonOb=kpp_check_MonOb_length,                      &
