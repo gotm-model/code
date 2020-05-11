@@ -769,11 +769,11 @@
    enddo
 
 !-----------------------------------------------------------------------
-! compute interior mixing
+! compute interior non-convective mixing
 !-----------------------------------------------------------------------
 
    if (use_interior) then
-      call interior(nlev,NN,NNT,NNS,SS)
+      call interior_nonconv(nlev,NN,NNT,NNS,SS)
    else
       cvmix_num = _ZERO_
       cvmix_nuh = _ZERO_
@@ -799,6 +799,14 @@
                         _ZERO_,_ZERO_,_ZERO_,_ZERO_,tRad,bRad,f)
    endif
 
+!-----------------------------------------------------------------------
+! compute interior convective mixing
+!-----------------------------------------------------------------------
+
+   if (use_interior) then
+      call interior_conv(nlev,NN,rho)
+   endif
+
    return
 
  end subroutine do_cvmix
@@ -807,13 +815,13 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Compute interior fluxes
+! !IROUTINE: Interior non-convective mixing
 !
 ! !INTERFACE:
-   subroutine interior(nlev,NN,NNT,NNS,SS)
+   subroutine interior_nonconv(nlev,NN,NNT,NNS,SS)
 !
 ! !DESCRIPTION:
-!  TODO
+!  All interior mixing coefficients excluding convective mixing
 !
 ! !USES:
    IMPLICIT NONE
@@ -879,6 +887,7 @@
 !-----------------------------------------------------------------------
 
 !  Save Ri in a temporary array
+! TODO: compute Ri at cell interfaces <20200510, Qing Li> !
    do k=1,nlev-1
       work(k) = NN(k)/(SS(k) + eps)
    enddo
@@ -916,24 +925,89 @@
    endif
 
 !-----------------------------------------------------------------------
-! convective mixing
+! Tidal mixing
 !-----------------------------------------------------------------------
 
-   ! call cvmix_coeffs_conv(CVmix_vars)
-
+! TODO: implement tidal mixing <20200510, Qing Li> !
 
 !-----------------------------------------------------------------------
 ! Double diffusion
 !-----------------------------------------------------------------------
 
-
-!-----------------------------------------------------------------------
-! Tidal mixing
-!-----------------------------------------------------------------------
+! TODO: implement double diffusion <20200510, Qing Li> !
 
    return
 
- end subroutine interior
+ end subroutine interior_nonconv
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Interior convective mixing
+!
+! !INTERFACE:
+   subroutine interior_conv(nlev,NN,rho)
+!
+! !DESCRIPTION:
+!  Interior mixing due to convection
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+
+!  number of grid cells
+   integer                                       :: nlev
+
+!  square of buoyancy frequency (1/s^2)
+   REALTYPE                                      :: NN(0:nlev)
+
+!  potential density at grid centers (kg/m^3)
+   REALTYPE                                      :: rho(0:nlev)
+
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf
+!   Adapted for CVMix: Qing Li
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+
+   integer                      :: i, k
+   REALTYPE, dimension(0:nlev)  :: work, NN_iface
+
+!
+!-----------------------------------------------------------------------
+!BOC
+!
+!  return if not use convection
+   if (.not. use_convection) return
+
+!-----------------------------------------------------------------------
+! convective mixing
+!-----------------------------------------------------------------------
+
+   ! fill the squared buoyancy frequency, water density and
+   ! the the water density after adiabatic displacement to the
+   ! level below where the water actually is
+   ! TODO: compute NN at cell interfaces and displaced density at cell centers<20200510, Qing Li> !
+   CVmix_vars%SqrBuoyancyFreq_iface(1:nlev+1) = NN_iface(nlev:0:-1)
+   CVmix_vars%WaterDensity_cntr(1:nlev) = rho(nlev:1:-1)
+   ! CVmix_vars%AdiabWaterDensity_cntr(1:nlev) =
+
+   ! CVMix subroutine for convective mixing
+   call cvmix_coeffs_conv(CVmix_vars)
+
+   ! update turbulent viscosity and diffusivity
+   cvmix_num(0:nlev) = cvmix_num(0:nlev) + CVmix_vars%Mdiff_iface(nlev+1:1:-1)
+   cvmix_nuh(0:nlev) = cvmix_nuh(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+   cvmix_nus(0:nlev) = cvmix_nus(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+
+   return
+
+ end subroutine interior_conv
 !EOC
 
 !-----------------------------------------------------------------------
