@@ -74,6 +74,8 @@
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
 
+   use gotm_cvmix
+
 #ifdef SEAGRASS
    use seagrass
 #endif
@@ -115,6 +117,8 @@
    REALTYPE                  :: dt
    REALTYPE                  :: cnpar
    integer                   :: buoy_method
+   ! turbulence library: 1 -> GOTM turbulence; 2 -> CVMix
+   integer                   :: turbulence_library
 !  station description
    character(len=80)         :: name
    REALTYPE,target           :: latitude,longitude
@@ -173,7 +177,7 @@
    integer, parameter :: rk = kind(_ONE_)
 
    namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
-                          restart_allow_perpetual,cnpar,buoy_method
+                          restart_allow_perpetual,cnpar,buoy_method,turbulence_library
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
    logical          ::    list_fields=.false.
@@ -214,6 +218,9 @@
 
    call settings_store%get(title, 'title', 'simulation title used in output', &
                            default='GOTM simulation')
+
+   call settings_store%get(turbulence_library, 'turbulence_library', 'turbulence closure library', &
+                           default=1, options=(/option(1, 'GOTM turbulence'), option(2, 'CVMix')/))
 
    branch => settings_store%get_child('location')
    call branch%get(name, 'name', 'station name used in output', &
@@ -301,6 +308,8 @@
    call init_stokes_drift()
    branch => settings_store%get_child('turbulence')
    call init_turbulence(branch)
+   branch => settings_store%get_child('cvmix')
+   call init_cvmix(branch)
 #ifdef _FABM_
    branch => settings_store%get_typed_child('fabm', 'Framework for Aquatic Biogeochemical Models')
    call configure_gotm_fabm(branch)
