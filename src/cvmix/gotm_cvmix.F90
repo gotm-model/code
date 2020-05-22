@@ -856,9 +856,16 @@
    call cvmix_put(CVmix_vars, 'nlev', nlev)
    call cvmix_put(CVmix_vars, 'max_nlev', nlev)
    call cvmix_put(CVmix_vars, 'OceanDepth', h0)
-   call cvmix_put(CVmix_vars, 'Mdiff', cvmix_num)
-   call cvmix_put(CVmix_vars, 'Tdiff', cvmix_nuh)
-   call cvmix_put(CVmix_vars, 'Sdiff', cvmix_nus)
+   call cvmix_put(CVmix_vars, 'zw_iface', z_w(nlev:0:-1))
+   call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(nlev:1:-1))
+   call cvmix_put(CVmix_vars, 'Mdiff', _ZERO_)
+   call cvmix_put(CVmix_vars, 'Tdiff', _ZERO_)
+   call cvmix_put(CVmix_vars, 'Sdiff', _ZERO_)
+   call cvmix_put(CVmix_vars, 'ShearRichardson_iface', _ZERO_)
+   call cvmix_put(CVmix_vars, 'BulkRichardson_cntr', _ZERO_)
+   call cvmix_put(CVmix_vars, 'SqrBuoyancyFreq_iface', _ZERO_)
+   call cvmix_put(CVmix_vars, 'WaterDensity_cntr', _ZERO_)
+   call cvmix_put(CVmix_vars, 'AdiabWaterDensity_cntr', _ZERO_)
 
    return
 
@@ -1077,8 +1084,9 @@
       cvmix_num(0:nlev) = CVmix_vars%Mdiff_iface(nlev+1:1:-1)
       cvmix_nuh(0:nlev) = CVmix_vars%Tdiff_iface(nlev+1:1:-1)
 
-      ! same background diffusivity for salinity
-      cvmix_nus = cvmix_nuh
+      ! CVMix background only update Tdiff, so same background diffusivity
+      ! for salinity
+      cvmix_nus(:) = cvmix_nuh(:)
    endif
 
 !-----------------------------------------------------------------------
@@ -1119,7 +1127,9 @@
       ! update turbulent viscosity and diffusivity
       cvmix_num(0:nlev) = cvmix_num(0:nlev) + CVmix_vars%Mdiff_iface(nlev+1:1:-1)
       cvmix_nuh(0:nlev) = cvmix_nuh(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
-      cvmix_nus(0:nlev) = cvmix_nus(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+      ! CVMix shear only update Tdiff, so same shear diffusivity
+      ! for salinity
+      cvmix_nus(:) = cvmix_nuh(:)
    endif
 
 !-----------------------------------------------------------------------
@@ -1201,7 +1211,9 @@
    ! update turbulent viscosity and diffusivity
    cvmix_num(0:nlev) = cvmix_num(0:nlev) + CVmix_vars%Mdiff_iface(nlev+1:1:-1)
    cvmix_nuh(0:nlev) = cvmix_nuh(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
-   cvmix_nus(0:nlev) = cvmix_nus(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+   ! CVMix shear only update Tdiff, so same shear diffusivity
+   ! for salinity
+   cvmix_nus(:) = cvmix_nuh(:)
 
    return
 
@@ -1323,8 +1335,8 @@
 !-----------------------------------------------------------------------
 
 !  CVMix assumes that z indices increase with depth (surface to bottom)
-   call cvmix_put(CVmix_vars, 'zw_iface', z_w(nlev:0:-1))
-   call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(nlev:1:-1))
+   CVmix_vars%zw_iface = z_w(nlev:0:-1)
+   CVmix_vars%zt_cntr = z_r(nlev:1:-1)
 
 !-----------------------------------------------------------------------
 !  Compute potential density and velocity components surface reference
@@ -1416,7 +1428,7 @@
 ! Find the boundary layer depth
 !-----------------------------------------------------------------------
 
-   call cvmix_put(CVmix_vars, 'BulkRichardson_cntr', RiBulk(nlev:1:-1))
+   CVmix_vars%BulkRichardson_cntr = RiBulk(nlev:1:-1)
    CVmix_vars%SurfaceFriction = u_taus
    CVmix_vars%SurfaceBuoyancyForcing = Bfsfc
    CVmix_vars%Coriolis = f
