@@ -671,6 +671,11 @@
       endif
       if (use_convection) then
          LEVEL4 'convective instability mixing          - active -'
+         if (.not. convection_basedOnBVF) then
+            STDERR 'Convection based on density is not yet supported'
+            STDERR 'Please set convection_basedOnBVF = .true.'
+            stop 'init_cvmix'
+         endif
       else
          LEVEL4 'convective instability mixing      - not active -'
       endif
@@ -864,8 +869,10 @@
    call cvmix_put(CVmix_vars, 'ShearRichardson_iface', _ZERO_)
    call cvmix_put(CVmix_vars, 'BulkRichardson_cntr', _ZERO_)
    call cvmix_put(CVmix_vars, 'SqrBuoyancyFreq_iface', _ZERO_)
-   call cvmix_put(CVmix_vars, 'WaterDensity_cntr', _ZERO_)
-   call cvmix_put(CVmix_vars, 'AdiabWaterDensity_cntr', _ZERO_)
+
+   ! TODO: the following variables need to be initialized if convection based on density is enabled <20200522, Qing Li> !
+   ! call cvmix_put(CVmix_vars, 'WaterDensity_cntr', _ZERO_)
+   ! call cvmix_put(CVmix_vars, 'AdiabWaterDensity_cntr', _ZERO_)
 
    return
 
@@ -1010,7 +1017,7 @@
 !-----------------------------------------------------------------------
 
    if (use_interior) then
-      call interior_conv(nlev,NN,rho)
+      call interior_conv(nlev,NN)
    endif
 
    return
@@ -1155,7 +1162,7 @@
 ! !IROUTINE: Interior convective mixing
 !
 ! !INTERFACE:
-   subroutine interior_conv(nlev,NN,rho)
+   subroutine interior_conv(nlev,NN)
 !
 ! !DESCRIPTION:
 !  Interior mixing due to convection
@@ -1170,9 +1177,6 @@
 
 !  square of buoyancy frequency (1/s^2)
    REALTYPE, intent(in)                          :: NN(0:nlev)
-
-!  potential density at grid centers (kg/m^3)
-   REALTYPE, intent(in)                          :: rho(0:nlev)
 
 !
 ! !REVISION HISTORY:
@@ -1197,12 +1201,13 @@
 ! convective mixing
 !-----------------------------------------------------------------------
 
-   ! fill the squared buoyancy frequency, water density and
-   ! the the water density after adiabatic displacement to the
-   ! level below where the water actually is
-   ! TODO: compute displaced density at cell centers<20200510, Qing Li> !
+   ! fill the squared buoyancy frequency
    CVmix_vars%SqrBuoyancyFreq_iface(1:nlev+1) = NN(nlev:0:-1)
-   CVmix_vars%WaterDensity_cntr(1:nlev) = rho(nlev:1:-1)
+
+   ! fill the water density and the water density after adiabatic
+   ! displacement to the level below where the water actually is
+   ! TODO: convection based on density is not yet supported, which requires the displaced density at cell centers <20200522, Qing Li> !
+   ! CVmix_vars%WaterDensity_cntr(1:nlev) = rho(nlev:1:-1)
    ! CVmix_vars%AdiabWaterDensity_cntr(1:nlev) =
 
    ! CVMix subroutine for convective mixing
