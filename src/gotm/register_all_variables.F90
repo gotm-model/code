@@ -434,6 +434,17 @@
 
    if (turb_method.eq.99) return
 
+   call fm%register('num', 'm2/s', 'turbulent diffusivity of momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=num(0:nlev),category='turbulence', part_of_state=.true.)
+   call fm%register('nuh', 'm2/s', 'turbulent diffusivity of heat', standard_name='??', dimensions=(/id_dim_zi/), data1d=nuh(0:nlev),category='turbulence', part_of_state=.true.)
+   call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_zi/), data1d=nus(0:nlev),category='turbulence', part_of_state=.true.)
+   call fm%register('gamu', 'm2/s2', 'non-local flux of u-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamu(0:nlev),category='turbulence')
+   call fm%register('gamv', 'm2/s2', 'non-local flux of v-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamv(0:nlev),category='turbulence')
+   call fm%register('gamh', 'K m/s', 'non-local heat flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamh(0:nlev),category='turbulence')
+   call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gams(0:nlev),category='turbulence')
+   call fm%register('Rig', '', 'gradient Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=Rig(0:nlev),category='turbulence')
+
+   if (turb_method .eq. 100) return
+
    call fm%register('tke', 'm2/s2', 'turbulent kinetic energy', standard_name='??', dimensions=(/id_dim_zi/), data1d=tke(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('tkeo', 'm2/s2', 'turbulent kinetic energy - old time step', standard_name='??', dimensions=(/id_dim_zi/), data1d=tkeo(0:nlev),category='turbulence', part_of_state=.true., output_level=output_level_debug)
    call fm%register('eps', 'm2/s3', 'energy dissipation rate', standard_name='??', dimensions=(/id_dim_zi/), data1d=eps(0:nlev),category='turbulence', part_of_state=.true.)
@@ -443,14 +454,7 @@
    call fm%register('P', 'm2/s3', 'shear production', standard_name='??', dimensions=(/id_dim_zi/), data1d=P(0:nlev),category='turbulence/shear')
    call fm%register('G', 'm2/s3', 'buoyancy production', standard_name='??', dimensions=(/id_dim_zi/), data1d=B(0:nlev),category='turbulence/buoyancy')
    call fm%register('Pb', 'm2/s5', 'production of buoyancy variance', standard_name='??', dimensions=(/id_dim_zi/), data1d=Pb(0:nlev),category='turbulence/buoyancy')
-   call fm%register('num', 'm2/s', 'turbulent diffusivity of momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=num(0:nlev),category='turbulence', part_of_state=.true.)
-   call fm%register('nuh', 'm2/s', 'turbulent diffusivity of heat', standard_name='??', dimensions=(/id_dim_zi/), data1d=nuh(0:nlev),category='turbulence', part_of_state=.true.)
-   call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_zi/), data1d=nus(0:nlev),category='turbulence', part_of_state=.true.)
-   call fm%register('gamu', 'm2/s2', 'non-local flux of u-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamu(0:nlev),category='turbulence')
-   call fm%register('gamv', 'm2/s2', 'non-local flux of v-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamv(0:nlev),category='turbulence')
    call fm%register('gamb', 'm2/s3', 'non-local  buoyancy flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamb(0:nlev),category='turbulence')
-   call fm%register('gamh', 'K m/s', 'non-local heat flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamh(0:nlev),category='turbulence')
-   call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gams(0:nlev),category='turbulence')
    call fm%register('cmue1', '', 'stability function for momentum diffusivity', standard_name='??', dimensions=(/id_dim_zi/), data1d=cmue1(0:nlev),category='turbulence')
    call fm%register('cmue2', '', 'stability function for scalar diffusivity', standard_name='??', dimensions=(/id_dim_zi/), data1d=cmue2(0:nlev),category='turbulence')
    call fm%register('gam', '', 'non-dimensional non-local buoyancy flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gam(0:nlev),category='turbulence')
@@ -458,7 +462,6 @@
    call fm%register('as', '', 'non-dimensional shear time scale', standard_name='??', dimensions=(/id_dim_zi/), data1d=as(0:nlev),category='turbulence')
    call fm%register('at', '', 'non-dimensional buoyancy variance', standard_name='??', dimensions=(/id_dim_zi/), data1d=at(0:nlev),category='turbulence')
    call fm%register('r', '', 'turbulent time scale ratio', standard_name='??', dimensions=(/id_dim_zi/), data1d=r(0:nlev),category='turbulence')
-   call fm%register('Rig', '', 'gradient Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=Rig(0:nlev),category='turbulence')
    call fm%register('xRf', '', 'flux Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=xRf(0:nlev),category='turbulence')
    call fm%register('uu', 'm2/s2', 'variance of u-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=uu(0:nlev),category='turbulence/shear')
    call fm%register('vv', 'm2/s2', 'variance of v-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=vv(0:nlev),category='turbulence/shear')

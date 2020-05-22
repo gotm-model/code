@@ -66,6 +66,7 @@
    use turbulence,  only: num,nuh,nus
    use turbulence,  only: const_num,const_nuh
    use turbulence,  only: gamu,gamv,gamh,gams
+   use turbulence,  only: Rig
    use turbulence,  only: kappa
    use turbulence,  only: clean_turbulence
 
@@ -74,7 +75,9 @@
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
 
-   use gotm_cvmix
+   use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
+   use gotm_cvmix,  only: cvmix_num, cvmix_nuh, cvmix_nus, cvmix_Rig
+   use gotm_cvmix,  only: cvmix_gamu, cvmix_gamv, cvmix_gamh, cvmix_gams
 
 #ifdef SEAGRASS
    use seagrass
@@ -117,8 +120,6 @@
    REALTYPE                  :: dt
    REALTYPE                  :: cnpar
    integer                   :: buoy_method
-   ! turbulence library: 1 -> GOTM turbulence; 2 -> CVMix
-   integer                   :: turbulence_library
 !  station description
    character(len=80)         :: name
    REALTYPE,target           :: latitude,longitude
@@ -177,7 +178,7 @@
    integer, parameter :: rk = kind(_ONE_)
 
    namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
-                          restart_allow_perpetual,cnpar,buoy_method,turbulence_library
+                          restart_allow_perpetual,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
    logical          ::    list_fields=.false.
@@ -218,9 +219,6 @@
 
    call settings_store%get(title, 'title', 'simulation title used in output', &
                            default='GOTM simulation')
-
-   call settings_store%get(turbulence_library, 'turbulence_library', 'turbulence closure library', &
-                           default=1, options=(/option(1, 'GOTM turbulence'), option(2, 'CVMix')/))
 
    branch => settings_store%get_child('location')
    call branch%get(name, 'name', 'station name used in output', &
@@ -348,6 +346,7 @@
 
       call init_turbulence(namlst,'gotmturb.nml')
       if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
+      if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
 
       call init_airsea(namlst)
    end if
@@ -468,6 +467,10 @@
    call updategrid(nlev,dt,zeta%value)
 
    call post_init_turbulence(nlev)
+
+   if (turb_method .eq. 100) then
+      call post_init_cvmix(nlev,depth,gravity,rho_0)
+   endif
 
 !  initialise mean fields
    s(1:nlev) = sprof%data(1:nlev)
@@ -633,6 +636,7 @@
    character(10)             :: t_
 
    REALTYPE                  :: Qsw, Qflux
+   REALTYPE                  :: efactor, LaSL
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -765,6 +769,27 @@
                      u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
                      tRad,bRad,cori)
 
+      case (100)
+!        use KPP via CVMix
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
+                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+         ! TODO: testing for now, should be computed from Stokes drift <20200512, Qing Li> !
+         efactor = _ONE_
+         LaSL = 10000.0
+         call do_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,              &
+                       u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,         &
+                       tRad,bRad,cori,efactor,LaSL)
+
+         ! update turbulence variables
+         num(:)  = cvmix_num(:)
+         nuh(:)  = cvmix_nuh(:)
+         nus(:)  = cvmix_nus(:)
+         gamu(:) = cvmix_gamu(:)
+         gamv(:) = cvmix_gamv(:)
+         gamh(:) = cvmix_gamh(:)
+         gams(:) = cvmix_gams(:)
+         Rig(:)  = cvmix_Rig(:)
+
       case default
 !        update one-point models
 # ifdef SEAGRASS
@@ -823,6 +848,8 @@
    call clean_meanflow()
 
    if (turb_method.eq.99) call clean_kpp()
+
+   if (turb_method .eq. 100) call clean_cvmix()
 
    call clean_turbulence()
 

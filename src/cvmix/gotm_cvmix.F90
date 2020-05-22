@@ -28,7 +28,7 @@
    private
 
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_cvmix, do_cvmix, clean_cvmix
+   public init_cvmix, do_cvmix, clean_cvmix, post_init_cvmix
 !
    interface init_cvmix
       module procedure init_cvmix_nml
@@ -180,21 +180,20 @@
 
 !  turbulent diffusivities
 !  of momentum, temperature, salinity
-   REALTYPE, dimension(:), allocatable   ::    cvmix_num
-   REALTYPE, dimension(:), allocatable   ::    cvmix_nuh
-   REALTYPE, dimension(:), allocatable   ::    cvmix_nus
+   REALTYPE, public, dimension(:), allocatable   ::    cvmix_num
+   REALTYPE, public, dimension(:), allocatable   ::    cvmix_nuh
+   REALTYPE, public, dimension(:), allocatable   ::    cvmix_nus
 
 !  non-local fluxes of momentum
-   REALTYPE, dimension(:), allocatable   ::    cvmix_gamu,             &
-                                               cvmix_gamv
+   REALTYPE, public, dimension(:), allocatable   ::    cvmix_gamu,     &
+                                                       cvmix_gamv
 
-!  non-local fluxes of buoyancy, temperature, salinity
-   REALTYPE, dimension(:), allocatable   ::    cvmix_gamb,             &
-                                               cvmix_gamh,             &
-                                               cvmix_gams
+!  non-local fluxes of temperature and salinity
+   REALTYPE, public, dimension(:), allocatable   ::    cvmix_gamh,     &
+                                                       cvmix_gams
 
 !  gradient Richardson number
-   REALTYPE, dimension(:), allocatable   ::    cvmix_Rig
+   REALTYPE, public, dimension(:), allocatable   ::    cvmix_Rig
 
 !  positions of grid faces and centers
    REALTYPE, dimension(:), allocatable   ::    z_w, z_r
@@ -426,6 +425,15 @@
    twig => branch%get_child('interior', 'interior mixing')
    call twig%get(use_interior, 'use',                                  &
       'compute interior mixing coefficients', default=.false.)
+   leaf => twig%get_child('background')
+   call leaf%get(use_background, 'use',                                &
+      'use interior background mixing coefficients', default=.false.)
+   call leaf%get(background_diffusivity, 'diffusivity',                &
+      'background diffusivity', 'm^2/s',                               &
+      default=1.e-5_rk)
+   call leaf%get(background_viscosity, 'viscosity',                    &
+      'background viscosity', 'm^2/s',                                 &
+      default=1.e-4_rk)
    leaf => twig%get_child('shear')
    call leaf%get(use_shear, 'use',                                     &
       'compute interior shear mixing coefficients', default=.false.)
@@ -622,6 +630,8 @@
    if (rc /= 0) stop 'init_cvmix: Error allocating (h_r)'
    h_r = _ZERO_
 
+   LEVEL2 'done.'
+
 !  report model parameters
 
    LEVEL2 '--------------------------------------------------------'
@@ -781,6 +791,7 @@
    endif
 
    LEVEL2 '--------------------------------------------------------'
+   LEVEL2 ' '
 
    ! initialize background mixing
    if (use_background) then
@@ -848,9 +859,6 @@
    call cvmix_put(CVmix_vars, 'Mdiff', cvmix_num)
    call cvmix_put(CVmix_vars, 'Tdiff', cvmix_nuh)
    call cvmix_put(CVmix_vars, 'Sdiff', cvmix_nus)
-   call cvmix_put(CVmix_vars, 'Gravity', cvmix_g)
-
-   LEVEL1 'done.'
 
    return
 
@@ -864,7 +872,8 @@
 !
 ! !INTERFACE:
    subroutine do_cvmix(nlev,h0,h,rho,u,v,NN,NNT,NNS,SS,u_taus,u_taub,  &
-                     tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,EFactor,LaSL)
+                       tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,          &
+                       EFactor,LaSL)
 !
 ! !DESCRIPTION:
 !  TODO
@@ -874,54 +883,54 @@
 !
 ! !INPUT PARAMETERS:
 !  number of grid cells
-   integer                                       :: nlev
+   integer, intent(in)                           :: nlev
 
 !  bathymetry (m)
-   REALTYPE                                      :: h0
+   REALTYPE, intent(in)                          :: h0
 
 !  thickness of grid cells (m)
-   REALTYPE                                      :: h(0:nlev)
+   REALTYPE, intent(in)                          :: h(0:nlev)
 
 !  potential density at grid centers (kg/m^3)
-   REALTYPE                                      :: rho(0:nlev)
+   REALTYPE, intent(in)                          :: rho(0:nlev)
 
 !  velocity components at grid centers (m/s)
-   REALTYPE                                      :: u(0:nlev),v(0:nlev)
+   REALTYPE, intent(in)                          :: u(0:nlev),v(0:nlev)
 
 !  square of buoyancy frequency (1/s^2)
-   REALTYPE                                      :: NN(0:nlev)
+   REALTYPE, intent(in)                          :: NN(0:nlev)
 
 !  square of buoyancy frequency caused by
 !  temperature and salinity stratification
-   REALTYPE                                      :: NNT(0:nlev),NNS(0:nlev)
+   REALTYPE, intent(in)                          :: NNT(0:nlev),NNS(0:nlev)
 
 !  square of shear frequency (1/s^2)
-   REALTYPE                                      :: SS(0:nlev)
+   REALTYPE, intent(in)                          :: SS(0:nlev)
 
 !  surface and bottom friction velocities (m/s)
-   REALTYPE                                      :: u_taus,u_taub
+   REALTYPE, intent(in)                          :: u_taus,u_taub
 
 !  surface temperature flux (K m/s) and
 !  salinity flux (psu m/s) (negative for loss)
-   REALTYPE                                      :: tFlux,sFlux
+   REALTYPE, intent(in)                          :: tFlux,sFlux
 
 !  surface buoyancy fluxes (m^2/s^3) due to
 !  heat and salinity fluxes
-   REALTYPE                                      :: btFlux,bsFlux
+   REALTYPE, intent(in)                          :: btFlux,bsFlux
 
 !  radiative flux [ I(z)/(rho Cp) ] (K m/s)
 !  and associated buoyancy flux (m^2/s^3)
-   REALTYPE                                      :: tRad(0:nlev),bRad(0:nlev)
+   REALTYPE, intent(in)                          :: tRad(0:nlev),bRad(0:nlev)
 
 !  Coriolis parameter (rad/s)
-   REALTYPE                                      :: f
+   REALTYPE, intent(in)                          :: f
 
 !  Langmuir enhancement factor
-   REALTYPE                                      :: EFactor
+   REALTYPE, intent(in)                          :: EFactor
 
 !  Surface layer averaged Langmuir number to be passed in CVMix
 !  for Langmuir enhanced entrainment
-   REALTYPE                                      :: LaSL
+   REALTYPE, intent(in)                          :: LaSL
 
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -1019,17 +1028,17 @@
 ! !INPUT PARAMETERS:
 
 !  number of grid cells
-   integer                                       :: nlev
+   integer, intent(in)                           :: nlev
 
 !  square of buoyancy frequency (1/s^2)
-   REALTYPE                                      :: NN(0:nlev)
+   REALTYPE, intent(in)                          :: NN(0:nlev)
 
 !  square of buoyancy frequencies caused by
 !  temperature and salinity stratification
-   REALTYPE                                      :: NNT(0:nlev),NNS(0:nlev)
+   REALTYPE, intent(in)                          :: NNT(0:nlev),NNS(0:nlev)
 
 !  square of shear frequency (1/s^2)
-   REALTYPE                                      :: SS(0:nlev)
+   REALTYPE, intent(in)                          :: SS(0:nlev)
 
 !
 ! !REVISION HISTORY:
@@ -1077,7 +1086,6 @@
 !-----------------------------------------------------------------------
 
 !  Save Ri in a temporary array
-! TODO: compute Ri at cell interfaces <20200510, Qing Li> !
    do k=1,nlev-1
       work(k) = NN(k)/(SS(k) + eps)
    enddo
@@ -1148,13 +1156,13 @@
 ! !INPUT PARAMETERS:
 
 !  number of grid cells
-   integer                                       :: nlev
+   integer, intent(in)                           :: nlev
 
 !  square of buoyancy frequency (1/s^2)
-   REALTYPE                                      :: NN(0:nlev)
+   REALTYPE, intent(in)                          :: NN(0:nlev)
 
 !  potential density at grid centers (kg/m^3)
-   REALTYPE                                      :: rho(0:nlev)
+   REALTYPE, intent(in)                          :: rho(0:nlev)
 
 !
 ! !REVISION HISTORY:
@@ -1166,7 +1174,7 @@
 ! !LOCAL VARIABLES:
 
    integer                      :: i, k
-   REALTYPE, dimension(0:nlev)  :: work, NN_iface
+   REALTYPE, dimension(0:nlev)  :: work
 
 !
 !-----------------------------------------------------------------------
@@ -1182,8 +1190,8 @@
    ! fill the squared buoyancy frequency, water density and
    ! the the water density after adiabatic displacement to the
    ! level below where the water actually is
-   ! TODO: compute NN at cell interfaces and displaced density at cell centers<20200510, Qing Li> !
-   CVmix_vars%SqrBuoyancyFreq_iface(1:nlev+1) = NN_iface(nlev:0:-1)
+   ! TODO: compute displaced density at cell centers<20200510, Qing Li> !
+   CVmix_vars%SqrBuoyancyFreq_iface(1:nlev+1) = NN(nlev:0:-1)
    CVmix_vars%WaterDensity_cntr(1:nlev) = rho(nlev:1:-1)
    ! CVmix_vars%AdiabWaterDensity_cntr(1:nlev) =
 
@@ -1219,44 +1227,44 @@
 !
 ! !INPUT PARAMETERS:
 !  number of grid cells
-   integer                                       :: nlev
+   integer, intent(in)                           :: nlev
 
 !  thickness of grid cells (m)
-   REALTYPE                                      :: h(0:nlev)
+   REALTYPE, intent(in)                          :: h(0:nlev)
 
 !  potential density at grid centers (kg/m^3)
-   REALTYPE                                      :: rho(0:nlev)
+   REALTYPE, intent(in)                          :: rho(0:nlev)
 
 !  velocity components at grid centers (m/s)
-   REALTYPE                                      :: u(0:nlev),v(0:nlev)
+   REALTYPE, intent(in)                          :: u(0:nlev),v(0:nlev)
 
 !  square of buoyancy frequency (1/s^2)
-   REALTYPE                                      :: NN(0:nlev)
+   REALTYPE, intent(in)                          :: NN(0:nlev)
 
 !  surface and bottom friction velocities (m/s)
-   REALTYPE                                      :: u_taus,u_taub
+   REALTYPE, intent(in)                          :: u_taus,u_taub
 
 !  surface temperature flux (K m/s) and
 !  salinity flux (sal m/s) (negative for loss)
-   REALTYPE                                      :: tFlux,sFlux
+   REALTYPE, intent(in)                          :: tFlux,sFlux
 
 !  surface buoyancy fluxes (m^2/s^3) due to
 !  heat and salinity fluxes
-   REALTYPE                                      :: btFlux,bsFlux
+   REALTYPE, intent(in)                          :: btFlux,bsFlux
 
 !  radiative flux [ I(z)/(rho Cp) ] (K m/s)
 !  and associated buoyancy flux (m^2/s^3)
-   REALTYPE                                      :: tRad(0:nlev),bRad(0:nlev)
+   REALTYPE, intent(in)                          :: tRad(0:nlev),bRad(0:nlev)
 
 !  Coriolis parameter (rad/s)
-   REALTYPE                                      :: f
+   REALTYPE, intent(in)                          :: f
 
 !  Langmuir enhancement factor
-   REALTYPE                                      :: EFactor
+   REALTYPE, intent(in)                          :: EFactor
 
 !  Surface layer averaged Langmuir number to be passed in CVMix
 !  for Langmuir enhanced entrainment
-   REALTYPE                                      :: LaSL
+   REALTYPE, intent(in)                          :: LaSL
 
 
 !
@@ -1497,37 +1505,37 @@
 ! !INPUT PARAMETERS:
 
 !  number of grid cells
-   integer                                       :: nlev
+   integer, intent(in)                           :: nlev
 
 !  thickness of grid cells (m)
-   REALTYPE                                      :: h(0:nlev)
+   REALTYPE, intent(in)                          :: h(0:nlev)
 
 !  potential density at grid centers (kg/m^3)
-   REALTYPE                                      :: rho(0:nlev)
+   REALTYPE, intent(in)                          :: rho(0:nlev)
 
 !  velocity components at grid centers (m/s)
-   REALTYPE                                      :: u(0:nlev),v(0:nlev)
+   REALTYPE, intent(in)                          :: u(0:nlev),v(0:nlev)
 
 !  square of buoyancy frequency (1/s^2)
-   REALTYPE                                      :: NN(0:nlev)
+   REALTYPE, intent(in)                          :: NN(0:nlev)
 
 !  surface and bottom friction velocities (m/s)
-   REALTYPE                                      :: u_taus,u_taub
+   REALTYPE, intent(in)                          :: u_taus,u_taub
 
 !  bottom temperature flux (K m/s) and
 !  salinity flux (sal m/s) (negative for loss)
-   REALTYPE                                      :: tFlux,sFlux
+   REALTYPE, intent(in)                          :: tFlux,sFlux
 
 !  bottom buoyancy fluxes (m^2/s^3) due to
 !  heat and salinity fluxes
-   REALTYPE                                      :: btFlux,bsFlux
+   REALTYPE, intent(in)                          :: btFlux,bsFlux
 
 !  radiative flux [ I(z)/(rho Cp) ] (K m/s)
 !  and associated buoyancy flux (m^2/s^3)
-   REALTYPE                                      :: tRad(0:nlev),bRad(0:nlev)
+   REALTYPE, intent(in)                          :: tRad(0:nlev),bRad(0:nlev)
 
 !  Coriolis parameter (rad/s)
-   REALTYPE                                      :: f
+   REALTYPE, intent(in)                          :: f
 
 !
 ! !REVISION HISTORY:
@@ -1597,6 +1605,8 @@
    if (allocated(z_w)) deallocate(z_w)
    if (allocated(z_r)) deallocate(z_r)
    if (allocated(h_r)) deallocate(h_r)
+
+   LEVEL2 'done.'
 
    return
 
