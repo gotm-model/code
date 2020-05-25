@@ -530,6 +530,7 @@
 !   Adapted for CVMix: Qing Li
 !
 ! !LOCAL VARIABLES:
+   integer, parameter                  :: rk = kind(_ONE_)
    integer                             :: k
    integer                             :: rc
 
@@ -832,7 +833,15 @@
    ! initialize double diffusion
    if (use_double_diffusion) then
       ! use the default setting in CVMix
-      call cvmix_init_ddiff()
+      call cvmix_init_ddiff(strat_param_max=2.55_rk,                          &
+                            kappa_ddiff_s=1e-4_rk,                            &
+                            ddiff_exp1=1.0_rk,                                &
+                            ddiff_exp2=3.0_rk,                                &
+                            mol_diff=1.5e-6_rk,                               &
+                            kappa_ddiff_param1=0.909_rk,                      &
+                            kappa_ddiff_param2=4.6_rk,                        &
+                            kappa_ddiff_param3=-0.54_rk,                      &
+                            diff_conv_type="MC76")
    endif
 
    ! initialize KPP
@@ -869,6 +878,8 @@
    call cvmix_put(CVmix_vars, 'ShearRichardson_iface', _ZERO_)
    call cvmix_put(CVmix_vars, 'BulkRichardson_cntr', _ZERO_)
    call cvmix_put(CVmix_vars, 'SqrBuoyancyFreq_iface', _ZERO_)
+   call cvmix_put(CVmix_vars, 'strat_param_num', _ZERO_)
+   call cvmix_put(CVmix_vars, 'strat_param_denom', _ZERO_)
 
    ! TODO: the following variables need to be initialized if convection based on density is enabled <20200522, Qing Li> !
    ! call cvmix_put(CVmix_vars, 'WaterDensity_cntr', _ZERO_)
@@ -1083,7 +1094,6 @@
 !-----------------------------------------------------------------------
 
    if (use_background) then
-
       ! CVMix subroutine for background mixing
       call cvmix_coeffs_bkgnd(CVmix_vars)
 
@@ -1149,7 +1159,18 @@
 ! Double diffusion
 !-----------------------------------------------------------------------
 
-! TODO: implement double diffusion <20200510, Qing Li> !
+   if (use_double_diffusion) then
+      ! fill the numerator and denominator of the stratification parameter
+      CVmix_vars%strat_param_num(2:nlev)   =  NNT(nlev-1:1:-1)
+      CVmix_vars%strat_param_denom(2:nlev) = -NNS(nlev-1:1:-1)
+
+      ! CVMix subroutine for double diffusion
+      call cvmix_coeffs_ddiff(CVmix_vars)
+
+      ! update turbulent diffusivity for temperature and salinity
+      cvmix_nuh(0:nlev) = cvmix_nuh(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+      cvmix_nus(0:nlev) = cvmix_nus(0:nlev) + CVmix_vars%Sdiff_iface(nlev+1:1:-1)
+   endif
 
    return
 
