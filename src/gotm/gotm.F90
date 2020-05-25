@@ -76,8 +76,6 @@
    use eqstate,     only: init_eqstate
 
    use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
-   use gotm_cvmix,  only: cvmix_num, cvmix_nuh, cvmix_nus, cvmix_Rig
-   use gotm_cvmix,  only: cvmix_gamu, cvmix_gamv, cvmix_gamh, cvmix_gams
 
 #ifdef SEAGRASS
    use seagrass
@@ -779,16 +777,6 @@
          call do_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,              &
                        u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,         &
                        tRad,bRad,cori,efactor,LaSL)
-
-         ! update turbulence variables
-         num(:)  = cvmix_num(:)
-         nuh(:)  = cvmix_nuh(:)
-         nus(:)  = cvmix_nus(:)
-         gamu(:) = cvmix_gamu(:)
-         gamv(:) = cvmix_gamv(:)
-         gamh(:) = cvmix_gamh(:)
-         gams(:) = cvmix_gams(:)
-         Rig(:)  = cvmix_Rig(:)
 
       case default
 !        update one-point models

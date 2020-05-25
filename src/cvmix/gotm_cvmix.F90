@@ -22,6 +22,13 @@
    use cvmix_shear
    use cvmix_tidal
 
+   use turbulence, only: cvmix_num=>num,   &
+                         cvmix_nuh=>nuh,   &
+                         cvmix_nus=>nus,   &
+                         cvmix_gamh=>gamh, &
+                         cvmix_gams=>gams, &
+                         cvmix_Rig=>Rig
+
    IMPLICIT NONE
 
 !  default: all is private.
@@ -177,23 +184,6 @@
 !  threshold in s^-2
    logical                               ::    convection_basedOnBVF
    REALTYPE                              ::    convection_triggerBVF
-
-!  turbulent diffusivities
-!  of momentum, temperature, salinity
-   REALTYPE, public, dimension(:), allocatable   ::    cvmix_num
-   REALTYPE, public, dimension(:), allocatable   ::    cvmix_nuh
-   REALTYPE, public, dimension(:), allocatable   ::    cvmix_nus
-
-!  non-local fluxes of momentum
-   REALTYPE, public, dimension(:), allocatable   ::    cvmix_gamu,     &
-                                                       cvmix_gamv
-
-!  non-local fluxes of temperature and salinity
-   REALTYPE, public, dimension(:), allocatable   ::    cvmix_gamh,     &
-                                                       cvmix_gams
-
-!  gradient Richardson number
-   REALTYPE, public, dimension(:), allocatable   ::    cvmix_Rig
 
 !  positions of grid faces and centers
    REALTYPE, dimension(:), allocatable   ::    z_w, z_r
@@ -587,37 +577,6 @@
 !  allocate memory for variables defined in other modules
 !
    LEVEL2 'allocation cvmix memory..'
-   allocate(cvmix_num(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_num)'
-   cvmix_num = _ZERO_
-
-   allocate(cvmix_nuh(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_num)'
-   cvmix_nuh = _ZERO_
-
-   allocate(cvmix_nus(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_nus)'
-   cvmix_nus = _ZERO_
-
-   allocate(cvmix_gamu(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_gamu)'
-   cvmix_gamu = _ZERO_
-
-   allocate(cvmix_gamv(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_gamv)'
-   cvmix_gamv = _ZERO_
-
-   allocate(cvmix_gamh(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_gamh)'
-   cvmix_gamh = _ZERO_
-
-   allocate(cvmix_gams(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_gams)'
-   cvmix_gams = _ZERO_
-
-   allocate(cvmix_Rig(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_cvmix: Error allocating (cvmix_Rig)'
-   cvmix_Rig = _ZERO_
 
    allocate(z_w(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_cvmix: Error allocating (z_w)'
@@ -1632,14 +1591,6 @@
    LEVEL1 'clean_cvmix'
 
    LEVEL2 'de-allocating CVMix memory ...'
-   if (allocated(cvmix_num))  deallocate(cvmix_num)
-   if (allocated(cvmix_nuh))  deallocate(cvmix_nuh)
-   if (allocated(cvmix_nus))  deallocate(cvmix_nus)
-   if (allocated(cvmix_gamu)) deallocate(cvmix_gamu)
-   if (allocated(cvmix_gamv)) deallocate(cvmix_gamv)
-   if (allocated(cvmix_gamh)) deallocate(cvmix_gamh)
-   if (allocated(cvmix_gams)) deallocate(cvmix_gams)
-   if (allocated(cvmix_Rig))  deallocate(cvmix_Rig)
    if (allocated(z_w)) deallocate(z_w)
    if (allocated(z_r)) deallocate(z_r)
    if (allocated(h_r)) deallocate(h_r)
