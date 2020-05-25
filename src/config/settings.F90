@@ -7,10 +7,10 @@ module settings
 
    private
 
-   public type_gotm_settings, settings_store
+   public type_gotm_settings, settings_store, type_input_create
 
    ! From yaml_settings module:
-   public type_settings, option, type_input_create, display_normal, display_advanced, display_hidden
+   public type_settings, option, display_normal, display_advanced, display_hidden, rk
 
    type,extends(type_settings) :: type_gotm_settings
    contains
