@@ -13,7 +13,6 @@
 !
 ! !USES:
    use input
-   use airsea_driver, only: u10, v10
 
    IMPLICIT NONE
 
@@ -305,7 +304,7 @@
 ! !IROUTINE: do_stokes_drift
 !
 ! !INTERFACE:
-   subroutine do_stokes_drift(nlev,z,zi,gravity)
+   subroutine do_stokes_drift(nlev,z,zi,gravity,u10,v10)
 !
 ! !DESCRIPTION:
 !  A wrapper for all the subroutines to calculate the Stokes drift profile.
@@ -317,6 +316,7 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: gravity
+   REALTYPE, intent(in)                :: u10, v10
    REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
@@ -346,7 +346,7 @@
          call stokes_drift_exp(nlev,z,zi)
       case (THEORYWAVE)
          if (uwnd%method .eq. NOTHING) then
-            call stokes_drift_theory(nlev,z,zi,u10%value,v10%value,gravity)
+            call stokes_drift_theory(nlev,z,zi,u10,v10,gravity)
          else
             call stokes_drift_theory(nlev,z,zi,uwnd%value,vwnd%value,gravity)
          endif

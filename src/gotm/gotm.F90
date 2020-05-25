@@ -54,6 +54,7 @@
    use airsea_driver, only: fluxes_method
    use airsea_driver, only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
    use airsea_driver, only: bio_albedo,bio_drag_scale
+   use airsea_driver, only: u10, v10
    use airsea_variables, only: qa,ta
 
 #ifdef _ICE_
@@ -459,7 +460,7 @@
    call do_input(julianday,secondsofday,nlev,z)
 
 !  update Stokes drift
-   call do_stokes_drift(nlev,z,zi,gravity)
+   call do_stokes_drift(nlev,z,zi,gravity,u10%value,v10%value)
 
    ! Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta%value)
@@ -665,7 +666,7 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
-      call do_stokes_drift(nlev,z,zi,gravity)
+      call do_stokes_drift(nlev,z,zi,gravity,u10%value,v10%value)
 
 !     external forcing
       if(fluxes_method /= 0) then
