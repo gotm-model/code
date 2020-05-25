@@ -76,7 +76,9 @@
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
 
+#ifdef _CVMIX_
    use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
+#endif
 
 #ifdef SEAGRASS
    use seagrass
@@ -305,8 +307,10 @@
    call init_stokes_drift()
    branch => settings_store%get_child('turbulence')
    call init_turbulence(branch)
+#ifdef _CVMIX_
    branch => settings_store%get_child('cvmix')
    call init_cvmix(branch)
+#endif
 #ifdef _FABM_
    branch => settings_store%get_typed_child('fabm', 'Framework for Aquatic Biogeochemical Models')
    call configure_gotm_fabm(branch)
@@ -345,7 +349,9 @@
 
       call init_turbulence(namlst,'gotmturb.nml')
       if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
+#ifdef _CVMIX_
       if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
+#endif
 
       call init_airsea(namlst)
    end if
@@ -467,9 +473,11 @@
 
    call post_init_turbulence(nlev)
 
+#ifdef _CVMIX_
    if (turb_method .eq. 100) then
       call post_init_cvmix(nlev,depth,gravity,rho_0)
    endif
+#endif
 
 !  initialise mean fields
    s(1:nlev) = sprof%data(1:nlev)
@@ -768,6 +776,7 @@
                      u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
                      tRad,bRad,cori)
 
+#ifdef _CVMIX_
       case (100)
 !        use KPP via CVMix
          call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
@@ -778,6 +787,7 @@
          call do_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,              &
                        u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,         &
                        tRad,bRad,cori,efactor,LaSL)
+#endif
 
       case default
 !        update one-point models
@@ -838,7 +848,9 @@
 
    if (turb_method.eq.99) call clean_kpp()
 
+#ifdef _CVMIX_
    if (turb_method .eq. 100) call clean_cvmix()
+#endif
 
    call clean_turbulence()
 

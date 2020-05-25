@@ -30,7 +30,7 @@
    write(*,*)
    write(100,'(a5,5a8)') 'angle','Payne','C1','C2','C3','C4'
    do i=0,90,5
-      p1 = albedo_water(1,i*_ONE_)
+      p1 = albedo_water(1,i*_ONE_,0)
       c1 = albedo_water(2,i*_ONE_,1)
       c2 = albedo_water(2,i*_ONE_,91)
       c3 = albedo_water(2,i*_ONE_,182)
@@ -43,13 +43,13 @@
    write(*,*)
    write(101,'(a4,8a8)') 'day','P1','C1','P2','C2','P3','C3','P4','C4'
    do i=1,365,5
-      p1 = albedo_water(1,0.*_ONE_)
+      p1 = albedo_water(1,0.*_ONE_,0)
       c1 = albedo_water(2,0.*_ONE_,i)
-      p2 = albedo_water(1,30.*_ONE_)
+      p2 = albedo_water(1,30.*_ONE_,0)
       c2 = albedo_water(2,30.*_ONE_,i)
-      p3 = albedo_water(1,60.*_ONE_)
+      p3 = albedo_water(1,60.*_ONE_,0)
       c3 = albedo_water(2,60.*_ONE_,i)
-      p4 = albedo_water(1,90.*_ONE_)
+      p4 = albedo_water(1,90.*_ONE_,0)
       c4 = albedo_water(2,90.*_ONE_,i)
       write(101,'(I4,8F8.4)') i,p1,c1,p2,c2,p3,c3,p4,c4
    end do

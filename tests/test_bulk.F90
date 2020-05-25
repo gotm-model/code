@@ -34,7 +34,7 @@
    REALTYPE :: qb
 !  heat and momentum fluxes
    integer  :: fluxes_method=1 ! 2....
-   logical  :: rain_impact=.false.,calc_evaporation=.true.
+   !logical  :: rain_impact=.false.,calc_evaporation=.true.
    REALTYPE :: u10=5.,ssu=0.
    REALTYPE :: v10=-5.,ssv=0.
    REALTYPE :: precip=0.

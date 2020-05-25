@@ -152,7 +152,6 @@
 ! !LOCAL VARIABLES:
    type (type_gotm_settings), pointer :: branch
    integer                   :: rc
-   integer, parameter        :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
 !BOC

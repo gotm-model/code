@@ -398,8 +398,10 @@
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call fabm_set_domain(model,nlev,dt)
+#if _FABM_API_VERSION_ == 0
       call model%set_bottom_index(1)
       call model%set_surface_index(nlev)
+#endif
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
@@ -957,11 +959,11 @@
    end if
 
    ! Compute pressure, depth, day of the year
-   call calculate_derived_input(nlev,_ZERO_)
+   call calculate_derived_input(nlev)
 
-#if _FABM_API_VERSION_ > 0
-   call model%prepare_inputs()
-#else
+   call fabm_update_time(model, _ZERO_)
+
+#if _FABM_API_VERSION_ == 0
    call fabm_get_light_extinction(model,1,nlev,k_par(1:nlev))
    call fabm_get_light(model,1,nlev)
 #endif
@@ -1104,15 +1106,12 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine calculate_derived_input(nlev,itime)
-
-   integer :: yyyy, mm, dd
+   subroutine calculate_derived_input(nlev)
 !
 ! !DESCRIPTION:
 !  TODO
 !
    integer, intent(in)          :: nlev
-   REALTYPE,intent(in),optional :: itime
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -1156,13 +1155,6 @@
 !  Calculate decimal day of the year (1 jan 00:00 = 0.)
    decimal_yearday = yearday - 1 + real(secondsofday, gotmrk) / 86400
 
-   if (associated(fabm_calendar_date) .and. associated(fabm_julianday)) then
-      call fabm_calendar_date(fabm_julianday, yyyy, mm, dd)
-      call fabm_update_time(model, itime, yyyy, mm, dd, real(secondsofday, gotmrk))
-   else
-      call fabm_update_time(model, itime)
-   end if
-
    end subroutine calculate_derived_input
 !EOC
 
@@ -1196,12 +1188,16 @@
    integer(8)                :: clock_start,clock_end
    REALTYPE                  :: bioext
    REALTYPE                  :: localexts(1:nlev)
+   logical                   :: has_date
+   integer                   :: yyyy, mm, dd
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    if (.not. fabm_calc) return
 
-   call calculate_derived_input(nlev,itime)
+   call calculate_derived_input(nlev)
+   has_date = associated(fabm_calendar_date) .and. associated(fabm_julianday)
+   if (has_date) call fabm_calendar_date(fabm_julianday, yyyy, mm, dd)
 
    ! Get updated vertical movement (m/s, positive for upwards) for biological state variables.
    call fabm_get_vertical_movement(model,1,nlev,ws(1:nlev,:))
@@ -1281,15 +1277,19 @@
    call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after advection/diffusion')
 
    do split=1,split_factor
-      ! Update local light field (self-shading may have changed through changes in biological state variables)
-      if (compute_light) call light(nlev)
+      if (has_date) then
+         call fabm_update_time(model, itime, yyyy, mm, dd, real(secondsofday, gotmrk))
+      else
+         call fabm_update_time(model, itime)
+      end if
+#if _FABM_API_VERSION_ == 0
 
-#if _FABM_API_VERSION_ > 0
-      call model%prepare_inputs()
-#else
       call fabm_get_light_extinction(model,1,nlev,k_par(1:nlev))
       call fabm_get_light(model,1,nlev)
 #endif
+
+      ! Update local light field (self-shading may have changed through changes in biological state variables)
+      if (compute_light) call light(nlev)
 
       ! Time-integrate one biological time step
       call ode_solver(ode_method,size(cc,2),nlev,dt_eff,cc,right_hand_side_rhs,right_hand_side_ppdd)
