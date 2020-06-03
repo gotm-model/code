@@ -48,6 +48,29 @@
 !  Surface wind for computing Stokes drift
    type (type_scalar_input), public, target :: uwnd, vwnd
 
+!  Turbulent Langmuir number (McWilliams et al., 1997)
+   REALTYPE, public          :: La_Turb
+
+!  Surface layer averaged Langmuir number (Harcourt and D'Asaro, 2008)
+   REALTYPE, public          :: La_SL
+
+!  Surface layer averaged and projected Langmuir number
+!  (Li et al., 2016)
+   REALTYPE, public          :: La_SLP_LWF16
+
+!  Surface layer averaged and projected Langmuir number
+!  (Reichl et al., 2016)
+   REALTYPE, public          :: La_SLP_RWH16
+
+!  Enhancement factor for Langmuir mixing (Li et al., 2016)
+   REALTYPE, public          :: EFactor_LWF16
+
+!  Enhancement factor for Langmuir mixing (Reichl et al., 2016)
+   REALTYPE, public          :: EFactor_RWH16
+
+!  Angles between wind and waves and between wind and Langmuir cells
+   REALTYPE, public          :: theta_WW, theta_WL
+
 ! !DEFINED PARAMETERS:
 
 !  pre-defined parameters
@@ -303,7 +326,7 @@
 ! !IROUTINE: do_stokes_drift
 !
 ! !INTERFACE:
-   subroutine do_stokes_drift(nlev,z,zi,gravity,u10,v10)
+   subroutine do_stokes_drift(nlev,z,zi,gravity,hsw,u_taus,hbl,u10,v10)
 !
 ! !DESCRIPTION:
 !  A wrapper for all the subroutines to calculate the Stokes drift profile.
@@ -313,10 +336,20 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   ! number of grid
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: gravity
-   REALTYPE, intent(in)                :: u10, v10
+   ! depth at the grid center and interface
    REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
+   ! gravity (m/s^2)
+   REALTYPE, intent(in)                :: gravity
+   ! significant wave height (m)
+   REALTYPE, intent(in)                :: hsw
+   ! friction velocity (m/s)
+   REALTYPE, intent(in)                :: u_taus
+   ! boundary layer depth (m)
+   REALTYPE, intent(in)                :: hbl
+   ! 10-meter wind (m/s)
+   REALTYPE, intent(in)                :: u10, v10
 !
 ! !OUTPUT PARAMETERS:
 
@@ -340,7 +373,7 @@
          do k=1,nlev
             ustran = ustran + sqrt(usprof%data(k)**2+vsprof%data(k)**2)*(zi(k)-zi(k-1))
          end do
-         ds%value = ustran/max(SMALL, sqrt(us0%value**2.+us0%value**2.))
+         ds%value = ustran/max(SMALL, sqrt(us0%value**2.+vs0%value**2.))
       case (EXPONENTIAL)
          call stokes_drift_exp(nlev,z,zi)
       case (THEORYWAVE)
@@ -363,9 +396,131 @@
       dvsdz%data(nlev) = dvsdz%data(nlev-1)
    endif
 
+   ! Langmuir number
+   call langmuir_number(nlev,zi,hsw,u_taus,hbl,u10,v10)
+
    return
 
    end subroutine do_stokes_drift
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute the Langmuir number from the Stokes drift profile
+!
+! !INTERFACE:
+   subroutine langmuir_number(nlev,zi,hsw,u_taus,hbl,u10,v10)
+!
+! !DESCRIPTION:
+!  This routine computes the Langmuir number the enhancement factor
+!  for Langmuir mixing
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   ! number of grid
+   integer, intent(in)                 :: nlev
+   ! depth at the grid interface
+   REALTYPE, intent(in)                :: zi(0:nlev)
+   ! significant wave height (m)
+   REALTYPE, intent(in)                :: hsw
+   ! friction velocity (m/s)
+   REALTYPE, intent(in)                :: u_taus
+   ! boundary layer depth (m)
+   REALTYPE, intent(in)                :: hbl
+   ! 10-meter wind (m/s)
+   REALTYPE, intent(in)                :: u10, v10
+!
+! !OUTPUT PARAMETERS:
+!
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+!-----------------------------------------------------------------------
+! !LOCAL VARIABLES:
+   REALTYPE, parameter                 :: kappa = 0.4
+   integer                             :: k, kk, ksl, kbl
+   REALTYPE                            :: ussl, vssl, us_srf
+   REALTYPE                            :: hsl, dz, z0
+!
+!-----------------------------------------------------------------------
+!BOC
+!-----------------------------------------------------------------------
+
+!  magnitude of surface Stokes drift
+   us_srf = sqrt(us0%value**2.+vs0%value**2.)
+
+!  surface layer
+   hsl = 0.2*hbl
+
+!  determine which layer contains surface layer
+   do kk = nlev,k,-1
+      if (zi(nlev)-zi(kk-1) .ge. hsl) then
+         ksl = kk
+         exit
+      end if
+   end do
+
+!  determine which layer contains boundary layer
+   do kk = nlev,k,-1
+      if (zi(nlev)-zi(kk-1) .ge. hbl) then
+         kbl = kk
+         exit
+      end if
+   end do
+
+!  calculate the surface layer averaged Stokes drift
+   if (ksl < nlev) then
+      ussl =   usprof%data(ksl)*(hsl+zi(ksl))
+      vssl =   vsprof%data(ksl)*(hsl+zi(ksl))
+      do kk = nlev,ksl+1,-1
+         dz = zi(kk)-zi(kk-1)
+         ussl = ussl + usprof%data(kk)*dz
+         vssl = vssl + vsprof%data(kk)*dz
+      end do
+      ussl = ussl/hsl
+      vssl = vssl/hsl
+   else
+      ussl = us0%value
+      vssl = vs0%value
+   end if
+
+   if (us_srf .gt. _ZERO_) then
+      ! turbulent Langmuir number (McWilliams et al., 1997)
+      La_Turb = sqrt(u_taus/us_srf)
+      ! surface layer averaged Langmuir number (Harcourt and D'Asaro, 2008)
+      La_SL = sqrt(u_taus/(sqrt(ussl**2+vssl**2) &
+                         -sqrt(usprof%data(kbl)**2+vsprof%data(kbl)**2)))
+      ! angles between wind and waves
+      theta_WW = atan2(vssl,ussl)-atan2(v10,u10)
+      ! angles between wind and LCs
+      ! (approximate from law of the wall, Van Roekel et al., 2012)
+      z0 = max(0.02, hsw)*4.
+      theta_WL = atan(sin(theta_WW) &
+            /(u_taus/us_srf/kappa*log(max(hbl/z0,_ONE_))+cos(theta_WW)))
+      ! surface layer averaged and projected Langmuir number (Li et al., 2016)
+      La_SLP_LWF16 = La_SL*sqrt(abs(cos(theta_WL))/abs(cos(theta_WW-theta_WL)))
+      ! surface layer averaged and projected Langmuir number (Reichl et al., 2016)
+      La_SLP_RWH16 = La_SL*sqrt(_ONE_/max(abs(cos(theta_WW-theta_WL)),SMALL))
+   else
+      La_Turb = _ONE_/SMALL
+      La_SL = _ONE_/SMALL
+      La_SLP_LWF16 = _ONE_/SMALL
+      La_SLP_RWH16 = _ONE_/SMALL
+      theta_WW = _ZERO_
+      theta_WL = _ZERO_
+   end if
+
+   ! enhancement factor for Langmuir mixing (Li et al., 2016)
+   EFactor_LWF16 = min(2.0, abs(cos(theta_WL)) &
+                 *sqrt(_ONE_+(1.5*La_SLP_LWF16)**(-2.)+(5.4*La_SLP_LWF16)**(-4.)))
+   ! enhancement factor for Langmuir mixing (Reichl et al., 2016)
+   EFactor_RWH16 = min(2.25, _ONE_ + _ONE_/La_SLP_RWH16)
+
+   end subroutine langmuir_number
 !EOC
 
 !-----------------------------------------------------------------------

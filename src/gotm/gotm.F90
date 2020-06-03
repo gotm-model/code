@@ -78,6 +78,7 @@
 
 #ifdef _CVMIX_
    use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
+   use gotm_cvmix,  only: zsbl, kpp_langmuir_method
 #endif
 
 #ifdef SEAGRASS
@@ -466,7 +467,7 @@
    call do_input(julianday,secondsofday,nlev,z)
 
 !  update Stokes drift
-   call do_stokes_drift(nlev,z,zi,gravity,u10%value,v10%value)
+   call do_stokes_drift(nlev,z,zi,gravity,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
 
    ! Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta%value)
@@ -643,7 +644,7 @@
    character(10)             :: t_
 
    REALTYPE                  :: Qsw, Qflux
-   REALTYPE                  :: efactor, LaSL
+   REALTYPE                  :: La, EFactor
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -674,7 +675,7 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
-      call do_stokes_drift(nlev,z,zi,gravity,u10%value,v10%value)
+      call do_stokes_drift(nlev,z,zi,gravity,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
 
 !     external forcing
       if(fluxes_method /= 0) then
@@ -781,12 +782,23 @@
 !        use KPP via CVMix
          call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
-         ! TODO: testing for now, should be computed from Stokes drift <20200512, Qing Li> !
-         efactor = _ONE_
-         LaSL = 10000.0
+         select case(kpp_langmuir_method)
+         case (0)
+            efactor = _ONE_
+            La = _ONE_/SMALL
+         case (1)
+            efactor = EFactor_LWF16
+            La = La_SL
+         case (2)
+            efactor = EFactor_LWF16
+            La = La_SL
+         case (3)
+            efactor = EFactor_RWH16
+            La = La_SLP_RWH16
+         end select
          call do_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,              &
                        u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,         &
-                       tRad,bRad,cori,efactor,LaSL)
+                       tRad,bRad,cori,efactor,La)
 #endif
 
       case default

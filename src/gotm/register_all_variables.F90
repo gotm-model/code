@@ -281,6 +281,14 @@
    call fm%register('us0', 'm/s', 'surface Stokes drift x-component', data0d=us0%value, category='stokes_drift')
    call fm%register('vs0', 'm/s', 'surface Stokes drift y-component', data0d=vs0%value, category='stokes_drift')
    call fm%register('ds', 'm', 'Stokes drift penetration depth', data0d=ds%value, category='stokes_drift')
+   call fm%register('La_Turb', '', 'Turbulent Langmuir number', data0d=La_Turb, category='stokes_drift')
+   call fm%register('La_SL', '', 'Surface layer averaged Langmuir number', data0d=La_SL, category='stokes_drift')
+   call fm%register('La_SLP_LWF16', '', 'Surface layer averaged Langmuir number (Li et al., 2016)', data0d=La_SLP_LWF16, category='stokes_drift')
+   call fm%register('La_SLP_RWH16', '', 'Surface layer averaged Langmuir number (Reichl et al., 2016)', data0d=La_SLP_RWH16, category='stokes_drift')
+   call fm%register('EFactor_LWF16', '', 'Enhancement factor for Langmuir mixing (Li et al., 2016)', data0d=EFactor_LWF16, category='stokes_drift')
+   call fm%register('EFactor_RWH16', '', 'Enhancement factor for Langmuir mixing (Reichl et al., 2016)', data0d=EFactor_RWH16, category='stokes_drift')
+   call fm%register('theta_WW', 'rad', 'Angle between wind and waves', data0d=theta_WW, category='stokes_drift')
+   call fm%register('theta_WL', 'rad', 'Angle between wind and Langmiur cells', data0d=theta_WL, category='stokes_drift')
 
    return
    end subroutine register_stokes_drift_variables

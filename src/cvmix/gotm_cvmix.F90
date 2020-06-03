@@ -56,7 +56,7 @@
    integer, parameter                    ::    CVMIX_LT_NOLANGMUIR = 0
    integer, parameter                    ::    CVMIX_LT_LWF16 = 1
    integer, parameter                    ::    CVMIX_LT_LF17 = 2
-   integer, parameter                    ::    CVMIX_LT_RWHGK16 = 3
+   integer, parameter                    ::    CVMIX_LT_RWH16 = 3
    integer, parameter                    ::    CVMIX_INTERP_LINEAR = 1
    integer, parameter                    ::    CVMIX_INTERP_QUADRATIC = 2
    integer, parameter                    ::    CVMIX_INTERP_CUBIC = 3
@@ -112,7 +112,7 @@
 !  (1)   Langmuir mixing following Li et al., 2016
 !  (2)   Langmuir enhanced entrainment following Li & Fox-Kemper, 2017
 !  (3)   Langmuir turbulence in hurricanes following Reichl et al., 2016
-   integer                               ::    kpp_langmuir_method
+   integer, public                       ::    kpp_langmuir_method
 
 !  interpolation type used to interpolate bulk Richardson number
 !  options are
@@ -735,7 +735,7 @@
          Langmuir_entrainment_method = 'LF17'
          LEVEL4 'Langmuir turbulence                    - active -'
          LEVEL4 ' - Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)'
-      case (CVMIX_LT_RWHGK16)
+      case (CVMIX_LT_RWH16)
          Langmuir_mixing_method = 'RWHGK16'
          Langmuir_entrainment_method = 'RWHGK16'
          LEVEL3 'Langmuir turbulence                    - active -'
@@ -824,6 +824,10 @@
    cvmix_g = g
    cvmix_rho0 = rho0
    cvmix_gorho0 = g/rho0
+
+   ! initialize boundary layer
+   zsbl = _ZERO_
+   zbbl = -h0
 
    ! initialize CVMix variables
    call cvmix_put(CVmix_vars, 'nlev', nlev)
