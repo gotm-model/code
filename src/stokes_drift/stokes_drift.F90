@@ -20,7 +20,8 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_stokes_drift, post_init_stokes_drift, do_stokes_drift, clean_stokes_drift
+   public init_stokes_drift, post_init_stokes_drift, do_stokes_drift, &
+      clean_stokes_drift, langmuir_number
 
    interface init_stokes_drift
       module procedure init_stokes_drift_nml
@@ -336,7 +337,7 @@
 ! !IROUTINE: do_stokes_drift
 !
 ! !INTERFACE:
-   subroutine do_stokes_drift(nlev,z,zi,gravity,hsw,u_taus,hbl,u10,v10)
+   subroutine do_stokes_drift(nlev,z,zi,gravity,u10,v10)
 !
 ! !DESCRIPTION:
 !  A wrapper for all the subroutines to calculate the Stokes drift profile.
@@ -352,12 +353,6 @@
    REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
    ! gravity (m/s^2)
    REALTYPE, intent(in)                :: gravity
-   ! significant wave height (m)
-   REALTYPE, intent(in)                :: hsw
-   ! friction velocity (m/s)
-   REALTYPE, intent(in)                :: u_taus
-   ! boundary layer depth (m)
-   REALTYPE, intent(in)                :: hbl
    ! 10-meter wind (m/s)
    REALTYPE, intent(in)                :: u10, v10
 !
@@ -405,9 +400,6 @@
       dvsdz%data(0   ) = dvsdz%data(1     )
       dvsdz%data(nlev) = dvsdz%data(nlev-1)
    endif
-
-   ! Langmuir number
-   call langmuir_number(nlev,zi,hsw,u_taus,hbl,u10,v10)
 
    return
 

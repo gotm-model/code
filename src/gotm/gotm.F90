@@ -672,7 +672,7 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
-      call do_stokes_drift(nlev,z,zi,gravity,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
+      call do_stokes_drift(nlev,z,zi,gravity,u10%value,v10%value)
 
 !     external forcing
       if(fluxes_method /= 0) then
@@ -759,7 +759,10 @@
       call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
 #endif
 
-!    compute turbulent mixing
+!     update Langmuir number
+      call langmuir_number(nlev,zi,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
+
+!     compute turbulent mixing
       select case (turb_method)
       case (0)
 !        do convective adjustment
