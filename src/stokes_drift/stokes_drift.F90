@@ -284,7 +284,7 @@
 
    LEVEL2 'allocation stokes_drift memory..'
 
-!  Stokes drift profile
+   ! Stokes drift profile
    call register_input(usprof)
    call register_input(vsprof)
 
@@ -309,9 +309,19 @@
          stop 'init_stokes_drift()'
    end select
 
-!  Stokes drift shear profile
+   ! Stokes drift shear profile
    call register_input(dusdz)
    call register_input(dvsdz)
+
+   ! Langmuir number
+   La_Turb = _ONE_/SMALL
+   La_SL = _ONE_/SMALL
+   La_SLP_LWF16 = _ONE_/SMALL
+   La_SLP_RWH16 = _ONE_/SMALL
+   theta_WW = _ZERO_
+   theta_WL = _ZERO_
+   EFactor_LWF16 = _ONE_
+   EFactor_RWH16 = _ONE_
 
    LEVEL2 'done.'
 

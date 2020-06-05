@@ -466,9 +466,6 @@
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
 
-!  update Stokes drift
-   call do_stokes_drift(nlev,z,zi,gravity,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
-
    ! Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta%value)
 
