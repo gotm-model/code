@@ -44,7 +44,9 @@
    Ri_crit     = 0.5
    rad_corr    = .true.
 
+   open(namlst,file='gotmrun.nml',action='read',status='old',err=93)
    read(namlst,nml=output,err=94)
+   close(namlst)
 
 #ifndef NETCDF_FMT
    if (out_fmt == NETCDF) then
@@ -79,6 +81,8 @@
 
    return
 
+93 FATAL 'I could not open gotmrun.nml for reading'
+   stop 'deprecated_output'
 94 FATAL 'I could not read the "output" namelist'
    stop 'deprecated_output'
 
