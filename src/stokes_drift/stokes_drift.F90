@@ -21,7 +21,7 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_stokes_drift, post_init_stokes_drift, do_stokes_drift, &
-      clean_stokes_drift, langmuir_number
+      langmuir_number
 
    interface init_stokes_drift
       module procedure init_stokes_drift_nml
@@ -56,8 +56,8 @@
    REALTYPE, public          :: La_SL
 
 !  Surface layer averaged and projected Langmuir number
-!  (Li et al., 2016)
-   REALTYPE, public          :: La_SLP_LWF16
+!  (Van Roekel et al., 2012)
+   REALTYPE, public          :: La_SLP_VR12
 
 !  Surface layer averaged and projected Langmuir number
 !  (Reichl et al., 2016)
@@ -317,7 +317,7 @@
    ! Langmuir number
    La_Turb = _ONE_/SMALL
    La_SL = _ONE_/SMALL
-   La_SLP_LWF16 = _ONE_/SMALL
+   La_SLP_VR12 = _ONE_/SMALL
    La_SLP_RWH16 = _ONE_/SMALL
    theta_WW = _ZERO_
    theta_WL = _ZERO_
@@ -503,14 +503,14 @@
       z0 = max(0.02, hsw)*4.
       theta_WL = atan(sin(theta_WW) &
             /(u_taus/us_srf/kappa*log(max(hbl/z0,_ONE_))+cos(theta_WW)))
-      ! surface layer averaged and projected Langmuir number (Li et al., 2016)
-      La_SLP_LWF16 = La_SL*sqrt(abs(cos(theta_WL))/abs(cos(theta_WW-theta_WL)))
+      ! surface layer averaged and projected Langmuir number (Van Roekel et al., 2012)
+      La_SLP_VR12 = La_SL*sqrt(abs(cos(theta_WL))/abs(cos(theta_WW-theta_WL)))
       ! surface layer averaged and projected Langmuir number (Reichl et al., 2016)
       La_SLP_RWH16 = La_SL*sqrt(_ONE_/max(abs(cos(theta_WW-theta_WL)),SMALL))
    else
       La_Turb = _ONE_/SMALL
       La_SL = _ONE_/SMALL
-      La_SLP_LWF16 = _ONE_/SMALL
+      La_SLP_VR12 = _ONE_/SMALL
       La_SLP_RWH16 = _ONE_/SMALL
       theta_WW = _ZERO_
       theta_WL = _ZERO_
@@ -518,40 +518,11 @@
 
    ! enhancement factor for Langmuir mixing (Li et al., 2016)
    EFactor_LWF16 = min(2.0, abs(cos(theta_WL)) &
-                 *sqrt(_ONE_+(1.5*La_SLP_LWF16)**(-2.)+(5.4*La_SLP_LWF16)**(-4.)))
+                 *sqrt(_ONE_+(1.5*La_SLP_VR12)**(-2)+(5.4*La_SLP_VR12)**(-4)))
    ! enhancement factor for Langmuir mixing (Reichl et al., 2016)
    EFactor_RWH16 = min(2.25, _ONE_ + _ONE_/La_SLP_RWH16)
 
    end subroutine langmuir_number
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Clean up the stokes drift module
-!
-! !INTERFACE:
-   subroutine clean_stokes_drift()
-!
-! !DESCRIPTION:
-!  De-allocates memory allocated in init\_stokes_drift().
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !REVISION HISTORY:
-!  Original author(s): Qing Li
-!
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   LEVEL1 'clean_stokes_drift'
-
-   LEVEL2 'de-allocate stokes drift memory ...'
-
-   LEVEL2 'done.'
-
-   end subroutine clean_stokes_drift
 !EOC
 
 !-----------------------------------------------------------------------
