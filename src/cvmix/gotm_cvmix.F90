@@ -47,9 +47,6 @@
 ! z-position of surface boundary layer depth
   REALTYPE, public                       ::    zsbl
 
-! z-position of bottom boundary layer depth
-  REALTYPE, public                       ::    zbbl
-
 ! !DEFINED PARAMETERS:
 !
 !  method of Langmuir turbulence parameterization
@@ -84,9 +81,8 @@
 !  g/rho0
    REALTYPE                              ::    cvmix_gorho0
 
-!  compute surface and bottom boundary layer mixing and internal mixing
+!  compute surface boundary layer mixing and internal mixing
    logical                               ::    use_surface_layer,      &
-                                               use_bottom_layer,       &
                                                use_interior
 
 !  flags for different components of CVMix
@@ -237,7 +233,6 @@
 !
 ! !LOCAL VARIABLES:
    namelist /cvmix/     use_surface_layer,           &
-                        use_bottom_layer,            &
                         use_interior,                &
                         use_kpp,                     &
                         kpp_langmuir_method,         &
@@ -277,7 +272,6 @@
 
 !  CVMix - 'cvmix' namelist
    use_surface_layer = .true.
-   use_bottom_layer = .false.
    use_interior = .false.
    ! kpp
    use_kpp = .true.
@@ -476,10 +470,6 @@
    call leaf%get(use_double_diffusion, 'use',                          &
       'compute interior double diffusion mixing coefficients',         &
       default=.false.)
-
-   twig => branch%get_child('bottom_layer', 'bottom layer mixing')
-   call twig%get(use_bottom_layer, 'use',                              &
-      'compute bottom layer mixing coefficients', default=.false.)
 
    LEVEL2 'done.'
 
@@ -748,13 +738,6 @@
       LEVEL3 'Surface layer mixing algorithm         - not active -'
    endif
 
-   if (use_bottom_layer) then
-      LEVEL3 'Bottom layer mixing algorithm              - active -'
-      LEVEL4 '(Same parameters as surface layer mixing)'
-   else
-      LEVEL3 'Bottom layer mixing algorithm          - not active -'
-   endif
-
    LEVEL2 '--------------------------------------------------------'
    LEVEL2 ' '
 
@@ -827,7 +810,6 @@
 
    ! initialize boundary layer
    zsbl = _ZERO_
-   zbbl = -h0
 
    ! initialize CVMix variables
    call cvmix_put(CVmix_vars, 'nlev', nlev)
@@ -859,7 +841,7 @@
 ! !IROUTINE: Do KPP with CVMix
 !
 ! !INTERFACE:
-   subroutine do_cvmix(nlev,h0,h,rho,u,v,NN,NNT,NNS,SS,u_taus,u_taub,  &
+   subroutine do_cvmix(nlev,h0,h,rho,u,v,NN,NNT,NNS,SS,u_taus,         &
                        tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,          &
                        EFactor,LaSL)
 !
@@ -895,8 +877,8 @@
 !  square of shear frequency (1/s^2)
    REALTYPE, intent(in)                          :: SS(0:nlev)
 
-!  surface and bottom friction velocities (m/s)
-   REALTYPE, intent(in)                          :: u_taus,u_taub
+!  surface friction velocities (m/s)
+   REALTYPE, intent(in)                          :: u_taus
 
 !  surface temperature flux (K m/s) and
 !  salinity flux (psu m/s) (negative for loss)
@@ -972,18 +954,9 @@
 !-----------------------------------------------------------------------
 
    if (use_surface_layer) then
-      call surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,            &
+      call surface_layer(nlev,h,rho,u,v,NN,u_taus,                   &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,      &
                          EFactor, LaSL)
-   endif
-
-!-----------------------------------------------------------------------
-! compute bottom boundary layer mixing
-!-----------------------------------------------------------------------
-
-   if (use_bottom_layer) then
-      call bottom_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,             &
-                        _ZERO_,_ZERO_,_ZERO_,_ZERO_,tRad,bRad,f)
    endif
 
 !-----------------------------------------------------------------------
@@ -1215,7 +1188,7 @@
 ! !IROUTINE: Compute turbulence in the surface layer with CVMix
 !
 ! !INTERFACE:
-   subroutine surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,           &
+   subroutine surface_layer(nlev,h,rho,u,v,NN,u_taus,                  &
                             tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,     &
                             EFactor,LaSL)
 !
@@ -1242,8 +1215,8 @@
 !  square of buoyancy frequency (1/s^2)
    REALTYPE, intent(in)                          :: NN(0:nlev)
 
-!  surface and bottom friction velocities (m/s)
-   REALTYPE, intent(in)                          :: u_taus,u_taub
+!  surface friction velocities (m/s)
+   REALTYPE, intent(in)                          :: u_taus
 
 !  surface temperature flux (K m/s) and
 !  salinity flux (sal m/s) (negative for loss)
@@ -1486,89 +1459,6 @@
    return
 
  end subroutine surface_layer
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Compute turbulence in the bottom layer \label{sec:kppBottom}
-!
-! !INTERFACE:
-   subroutine bottom_layer(nlev,h,rho,u,v,NN,u_taus,u_taub, &
-                            tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
-!
-! !DESCRIPTION:
-! TODO
-
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-
-!  number of grid cells
-   integer, intent(in)                           :: nlev
-
-!  thickness of grid cells (m)
-   REALTYPE, intent(in)                          :: h(0:nlev)
-
-!  potential density at grid centers (kg/m^3)
-   REALTYPE, intent(in)                          :: rho(0:nlev)
-
-!  velocity components at grid centers (m/s)
-   REALTYPE, intent(in)                          :: u(0:nlev),v(0:nlev)
-
-!  square of buoyancy frequency (1/s^2)
-   REALTYPE, intent(in)                          :: NN(0:nlev)
-
-!  surface and bottom friction velocities (m/s)
-   REALTYPE, intent(in)                          :: u_taus,u_taub
-
-!  bottom temperature flux (K m/s) and
-!  salinity flux (sal m/s) (negative for loss)
-   REALTYPE, intent(in)                          :: tFlux,sFlux
-
-!  bottom buoyancy fluxes (m^2/s^3) due to
-!  heat and salinity fluxes
-   REALTYPE, intent(in)                          :: btFlux,bsFlux
-
-!  radiative flux [ I(z)/(rho Cp) ] (K m/s)
-!  and associated buoyancy flux (m^2/s^3)
-   REALTYPE, intent(in)                          :: tRad(0:nlev),bRad(0:nlev)
-
-!  Coriolis parameter (rad/s)
-   REALTYPE, intent(in)                          :: f
-
-!
-! !REVISION HISTORY:
-!  Original author(s): Lars Umlauf
-!   Adapted for CVMix: Qing Li
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                      :: k,ksbl
-   integer                      :: kk,kref,kp1
-
-   REALTYPE                     :: Bo,Bfsfc
-   REALTYPE                     :: tRadSrf
-   REALTYPE                     :: bRadSrf,bRadSbl
-   REALTYPE                     :: wm, ws
-   REALTYPE                     :: depth
-   REALTYPE                     :: Rk, Rref
-   REALTYPE                     :: Uk, Uref, Vk, Vref
-   REALTYPE                     :: bRad_cntr
-   REALTYPE                     :: NN_max
-
-   REALTYPE, dimension (0:nlev) :: Bflux
-   REALTYPE, dimension (0:nlev) :: RiBulk
-
-!-----------------------------------------------------------------------
-!BOC
-!
-
-   return
-
- end subroutine bottom_layer
 !EOC
 
 !-----------------------------------------------------------------------
