@@ -263,7 +263,8 @@
 ! !DESCRIPTION:
 !
 ! !USES:
-  use stokes_drift
+   use stokes_drift
+   use turbulence, only: turb_method
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -281,6 +282,10 @@
    call fm%register('us0', 'm/s', 'surface Stokes drift x-component', data0d=us0%value, category='stokes_drift')
    call fm%register('vs0', 'm/s', 'surface Stokes drift y-component', data0d=vs0%value, category='stokes_drift')
    call fm%register('ds', 'm', 'Stokes drift penetration depth', data0d=ds%value, category='stokes_drift')
+
+#ifdef _CVMIX_
+   if (turb_method .ne. 100) return
+
    call fm%register('La_Turb', '', 'Turbulent Langmuir number', data0d=La_Turb, category='stokes_drift')
    call fm%register('La_SL', '', 'Surface layer averaged Langmuir number', data0d=La_SL, category='stokes_drift')
    call fm%register('La_SLP_VR12', '', 'Surface layer averaged and projected Langmuir number (Van Roekel et al., 2012)', data0d=La_SLP_VR12, category='stokes_drift')
@@ -289,6 +294,7 @@
    call fm%register('EFactor_RWH16', '', 'Enhancement factor for Langmuir mixing (Reichl et al., 2016)', data0d=EFactor_RWH16, category='stokes_drift')
    call fm%register('theta_WW', 'rad', 'Angle between wind and waves', data0d=theta_WW, category='stokes_drift')
    call fm%register('theta_WL', 'rad', 'Angle between wind and Langmiur cells', data0d=theta_WL, category='stokes_drift')
+#endif
 
    return
    end subroutine register_stokes_drift_variables
@@ -451,7 +457,9 @@
    call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gams(0:nlev),category='turbulence')
    call fm%register('Rig', '', 'gradient Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=Rig(0:nlev),category='turbulence')
 
+#ifdef _CVMIX_
    if (turb_method .eq. 100) return
+#endif
 
    call fm%register('tke', 'm2/s2', 'turbulent kinetic energy', standard_name='??', dimensions=(/id_dim_zi/), data1d=tke(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('tkeo', 'm2/s2', 'turbulent kinetic energy - old time step', standard_name='??', dimensions=(/id_dim_zi/), data1d=tkeo(0:nlev),category='turbulence', part_of_state=.true., output_level=output_level_debug)

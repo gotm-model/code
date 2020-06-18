@@ -759,9 +759,6 @@
       call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
 #endif
 
-!     update Langmuir number
-      call langmuir_number(nlev,zi,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
-
 !     compute turbulent mixing
       select case (turb_method)
       case (0)
@@ -779,6 +776,10 @@
 
 #ifdef _CVMIX_
       case (100)
+
+!        update Langmuir number
+         call langmuir_number(nlev,zi,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
+
 !        use KPP via CVMix
          call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)

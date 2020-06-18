@@ -495,7 +495,8 @@
       La_Turb = sqrt(u_taus/us_srf)
       ! surface layer averaged Langmuir number (Harcourt and D'Asaro, 2008)
       La_SL = sqrt(u_taus/(sqrt(ussl**2+vssl**2) &
-                         -sqrt(usprof%data(kbl)**2+vsprof%data(kbl)**2)))
+                         -sqrt(usprof%data(kbl)**2+vsprof%data(kbl)**2) &
+                         +SMALL*SMALL))
       ! angles between wind and waves
       theta_WW = atan2(vssl,ussl)-atan2(v10,u10)
       ! angles between wind and LCs
@@ -504,9 +505,9 @@
       theta_WL = atan(sin(theta_WW) &
             /(u_taus/us_srf/kappa*log(max(hbl/z0,_ONE_))+cos(theta_WW)))
       ! surface layer averaged and projected Langmuir number (Van Roekel et al., 2012)
-      La_SLP_VR12 = La_SL*sqrt(abs(cos(theta_WL))/abs(cos(theta_WW-theta_WL)))
+      La_SLP_VR12 = La_SL*sqrt(abs(cos(theta_WL))/(abs(cos(theta_WW-theta_WL))+SMALL))
       ! surface layer averaged and projected Langmuir number (Reichl et al., 2016)
-      La_SLP_RWH16 = La_SL*sqrt(_ONE_/max(abs(cos(theta_WW-theta_WL)),SMALL))
+      La_SLP_RWH16 = La_SL*sqrt(_ONE_/(abs(cos(theta_WW-theta_WL))+SMALL))
    else
       La_Turb = _ONE_/SMALL
       La_SL = _ONE_/SMALL
