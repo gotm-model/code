@@ -27,10 +27,14 @@
    REALTYPE                            :: diff_k
    REALTYPE                            :: Ri_crit
    logical                             :: rad_corr
+   character(len=*), parameter         :: fname='gotmrun.nml'
+   logical                             :: file_exists=.false.
 
    namelist /output/      list_fields, &
                           out_fmt,out_dir,out_fn,nfirst,nsave,sync_out, &
                           diagnostics,mld_method,diff_k,Ri_crit,rad_corr
+
+   LEVEL1 'deprecated_output'
 
    out_fmt     = ASCII
    out_dir     = '.'
@@ -44,7 +48,13 @@
    Ri_crit     = 0.5
    rad_corr    = .true.
 
+   inquire(file=fname,exist=file_exists)
+   if (file_exists) then
+   open(namlst,file=fname,action='read',status='old',err=90)
    read(namlst,nml=output,err=94)
+   else
+   LEVEL2 'use default output parameters'
+   end if
 
 #ifndef NETCDF_FMT
    if (out_fmt == NETCDF) then
@@ -77,8 +87,11 @@
    allocate(output_item)
    call outfile%append_item(output_item)
 
+   LEVEL2 'done'
    return
 
+90 FATAL 'I could not open ', trim(fname)
+   stop 'deprecated_output'
 94 FATAL 'I could not read the "output" namelist'
    stop 'deprecated_output'
 
