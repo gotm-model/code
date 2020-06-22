@@ -624,22 +624,22 @@
    call leaf%get(AmpMu, 'AmpM', 'amplitude of 1st harmonic', '-', &
                    default=0._rk)
    call leaf%get(PhaseMu, 'PhaseM', 'phase of 1st harmonic', 's', &
-                   minimum=0._rk,default=0._rk)
+                   default=0._rk)
    call leaf%get(AmpSu, 'AmpS', 'amplitude of 2nd harmonic', '-', &
                    default=0._rk)
    call leaf%get(PhaseSu, 'PhaseS', 'phase of 2nd harmonic', 's', &
-                   minimum=0._rk,default=0._rk)
+                   default=0._rk)
 
    call twig%get(dpdy, 'dpdy', 'pressure in South-North direction', '', &
                    default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=leaf)
    call leaf%get(AmpMv, 'AmpM', 'amplitude of 1st harmonic', '-', &
                    default=0._rk)
    call leaf%get(PhaseMv, 'PhaseM', 'phase of 1st harmonic', 's', &
-                   minimum=0._rk,default=0._rk)
+                   default=0._rk)
    call leaf%get(AmpSv, 'AmpS', 'amplitude of 2nd harmonic', '-', &
                    default=0._rk)
    call leaf%get(PhaseSv, 'PhaseS', 'phase of 2nd harmonic', 's', &
-                   minimum=0._rk,default=0._rk)
+                   default=0._rk)
 
    call twig%get(h_press, 'h', 'height above bed', 'm', &
                    minimum=0._rk,default=0._rk)
@@ -667,13 +667,13 @@
    call twig%get(amp_1, 'amp_1', 'amplitude of 1st harmonic', 'm', &
                    default=0._rk)
    call twig%get(phase_1, 'phase_1', 'phase of 1st harmonic', 's', &
-                   minimum=0._rk, default=0._rk)
+                   default=0._rk)
    call twig%get(period_2, 'period_2', 'period of 2nd harmonic (eg. S2-tide)', 's', &
                    default=43200._rk)
    call twig%get(amp_2, 'amp_2', 'amplitude of 2nd harmonic', 'm', &
                    default=0._rk)
    call twig%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
-                   minimum=0._rk, default=0._rk)
+                   default=0._rk)
 
    twig => settings_store%get_typed_child('velocities', 'observed/prescribed horizontal velocities')
    call twig%get(uprof, 'u', 'velocity in West-East direction', 'm/s', default=0._rk, &
