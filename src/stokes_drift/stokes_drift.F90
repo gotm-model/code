@@ -80,6 +80,7 @@
    integer, parameter        :: FROMFILE=2
    integer, parameter        :: EXPONENTIAL=3
    integer, parameter        :: THEORYWAVE=4
+   integer, parameter        :: FROMUS=3
 
    REALTYPE, parameter, public    :: pi = 4.*atan(_ONE_)
 
@@ -153,12 +154,12 @@
    dusdz_prof_file='dusdz_prof_file.dat'
    us0_method=0
    us0_file='us0_file.dat'
-   const_us0=0.068
+   const_us0=_ZERO_
    const_vs0=_ZERO_
-   const_ds=4.76
+   const_ds=5.0
    wnd_method=0
    wnd_file='wnd_file.dat'
-   const_uwnd=5.0
+   const_uwnd=_ZERO_
    const_vwnd=_ZERO_
 
    open(namlst,file=fn,status='old',action='read',err=91)
@@ -221,29 +222,31 @@
    call branch%get(usprof, 'us', 'Stokes drift in West-East direction', 'm/s', default=0._rk,    &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(EXPONENTIAL, 'exponential profile'), &
-                                   option(THEORYWAVE, 'theory-wave of Li et al., 2017')/))
+                                   option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017')/))
    call branch%get(vsprof, 'vs', 'Stokes drift in South-North direction', 'm/s', default=0._rk,  &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(EXPONENTIAL, 'exponential profile'), &
-                                   option(THEORYWAVE, 'theory-wave of Li et al., 2017')/))
+                                   option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017')/))
    call branch%get(dusdz, 'dusdz', 'Stokes drift shear in West-East direction', '1/s', default=0._rk,    &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
+                   extra_options=(/option(FROMUS, 'compute from us')/))
    call branch%get(dvsdz, 'dvsdz', 'Stokes drift shear in South-North direction', '1/s', default=0._rk,  &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)
+                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
+                   extra_options=(/option(FROMUS, 'compute from vs')/))
    twig => branch%get_typed_child('exponential', 'exponential Stokes drift profile defined by surface value and decay depth')
    call twig%get(us0, 'us0', 'Surface Stokes drift in West-East direction', 'm/s',   &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, &
-                 minimum=0._rk, default=0.068_rk)
+                 minimum=0._rk, default=0._rk)
    call twig%get(vs0, 'vs0', 'Surface Stokes drift in South-North direction', 'm/s', &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, &
                  minimum=0._rk, default=0._rk)
    call twig%get(ds, 'ds', 'Stokes drift decay depth', 'm',                          &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, &
-                 minimum=0._rk, default=4.76_rk)
-   twig => branch%get_typed_child('empirical', 'approximate Stokes drift from empirical wave spectrum')
+                 minimum=0._rk, default=5._rk)
+   twig => branch%get_typed_child('empirical', 'approximate Stokes drift from empirical wave spectrum following Li et al., 2017')
    call twig%get(uwnd, 'uwnd', 'Surface wind for Stokes drift in West-East direction', 'm/s',     &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE,              &
-                 minimum=0._rk, default=5._rk)
+                 minimum=0._rk, default=0._rk)
    call twig%get(vwnd, 'vwnd', 'Surface wind for Stokes drift in South-North direction', 'm/s',   &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE,              &
                  minimum=0._rk, default=0._rk)
@@ -390,7 +393,7 @@
    end select
 
    ! Stokes shear
-   if (dusdz%method .eq. NOTHING) then
+   if (dusdz%method .eq. FROMUS) then
       do k=1,nlev-1
          dusdz%data(k) = (usprof%data(k+1)-usprof%data(k))/(z(k+1)-z(k))
          dvsdz%data(k) = (vsprof%data(k+1)-vsprof%data(k))/(z(k+1)-z(k))
