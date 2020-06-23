@@ -57,8 +57,11 @@
       version => version%next
    end do
 #endif
+#ifdef _CVMIX_
+   LEVEL0 'CVMix:   included'
+#endif
 #ifdef NETCDF_FMT
-   LEVEL0 'NetCDF: ',trim(NF90_INQ_LIBVERS())
+   LEVEL0 'NetCDF:  ',trim(NF90_INQ_LIBVERS())
 #endif
    LEVEL0 LINE
    LEVEL0 'Compiler: ',compiler_id,' ',compiler_version
