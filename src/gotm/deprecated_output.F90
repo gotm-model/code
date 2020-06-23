@@ -50,10 +50,10 @@
 
    inquire(file=fname,exist=file_exists)
    if (file_exists) then
-   open(namlst,file=fname,action='read',status='old',err=90)
-   read(namlst,nml=output,err=94)
+      open(namlst,file=fname,action='read',status='old',err=90)
+      read(namlst,nml=output,err=94)
    else
-   LEVEL2 'use default output parameters'
+      LEVEL2 'use default output parameters'
    end if
 
 #ifndef NETCDF_FMT
