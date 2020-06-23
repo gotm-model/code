@@ -635,7 +635,10 @@
          LEVEL4 'double diffusive mixing            - not active -'
       endif
       if (use_tidal_mixing) then
-         LEVEL4 'tidal mixing                           - active -'
+         ! LEVEL4 'tidal mixing                           - active -'
+         STDERR 'tidal mixing with CVMix is not yet supported'
+         STDERR 'Please set use_tital_mixing = .false.'
+         stop 'init_cvmix'
       else
          LEVEL4 'tidal mixing                       - not active -'
       endif
@@ -846,7 +849,7 @@
                        EFactor,LaSL)
 !
 ! !DESCRIPTION:
-!  TODO
+!  Do KPP with CVMix
 !
 ! !USES:
    IMPLICIT NONE
@@ -1352,7 +1355,7 @@
       Uk =   u(kp1)
       Vk =   v(kp1)
       ! compute the Bulk Richardson number
-      ! TODO: make sure this choice of NN following Van Roekel et al., 2019 is documented.<20200509, Qing Li> !
+      ! use the max of NN at the upper and lower interface following Van Roekel et al., 2019
       NN_max = max(NN(kp1), NN(k))
       RiBulk(kp1:kp1) = cvmix_kpp_compute_bulk_Richardson(           &
                 zt_cntr = (/-depth/),                                &
