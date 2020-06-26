@@ -64,6 +64,7 @@
    call register_stim_variables(nlev)
 #endif
    call register_observation_variables(nlev)
+   call register_stokes_drift_variables(nlev)
 #if 0
    call register_stream_variables(nlev)
 #endif
@@ -251,6 +252,54 @@
    end subroutine register_observation_variables
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Stokes drift variable registration
+!
+! !INTERFACE:
+   subroutine register_stokes_drift_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use stokes_drift
+   use turbulence, only: turb_method
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_stokes_drift_variables()'
+   call fm%register('us', 'm/s', 'Stokes drift x-component', dimensions=(/id_dim_z/), data1d=usprof%data(1:nlev),category='stokes_drift')
+   call fm%register('vs', 'm/s', 'Stokes drift y-component', dimensions=(/id_dim_z/), data1d=vsprof%data(1:nlev),category='stokes_drift')
+   call fm%register('dusdz', '1/s', 'Stokes drift shear x-component', dimensions=(/id_dim_z/), data1d=dusdz%data(1:nlev),category='stokes_drift')
+   call fm%register('dvsdz', '1/s', 'Stokes drift shear y-component', dimensions=(/id_dim_z/), data1d=dvsdz%data(1:nlev),category='stokes_drift')
+   call fm%register('us0', 'm/s', 'surface Stokes drift x-component', data0d=us0%value, category='stokes_drift')
+   call fm%register('vs0', 'm/s', 'surface Stokes drift y-component', data0d=vs0%value, category='stokes_drift')
+   call fm%register('ds', 'm', 'Stokes drift penetration depth', data0d=ds%value, category='stokes_drift')
+
+#ifdef _CVMIX_
+   if (turb_method .ne. 100) return
+
+   call fm%register('La_Turb', '', 'Turbulent Langmuir number', data0d=La_Turb, category='stokes_drift')
+   call fm%register('La_SL', '', 'Surface layer averaged Langmuir number', data0d=La_SL, category='stokes_drift')
+   call fm%register('La_SLP_VR12', '', 'Surface layer averaged and projected Langmuir number (Van Roekel et al., 2012)', data0d=La_SLP_VR12, category='stokes_drift')
+   call fm%register('La_SLP_RWH16', '', 'Surface layer averaged and projected Langmuir number (Reichl et al., 2016)', data0d=La_SLP_RWH16, category='stokes_drift')
+   call fm%register('EFactor_LWF16', '', 'Enhancement factor for Langmuir mixing (Li et al., 2016)', data0d=EFactor_LWF16, category='stokes_drift')
+   call fm%register('EFactor_RWH16', '', 'Enhancement factor for Langmuir mixing (Reichl et al., 2016)', data0d=EFactor_RWH16, category='stokes_drift')
+   call fm%register('theta_WW', 'rad', 'Angle between wind and waves', data0d=theta_WW, category='stokes_drift')
+   call fm%register('theta_WL', 'rad', 'Angle between wind and Langmiur cells', data0d=theta_WL, category='stokes_drift')
+#endif
+
+   return
+   end subroutine register_stokes_drift_variables
+!EOC
+
 #if 0
 !-----------------------------------------------------------------------
 !BOP
@@ -339,12 +388,12 @@
    call fm%register('u_taub', 'm/s', 'bottom friction velocity', data0d=u_taub,category='bottom')
    call fm%register('u_taubo', 'm/s', 'bottom friction velocity - old time step', data0d=u_taubo,category='bottom', part_of_state=.true., output_level=output_level_debug)
    call fm%register('taub', 'Pa', 'bottom stress', data0d=taub,category='bottom')
-   call fm%register('NN', '1/s2', 'buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NN(1:nlev),category='turbulence/buoyancy')
-   call fm%register('NNT', '1/s2', 'contribution of T-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNT(1:nlev),category='turbulence/buoyancy')
-   call fm%register('NNS', '1/s2', 'contribution of S-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNS(1:nlev),category='turbulence/buoyancy')
-   call fm%register('SS', '1/s2', 'shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SS(1:nlev),category='turbulence/shear')
-   call fm%register('SSU', '1/s2', 'x-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSU(1:nlev),category='turbulence/shear', output_level=output_level_debug)
-   call fm%register('SSV', '1/s2', 'y-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSV(1:nlev),category='turbulence/shear', output_level=output_level_debug)
+   call fm%register('NN', '1/s2', 'buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_zi/), data1d=NN(0:nlev),category='turbulence/buoyancy')
+   call fm%register('NNT', '1/s2', 'contribution of T-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_zi/), data1d=NNT(0:nlev),category='turbulence/buoyancy')
+   call fm%register('NNS', '1/s2', 'contribution of S-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_zi/), data1d=NNS(0:nlev),category='turbulence/buoyancy')
+   call fm%register('SS', '1/s2', 'shear frequency squared', standard_name='??', dimensions=(/id_dim_zi/), data1d=SS(0:nlev),category='turbulence/shear')
+   call fm%register('SSU', '1/s2', 'x-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_zi/), data1d=SSU(0:nlev),category='turbulence/shear', output_level=output_level_debug)
+   call fm%register('SSV', '1/s2', 'y-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_zi/), data1d=SSV(0:nlev),category='turbulence/shear', output_level=output_level_debug)
    call fm%register('xP', 'm2/s3', 'extra turbulence production', standard_name='??', dimensions=(/id_dim_z/), data1d=xP(1:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('buoy', 'm/s2', 'buoyancy', standard_name='??', dimensions=(/id_dim_z/), data1d=buoy(1:nlev),category='turbulence/buoyancy')
    call fm%register('rad', 'W/m2', 'shortwave radiation', standard_name='??', dimensions=(/id_dim_zi/), data1d=rad(0:nlev),category='light')
@@ -399,6 +448,19 @@
 
    if (turb_method.eq.99) return
 
+   call fm%register('num', 'm2/s', 'turbulent diffusivity of momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=num(0:nlev),category='turbulence', part_of_state=.true.)
+   call fm%register('nuh', 'm2/s', 'turbulent diffusivity of heat', standard_name='??', dimensions=(/id_dim_zi/), data1d=nuh(0:nlev),category='turbulence', part_of_state=.true.)
+   call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_zi/), data1d=nus(0:nlev),category='turbulence', part_of_state=.true.)
+   call fm%register('gamu', 'm2/s2', 'non-local flux of u-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamu(0:nlev),category='turbulence')
+   call fm%register('gamv', 'm2/s2', 'non-local flux of v-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamv(0:nlev),category='turbulence')
+   call fm%register('gamh', 'K m/s', 'non-local heat flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamh(0:nlev),category='turbulence')
+   call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gams(0:nlev),category='turbulence')
+   call fm%register('Rig', '', 'gradient Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=Rig(0:nlev),category='turbulence')
+
+#ifdef _CVMIX_
+   if (turb_method .eq. 100) return
+#endif
+
    call fm%register('tke', 'm2/s2', 'turbulent kinetic energy', standard_name='??', dimensions=(/id_dim_zi/), data1d=tke(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('tkeo', 'm2/s2', 'turbulent kinetic energy - old time step', standard_name='??', dimensions=(/id_dim_zi/), data1d=tkeo(0:nlev),category='turbulence', part_of_state=.true., output_level=output_level_debug)
    call fm%register('eps', 'm2/s3', 'energy dissipation rate', standard_name='??', dimensions=(/id_dim_zi/), data1d=eps(0:nlev),category='turbulence', part_of_state=.true.)
@@ -408,14 +470,7 @@
    call fm%register('P', 'm2/s3', 'shear production', standard_name='??', dimensions=(/id_dim_zi/), data1d=P(0:nlev),category='turbulence/shear')
    call fm%register('G', 'm2/s3', 'buoyancy production', standard_name='??', dimensions=(/id_dim_zi/), data1d=B(0:nlev),category='turbulence/buoyancy')
    call fm%register('Pb', 'm2/s5', 'production of buoyancy variance', standard_name='??', dimensions=(/id_dim_zi/), data1d=Pb(0:nlev),category='turbulence/buoyancy')
-   call fm%register('num', 'm2/s', 'turbulent diffusivity of momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=num(0:nlev),category='turbulence', part_of_state=.true.)
-   call fm%register('nuh', 'm2/s', 'turbulent diffusivity of heat', standard_name='??', dimensions=(/id_dim_zi/), data1d=nuh(0:nlev),category='turbulence', part_of_state=.true.)
-   call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_zi/), data1d=nus(0:nlev),category='turbulence', part_of_state=.true.)
-   call fm%register('gamu', 'm2/s2', 'non-local flux of u-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamu(0:nlev),category='turbulence')
-   call fm%register('gamv', 'm2/s2', 'non-local flux of v-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamv(0:nlev),category='turbulence')
    call fm%register('gamb', 'm2/s3', 'non-local  buoyancy flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamb(0:nlev),category='turbulence')
-   call fm%register('gamh', 'K m/s', 'non-local heat flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamh(0:nlev),category='turbulence')
-   call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gams(0:nlev),category='turbulence')
    call fm%register('cmue1', '', 'stability function for momentum diffusivity', standard_name='??', dimensions=(/id_dim_zi/), data1d=cmue1(0:nlev),category='turbulence')
    call fm%register('cmue2', '', 'stability function for scalar diffusivity', standard_name='??', dimensions=(/id_dim_zi/), data1d=cmue2(0:nlev),category='turbulence')
    call fm%register('gam', '', 'non-dimensional non-local buoyancy flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gam(0:nlev),category='turbulence')
@@ -423,7 +478,6 @@
    call fm%register('as', '', 'non-dimensional shear time scale', standard_name='??', dimensions=(/id_dim_zi/), data1d=as(0:nlev),category='turbulence')
    call fm%register('at', '', 'non-dimensional buoyancy variance', standard_name='??', dimensions=(/id_dim_zi/), data1d=at(0:nlev),category='turbulence')
    call fm%register('r', '', 'turbulent time scale ratio', standard_name='??', dimensions=(/id_dim_zi/), data1d=r(0:nlev),category='turbulence')
-   call fm%register('Rig', '', 'gradient Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=Rig(0:nlev),category='turbulence')
    call fm%register('xRf', '', 'flux Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=xRf(0:nlev),category='turbulence')
    call fm%register('uu', 'm2/s2', 'variance of u-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=uu(0:nlev),category='turbulence/shear')
    call fm%register('vv', 'm2/s2', 'variance of v-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=vv(0:nlev),category='turbulence/shear')

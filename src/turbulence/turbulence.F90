@@ -559,7 +559,7 @@
    LEVEL1 'init_turbulence_yaml'
 
    call branch%get(turb_method, 'turb_method', 'turbulence closure', &
-                   options=(/option(convective, 'convective adjustment'), option(first_order, 'first-order'), option(second_order, 'second-order')/),default=second_order)
+                   options=(/option(convective, 'convective adjustment'), option(first_order, 'first-order'), option(second_order, 'second-order'), option(100, 'cvmix')/),default=second_order)
    call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
                    options=(/option(tke_local_eq, 'algebraic length scale equation'), option(tke_keps, 'differential equation for tke (k-epsilon style)'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
@@ -615,7 +615,7 @@
                    minimum=0._rk,default=1.e-10_rk)
    call twig%get(epsb_min, 'epsb_min', 'minimum buoyancy variance destruction rate', 'm^2/s^5', &
                    minimum=0._rk,default=1.e-14_rk)
-   
+
    twig => branch%get_child('generic', 'generic length scale (GLS) model', display=display_advanced)
    call twig%get(compute_param, 'compute_param', 'compute the model parameters', &
                    default=.false.)
@@ -952,6 +952,8 @@
 # endif
 
    LEVEL2 'done.'
+
+   if (turb_method .eq. 100) return
 
 !  initialize the parameters of the second-order closure
    if (turb_method.eq.second_order) then
