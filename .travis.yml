@@ -6,7 +6,7 @@ addons:
    apt:
       packages:
 #         - netcdf-bin libnetcdf-dev openmpi-bin libopenmpi-dev gfortran
-         - netcdf-bin libnetcdf-dev gfortran
+         - netcdf-bin libnetcdf-dev libnetcdff-dev gfortran
 
 python:
   - '3.6'
