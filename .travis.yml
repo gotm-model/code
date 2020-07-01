@@ -1,0 +1,30 @@
+dist: bionic
+language: python
+os: linux
+
+addons:
+   apt:
+      packages:
+#         - netcdf-bin libnetcdf-dev openmpi-bin libopenmpi-dev gfortran
+         - netcdf-bin libnetcdf-dev gfortran
+
+python:
+  - '3.6'
+
+# Handle git submodules yourself
+#git:
+    #submodules: false
+
+#before_install:
+   # Use sed to replace the SSH URL with the public URL, then initialize submodules
+  #- sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+  #- git submodule update --init --recursive
+
+script:
+  - mkdir build && cd build
+  - cmake ../ -DCMAKE_Fortran_COMPILER=gfortran
+  - make
+
+branches:
+  only:
+  - master
