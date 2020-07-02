@@ -24,14 +24,10 @@ script:
   - mkdir build && cd build
   - cmake ../
   - make
-  - pwd
-  - ls gotm*
-  - cd ..
-  - cd tests/entrainment
+  - cd ../tests/entrainment
   - ln -s ../../build/gotm
-#  - ./run_all.sh
-#  - ls *.log
-  - ls *
+  - ./run_all.sh
+  - ls -l *
 
 #script: ctest --output-on-failure
 
