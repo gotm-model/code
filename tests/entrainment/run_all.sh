@@ -4,5 +4,5 @@ GOTM=./gotm
 
 confs="generic kepsilon komega MellorYamada"
 for conf in $confs; do
-   $GOTM ${conf}_gotm.yaml --output_id _$conf >& $conf.log
+   $GOTM gotm_${conf}.yaml --output_id _${conf} >& ${conf}.log
 done
