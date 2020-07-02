@@ -28,6 +28,7 @@ script:
   - ln -s ../../build/gotm
   - ./run_all.sh
   - ls -l *
+  - cat kepsilon.log
 
 #script: ctest --output-on-failure
 
