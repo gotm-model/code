@@ -1,30 +1,32 @@
+# https://travis-ci.org/dashboard
+# https://config.travis-ci.com/explore
+
+os: linux
 dist: bionic
 language: python
-os: linux
-
+arch:
+  - amd64
+#  - arm64
+#  - x64
 addons:
-   apt:
-      packages:
-#         - netcdf-bin libnetcdf-dev openmpi-bin libopenmpi-dev gfortran
-         - netcdf-bin libnetcdf-dev libnetcdff-dev gfortran
-
+  apt:
+    packages:
+      - gfortran netcdf-bin libnetcdf-dev libnetcdff-dev
 python:
   - '3.6'
-
-# Handle git submodules yourself
-#git:
-    #submodules: false
-
-#before_install:
-   # Use sed to replace the SSH URL with the public URL, then initialize submodules
-  #- sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
-  #- git submodule update --init --recursive
-
-script:
-  - mkdir build && cd build
-  - cmake ../ -DCMAKE_Fortran_COMPILER=gfortran
-  - make
-
+env:
+  - FC=gfortran
+#  - FC=gfortran-8
 branches:
   only:
   - master
+script:
+  - mkdir build && cd build
+  - cmake ../
+  - make
+  - pwd
+  - ls gotm*
+  - cd ..
+
+#script: ctest --output-on-failure
+
