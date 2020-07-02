@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 
-confs="generic kepsilon komega MellorYamada"
 GOTM=./gotm
 
+confs="generic kepsilon komega MellorYamada"
 for conf in $confs; do
    $GOTM ${conf}_gotm.yaml --output_id _$conf >& $conf.log
 done
