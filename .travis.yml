@@ -22,12 +22,12 @@ branches:
   - master
 script:
   - mkdir build && cd build
-  - cmake ../
-  - make
+  - cmake ../ && make
   - cd ../tests/entrainment
   - ln -s ../../build/gotm
   - ./run_all.sh
-  - ls -l *
+  - ls -l *.log
+  - ls -l *.nc
   - cat kepsilon.log
 
 #script: ctest --output-on-failure
