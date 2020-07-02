@@ -27,6 +27,11 @@ script:
   - pwd
   - ls gotm*
   - cd ..
+  - cd tests/entrainment
+  - ln -s ../../build/gotm
+  - ./run_all.sh
+  - ls *.log
+  - ls *.nc
 
 #script: ctest --output-on-failure
 
