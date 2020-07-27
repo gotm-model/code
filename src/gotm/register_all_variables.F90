@@ -90,14 +90,17 @@
    REALTYPE, intent(in) :: lat,lon
 !
 ! !LOCAL VARIABLES:
+   type (type_field), pointer :: field
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_coordinate_variables()'
 
 !  register - dimension
-   call fm%register('lon','degrees_east','longitude',dimensions=(/id_dim_lon/),no_default_dimensions=.true.,data0d=lon,coordinate_dimension=id_dim_lon)
-   call fm%register('lat','degrees_north','latitude',dimensions=(/id_dim_lat/),no_default_dimensions=.true.,data0d=lat,coordinate_dimension=id_dim_lat)
+   call fm%register('lon','degrees_east','longitude',dimensions=(/id_dim_lon/),no_default_dimensions=.true.,data0d=lon,coordinate_dimension=id_dim_lon,field=field)
+   call field%attributes%set('axis', 'X')
+   call fm%register('lat','degrees_north','latitude',dimensions=(/id_dim_lat/),no_default_dimensions=.true.,data0d=lat,coordinate_dimension=id_dim_lat,field=field)
+   call field%attributes%set('axis', 'Y')
 
    end subroutine register_coordinate_variables
 !EOC
@@ -317,6 +320,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)  :: nlev
+   type (type_field), pointer :: field
 !
 ! !LOCAL VARIABLES:
 !EOP
@@ -357,8 +361,12 @@
       call fm%register('Af', 'm^2', 'hypsograph at grid interfaces', standard_name='??', dimensions=(/id_dim_z/), data1d=Af(1:nlev), category='column_structure')
    end if
 #endif
-   call fm%register('z', 'm', 'depth', standard_name='??', dimensions=(/id_dim_z/), data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='column_structure')
-   call fm%register('zi', 'm', 'interface depth', standard_name='??', dimensions=(/id_dim_zi/), data1d=zi(0:nlev), coordinate_dimension=id_dim_zi,category='column_structure')
+   call fm%register('z', 'm', 'depth', standard_name='??', dimensions=(/id_dim_z/), data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='column_structure',field=field)
+   call field%attributes%set('positive', 'up')
+   call field%attributes%set('axis', 'Z')
+   call fm%register('zi', 'm', 'interface depth', standard_name='??', dimensions=(/id_dim_zi/), data1d=zi(0:nlev), coordinate_dimension=id_dim_zi,category='column_structure',field=field)
+   call field%attributes%set('positive', 'up')
+   call field%attributes%set('axis', 'Z')
    call fm%register('h', 'm', 'layer thickness', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='column_structure',part_of_state=.true.)
    call fm%register('ho', 'm', 'layer thickness - old time step', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='column_structure', part_of_state=.true., output_level=output_level_debug)
 #ifdef EXTRA_OUTPUT
