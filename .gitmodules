@@ -8,4 +8,7 @@
 #	url = ../../BoldingBruggeman/flexout
 [submodule "extern/stim"]
 	path = extern/stim
-	url = ../../BoldingBruggeman/stim
+	url = https://github.com/BoldingBruggeman/stim
+[submodule "extern/CVMix-src"]
+	path = extern/CVMix-src
+	url = https://github.com/CVMix/CVMix-src.git

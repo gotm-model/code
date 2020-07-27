@@ -45,6 +45,7 @@
    use input
    use input_netcdf
    use observations
+   use stokes_drift
    use time
 
    use airsea_driver, only: init_airsea,post_init_airsea,do_airsea,clean_airsea
@@ -53,6 +54,7 @@
    use airsea_driver, only: fluxes_method
    use airsea_driver, only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
    use airsea_driver, only: bio_albedo,bio_drag_scale
+   use airsea_driver, only: u10, v10
    use airsea_variables, only: qa,ta
 
 #ifdef _ICE_
@@ -65,6 +67,7 @@
    use turbulence,  only: num,nuh,nus
    use turbulence,  only: const_num,const_nuh
    use turbulence,  only: gamu,gamv,gamh,gams
+   use turbulence,  only: Rig
    use turbulence,  only: kappa
    use turbulence,  only: clean_turbulence
 
@@ -72,6 +75,11 @@
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
+
+#ifdef _CVMIX_
+   use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
+   use gotm_cvmix,  only: zsbl, kpp_langmuir_method
+#endif
 
 #ifdef SEAGRASS
    use seagrass
@@ -297,8 +305,13 @@
    call init_ice()
 #endif
    call init_observations()
+   call init_stokes_drift()
    branch => settings_store%get_child('turbulence')
    call init_turbulence(branch)
+#ifdef _CVMIX_
+   branch => settings_store%get_child('cvmix')
+   call init_cvmix(branch)
+#endif
 #ifdef _FABM_
    branch => settings_store%get_typed_child('fabm', 'Framework for Aquatic Biogeochemical Models')
    call configure_gotm_fabm(branch)
@@ -333,8 +346,13 @@
 
       call init_observations(namlst,'obs.nml')
 
+      call init_stokes_drift(namlst,'stokes_drift.nml')
+
       call init_turbulence(namlst,'gotmturb.nml')
       if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
+#ifdef _CVMIX_
+      if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
+#endif
 
       call init_airsea(namlst)
    end if
@@ -442,6 +460,9 @@
    call post_init_observations(depth,nlev,z,h,gravity,rho_0)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
+!  Stokes drift
+   call post_init_stokes_drift(nlev)
+
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
 
@@ -449,6 +470,12 @@
    call updategrid(nlev,dt,zeta%value)
 
    call post_init_turbulence(nlev)
+
+#ifdef _CVMIX_
+   if (turb_method .eq. 100) then
+      call post_init_cvmix(nlev,depth,gravity,rho_0)
+   endif
+#endif
 
 !  initialise mean fields
    s(1:nlev) = sprof%data(1:nlev)
@@ -614,6 +641,7 @@
    character(10)             :: t_
 
    REALTYPE                  :: Qsw, Qflux
+   REALTYPE                  :: La, EFactor
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -644,6 +672,7 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
+      call do_stokes_drift(nlev,z,zi,gravity,u10%value,v10%value)
 
 !     external forcing
       if(fluxes_method /= 0) then
@@ -730,7 +759,7 @@
       call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
 #endif
 
-!    compute turbulent mixing
+!     compute turbulent mixing
       select case (turb_method)
       case (0)
 !        do convective adjustment
@@ -744,6 +773,34 @@
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
                      u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
                      tRad,bRad,cori)
+
+#ifdef _CVMIX_
+      case (100)
+
+!        update Langmuir number
+         call langmuir_number(nlev,zi,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
+
+!        use KPP via CVMix
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
+                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+         select case(kpp_langmuir_method)
+         case (0)
+            efactor = _ONE_
+            La = _ONE_/SMALL
+         case (1)
+            efactor = EFactor_LWF16
+            La = La_SL
+         case (2)
+            efactor = EFactor_LWF16
+            La = La_SL
+         case (3)
+            efactor = EFactor_RWH16
+            La = La_SLP_RWH16
+         end select
+         call do_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,              &
+                       u_taus,tFlux,btFlux,sFlux,bsFlux,                &
+                       tRad,bRad,cori,efactor,La)
+#endif
 
       case default
 !        update one-point models
@@ -803,6 +860,10 @@
    call clean_meanflow()
 
    if (turb_method.eq.99) call clean_kpp()
+
+#ifdef _CVMIX_
+   if (turb_method .eq. 100) call clean_cvmix()
+#endif
 
    call clean_turbulence()
 
