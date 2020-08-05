@@ -24,7 +24,7 @@ endif()
 # User-configurable options
 # ----------------------------
 
-option(GOTM_USE_CVMIX "Include support for the CVMix turbulence closure models (github.com/CVMix)" ON)
+option(GOTM_USE_CVMIX "Include support for the CVMix turbulence closure models (github.com/CVMix)" OFF)
 
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 
@@ -60,7 +60,7 @@ if(GOTM_USE_CVMIX)
       message(FATAL_ERROR "CVMix not found at extern/CVMix-src. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory - followed by \"git pull --recurse-submodules\".")
    else()
 #     mark_as_advanced(FORCE CVMIX_BASE CVMIX_EMBED_VERSION)
-      add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/extern/CVMix-src" extern/CVMix-src)
+      add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/extern/CVMix-src" extern/CVMix-src EXCLUDE_FROM_ALL)
    endif()
 endif(GOTM_USE_CVMIX)
 
