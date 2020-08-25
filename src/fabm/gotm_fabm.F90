@@ -968,16 +968,16 @@
    call fabm_get_light(model,1,nlev)
 #endif
 
-#if _FABM_API_VERSION_ > 0
-   call model%finalize_outputs()
-#endif
-
    ! Call fabm_do here to make sure diagnostic variables all have an initial value.
    ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
    rhs = _ZERO_
    call fabm_do_bottom(model,rhs(1,:),bottom_flux)
    call fabm_do_surface(model,rhs(nlev,:),surface_flux)
    call fabm_do(model,1,nlev,rhs)
+
+#if _FABM_API_VERSION_ > 0
+   call model%finalize_outputs()
+#endif
 
    if (save_diag) then
       ! Obtain current values of diagnostic variables from FABM.
