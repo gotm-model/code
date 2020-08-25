@@ -2,6 +2,7 @@ add_library(meanflow
    buoyancy.F90
    convectiveadjustment.F90
    coriolis.F90
+   density_correction.F90
    extpressure.F90
    friction.F90
    intpressure.F90
