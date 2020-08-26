@@ -497,12 +497,21 @@
       if (biodensity_feedback) then
 !        check whether used FABM version provides density_correction
          rho_corr_id = model%get_bulk_variable_id("density_correction")
-#if _FABM_API_VERSION_ > 0
          if (associated(rho_corr_id%variable)) then
+#if _FABM_API_VERSION_ > 0
             !call model%require_data(standard_variables%density_correction)
             call model%require_data(type_interior_standard_variable(name="density_correction", units="kg m-3", aggregate_variable=.true.))
-         end if
+#else
+!           Note: For old FABM get_data() returns null pointer.
+!                 Maybe because require_data() was not called, but this then
+!                 must be done BEFORE fabm_initialize(), called by default
+!                 during create_model().
+!                 Note that new FABM accepts the call to require_data()
+!                 only AFTER initialize()!
+            STDERR "WARNING: Density feedback from used FABM version not supported! Reset biodensity_feedback=F ..."
+            biodensity_feedback = .false.
 #endif
+         end if
       end if
 
       ! Initialize optional forcings to "off"
