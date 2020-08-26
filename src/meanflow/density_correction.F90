@@ -32,11 +32,19 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   REALTYPE                  :: buoy_corr(1:nlev), r2b, dz
+   integer                     :: i
+   REALTYPE                    :: r2b, dz
+   REALTYPE, allocatable, save :: buoy_corr(:)
+   logical, save               :: first=.true.
 !
 !-----------------------------------------------------------------------
 !BOC
+
+   if (first) then
+      allocate(buoy_corr(1:nlev))
+      first = .false.
+   end if
+
    r2b = -gravity / rho_0
    do i=1,nlev
       rho      (i) = rho(i) + rho_corr(i)
