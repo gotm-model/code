@@ -1031,6 +1031,10 @@
 
    if (biodensity_feedback .and. associated(rho_corr_id%variable)) then
       fabm_rho_corr => model%get_data(rho_corr_id)
+      !if (associated(fabm_rho_corr,model%get_data(model%get_bulk_variable_id('zero')))) then
+      !   LEVEL2 "biodensity_feedback: no contribution to density_correction"
+      !   nullify(fabm_rho_corr)
+      !end if
    end if
 
    end subroutine start_gotm_fabm
