@@ -302,47 +302,6 @@ stokes_drift:                              # observed/prescribed Stokes drift
          constant_value: 0.0               # value to use throughout the simulation [m/s; min=0.0; default=0.0]
          file:                             # path to file with time series [default=]
          column: 1                         # index of column to read from [default=1]
-cvmix:
-   surface_layer:                          # surface layer mixing
-      use: true                            # compute surface layer mixing coefficients [default=true]
-      kpp:                                 # K-Profile Parameterization
-         use: true                         # use the K-Profile Parameterization [default=true]
-         langmuir_method: 0                # method of Langmuir turbulence pararmeterization [0=none, 1=Li et al. (2016), 2=Li and Fox-Kemper (2017), 3=Reichl et al. (2016); default=0]
-         surface_layer_extent: 0.1         # extent of surface layer in fraction of the boundary layer [dimensionless; min=0.0; max=1.0; default=0.1]
-         Ri_c: 0.3                         # critical Richardson number [dimensionless; min=0.0; default=0.3]
-         check_Ekman_length: false         # limit the OBL by the Ekman depth [default=false]
-         check_MonOb_length: false         # limit the OBL by the Monin-Obukhov depth [default=false]
-         use_enhanced_diff: true           # enhance diffusivity at OBL [default=true]
-         use_noDGat1: true                 # zero gradient of the shape function at OBL [default=true]
-         match_technique: 1                # matching technique with the ocean interior [1=SimpleShapes, 2=MatchGradient, 3=MatchBoth, 4=ParabolicNonLocal; default=1]
-         bulk_Ri_interp_type: 2            # interpolation type for the bulk Richardson number [1=linear, 2=quadratic, 3=cubic; default=2]
-         OBL_interp_type: 4                # interpolation type for diffusivity and viscosity at OBL [1=linear, 2=quadratic, 3=cubic, 4=LMD94; default=4]
-   interior:                               # interior mixing
-      use: false                           # compute interior mixing coefficients [default=false]
-      background:
-         use: false                        # use interior background mixing coefficients [default=false]
-         diffusivity: 1.00000000E-05       # background diffusivity [m^2/s; default=1.00000000E-05]
-         viscosity: 1.00000000E-04         # background viscosity [m^2/s; default=1.00000000E-04]
-      shear:
-         use: false                        # compute interior shear mixing coefficients [default=false]
-         num_smooth_Ri: 1                  # number of iterations to smooth the gradient Richardson number [default=1]
-         mix_scheme: 2                     # shear mixing scheme [1=PP, Pacanowski and Philander (1981), 2=KPP, Large et al. (1994); default=2]
-         PP_nu_zero: 0.005                 # numerator in viscosity term in PP [m^2/s; default=0.005]
-         PP_alpha: 5.0                     # coefficient of Ri in denominator of visc / diff terms [dimensionless; default=5.0]
-         PP_exp: 2.0                       # exponent of denominator in viscosity term [dimensionless; default=2.0]
-         KPP_nu_zero: 0.005                # leading coefficient of the KPP shear mixing formula [m^2/s; default=0.005]
-         KPP_Ri_zero: 0.7                  # critical Richardson number for KPP shear mixing [dimensionless; default=0.7]
-         KPP_exp: 3.0                      # exponent of unitless factor of diffusivity [dimensionless; default=3.0]
-      convection:
-         use: false                        # compute interior convective mixing coefficients [default=false]
-         diffusivity: 1.0                  # convective diffusivity [m^2/s; default=1.0]
-         viscosity: 1.0                    # convective viscosity [m^2/s; default=1.0]
-         basedOnBVF: true                  # triger convection based on the squared Brunt-Vaisala frequency [default=true]
-         triggerBVF: 0.0                   # threshold of squared Brunt-Vaisala frequency [1/s^2; default=0.0]
-      tidal_mixing:
-         use: false                        # compute interior tidal mixing coefficients [default=false]
-      double_diffusion:
-         use: false                        # compute interior double diffusion mixing coefficients [default=false]
 buoyancy:
    NN_ini: 1.00000000E-04                  # initial value of NN (=buoyancy gradient) [s^-2; default=0.0]
 eq_state:                                  # equation of state
