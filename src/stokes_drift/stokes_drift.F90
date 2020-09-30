@@ -136,6 +136,8 @@
    character(LEN=PATH_MAX)   :: wnd_file
    REALTYPE                  :: const_uwnd, const_vwnd
 
+   logical :: ext
+
 !  Stokes drift namelist
    namelist /stokes_drift/                                      &
             us_prof_method,us_prof_file,                        &
@@ -161,6 +163,9 @@
    wnd_file='wnd_file.dat'
    const_uwnd=_ZERO_
    const_vwnd=_ZERO_
+
+   inquire(file=fn, exist=ext)
+   if (.not. ext) return
 
    open(namlst,file=fn,status='old',action='read',err=91)
    read(namlst,nml=stokes_drift,err=92)
