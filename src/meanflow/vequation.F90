@@ -44,6 +44,7 @@
 ! !USES:
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,v,vo,u,w,avh
+   use meanflow,     only: buoy ! NEW_HB
    use meanflow,     only: drag,SS,runtimev
    use observations, only: w_adv,w_adv_discr
    use observations, only: vprof,vel_relax_tau,vel_relax_ramp
@@ -80,6 +81,9 @@
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, parameter                 :: long=1.0D15
+   logical, parameter                  :: plume_surface=.false. !NEW_HB
+   logical, parameter                  :: plume_bottom =.false.  !NEW_HB
+
 
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -144,6 +148,9 @@
 
 !     add external and internal pressure gradients
       Qsour(i) = Qsour(i) - gravity*dzetady + idpdy(i)
+      if (plume_surface) Qsour(i) = dzetady * (buoy(i)-buoy(1))    ! NEW_HB
+      if (plume_bottom)  Qsour(i) = dzetady * (buoy(nlev)-buoy(i)) ! NEW_HB
+
 
 #ifdef SEAGRASS
       Lsour(i) = -drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
@@ -158,6 +165,11 @@
 
 !  implement bottom friction as source term
    Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
+   if (plume_surface) then  !NEW_HB
+      Lsour(nlev) = - drag(1)/h(nlev)*sqrt(u(nlev)*u(nlev)+v(nlev)*v(nlev)) ! NEW_HB
+      Lsour(1)=0.0   !NEW_HB
+   end if  !NEW_HB
+
 
 !  do advection step
    if (w_adv%method.ne.0) then
