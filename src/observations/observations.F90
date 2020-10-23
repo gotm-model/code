@@ -120,8 +120,11 @@
    REALTYPE, public          :: PhaseSv
 
 !  Internal pressure - 'internal_pressure' namelist
+   integer, public           :: int_press_mode
    logical, public           :: s_adv
    logical, public           :: t_adv
+   REALTYPE, public          :: plume_slope_x
+   REALTYPE, public          :: plume_slope_y
 
 !  Light extinction - the 'extinct' namelist
    integer                   :: extinct_method
@@ -279,9 +282,9 @@
             PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv
 
    namelist /int_pressure/                                      &
-            int_press_method,int_press_file,                    &
+            int_press_method,int_press_mode,int_press_file,     &
             const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
-            s_adv,t_adv
+            s_adv,t_adv,plume_slope_x,plume_slope_y
 
    namelist /extinct/ extinct_method,extinct_file,A,g1,g2
 
@@ -361,6 +364,7 @@
 
 !  Internal pressure - 'internal_pressure' namelist
    int_press_method=0
+   int_press_mode=0
    int_press_file=''
    const_dsdx=_ZERO_
    const_dsdy=_ZERO_
@@ -650,6 +654,7 @@
                    default=43200._rk)
 
    twig => branch%get_typed_child('int_press', 'internal pressure')
+   call twig%get(int_press_mode, 'mode', 'formulation', options=(/option(0, 'prescribed horiztonal gradients of T and S'), option(1, 'dense bottom-attached plume'), option(2, 'buoyant surface-attached plume')/), default=0)
    call twig%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'Celsius/m', &
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    call twig%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'Celsius/m', &
@@ -660,6 +665,8 @@
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
+   call twig%get(plume_slope_x, 'plume_slope_x', 'plume slope in West-East direction', '-',   default=0._rk)
+   call twig%get(plume_slope_y, 'plume_slope_y', 'plume slope in South-North direction', '-', default=0._rk)
 
    call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents')/), pchild=twig)
    call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
@@ -1082,9 +1089,9 @@
             PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv
 
    LEVEL2 'internal_pressure namelist',                         &
-            int_press_method,int_press_file,                    &
+            int_press_method,int_press_mode,int_press_file,     &
             const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
-            s_adv,t_adv
+            s_adv,t_adv,plume_slope_x,plume_slope_y
 
    LEVEL2 'extinct namelist',extinct_method,extinct_file
 

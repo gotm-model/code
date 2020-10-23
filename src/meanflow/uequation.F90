@@ -5,7 +5,7 @@
 ! !ROUTINE: The U-momentum equation\label{sec:uequation}
 !
 ! !INTERFACE:
-   subroutine uequation(nlev,dt,cnpar,tx,num,gamu,Method)
+   subroutine uequation(nlev,dt,cnpar,tx,num,gamu,ext_method,int_method,slope)
 !
 ! !DESCRIPTION:
 !  This subroutine computes the transport of momentum in
@@ -98,13 +98,18 @@
 
 !  method to compute external
 !  pressure gradient
-   integer, intent(in)                 :: method
+   integer, intent(in)                 :: ext_method
+
+!  method to compute internal
+!  pressure gradient
+   integer, intent(in)                 :: int_method
+
+!  plume_slope in x-direction
+   REALTYPE, intent(in)                :: slope
 !
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, parameter                 :: long=1.0D15
-   logical, parameter                  :: plume_surface=.false.  !NEW_HB
-   logical, parameter                  :: plume_bottom =.false. !NEW_HB
 
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -142,7 +147,7 @@
    AdvUdw         = _ZERO_
 
 !  set external pressure gradient
-   if (method .eq. 0) then
+   if (ext_method .eq. 0) then
       dzetadx = dpdx%value
    else
       dzetadx = _ZERO_
@@ -169,8 +174,10 @@
 
 !     add external and internal pressure gradients
       Qsour(i) = Qsour(i) - gravity*dzetadx + idpdx(i)
-      Qsour(i) = surface_plume_slope_x * (buoy(i)-buoy(1))    ! NEW_HB
-      Qsour(i) = bottom_plume_slope_x * (buoy(nlev)-buoy(i)) ! NEW_HB
+!     surface plume 
+      if (int_method.eq.1) Qsour(i) = slope * (buoy(nlev)-buoy(i)) 
+!     bottom plume 
+      if (int_method.eq.2) Qsour(i) = slope * (buoy(i)   -buoy(1))
 
 #ifdef SEAGRASS
       Lsour(i) = -drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
@@ -185,9 +192,8 @@
 
 !  implement bottom friction as source term
    Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
-   if (plume_surface) then  !NEW_HB
-      Lsour(nlev) = - drag(1)/h(nlev)*sqrt(u(nlev)*u(nlev)+v(nlev)*v(nlev)) ! NEW_HB
-   end if  !NEW_HB 
+!  for surface plumes implement surface friction as source term 
+   Lsour(nlev) = - drag(nlev)/h(nlev)*sqrt(u(nlev)*u(nlev)+v(nlev)*v(nlev)) 
 
 !  do advection step
    if (w_adv%method.ne.0) then

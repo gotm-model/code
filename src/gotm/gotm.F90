@@ -725,11 +725,11 @@
       call coriolis(nlev,dt)
 
 !     update velocity
-      call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
-      call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
+      call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode,int_press_mode,plume_slope_x)
+      call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode,int_press_mode,plume_slope_y)
       call extpressure(ext_press_mode,nlev)
       call intpressure(nlev)
-      call friction(kappa,avmolu,tx,ty)
+      call friction(nlev,kappa,avmolu,tx,ty,int_press_mode)
 
 #ifdef SEAGRASS
       if(seagrass_calc) call do_seagrass(nlev,dt)
