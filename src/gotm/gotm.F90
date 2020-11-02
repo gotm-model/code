@@ -536,17 +536,7 @@
    if (restart) then
       if (restart_offline) then
          LEVEL1 'read_restart'
-#ifdef NETCDF_FMT
-         if (.not. restart_allow_perpetual) then
-            call check_restart_time('time')
-         else
-            LEVEL2 'allow perpetual restarts'
-         end if
-         call read_restart(restart_allow_missing_variable)
-#else
-         FATAL 'Restart reading requires NetCDF support. Please build with GOTM_USE_NetCDF=ON'
-         stop 1
-#endif
+         call read_restart(restart_allow_perpetual, restart_allow_missing_variable)
          call friction(kappa,avmolu,tx,ty)
       end if
       if (restart_online) then
@@ -978,11 +968,21 @@
 #endif
    end subroutine setup_restart
 
-   subroutine read_restart(restart_allow_missing_variable)
-      logical                               :: restart_allow_missing_variable
+   subroutine read_restart(restart_allow_perpetual, restart_allow_missing_variable)
+      logical, intent(in) :: restart_allow_perpetual
+      logical, intent(in) :: restart_allow_missing_variable
+
 #ifdef NETCDF_FMT
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
+
+      call open_restart()
+
+      if (.not. restart_allow_perpetual) then
+         call check_restart_time('time')
+      else
+         LEVEL2 'allow perpetual restarts'
+      end if
 
       field_set = fm%get_state()
       member => field_set%first
@@ -1002,9 +1002,11 @@
          member => member%next
       end do
       call field_set%finalize()
+
+      call close_restart()
 #else
-      FATAL 'GOTM has been compiled without NetCDF support; restart reading is not supported'
-      stop 'read_restart'
+      FATAL 'Restart reading requires NetCDF support. Please build with GOTM_USE_NetCDF=ON'
+      stop 1
 #endif
    end subroutine read_restart
 !-----------------------------------------------------------------------
