@@ -498,11 +498,11 @@
       vssl = vs0%value
    end if
 
-   if (us_srf .gt. _ZERO_) then
+   if (us_srf .gt. 1e-4 .and. u_taus .gt. 1e-4) then
       ! turbulent Langmuir number (McWilliams et al., 1997)
       La_Turb = sqrt(u_taus/us_srf)
       ! surface layer averaged Langmuir number (Harcourt and D'Asaro, 2008)
-      La_SL = sqrt(u_taus/(sqrt(ussl**2+vssl**2) &
+      La_SL = sqrt(u_taus/abs(sqrt(ussl**2+vssl**2) &
                          -sqrt(usprof%data(kbl)**2+vsprof%data(kbl)**2) &
                          +SMALL*SMALL))
       ! angles between wind and waves
