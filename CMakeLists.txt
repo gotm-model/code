@@ -20,6 +20,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+# To check version of configuration file
+add_definitions(-D_CFG_VERSION_=${gotm_VERSION_MAJOR})
+
 # ----------------------------
 # User-configurable options
 # ----------------------------
