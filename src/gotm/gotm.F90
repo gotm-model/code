@@ -192,7 +192,7 @@
    logical          ::    file_exists
    logical          ::    config_only=.false.
    integer          ::    configuration_version=_CFG_VERSION_
-   integer          ::    cfg_version
+   integer          ::    default_cfg_version, cfg_version
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -221,10 +221,14 @@
       end if
    end if
 
-   call settings_store%get(cfg_version, 'version', 'version of configuration file')
+   default_cfg_version  =-1
+   if (config_only) default_cfg_version = configuration_version
+   call settings_store%get(cfg_version, 'version', 'version of configuration file', default=default_cfg_version)
    if (cfg_version /= configuration_version) then
-      stop 'the configuration version from gotm.yaml does not match this executable'
+      FATAL 'The configuration in ' // trim(yaml_file) //' has version ',cfg_version,', which does not match version ',configuration_version,' expected by this executable.'
+      stop 1
    end if
+
    call settings_store%get(title, 'title', 'simulation title used in output', &
                            default='GOTM simulation')
 
