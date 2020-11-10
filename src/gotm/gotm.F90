@@ -192,7 +192,7 @@
    logical          ::    file_exists
    logical          ::    config_only=.false.
    integer          ::    configuration_version=_CFG_VERSION_
-   integer          ::    cfg_version=-1
+   integer          ::    cfg_version
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -221,11 +221,7 @@
       end if
    end if
 
-   call settings_store%get(cfg_version, 'cfg_version', 'version of gotm.yaml configuration file')
-   if (cfg_version < 0) then
-      stop 'gotm.yaml must contain a specification the version of the configuration file'
-   end if
-
+   call settings_store%get(cfg_version, 'version', 'version of configuration file')
    if (cfg_version /= configuration_version) then
       stop 'the configuration version from gotm.yaml does not match this executable'
    end if
