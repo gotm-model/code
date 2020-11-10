@@ -187,8 +187,10 @@ contains
          call setting%get(target%index, 'column', 'index of column to read from', default=1)
          call setting%get(target%scale_factor, 'scale_factor', 'scale factor to be applied to values read from file', '', default=1._rk, display=display_advanced)
          call setting%get(target%add_offset, 'offset', 'offset to be added to values read from file', units=units, default=0._rk, display=display_advanced)
+         if (present(minimum)) target%minimum = minimum
+         if (present(maximum)) target%maximum = maximum
       end if
-      target%name = setting%path
+      target%name = setting%path(2:)
       if (present(pchild)) pchild => setting
 
    end subroutine type_input_create

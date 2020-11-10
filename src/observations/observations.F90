@@ -576,7 +576,7 @@
    call twig%get(TRelaxTauB, 'tau_b', 'time scale for bottom layer', 's', &
                    minimum=0._rk,default=1e+15_rk, display=display_advanced)
 
-   call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'psu', &
+   call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'psu', minimum=0._rk, &
                    extra_options=(/option(ANALYTICAL, 'analytical')/), method_off=NOTHING, method_constant=method_unsupported, pchild=branch)
    twig => branch%get_typed_child('analytical')
    call twig%get(s_analyt_method, 'method', 'type of analytical initial salinity profile', &
