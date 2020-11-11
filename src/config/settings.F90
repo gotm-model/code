@@ -112,6 +112,7 @@ contains
 
       istart = index(setting%path, '/', .true.) + 1
       setting%long_name = long_name
+      if (units /= '') setting%long_name = setting%long_name // ' [' // units // ']'
       if (present(description)) setting%description = description
       if (present(display)) setting%display = display
 
@@ -156,15 +157,15 @@ contains
       noptions = 0
       if (target%method_off /= method_unsupported) then
          noptions = noptions + 1
-         options(noptions) = option(target%method_off, 'off')
+         options(noptions) = option(target%method_off, 'off', 'off')
       end if
       if (target%method_constant /= method_unsupported) then
          noptions = noptions + 1
-         options(noptions) = option(target%method_constant, 'constant')
+         options(noptions) = option(target%method_constant, 'constant', 'constant')
       end if
       if (target%method_file /= method_unsupported) then
          noptions = noptions + 1
-         options(noptions) = option(target%method_file, 'from file')
+         options(noptions) = option(target%method_file, 'from file', 'file')
       end if
       if (present(extra_options)) options(noptions + 1:) = extra_options
       if (default_method_ == method_unsupported) default_method_ = options(1)%value

@@ -255,13 +255,13 @@
    no_shear     = .false.
 
 !  Read namelist from file.
-   open(10,file='gotmmean.nml',status='old',action='read',err=80)
-   read(10,nml=meanflow,err=81)
-   close (10)
+   open(namlst,file=fn,status='old',action='read',err=80)
+   read(namlst,nml=meanflow,err=81)
+   close (namlst)
    LEVEL2 'done.'
 
    return
-80 FATAL 'I could not open: ',trim('gotmmean.nml')
+80 FATAL 'I could not open: ',fn
    stop 'init_meanflow'
 81 FATAL 'I could not read "meanflow" namelist'
    stop 'init_meanflow'

@@ -323,9 +323,9 @@
    sss_file = ''
 
 !  Read namelist variables from file.
-   open(10,file='airsea.nml',action='read',status='old',err=90)
-   read(10,nml=airsea,err=91)
-   close(10)
+   open(namlst,file='airsea.nml',action='read',status='old',err=90)
+   read(namlst,nml=airsea,err=91)
+   close(namlst)
 
    call I_0%configure(method=swr_method, path=swr_file, index=1, constant_value=const_swr, scale_factor=swr_factor)
 
@@ -352,8 +352,6 @@
 90 FATAL 'I could not open airsea.nml'
    stop 'init_airsea'
 91 FATAL 'I could not read airsea namelist'
-   stop 'init_airsea'
-93 FATAL 'I could not open ',trim(meteo_file)
    stop 'init_airsea'
 
    end subroutine init_airsea_nml
@@ -459,7 +457,7 @@
 
    twig => branch%get_typed_child('fluxes', 'heat and momentum fluxes')
    call twig%get(fluxes_method, 'method', 'method to calculate fluxes from meteorology', &
-                options=(/option(0, 'use prescribed fluxes'), option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=0)
+                options=(/option(0, 'use prescribed fluxes', 'off'), option(1, 'Kondo (1975)', 'kondo'), option(2, 'Fairall et al. (1996)', 'fairall')/), default=0)
    call twig%get(heat, 'heat', 'prescribed total heat flux (sensible, latent and net back-radiation)', 'W/m^2', &
                 default=0._rk)
    call twig%get(tx_, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
@@ -479,12 +477,12 @@
    call twig%get(hum, 'hum', 'humidity @ 2 m', '', &
                 default=0._rk, pchild=leaf)
    call leaf%get(hum_method, 'type', 'humidity metric', &
-                options=(/option(1, 'relative humidity (%)'), option(2, 'wet-bulb temperature'), &
-                option(3, 'dew point temperature'), option(4 ,'specific humidity (kg/kg)')/), default=1)
+                options=(/option(1, 'relative humidity (%)', 'relative'), option(2, 'wet-bulb temperature', 'wet_bulb'), &
+                option(3, 'dew point temperature', 'dew_point'), option(4 ,'specific humidity (kg/kg)', 'specific')/), default=1)
    call twig%get(cloud, 'cloud', 'cloud cover', '1', &
                 minimum=0._rk, maximum=1._rk, default=0._rk)
    call twig%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
-                minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover')/))
+                minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
    call twig%get(precip, 'precip', 'precipitation', 'm/s', &
                 default=0._rk, pchild=leaf)
    call leaf%get(rain_impact, 'flux_impact', 'include effect on fluxes of sensible heat and momentum', &
@@ -492,15 +490,15 @@
    call twig%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
                 default=.false.)
    call twig%get(ssuv_method, 'ssuv_method', 'wind treatment', &
-                options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=1, display=display_advanced)
+                options=(/option(0, 'use absolute wind speed', 'absolute'), option(1, 'use wind speed relative to current velocity', 'relative')/), default=1, display=display_advanced)
 
    call branch%get(ql, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand'), option(5, 'Josey-1'), option(6, 'Josey-2')/), default_method=1)
+               extra_options=(/option(1, 'Clark', 'Clark'), option(2, 'Hastenrath', 'Hastenrath'), option(3, 'Bignami', 'Bignami'), option(4, 'Berliand', 'Berliand'), option(5, 'Josey-1', 'Josey-1'), option(6, 'Josey-2', 'Josey-2')/), default_method=1)
 
    twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
-                options=(/option(0, 'constant'), option(1, 'Payne (1972)'), option(2, 'Cogley (1979)')/), default=1)
+                options=(/option(0, 'constant', 'constant'), option(1, 'Payne (1972)', 'Payne'), option(2, 'Cogley (1979)', 'Cogley')/), default=1)
    call twig%get(const_albedo, 'constant_value', 'constant value to use throughout the simulation', '1', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
 

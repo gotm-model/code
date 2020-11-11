@@ -192,7 +192,7 @@
    logical          ::    file_exists
    logical          ::    config_only=.false.
    integer          ::    configuration_version=_CFG_VERSION_
-   integer          ::    default_cfg_version, cfg_version
+   integer          ::    cfg_version
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -221,12 +221,14 @@
       end if
    end if
 
-   default_cfg_version  =-1
-   if (config_only) default_cfg_version = configuration_version
-   call settings_store%get(cfg_version, 'version', 'version of configuration file', default=default_cfg_version)
-   if (cfg_version /= configuration_version) then
-      FATAL 'The configuration in ' // trim(yaml_file) //' has version ',cfg_version,', which does not match version ',configuration_version,' expected by this executable.'
-      stop 1
+   if (config_only) then
+      call settings_store%get(cfg_version, 'version', 'version of configuration file', default=configuration_version)
+   else
+      call settings_store%get(cfg_version, 'version', 'version of configuration file')
+      if (cfg_version /= configuration_version) then
+         FATAL 'The configuration in ' // trim(yaml_file) //' has version ',cfg_version,', which does not match version ',configuration_version,' expected by this executable.'
+         stop 1
+      end if
    end if
 
    call settings_store%get(title, 'title', 'simulation title used in output', &
@@ -244,7 +246,7 @@
 
    branch => settings_store%get_child('time')
    call branch%get(timefmt, 'method', 'method to specify simulated period', default=2, &
-                   options=(/option(1, 'number of time steps'), option(2, 'start and stop'), option(3, 'start and number of time steps')/), display=display_advanced)
+                   options=(/option(1, 'number of time steps', 'MaxN'), option(2, 'start and stop', 'start_stop'), option(3, 'start and number of time steps', 'start_MaxN')/), display=display_advanced)
 #if 0
    call branch%get(MaxN, 'MaxN', 'number of time steps', &
                    minimum=1,default=100, display=display_advanced)
@@ -263,12 +265,12 @@
    call branch%get(nlev, 'nlev', 'number of layers', &
                    minimum=1, default=100)
    call branch%get(grid_method, 'method', 'layer thicknesses', &
-                   options=(/option(0, 'equal by default with optional zooming'), option(1, 'prescribed relative fractions'), option(2, 'prescribed thicknesses')/), default=0) ! option(3, 'adaptive')
+                   options=(/option(0, 'equal by default with optional zooming', 'analytical'), option(1, 'prescribed relative fractions', 'file_sigma'), option(2, 'prescribed thicknesses', 'file_h')/), default=0) ! option(3, 'adaptive')
    call branch%get(ddu, 'ddu', 'surface zooming', '-', &
                    minimum=0._rk, default=0._rk)
    call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
                    minimum=0._rk, default=0._rk)
-   call branch%get(grid_file, 'file', 'file with custom grid', &
+   call branch%get(grid_file, 'file', 'path to file with layer thicknesses', &
                    default='')
 #if 0
    twig => branch%get_child('adaptation')
@@ -330,7 +332,7 @@
 
    branch => settings_store%get_child('buoyancy', display=display_advanced)
    call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
-                   options=(/option(1, 'equation of state'), option(2, 'prognostic equation')/), default=1)
+                   options=(/option(1, 'equation of state', 'eq_state'), option(2, 'prognostic equation', 'prognostic')/), default=1)
    call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', '-', &
                    default=0._rk)
    call branch%get(b_obs_NN, 'NN_ini', 'initial value of NN (=buoyancy gradient)', 's^-2', &

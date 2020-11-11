@@ -559,27 +559,27 @@
    LEVEL1 'init_turbulence_yaml'
 
    call branch%get(turb_method, 'turb_method', 'turbulence closure', &
-                   options=(/option(convective, 'convective adjustment'), option(first_order, 'first-order'), option(second_order, 'second-order'), option(100, 'cvmix')/),default=second_order)
+                   options=(/option(convective, 'convective adjustment', 'convective'), option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
    call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
-                   options=(/option(tke_local_eq, 'algebraic length scale equation'), option(tke_keps, 'differential equation for tke (k-epsilon style)'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)')/),default=tke_keps)
+                   options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-epsilon style)', 'tke'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
-                   options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'Xing and Davies (1995)'), option(4, 'Robert and Ouellet (1987)'), option(5, 'Blackadar (two boundaries) (1962)'), option(6, 'Bougeault and Andre (1986)'), option(7, 'Eifler and Schrimpf (ISPRAMIX) (1992)'), option(8, 'dynamic dissipation rate equation'), option(9, 'dynamic Mellor-Yamada q^2 l-equation'), option(10, 'generic length scale (GLS)')/),default=8)
+                   options=(/option(1, 'parabolic', 'parabolic'), option(2, 'triangular', 'triangular'), option(3, 'Xing and Davies (1995)', 'Xing_Davies'), option(4, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), option(5, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(6, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), option(7, 'Eifler and Schrimpf (ISPRAMIX) (1992)', 'Eifler_Schrimpf'), option(8, 'dynamic dissipation rate equation', 'dissipation'), option(9, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(10, 'generic length scale (GLS)', 'gls')/),default=8)
    call branch%get(stab_method, 'stab_method', 'stability functions', &
-                   options=(/option(1, 'constant'), option(2, 'Munk and Anderson (1954)'), option(3, 'Schumann and Gerz (1995)'), option(4, 'Eifler and Schrimpf (1992)')/),default=1)
+                   options=(/option(1, 'constant', 'constant'), option(2, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(3, 'Schumann and Gerz (1995)', 'Schumann_Gerz'), option(4, 'Eifler and Schrimpf (1992)', 'Eifler_Schrimpf')/),default=1)
 
    twig => branch%get_child('bc', 'boundary conditions', display=display_advanced)
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
-                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
+                   options=(/option(Dirichlet, 'Dirichlet', 'Dirichlet'), option(Neumann, 'Neumann', 'Neumann')/), default=Neumann)
    call twig%get(k_lbc, 'k_lbc', 'lower boundary condition for k-equation', &
-                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
+                   options=(/option(Dirichlet, 'Dirichlet', 'Dirichlet'), option(Neumann, 'Neumann', 'Neumann')/), default=Neumann)
    call twig%get(psi_ubc, 'psi_ubc', 'upper boundary condition for length-scale equation', &
-                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
+                   options=(/option(Dirichlet, 'Dirichlet', 'Dirichlet'), option(Neumann, 'Neumann', 'Neumann')/), default=Neumann)
    call twig%get(psi_lbc, 'psi_lbc', 'lower boundary condition for length-scale equation', &
-                   options=(/option(Dirichlet, 'Dirichlet'), option(Neumann, 'Neumann')/), default=Neumann)
+                   options=(/option(Dirichlet, 'Dirichlet', 'Dirichlet'), option(Neumann, 'Neumann', 'Neumann')/), default=Neumann)
    call twig%get(ubc_type, 'ubc_type', 'upper boundary layer', &
-                   options=(/option(1, 'logarithmic law of the wall'), option(2, 'tke-injection (breaking waves)')/),default=1)
+                   options=(/option(1, 'logarithmic law of the wall', 'logarithmic'), option(2, 'tke-injection (breaking waves)', 'tke_injection')/),default=1)
    call twig%get(lbc_type, 'lbc_type', 'lower boundary layer', &
-                   options=(/option(1, 'logarithmic law of the wall')/),default=1)
+                   options=(/option(1, 'logarithmic law of the wall', 'logarithmic')/),default=1)
 
 
    twig => branch%get_child('turb_param')
@@ -672,19 +672,19 @@
    call twig%get(sl, 'sl', 'turbulent diffusivities of q^2 l', '-', &
                    default=0.2_rk)
    call twig%get(my_length, 'length', 'barotropic length scale in q^2 l equation', &
-                   options=(/option(1, 'parabolic'), option(2, 'triangular'), option(3, 'linear from surface')/),default=1)
+                   options=(/option(1, 'parabolic', 'parabolic'), option(2, 'triangular', 'triangular'), option(3, 'linear from surface', 'linear')/),default=1)
    call twig%get(new_constr, 'new_constr', 'stabilize stability functions', &
                    default=.false.)
 
    twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
    call twig%get(scnd_method, 'method', 'method', &
-                   options=(/option(1, 'quasi-equilibrium'), option(2, 'weak equilibrium with algebraic buoyancy variance')/), default=2)
+                   options=(/option(1, 'quasi-equilibrium', 'quasi_eq'), option(2, 'weak equilibrium with algebraic buoyancy variance', 'weak_eq_kb_eq')/), default=2)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
-                   options=(/option(1, 'algebraic'), option(2, 'prognostic')/), default=1)
+                   options=(/option(1, 'algebraic', 'algebraic'), option(2, 'prognostic', 'prognostic')/), default=1)
    call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
-                   options=(/option(1, 'algebraic')/), default=1)
+                   options=(/option(1, 'algebraic', 'algebraic')/), default=1)
    call twig%get(scnd_coeff, 'scnd_coeff', 'coefficients of second-order model', &
-                   options=(/option(0, 'custom'), option(1, 'Gibson and Launder (1978)'), option(2, 'Mellor and Yamada (1982)'), option(3, 'Kantha and Clayson (1994)'), option(4, 'Luyten et al. (1996)'), option(5, 'Canuto et al. (2001) (version A)'), option(6, 'Canuto et al. (2001) (version B)'), option(7, 'Cheng et al. (2002)')/),default=5)
+                   options=(/option(0, 'custom', 'custom'), option(1, 'Gibson and Launder (1978)', 'Gibson_Launder'), option(2, 'Mellor and Yamada (1982)', 'Mellor_Yamada'), option(3, 'Kantha and Clayson (1994)', 'Kantha_Clayson'), option(4, 'Luyten et al. (1996)', 'Luyten'), option(5, 'Canuto et al. (2001) (version A)', 'Canuto-A'), option(6, 'Canuto et al. (2001) (version B)', 'Canuto-B'), option(7, 'Cheng et al. (2002)', 'Cheng')/),default=5)
    call twig%get(cc1, 'cc1', 'cc1', '-', &
                    default=3.6_rk)
    call twig%get(cc2, 'cc2', 'cc2', '-', &
@@ -711,8 +711,8 @@
                    default=0.8_rk)
 
    twig => branch%get_child('iw', 'internal wave mixing', display=display_advanced)
-   call twig%get(iw_model, 'model', 'model', &
-                   options=(/option(0, 'none'), option(1, 'Mellor (1989)'), option(2, 'Large et al. (1994)')/), default=0)
+   call twig%get(iw_model, 'method', 'method', &
+                   options=(/option(0, 'off', 'off'), option(1, 'Mellor (1989)', 'Mellor'), option(2, 'Large et al. (1994)', 'Large')/), default=0)
    call twig%get(alpha, 'alpha', 'coefficient for Mellor internal wave model', '-', &
                    default=0._rk)
    call twig%get(klimiw, 'klim', 'critical value of TKE', 'm^2/s^2', &
