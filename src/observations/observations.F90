@@ -620,32 +620,32 @@
 
    call twig%get(dpdx, 'dpdx', 'pressure in West-East direction', '', &
                    default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents', 'tidal')/), pchild=leaf)
-   call leaf%get(AmpMu, 'AmpM', 'amplitude of 1st harmonic', '', &
+   call leaf%get(AmpMu, 'amp_1', 'amplitude of 1st harmonic', '', &
                    default=0._rk)
-   call leaf%get(PhaseMu, 'PhaseM', 'phase of 1st harmonic', 's', &
+   call leaf%get(PhaseMu, 'phase_1', 'phase of 1st harmonic', 's', &
                    default=0._rk)
-   call leaf%get(AmpSu, 'AmpS', 'amplitude of 2nd harmonic', '', &
+   call leaf%get(AmpSu, 'amp_2', 'amplitude of 2nd harmonic', '', &
                    default=0._rk)
-   call leaf%get(PhaseSu, 'PhaseS', 'phase of 2nd harmonic', 's', &
+   call leaf%get(PhaseSu, 'phase_2', 'phase of 2nd harmonic', 's', &
                    default=0._rk)
 
    call twig%get(dpdy, 'dpdy', 'pressure in South-North direction', '', &
                    default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents', 'tidal')/), pchild=leaf)
-   call leaf%get(AmpMv, 'AmpM', 'amplitude of 1st harmonic', '', &
+   call leaf%get(AmpMv, 'amp_1', 'amplitude of 1st harmonic', '', &
                    default=0._rk)
-   call leaf%get(PhaseMv, 'PhaseM', 'phase of 1st harmonic', 's', &
+   call leaf%get(PhaseMv, 'phase_1', 'phase of 1st harmonic', 's', &
                    default=0._rk)
-   call leaf%get(AmpSv, 'AmpS', 'amplitude of 2nd harmonic', '', &
+   call leaf%get(AmpSv, 'amp_2', 'amplitude of 2nd harmonic', '', &
                    default=0._rk)
-   call leaf%get(PhaseSv, 'PhaseS', 'phase of 2nd harmonic', 's', &
+   call leaf%get(PhaseSv, 'phase_2', 'phase of 2nd harmonic', 's', &
                    default=0._rk)
 
    call twig%get(h_press, 'h', 'height above bed', 'm', &
                    minimum=0._rk,default=0._rk)
    
-   call twig%get(PeriodM, 'PeriodM', 'period of 1st tidal harmonic (eg. M2-tide)', 's', &
+   call twig%get(PeriodM, 'period_1', 'period of 1st tidal harmonic (eg. M2-tide)', 's', &
                    default=44714._rk)
-   call twig%get(PeriodS, 'PeriodS', 'period of 2nd tidal harmonic (eg. S2-tide)', 's', &
+   call twig%get(PeriodS, 'period_2', 'period of 2nd tidal harmonic (eg. S2-tide)', 's', &
                    default=43200._rk)
 
    twig => branch%get_typed_child('int_press', 'internal pressure')
