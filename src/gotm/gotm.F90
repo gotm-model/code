@@ -366,7 +366,7 @@
       if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
 #endif
 
-      call init_airsea(namlst)
+      call init_airsea(namlst,'airsea.nml')
    end if
 
 #ifdef _FABM_
