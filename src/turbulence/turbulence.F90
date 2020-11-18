@@ -583,9 +583,7 @@
 
 
    twig => branch%get_child('turb_param')
-!   call branch%get(s_analyt_method, 's_analyt_method', '', &
-!                   minimum=1,maximum=3,default=1)
-   call twig%get(cm0_fix, 'cm0_fix', 'value of cm0', '-', &
+   call twig%get(cm0_fix, 'cm0_fix', 'value of the stability function in the log-law', '-', &
                    minimum=0._rk,default=0.5477_rk)
    call twig%get(Prandtl0_fix, 'Prandtl0_fix', 'turbulent Prandtl-number', '-', &
                    minimum=0._rk,default=0.74_rk)
