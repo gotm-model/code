@@ -604,7 +604,7 @@
 
    twig => settings_store%get_typed_child('light_extinction')
    call twig%get(extinct_method, 'method', 'water type', &
-                   options=(/option(1, 'Jerlov type I', 'Jerlov-I'), option(2, 'Jerlov type 1 (upper 50 m)', 'Jerlov-I-50m'), option(3, 'Jerlov type IA', 'Jerlov-IA'), &
+                   options=(/option(1, 'Jerlov type I', 'Jerlov-I'), option(2, 'Jerlov type 1 (upper 50 m)', 'Jerlov-1-50m'), option(3, 'Jerlov type IA', 'Jerlov-IA'), &
                    option(4, 'Jerlov type IB', 'Jerlov-IB'), option(5, 'Jerlov type II', 'Jerlov-II'), option(6, 'Jerlov type III', 'Jerlov-III'), option(7, 'custom', 'custom')/), default=1)
    call twig%get(A_, 'A', 'non-visible fraction of shortwave radiation', '1', &
                    minimum=0._rk,maximum=1._rk,default=0.7_rk)
