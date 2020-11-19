@@ -19,7 +19,7 @@ env:
 #  - FC=gfortran-8
 branches:
   only:
-  - master
+  - plume
 script:
   - mkdir build && cd build
   - cmake ../ && make
