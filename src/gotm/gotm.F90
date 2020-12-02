@@ -202,7 +202,7 @@
 #endif
 
    config_only = write_yaml_path /= '' .or. write_schema_path /= ''
-   STDERR LINE
+   STDOUT LINE
 
    settings_store%path = ''
    if (.not. read_nml) then
@@ -566,7 +566,7 @@
    if (list_fields) call fm%list()
 
    LEVEL2 'done.'
-   STDERR LINE
+   STDOUT LINE
 
 #ifdef _PRINTSTATE_
    call print_state
@@ -639,7 +639,7 @@
       LEVEL1 'saving initial conditions'
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
    end if
-   STDERR LINE
+   STDOUT LINE
    LEVEL1 'time_loop'
    progress = (MaxN-MinN+1)/10
    i=0
@@ -807,7 +807,7 @@
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),int(n))
 
    end do
-   STDERR LINE
+   STDOUT LINE
 
    return
    end subroutine time_loop

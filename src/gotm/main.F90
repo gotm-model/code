@@ -42,18 +42,18 @@
 
    call Date_And_Time(DATE=systemdate,TIME=systemtime)
 
-   STDERR LINE
-   STDERR 'GOTM started on ', systemdate(1:4), '/', &
+   STDOUT LINE
+   STDOUT 'GOTM started on ', systemdate(1:4), '/', &
                               systemdate(5:6), '/', &
                               systemdate(7:8),      &
                       ' at ', systemtime(1:2), ':', &
                               systemtime(3:4), ':', &
                               systemtime(5:6)
-   STDERR LINE
+   STDOUT LINE
 #else
-   STDERR LINE
-   STDERR 'GOTM'
-   STDERR LINE
+   STDOUT LINE
+   STDOUT 'GOTM'
+   STDOUT LINE
 #endif
 
 !  run the model
@@ -69,26 +69,26 @@
 #ifdef FORTRAN95
    call Date_And_Time(DATE=systemdate,TIME=systemtime)
 
-   STDERR LINE
-   STDERR 'GOTM finished on ', systemdate(1:4), '/', &
+   STDOUT LINE
+   STDOUT 'GOTM finished on ', systemdate(1:4), '/', &
                                systemdate(5:6), '/', &
                                systemdate(7:8),      &
                        ' at ', systemtime(1:2), ':', &
                                systemtime(3:4), ':', &
                                systemtime(5:6)
-   STDERR LINE
+   STDOUT LINE
 #else
-   STDERR LINE
-   STDERR 'GOTM'
-   STDERR LINE
+   STDOUT LINE
+   STDOUT 'GOTM'
+   STDOUT LINE
 #endif
 
 !  report CPU time used for run
 #ifdef FORTRAN95
    call CPU_Time(t2)
 
-   STDERR 'CPU time:                    ',t2-t1,' seconds'
-   STDERR 'Simulated time/CPU time:     ',simtime/(t2-t1)
+   STDOUT 'CPU time:                    ',t2-t1,' seconds'
+   STDOUT 'Simulated time/CPU time:     ',simtime/(t2-t1)
 #endif
 
    call print_version()
@@ -187,7 +187,7 @@
 #ifdef SEDIMENT
       LEVEL1 'SEDIMENT'
 #endif
-      STDERR LINE
+      STDOUT LINE
    end subroutine compilation_options
 
    subroutine print_help()
