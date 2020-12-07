@@ -65,6 +65,7 @@
 !
 !  Meteorological forcing variables
    integer,  public                    :: hum_method
+   integer,  public                    :: longwave_type
    character(len=PATH_MAX)   :: meteo_file
    type (type_scalar_input), public, target            :: u10,v10
    type (type_scalar_input), public, target            :: airp,airt
@@ -490,12 +491,18 @@
                 default=.false.)
    call branch%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
                 default=.false.)
-
-   call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
-                minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
-   call branch%get(ql, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
+!jpnote: before cherry pick  -- keeping commented because unsure if removing I/0 does anything -- also should check yaml. 
+   !call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
+               ! minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
+   !call branch%get(ql, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
+               ! default=0._rk, method_file=0, method_constant=method_unsupported, &
+               !extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
+!jpnote: after cherry pick 
+   call branch%get(ql, 'longwave_radiation', 'longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-               extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
+               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand'), option(5, 'Josey-1'), option(6, 'Josey-2')/), default_method=1, pchild=leaf)
+   call leaf%get(longwave_type, 'type', 'longwave type from file', &
+                 options=(/option(1, 'net longwave radiation'), option(2, 'incoming longwave radiation')/), default=1)
 
    twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
@@ -687,7 +694,7 @@
             LEVEL4 'using Fairall et. all formulation'
          case default
       end select
-      LEVEL3 'net longwave radiation:'
+      LEVEL3 'longwave radiation:'
       select case (ql%method)
          case(0) ! Read from file instead of calculating
             call register_input(ql)
@@ -1017,9 +1024,8 @@
       cloud1 = cloud2
 
       call humidity(hum_method,hum,airp,tw,ta)
-      if (ql%method .gt. 0) then
-         call longwave_radiation(ql%method, &
-                                 dlat,tw_k,ta_k,cloud,ql)
+      call longwave_radiation(ql%method,longwave_type, &
+                              dlat,tw_k,ta_k,cloud,ql%value)
       end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
@@ -1069,10 +1075,8 @@
    end if
 
    call humidity(hum_method,hum%value,airp%value,tw,ta)
-   if (ql%method .gt. 0) then
-      call longwave_radiation(ql%method, &
-                          dlat,tw_k,ta_k,cloud%value,ql%value)
-   endif
+   call longwave_radiation(ql%method,longwave_type, &
+                           dlat,tw_k,ta_k,cloud%value,ql%value)
    call airsea_fluxes(fluxes_method, &
                       tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx_%value,ty_%value,qe,qh)
    heat%value = (ql%value+qe+qh)

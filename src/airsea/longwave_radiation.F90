@@ -5,13 +5,14 @@
 ! !ROUTINE: Calculate the net longwave radiation \label{sec:back-rad}
 !
 ! !INTERFACE:
-   subroutine longwave_radiation(method,dlat,tw,ta,cloud,ql)
+   subroutine longwave_radiation(method,type,dlat,tw,ta,cloud,ql)
 !
 ! !DESCRIPTION:
 !
 ! Here, the net longwave radiation is calculated by means of one out
 ! of six methods, which depend on the value given to the parameter
 ! {\tt method}:
+! {\tt method}=0: read observations from a file
 ! {\tt method}=1: \cite{Clarketal74},
 ! {\tt method}=2: \cite{HastenrathLamb78},
 ! {\tt method}=3: \cite{Bignamietal95},
@@ -27,16 +28,25 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: method
+   integer, intent(in)                 :: method,type
    REALTYPE, intent(in)                :: dlat,tw,ta,cloud
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: ql
+   REALTYPE, intent(inout)               :: ql
 !
 ! !REVISION HISTORY:
 !  Original author(s): Adolf Stips, Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
+!cherry pick -- > jpnote to get rid of and add to airseavariables
+   integer, parameter   :: from_file=0
+   integer, parameter   :: clark=1      ! Clark et al, 1974
+   integer, parameter   :: hastenrath=2 ! Hastenrath and Lamb, 1978
+   integer, parameter   :: bignami=3    ! Bignami et al., 1995 - Medsea
+   integer, parameter   :: berliand=4   ! Berliand and Berliand, 1952 - ROMS
+   integer, parameter   :: josey1=5     ! Josey 2003, (J1,9)
+   integer, parameter   :: josey2=6     ! Josey 2003, (J2,14)
+
    REALTYPE, parameter, dimension(91)  :: cloud_correction_factor = (/ &
      0.497202,     0.501885,     0.506568,     0.511250,     0.515933, &
      0.520616,     0.525299,     0.529982,     0.534665,     0.539348, &
@@ -60,7 +70,6 @@
 
    REALTYPE                  :: ccf
    REALTYPE                  :: x1,x2,x3
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -68,7 +77,16 @@
    ccf= cloud_correction_factor(nint(abs(dlat))+1)
 
    select case(method)
-      case(CLARK)
+      !before
+      !case(CLARK)
+      !after
+      case(from_file)
+         select case(type)
+            case(1)
+            case(2)
+               ql = ql-bolz*emiss*(tw**4)
+         end select
+      case(clark)
 !        Clark et al. (1974) formula.
 !        unit of ea is Pascal, must hPa
 !        Black body defect term, clouds, water vapor correction
