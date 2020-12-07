@@ -23,7 +23,8 @@
    REALTYPE, public, parameter         :: emiss=0.97
    REALTYPE, public, parameter         :: bolz=5.67e-8
    REALTYPE, public, parameter         :: kelvin=273.15
-   REALTYPE, public, parameter         :: const06=0.62198
+   REALTYPE, public, parameter         :: const06=0.62198 ! molecular weight ratio between water and dry air
+                                                          ! 18.01528 g/mol H2O, 28.97 g/mol dry air
    REALTYPE, public, parameter         :: rgas = 287.1    !
    REALTYPE, public, parameter         :: g = 9.81        ! [m/s2]
    REALTYPE, public, parameter         :: rho_0 = 1025.   ! [kg/m3]
