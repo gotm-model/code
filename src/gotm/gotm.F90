@@ -210,13 +210,14 @@
    if (.not. read_nml) then
       inquire(file=trim(yaml_file),exist=file_exists)
       if (file_exists) then
-         LEVEL2 'Reading yaml configuration from: ',trim(yaml_file)
+         LEVEL2 'Reading configuration from: ',trim(yaml_file)
          call settings_store%load(trim(yaml_file), namlst)
       elseif (.not. config_only) then
-         FATAL 'GOTM now reads its configuration from gotm.yaml.'
-         LEVEL1 'To use namelists instead, specify --read_nml.'
+         FATAL 'Configuration file ' // trim(yaml_file) // ' not found.'
+         LEVEL1 'To generate a file with default settings, specify --write_yaml gotm.yaml.'
+         LEVEL1 'To read a configuration in namelists format (gotmrun.nml etc.), specify --read_nml.'
          LEVEL1 'To migrate namelists to yaml, specify --read_nml --write_yaml gotm.yaml.'
-         LEVEL1 'To generate gotm.yaml with default settings, specify --write_yaml gotm.yaml.'
+         LEVEL1 'For more information, run gotm with -h.'
          stop 2
       end if
    end if
@@ -264,7 +265,7 @@
    branch => settings_store%get_child('grid')
    call branch%get(nlev, 'nlev', 'number of layers', &
                    minimum=1, default=100)
-   call branch%get(grid_method, 'method', 'layer thicknesses', &
+   call branch%get(grid_method, 'method', 'layer thickness specification', &
                    options=(/option(0, 'equal by default with optional zooming', 'analytical'), option(1, 'prescribed relative fractions', 'file_sigma'), option(2, 'prescribed thicknesses', 'file_h')/), default=0) ! option(3, 'adaptive')
    call branch%get(ddu, 'ddu', 'surface zooming', '-', &
                    minimum=0._rk, default=0._rk)
@@ -333,11 +334,11 @@
    branch => settings_store%get_child('buoyancy', display=display_advanced)
    call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
                    options=(/option(1, 'equation of state', 'eq_state'), option(2, 'prognostic equation', 'prognostic')/), default=1)
-   call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', '-', &
+   call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', 'm/s^2', &
                    default=0._rk)
-   call branch%get(b_obs_NN, 'NN_ini', 'initial value of NN (=buoyancy gradient)', 's^-2', &
+   call branch%get(b_obs_NN, 'NN_ini', 'initial buoyancy gradient (squared buoyancy frequency)', 's^-2', &
                    default=0._rk)
-   call branch%get(b_obs_sbf, 'obs_sbf', 'observed constant surface buoyancy flux', '-', &
+   call branch%get(b_obs_sbf, 'obs_sbf', 'constant surface buoyancy flux', 'm^2/s^3', &
                    default=0._rk, display=display_hidden)
 
    branch => settings_store%get_child('eq_state', 'equation of state')

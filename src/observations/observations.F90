@@ -563,7 +563,7 @@
                    minimum=0._rk,default=0._rk)
    call twig%get(t_2, 't_b', 'lower layer temperature', 'Celsius', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(t_obs_NN, 'NN', 'constant buoyancy frequency', 's^-2', &
+   call twig%get(t_obs_NN, 'NN', 'square of buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
    twig => branch%get_typed_child('relax', 'relax model temperature to observed/prescribed value')
    call twig%get(TRelaxTauM, 'tau', 'time scale for interior layer', 's', &
@@ -588,7 +588,7 @@
                    minimum=0._rk,default=0._rk)
    call twig%get(s_2, 's_b', 'lower layer salinity', 'psu', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(s_obs_NN, 'NN', 'constant buoyancy frequency', 's^-2', &
+   call twig%get(s_obs_NN, 'NN', 'square of buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
    twig => branch%get_typed_child('relax', 'relax model salinity to observed/prescribed value')
    call twig%get(SRelaxTauM, 'tau', 'time scale for interior layer', 's', &
@@ -674,11 +674,11 @@
    call twig%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
                    default=0._rk)
 
-   twig => settings_store%get_typed_child('velocities', 'observed/prescribed horizontal velocities')
+   twig => settings_store%get_typed_child('velocities', 'observed/prescribed horizontal velocities', display=display_advanced)
    call twig%get(uprof, 'u', 'velocity in West-East direction', 'm/s', default=0._rk, &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
+                   method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    call twig%get(vprof, 'v', 'velocity in South-North direction', 'm/s', default=0._rk, &
-                   method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE)   
+                   method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
    leaf => twig%get_typed_child('relax', 'relax model velocities towards observed/prescribed value')
    call leaf%get(vel_relax_tau, 'tau', 'time scale', 's', &
                    minimum=0._rk,default=1.e15_rk)

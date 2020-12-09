@@ -494,11 +494,11 @@
                 minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
    call branch%get(ql, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-               extra_options=(/option(1, 'Clark', 'Clark'), option(2, 'Hastenrath', 'Hastenrath'), option(3, 'Bignami', 'Bignami'), option(4, 'Berliand', 'Berliand'), option(5, 'Josey-1', 'Josey-1'), option(6, 'Josey-2', 'Josey-2')/), default_method=1)
+               extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
 
    twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
-                options=(/option(0, 'constant', 'constant'), option(1, 'Payne (1972)', 'Payne'), option(2, 'Cogley (1979)', 'Cogley')/), default=1)
+                options=(/option(0, 'constant', 'constant'), option(PAYNE, 'Payne (1972)', 'Payne'), option(COGLEY, 'Cogley (1979)', 'Cogley')/), default=PAYNE)
    call twig%get(const_albedo, 'constant_value', 'constant value to use throughout the simulation', '1', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
 
@@ -690,17 +690,17 @@
       select case (ql%method)
          case(0) ! Read from file instead of calculating
             call register_input(ql)
-         case(1)
+         case(CLARK)
             LEVEL4 'using Clark formulation'
-         case(2)
+         case(HASTENRATH_LAMB)
             LEVEL4 'using Hastenrath formulation'
-         case(3)
+         case(BIGNAMI)
             LEVEL4 'using Bignami formulation'
-         case(4)
+         case(BERLIAND_BERLIAND)
             LEVEL4 'using Berliand formulation'
-         case(5)
+         case(JOSEY1)
             LEVEL4 'using Josey-1 formulation'
-         case(6)
+         case(JOSEY2)
             LEVEL4 'using Josey-2 formulation'
          case default
       end select

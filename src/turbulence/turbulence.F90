@@ -217,18 +217,18 @@
 
 !  stability functions
    integer, parameter, public                    :: Constant=1
-   integer, parameter, public                    :: MunkAnderson=2
-   integer, parameter, public                    :: SchumGerz=3
-   integer, parameter, public                    :: EiflerSchrimpf=4
+   integer, parameter, public                    :: Munk_Anderson=2
+   integer, parameter, public                    :: Schumann_Gerz=3
+   integer, parameter, public                    :: Eifler_Schrimpf=4
 
 !  method to update length scale
-   integer, parameter                            :: Parabola=1
-   integer, parameter                            :: Triangle=2
-   integer, parameter                            :: Xing=3
-   integer, parameter                            :: RobertOuellet=4
-   integer, parameter                            :: Blackadar=5
-   integer, parameter                            :: BougeaultAndre=6
-   integer, parameter                            :: ispra_length=7
+   integer, parameter, public                    :: Parabolic=1
+   integer, parameter, public                    :: Triangular=2
+   integer, parameter, public                    :: Xing_Davies=3
+   integer, parameter, public                    :: Robert_Ouellet=4
+   integer, parameter, public                    :: Blackadar=5
+   integer, parameter, public                    :: Bougeault_Andre=6
+   integer, parameter, public                    :: ispra_length=7
    integer, parameter, public                    :: diss_eq=8
    integer, parameter, public                    :: length_eq=9
    integer, parameter, public                    :: generic_eq=10
@@ -241,9 +241,9 @@
    integer, parameter, public                    :: injection=2
 
 !  type of second-order model
-   integer, parameter                            :: quasiEq=1
-   integer, parameter                            :: weakEqKbEq=2
-   integer, parameter                            :: weakEqKb=3
+   integer, parameter                            :: quasi_Eq=1
+   integer, parameter                            :: weak_Eq_Kb_Eq=2
+   integer, parameter                            :: weak_Eq_Kb=3
 
 !  method to solve equation for k_b
    integer, parameter                            :: kb_algebraic=1
@@ -253,6 +253,15 @@
    integer, parameter                            :: epsb_algebraic=1
    integer, parameter                            :: epsb_dynamic=2
 
+!  coefficients of second-order model
+   integer, parameter                            :: LIST        = 0
+   integer, parameter                            :: GL78        = 1
+   integer, parameter                            :: MY82        = 2
+   integer, parameter                            :: KC94        = 3
+   integer, parameter                            :: LDOR96      = 4
+   integer, parameter                            :: CHCD01A     = 5
+   integer, parameter                            :: CHCD01B     = 6
+   integer, parameter                            :: CCH02       = 7
 !
 ! !BUGS:
 !        The algebraic equation for the TKE is not safe
@@ -563,9 +572,9 @@
    call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
                    options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-epsilon style)', 'tke'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
-                   options=(/option(1, 'parabolic', 'parabolic'), option(2, 'triangular', 'triangular'), option(3, 'Xing and Davies (1995)', 'Xing_Davies'), option(4, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), option(5, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(6, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), option(7, 'Eifler and Schrimpf (ISPRAMIX) (1992)', 'Eifler_Schrimpf'), option(8, 'dynamic dissipation rate equation', 'dissipation'), option(9, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(10, 'generic length scale (GLS)', 'gls')/),default=8)
+                   options=(/option(parabolic, 'parabolic', 'parabolic'), option(triangular, 'triangular', 'triangular'), option(Xing_Davies, 'Xing and Davies (1995)', 'Xing_Davies'), option(Robert_Ouellet, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), option(Blackadar, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(Bougeault_Andre, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), option(ispra_length, 'Eifler and Schrimpf (ISPRAMIX) (1992)', 'Eifler_Schrimpf'), option(diss_eq, 'dynamic dissipation rate equation', 'dissipation'), option(length_eq, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(generic_eq, 'generic length scale (GLS)', 'gls')/),default=diss_eq)
    call branch%get(stab_method, 'stab_method', 'stability functions', &
-                   options=(/option(1, 'constant', 'constant'), option(2, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(3, 'Schumann and Gerz (1995)', 'Schumann_Gerz'), option(4, 'Eifler and Schrimpf (1992)', 'Eifler_Schrimpf')/),default=1)
+                   options=(/option(1, 'constant', 'constant'), option(Munk_Anderson, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(Schumann_Gerz, 'Schumann and Gerz (1995)', 'Schumann_Gerz'), option(Eifler_Schrimpf, 'Eifler and Schrimpf (1992)', 'Eifler_Schrimpf')/),default=1)
 
    twig => branch%get_child('bc', 'boundary conditions', display=display_advanced)
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
@@ -577,9 +586,9 @@
    call twig%get(psi_lbc, 'psi_lbc', 'lower boundary condition for length-scale equation', &
                    options=(/option(Dirichlet, 'Dirichlet', 'Dirichlet'), option(Neumann, 'Neumann', 'Neumann')/), default=Neumann)
    call twig%get(ubc_type, 'ubc_type', 'upper boundary layer', &
-                   options=(/option(1, 'logarithmic law of the wall', 'logarithmic'), option(2, 'tke-injection (breaking waves)', 'tke_injection')/),default=1)
+                   options=(/option(logarithmic, 'logarithmic law of the wall', 'logarithmic'), option(injection, 'tke-injection (breaking waves)', 'tke_injection')/),default=logarithmic)
    call twig%get(lbc_type, 'lbc_type', 'lower boundary layer', &
-                   options=(/option(1, 'logarithmic law of the wall', 'logarithmic')/),default=1)
+                   options=(/option(logarithmic, 'logarithmic law of the wall', 'logarithmic')/),default=logarithmic)
 
 
    twig => branch%get_child('turb_param')
@@ -676,13 +685,13 @@
 
    twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
    call twig%get(scnd_method, 'method', 'method', &
-                   options=(/option(1, 'quasi-equilibrium', 'quasi_eq'), option(2, 'weak equilibrium with algebraic buoyancy variance', 'weak_eq_kb_eq')/), default=2)
+                   options=(/option(quasi_eq, 'quasi-equilibrium', 'quasi_eq'), option(weak_eq_kb_eq, 'weak equilibrium with algebraic buoyancy variance', 'weak_eq_kb_eq')/), default=weak_eq_kb_eq)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
-                   options=(/option(1, 'algebraic', 'algebraic'), option(2, 'prognostic', 'prognostic')/), default=1)
+                   options=(/option(kb_algebraic, 'algebraic', 'algebraic'), option(kb_dynamic, 'prognostic', 'prognostic')/), default=1)
    call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
-                   options=(/option(1, 'algebraic', 'algebraic')/), default=1)
+                   options=(/option(epsb_algebraic, 'algebraic', 'algebraic')/), default=epsb_algebraic)
    call twig%get(scnd_coeff, 'scnd_coeff', 'coefficients of second-order model', &
-                   options=(/option(0, 'custom', 'custom'), option(1, 'Gibson and Launder (1978)', 'Gibson_Launder'), option(2, 'Mellor and Yamada (1982)', 'Mellor_Yamada'), option(3, 'Kantha and Clayson (1994)', 'Kantha_Clayson'), option(4, 'Luyten et al. (1996)', 'Luyten'), option(5, 'Canuto et al. (2001) (version A)', 'Canuto-A'), option(6, 'Canuto et al. (2001) (version B)', 'Canuto-B'), option(7, 'Cheng et al. (2002)', 'Cheng')/),default=5)
+                   options=(/option(LIST, 'custom', 'custom'), option(GL78, 'Gibson and Launder (1978)', 'Gibson_Launder'), option(MY82, 'Mellor and Yamada (1982)', 'Mellor_Yamada'), option(KC94, 'Kantha and Clayson (1994)', 'Kantha_Clayson'), option(LDOR96, 'Luyten et al. (1996)', 'Luyten'), option(CHCD01A, 'Canuto et al. (2001) (version A)', 'Canuto-A'), option(CHCD01B, 'Canuto et al. (2001) (version B)', 'Canuto-B'), option(CCH02, 'Cheng et al. (2002)', 'Cheng')/),default=CHCD01A)
    call twig%get(cc1, 'cc1', 'cc1', '-', &
                    default=3.6_rk)
    call twig%get(cc2, 'cc2', 'cc2', '-', &
@@ -1100,15 +1109,6 @@
    REALTYPE,  parameter                :: ct4CCH02    =  0.0000
    REALTYPE,  parameter                :: ct5CCH02    =  0.3333
    REALTYPE,  parameter                :: cttCCH02    =  0.8200
-
-   integer, parameter                  :: LIST        = 0
-   integer, parameter                  :: GL78        = 1
-   integer, parameter                  :: MY82        = 2
-   integer, parameter                  :: KC94        = 3
-   integer, parameter                  :: LDOR96      = 4
-   integer, parameter                  :: CHCD01A     = 5
-   integer, parameter                  :: CHCD01B     = 6
-   integer, parameter                  :: CCH02       = 7
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -1872,25 +1872,25 @@
 !  compute the basic properties of all models available
 
    select case(len_scale_method)
-   case(Parabola)
+   case(Parabolic)
 
       if (compute_kappa) kappa=0.4
       gen_l     = kappa
       gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
 
-   case(Triangle)
+   case(Triangular)
 
       if (compute_kappa) kappa=0.4
       gen_l     = kappa
       gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
 
-   case(Xing)
+   case(Xing_Davies)
 
       if (compute_kappa) kappa=0.4
       gen_l     = kappa
       gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
 
-   case(RobertOuellet)
+   case(Robert_Ouellet)
 
       if (compute_kappa) kappa=0.4
       ! Slope at the surface computed from the analytical profile
@@ -1906,7 +1906,7 @@
       gen_l     = kappa
       gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
 
-   case(BougeaultAndre)
+   case(Bougeault_Andre)
 
       !     This needs a check
       if (compute_kappa) kappa=0.4
@@ -2079,7 +2079,7 @@
 !BOC
 ! Report on the properties of each model
    select case(len_scale_method)
-      case(Parabola)
+      case(Parabolic)
          LEVEL2 ' '
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 'You are using a one-equation model'
@@ -2099,7 +2099,7 @@
          LEVEL3 'length-scale slope (no shear), L     =', gen_l
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
-      case(Triangle)
+      case(Triangular)
          LEVEL2 ' '
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 'You are using a one-equation model'
@@ -2118,7 +2118,7 @@
          LEVEL3 'length-scale slope (no shear),    L =', gen_l
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
-      case(Xing)
+      case(Xing_Davies)
          LEVEL2 ' '
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 'You are using a one-equation model'
@@ -2137,7 +2137,7 @@
          LEVEL3 'length-scale slope (no shear), L     =', gen_l
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
-      case(RobertOuellet)
+      case(Robert_Ouellet)
          LEVEL2 ' '
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 'You are using a one-equation model'
@@ -2175,7 +2175,7 @@
          LEVEL3 'length-scale slope (no shear),     L =', gen_l
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
-      case(BougeaultAndre)
+      case(Bougeault_Andre)
          LEVEL2 ' '
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 'You are using a one-equation model'
@@ -2449,7 +2449,7 @@
       end if
 
       select case(scnd_method)
-      case (quasiEq)
+      case (quasi_Eq)
          ! quasi-equilibrium model
 
          call alpha_mnb(nlev,NN,SS)
@@ -2461,7 +2461,7 @@
          call alpha_mnb(nlev,NN,SS)
          call kolpran(nlev)
 
-      case (weakEqKbEq)
+      case (weak_Eq_Kb_Eq)
 
          call alpha_mnb(nlev,NN,SS)
          call cmue_c(nlev)
@@ -2472,7 +2472,7 @@
          call alpha_mnb(nlev,NN,SS)
          call kolpran(nlev)
 
-      case (weakEqKb)
+      case (weak_Eq_Kb)
 
       STDERR 'This second-order model is not yet tested.'
       STDERR 'Choose scnd_method=1,2 in gotmturb.nml.'
@@ -2660,7 +2660,7 @@
          call genericeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case(length_eq)
          call lengthscaleeq(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
-      case(BougeaultAndre)
+      case(Bougeault_Andre)
          call potentialml(nlev,z0b,z0s,h,depth,NN)
       case default
          call algebraiclength(len_scale_method,nlev,z0b,z0s,depth,h,NN)
@@ -2675,7 +2675,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Update the desctruction rate of buoyancy variance\label{sec:updateEpsb}
+! !IROUTINE: Update the destruction rate of buoyancy variance\label{sec:updateEpsb}
 !
 ! !INTERFACE:
    subroutine do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
@@ -2826,11 +2826,11 @@
       case(Constant)
          cmue1=cm0_fix
          cmue2=cm0_fix/Prandtl0_fix
-      case(MunkAnderson)
+      case(Munk_Anderson)
          call cmue_ma(nlev)
-      case(SchumGerz)
+      case(Schumann_Gerz)
          call cmue_sg(nlev)
-      case(EiflerSchrimpf)
+      case(Eifler_Schrimpf)
          call cmue_rf(nlev)
       case default
 
@@ -2941,13 +2941,13 @@
         case(Constant)
            cm0  = cm0_fix
            cmsf = cm0_fix
-        case(MunkAnderson)
+        case(Munk_Anderson)
            cm0  = cm0_fix
            cmsf = cm0_fix
-        case(SchumGerz)
+        case(Schumann_Gerz)
            cm0  = cm0_fix
            cmsf = cm0_fix
-        case(EiflerSchrimpf)
+        case(Eifler_Schrimpf)
            cm0  = cm0_fix
            cmsf = cm0_fix
         case default

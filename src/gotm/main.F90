@@ -139,7 +139,7 @@
       case ('--detail')
          i = i+1
          if (i > n) then
-            FATAL 'Error parsing command line options: --detail must be followed by the detail level (0-3) to use in written yaml.'
+            FATAL 'Error parsing command line options: --detail must be followed by the detail level (minimal, default, full) to use in written yaml.'
             stop 2
          end if
          call get_command_argument(i, arg)
@@ -150,6 +150,10 @@
             write_yaml_detail = 1
          case ('2', 'full')
             write_yaml_detail = 2
+         case default
+            FATAL 'Value "' // trim(arg) // '" for --detail not recognized.'
+            LEVEL1 'Supported options: minimal (0), default (1), full (2)'
+            stop 2
          end select
       case ('--write_schema')
          i = i+1

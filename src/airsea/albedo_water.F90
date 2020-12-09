@@ -17,6 +17,7 @@
 !  in time (monthly values).
 !
 ! !USES:
+   use airsea_variables, only: CONST, PAYNE, COGLEY
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -26,11 +27,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-! !DEFINED PARAMETERS:
-   integer, parameter        :: CONST=0
-   integer, parameter        :: PAYNE=1
-   integer, parameter        :: COGLEY=2
 !
 ! !LOCAL VARIABLES:
    REALTYPE                  :: albedo_payne,albedo_cogley
