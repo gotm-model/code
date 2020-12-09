@@ -1021,7 +1021,7 @@
    REALTYPE, intent(in),target :: latitude,longitude
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
+   REALTYPE, intent(in),target,dimension(:) _CONTIGUOUS_ :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
    REALTYPE, intent(in),target :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_

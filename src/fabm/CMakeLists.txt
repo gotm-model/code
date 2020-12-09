@@ -5,6 +5,11 @@ target_link_libraries(gotm_fabm PUBLIC fabm field_manager PRIVATE util yaml)
 target_include_directories(gotm_fabm PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:gotm_fabm,Fortran_MODULE_DIRECTORY>> $<INSTALL_INTERFACE:include>)
 add_library(gotm::gotm_fabm ALIAS gotm_fabm)
 set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
+if(FABM_USE_CONTIGUOUS)
+   target_compile_definitions(gotm_fabm PRIVATE _CONTIGUOUS_=,contiguous)
+else()
+   target_compile_definitions(gotm_fabm PRIVATE _CONTIGUOUS_=)
+endif()
 
 add_library(gotm_fabm_io
             gotm_fabm_input.F90
