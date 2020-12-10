@@ -222,7 +222,7 @@
       end if
    end if
 
-   if (config_only) then
+   if (config_only .or. read_nml) then
       call settings_store%get(cfg_version, 'version', 'version of configuration file', default=configuration_version)
    else
       call settings_store%get(cfg_version, 'version', 'version of configuration file')
