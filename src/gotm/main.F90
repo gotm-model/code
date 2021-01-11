@@ -107,8 +107,9 @@
 ! !DESCRIPTION:
 !
 ! !LOCAL VARIABLES:
-   character(len=32) :: arg
+   character(len=1024) :: arg
    integer :: n, i, ios
+   logical :: file_exists
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -175,6 +176,11 @@
             stop 2
          end if
          yaml_file = arg
+         inquire(file=trim(yaml_file),exist=file_exists)
+         if (.not. file_exists) then
+            FATAL 'Custom configuration file '//trim(arg)//' does not exist.'
+            stop 2
+         end if
       end select
       i = i+1
    end do

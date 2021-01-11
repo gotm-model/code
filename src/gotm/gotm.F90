@@ -212,7 +212,9 @@
       if (file_exists) then
          LEVEL2 'Reading configuration from: ',trim(yaml_file)
          call settings_store%load(trim(yaml_file), namlst)
-      elseif (.not. config_only) then
+      elseif (config_only) then
+         LEVEL2 'Configuration file ' // trim(yaml_file) // ' not found. Using default settings.'
+      else
          FATAL 'Configuration file ' // trim(yaml_file) // ' not found.'
          LEVEL1 'To generate a file with default settings, specify --write_yaml gotm.yaml.'
          LEVEL1 'To read a configuration in namelists format (gotmrun.nml etc.), specify --read_nml.'
