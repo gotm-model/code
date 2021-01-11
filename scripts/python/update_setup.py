@@ -33,6 +33,11 @@ def dict_constructor(loader, node):
 yaml.add_representer(collections.OrderedDict, dict_representer)
 yaml.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, dict_constructor, Loader=yaml.SafeLoader)
 
+# Represent null as empty string for compatibility with fortran-yaml
+def none_representer(self, data):
+    return self.represent_scalar(u'tag:yaml.org,2002:null', u'')
+yaml.add_representer(type(None), none_representer)
+
 def resolve_node(root, path, create=False):
     components = path.split('/')
     name = components.pop()
