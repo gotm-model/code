@@ -555,11 +555,11 @@
    call settings_store%get(tprof, 'temperature', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
                    extra_options=(/option(ANALYTICAL_OFFSET + TWO_LAYERS, 'two layers', 'two_layer'), option(ANALYTICAL_OFFSET + CONST_NN, 'from salinity and buoyancy frequency', 'buoyancy')/), default=0._rk, method_off=NOTHING, method_constant=ANALYTICAL_OFFSET + CONST_PROF, pchild=branch)
    twig => branch%get_typed_child('analytical')
-   call twig%get(z_t1, 'h_s', 'upper layer thickness', 'm', &
+   call twig%get(z_t1, 'z_s', 'depth where upper layer ends', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(t_1, 't_s', 'upper layer temperature', 'Celsius', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(z_t2, 'h_b', 'lower layer thickness', 'm', &
+   call twig%get(z_t2, 'z_b', 'depth where lower layer begins', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(t_2, 't_b', 'lower layer temperature', 'Celsius', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
@@ -580,11 +580,11 @@
    call settings_store%get(sprof, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'psu', minimum=0._rk, &
                    extra_options=(/option(ANALYTICAL_OFFSET + TWO_LAYERS, 'two layers', 'two_layer'), option(ANALYTICAL_OFFSET + CONST_NN, 'from temperature and buoyancy frequency', 'buoyancy')/), default=0._rk, method_off=NOTHING, method_constant=ANALYTICAL_OFFSET + CONST_PROF, pchild=branch)
    twig => branch%get_typed_child('analytical')
-   call twig%get(z_s1, 'h_s', 'upper layer thickness', 'm', &
+   call twig%get(z_s1, 'z_s', 'depth where upper layer ends', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(s_1, 's_s', 'upper layer salinity', 'psu', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
-   call twig%get(z_s2, 'h_b', 'lower layer thickness', 'm', &
+   call twig%get(z_s2, 'z_b', 'depth where lower layer begins', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(s_2, 's_b', 'lower layer salinity', 'psu', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
