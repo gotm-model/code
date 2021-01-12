@@ -50,9 +50,9 @@ def resolve_node(root, path, create=False):
         node = node[component]
     return node, name
 
-def get_node(root, path):
+def get_node(root, path, default=None):
     node, name = resolve_node(root, path)
-    return node[name]
+    return node.get(name, default)
 
 def del_node(root, path):
     node, name = resolve_node(root, path)
@@ -67,10 +67,10 @@ def update_node(root, path, value):
 
 def move_node(root, path, newpath):
     node, name = resolve_node(root, path)
-    value = node[name]
+    value = node.get(name, None)
     if value is not None:
         update_node(root, newpath, value)
-    del node[name]
+        del node[name]
 
 def update_yaml(oldroot):
     root = copy.deepcopy(oldroot)
@@ -82,7 +82,7 @@ def update_yaml(oldroot):
         move_node(root, 'temperature/analytical/t_2', 'temperature/two_layer/t_b')
         move_node(root, 'temperature/analytical/obs_NN', 'temperature/NN')
         if get_node(root, 'temperature/method') == 1:
-            update_node(root, 'temperature/method', 10 + get_node(root, 'temperature/analytical/method'))
+            update_node(root, 'temperature/method', 10 + get_node(root, 'temperature/analytical/method', default=1))
         del_node(root, 'temperature/analytical')
         move_node(root, 'salinity/analytical/z_s1', 'salinity/two_layer/z_s')
         move_node(root, 'salinity/analytical/s_1', 'salinity/two_layer/s_s')
@@ -90,7 +90,7 @@ def update_yaml(oldroot):
         move_node(root, 'salinity/analytical/s_2', 'salinity/two_layer/s_b')
         move_node(root, 'salinity/analytical/obs_NN', 'salinity/NN')
         if get_node(root, 'salinity/method') == 1:
-            update_node(root, 'salinity/method', 10 + get_node(root, 'salinity/analytical/method'))
+            update_node(root, 'salinity/method', 10 + get_node(root, 'salinity/analytical/method', default=1))
         del_node(root, 'salinity/analytical')
         move_node(root, 'surface/meteo', 'surface')
         move_node(root, 'bottom/MaxItz0b', 'bottom/max_it_z0b')
