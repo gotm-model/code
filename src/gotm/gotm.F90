@@ -227,9 +227,15 @@
    if (config_only .or. read_nml) then
       call settings_store%get(cfg_version, 'version', 'version of configuration file', default=configuration_version)
    else
-      call settings_store%get(cfg_version, 'version', 'version of configuration file')
+      call settings_store%get(cfg_version, 'version', 'version of configuration file', default=-1)
+      if (cfg_version == -1) then
+         FATAL 'The configuration in ' // trim(yaml_file) //' does not have a version key and is therefore not compatible with this version of GOTM.'
+         LEVEL1 'Please update your configuration by running <GOTMDIR>/scripts/python/update_setup.py.'
+         stop 1
+      end if
       if (cfg_version /= configuration_version) then
-         FATAL 'The configuration in ' // trim(yaml_file) //' has version ',cfg_version,', which does not match version ',configuration_version,' expected by this executable.'
+         FATAL 'The configuration in ' // trim(yaml_file) //' has version ',cfg_version,', which does not match version ',configuration_version,' required by this executable.'
+         LEVEL1 'Please update your configuration by running <GOTMDIR>/scripts/python/update_setup.py.'
          stop 1
       end if
    end if
@@ -376,7 +382,7 @@
 #ifdef _FABM_
    if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
 
-   ! Allow FABM to cretae its model tree. After this we know all biogeochemical variables
+   ! Allow FABM to create its model tree. After this we know all biogeochemical variables
    ! This must be done before gotm_fabm_input configuration.
    call gotm_fabm_create_model(namlst)
 
