@@ -93,6 +93,8 @@ def update_yaml(oldroot):
             update_node(root, 'salinity/method', 10 + get_node(root, 'salinity/analytical/method'))
         del_node(root, 'salinity/analytical')
         move_node(root, 'surface/meteo', 'surface')
+        move_node(root, 'bottom/MaxItz0b', 'bottom/max_it_z0b')
+        move_node(root, 'turbulence/iw/model', 'turbulence/iw/method')
         move_node(root, 'mimic_3d/ext_pressure/mode', 'mimic_3d/ext_pressure/type')
         move_node(root, 'mimic_3d/ext_pressure/dpdx/AmpM', 'mimic_3d/ext_pressure/dpdx/amp_1')
         move_node(root, 'mimic_3d/ext_pressure/dpdx/PhaseM', 'mimic_3d/ext_pressure/dpdx/phase_1')
@@ -111,7 +113,8 @@ def update_yaml(oldroot):
         move_node(root, 'eq_state/p0', 'eq_state/linear/p0')
         move_node(root, 'eq_state/dtr0', 'eq_state/linear/dtr0')
         move_node(root, 'eq_state/dsr0', 'eq_state/linear/dsr0')
-        root['version'] = 6
+    root['version'] = 6
+    root.move_to_end('version', last=False)
     return root
 
 if __name__ == '__main__':
