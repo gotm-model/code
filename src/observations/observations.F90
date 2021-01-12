@@ -546,7 +546,7 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
-   class (type_gotm_settings), pointer :: branch, twig, leaf
+   class (type_gotm_settings), pointer :: branch, twig, leaf, leaf2
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -620,24 +620,26 @@
 
    call twig%get(dpdx, 'dpdx', 'pressure in West-East direction', '', &
                    default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents', 'tidal')/), pchild=leaf)
-   call leaf%get(AmpMu, 'amp_1', 'amplitude of 1st harmonic', '', &
+   leaf2 => leaf%get_typed_child('tidal', 'tidal constituents')
+   call leaf2%get(AmpMu, 'amp_1', 'amplitude of 1st harmonic', '', &
                    default=0._rk)
-   call leaf%get(PhaseMu, 'phase_1', 'phase of 1st harmonic', 's', &
+   call leaf2%get(PhaseMu, 'phase_1', 'phase of 1st harmonic', 's', &
                    default=0._rk)
-   call leaf%get(AmpSu, 'amp_2', 'amplitude of 2nd harmonic', '', &
+   call leaf2%get(AmpSu, 'amp_2', 'amplitude of 2nd harmonic', '', &
                    default=0._rk)
-   call leaf%get(PhaseSu, 'phase_2', 'phase of 2nd harmonic', 's', &
+   call leaf2%get(PhaseSu, 'phase_2', 'phase of 2nd harmonic', 's', &
                    default=0._rk)
 
    call twig%get(dpdy, 'dpdy', 'pressure in South-North direction', '', &
                    default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents', 'tidal')/), pchild=leaf)
-   call leaf%get(AmpMv, 'amp_1', 'amplitude of 1st harmonic', '', &
+   leaf2 => leaf%get_typed_child('tidal', 'tidal constituents')
+   call leaf2%get(AmpMv, 'amp_1', 'amplitude of 1st harmonic', '', &
                    default=0._rk)
-   call leaf%get(PhaseMv, 'phase_1', 'phase of 1st harmonic', 's', &
+   call leaf2%get(PhaseMv, 'phase_1', 'phase of 1st harmonic', 's', &
                    default=0._rk)
-   call leaf%get(AmpSv, 'amp_2', 'amplitude of 2nd harmonic', '', &
+   call leaf2%get(AmpSv, 'amp_2', 'amplitude of 2nd harmonic', '', &
                    default=0._rk)
-   call leaf%get(PhaseSv, 'phase_2', 'phase of 2nd harmonic', 's', &
+   call leaf2%get(PhaseSv, 'phase_2', 'phase of 2nd harmonic', 's', &
                    default=0._rk)
 
    call twig%get(h_press, 'h', 'height above bed', 'm', &
@@ -661,17 +663,18 @@
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
 
    call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents', 'tidal')/), pchild=twig)
-   call twig%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
+   leaf => twig%get_typed_child('tidal', 'tidal constituents')
+   call leaf%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
                    default=44714._rk)
-   call twig%get(amp_1, 'amp_1', 'amplitude of 1st harmonic', 'm', &
+   call leaf%get(amp_1, 'amp_1', 'amplitude of 1st harmonic', 'm', &
                    default=0._rk)
-   call twig%get(phase_1, 'phase_1', 'phase of 1st harmonic', 's', &
+   call leaf%get(phase_1, 'phase_1', 'phase of 1st harmonic', 's', &
                    default=0._rk)
-   call twig%get(period_2, 'period_2', 'period of 2nd harmonic (eg. S2-tide)', 's', &
+   call leaf%get(period_2, 'period_2', 'period of 2nd harmonic (eg. S2-tide)', 's', &
                    default=43200._rk)
-   call twig%get(amp_2, 'amp_2', 'amplitude of 2nd harmonic', 'm', &
+   call leaf%get(amp_2, 'amp_2', 'amplitude of 2nd harmonic', 'm', &
                    default=0._rk)
-   call twig%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
+   call leaf%get(phase_2, 'phase_2', 'phase of 2nd harmonic', 's', &
                    default=0._rk)
 
    twig => settings_store%get_typed_child('velocities', 'observed/prescribed horizontal velocities', display=display_advanced)
