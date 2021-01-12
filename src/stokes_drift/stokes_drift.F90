@@ -223,7 +223,7 @@
 !BOC
    LEVEL1 'init_stokes_drift_yaml'
 
-   branch => settings_store%get_typed_child('stokes_drift', 'observed/prescribed Stokes drift')
+   branch => settings_store%get_typed_child('waves/stokes_drift', 'observed/prescribed Stokes drift', display=display_advanced)
    call branch%get(usprof, 'us', 'Stokes drift in West-East direction', 'm/s', default=0._rk,    &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(EXPONENTIAL, 'exponential profile', 'exponential'), &

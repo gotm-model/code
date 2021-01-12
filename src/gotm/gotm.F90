@@ -304,6 +304,7 @@
    branch => settings_store%get_child('bottom')
    branch => settings_store%get_child('light_extinction')
    branch => settings_store%get_child('turbulence')
+   branch => settings_store%get_child('waves', 'surface waves')
 
    branch => settings_store%get_child('restart', order=998)
    call branch%get(restart_offline, 'load', &
