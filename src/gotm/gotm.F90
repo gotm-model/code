@@ -193,6 +193,7 @@
    logical          ::    config_only=.false.
    integer          ::    configuration_version=_CFG_VERSION_
    integer          ::    cfg_version
+   type (type_header) :: yaml_header
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -415,7 +416,21 @@
    end if
 
    if (write_yaml_path /= '') then
-      call settings_store%save(trim(write_yaml_path), namlst, display=write_yaml_detail)
+      select case (write_yaml_detail)
+      case (0)
+         call yaml_header%append('This file was created with only the settings that differ from the default specified by GOTM.')
+         call yaml_header%append('You can generate a configuration with all commonly used settings with: gotm --write_yaml <OUTFILE> --detail default')
+         call yaml_header%append('To generate a configuration with every possible setting, use: gotm --write_yaml <OUTFILE> --detail full')
+      case (1)
+         call yaml_header%append('This file was created with only commonly used settings, plus those that differ from the default specified by GOTM.')
+         call yaml_header%append('You can generate a configuration with every possible setting with: gotm --write_yaml <OUTFILE> --detail full')
+         call yaml_header%append('To see only the settings that differ from the default, use: gotm --write_yaml <OUTFILE> --detail minimal')
+      case (2)
+         call yaml_header%append('This file was created with every possible GOTM setting.')
+         call yaml_header%append('You can generate a configuration with just the commonly used settings with: gotm --write_yaml <OUTFILE> --detail default')
+         call yaml_header%append('To see only the settings that differ from the default, use: gotm --write_yaml <OUTFILE> --detail minimal')
+      end select
+      call settings_store%save(trim(write_yaml_path), namlst, display=write_yaml_detail, header=yaml_header)
       LEVEL0 'Your configuration has been written to '//trim(write_yaml_path)//'.'
       if (file_exists) then
          LEVEL0 'Settings from output.yaml have been migrated to gotm.yaml, but output.yaml will still take priority.'
