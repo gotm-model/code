@@ -138,14 +138,23 @@ if __name__ == '__main__':
     with open(args.infile) as f:
         settings = yaml.safe_load(f)
 
+    print('Updating configuration to latest version...', end='')
     settings = update_yaml(settings)
-    with tempfile.NamedTemporaryFile('w', delete=False) as f:
-        path = f.name
-        yaml.dump(settings, f, default_flow_style=False, indent=2)
-
-    if args.gotm is not None:
-        subprocess.check_call([args.gotm, path, '--write_yaml', path, '--detail', args.detail], cwd=os.path.dirname(path))
-
-    print('Writing updated %s...' % args.out, end='')
-    shutil.copyfile(path, args.out)
     print(' Done.')
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        print(tmpdir)
+        path = os.path.join(tmpdir, 'gotm.yaml')
+        with open(path, 'w') as f:
+            yaml.dump(settings, f, default_flow_style=False, indent=2)
+
+        fabm_yaml = os.path.join(os.path.dirname(args.infile), 'fabm.yaml')
+        if os.path.isfile(fabm_yaml):
+            shutil.copyfile(fabm_yaml, os.path.join(tmpdir, 'fabm.yaml'))
+
+        if args.gotm is not None:
+            subprocess.check_call([args.gotm, '--write_yaml', path, '--detail', args.detail], cwd=tmpdir)
+
+        print('Writing updated %s...' % args.out, end='')
+        shutil.copyfile(path, args.out)
+        print(' Done.')
