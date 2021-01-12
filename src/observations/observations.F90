@@ -695,7 +695,7 @@
                 option(Superbee, 'third-order TVD with Superbee limiter', 'Superbee'), option(MUSCL, 'third-order TVD with MUSCL limiter', 'MUSCL'), &
                 option(P2_PDM, 'third-order TVD with ULTIMATE QUICKEST limiter', 'P2_PDM') /), default=P2_PDM)
 
-   twig => settings_store%get_typed_child('surface/wave', 'wind waves', display=display_advanced)
+   twig => settings_store%get_typed_child('waves')
    call twig%get(Hs_, 'Hs', 'significant wave-height', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(Tz_, 'Tz', 'mean zero-crossing period', 's', &

@@ -93,6 +93,7 @@ def update_yaml(oldroot):
             update_node(root, 'salinity/method', 10 + get_node(root, 'salinity/analytical/method', default=1))
         del_node(root, 'salinity/analytical')
         move_node(root, 'surface/meteo', 'surface')
+        move_node(root, 'surface/waves', 'waves')
         move_node(root, 'bottom/MaxItz0b', 'bottom/max_it_z0b')
         move_node(root, 'turbulence/iw/model', 'turbulence/iw/method')
         move_node(root, 'mimic_3d/ext_pressure/mode', 'mimic_3d/ext_pressure/type')
