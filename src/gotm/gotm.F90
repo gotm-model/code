@@ -191,6 +191,8 @@
    integer          ::    rc
    logical          ::    file_exists
    logical          ::    config_only=.false.
+   integer          ::    configuration_version=_CFG_VERSION_
+   integer          ::    cfg_version
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -208,14 +210,33 @@
    if (.not. read_nml) then
       inquire(file=trim(yaml_file),exist=file_exists)
       if (file_exists) then
-         LEVEL2 'Reading yaml configuration from: ',trim(yaml_file)
+         LEVEL2 'Reading configuration from: ',trim(yaml_file)
          call settings_store%load(trim(yaml_file), namlst)
-      elseif (.not. config_only) then
-         FATAL 'GOTM now reads its configuration from gotm.yaml.'
-         LEVEL1 'To use namelists instead, specify --read_nml.'
+      elseif (config_only) then
+         LEVEL2 'Configuration file ' // trim(yaml_file) // ' not found. Using default settings.'
+      else
+         FATAL 'Configuration file ' // trim(yaml_file) // ' not found.'
+         LEVEL1 'To generate a file with default settings, specify --write_yaml gotm.yaml.'
+         LEVEL1 'To read a configuration in namelists format (gotmrun.nml etc.), specify --read_nml.'
          LEVEL1 'To migrate namelists to yaml, specify --read_nml --write_yaml gotm.yaml.'
-         LEVEL1 'To generate gotm.yaml with default settings, specify --write_yaml gotm.yaml.'
+         LEVEL1 'For more information, run gotm with -h.'
          stop 2
+      end if
+   end if
+
+   if (config_only .or. read_nml) then
+      call settings_store%get(cfg_version, 'version', 'version of configuration file', default=configuration_version)
+   else
+      call settings_store%get(cfg_version, 'version', 'version of configuration file', default=-1)
+      if (cfg_version == -1) then
+         FATAL 'The configuration in ' // trim(yaml_file) //' does not have a version key and is therefore not compatible with this version of GOTM.'
+         LEVEL1 'Please update your configuration by running <GOTMDIR>/scripts/python/update_setup.py.'
+         stop 1
+      end if
+      if (cfg_version /= configuration_version) then
+         FATAL 'The configuration in ' // trim(yaml_file) //' has version ',cfg_version,', which does not match version ',configuration_version,' required by this executable.'
+         LEVEL1 'Please update your configuration by running <GOTMDIR>/scripts/python/update_setup.py.'
+         stop 1
       end if
    end if
 
@@ -234,7 +255,7 @@
 
    branch => settings_store%get_child('time')
    call branch%get(timefmt, 'method', 'method to specify simulated period', default=2, &
-                   options=(/option(1, 'number of time steps'), option(2, 'start and stop'), option(3, 'start and number of time steps')/), display=display_advanced)
+                   options=(/option(1, 'number of time steps', 'MaxN'), option(2, 'start and stop', 'start_stop'), option(3, 'start and number of time steps', 'start_MaxN')/), display=display_advanced)
 #if 0
    call branch%get(MaxN, 'MaxN', 'number of time steps', &
                    minimum=1,default=100, display=display_advanced)
@@ -252,13 +273,13 @@
    branch => settings_store%get_child('grid')
    call branch%get(nlev, 'nlev', 'number of layers', &
                    minimum=1, default=100)
-   call branch%get(grid_method, 'method', 'layer thicknesses', &
-                   options=(/option(0, 'equal by default with optional zooming'), option(1, 'prescribed relative fractions'), option(2, 'prescribed thicknesses')/), default=0) ! option(3, 'adaptive')
+   call branch%get(grid_method, 'method', 'layer thickness specification', &
+                   options=(/option(0, 'equal by default with optional zooming', 'analytical'), option(1, 'prescribed relative fractions', 'file_sigma'), option(2, 'prescribed thicknesses', 'file_h')/), default=0) ! option(3, 'adaptive')
    call branch%get(ddu, 'ddu', 'surface zooming', '-', &
                    minimum=0._rk, default=0._rk)
    call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
                    minimum=0._rk, default=0._rk)
-   call branch%get(grid_file, 'file', 'file with custom grid', &
+   call branch%get(grid_file, 'file', 'path to file with layer thicknesses', &
                    default='')
 #if 0
    twig => branch%get_child('adaptation')
@@ -289,6 +310,7 @@
    branch => settings_store%get_child('bottom')
    branch => settings_store%get_child('light_extinction')
    branch => settings_store%get_child('turbulence')
+   branch => settings_store%get_child('waves', 'surface waves', display=display_advanced)
 
    branch => settings_store%get_child('restart', order=998)
    call branch%get(restart_offline, 'load', &
@@ -320,12 +342,12 @@
 
    branch => settings_store%get_child('buoyancy', display=display_advanced)
    call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
-                   options=(/option(1, 'equation of state'), option(2, 'prognostic equation')/), default=1)
-   call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', '-', &
+                   options=(/option(1, 'equation of state', 'eq_state'), option(2, 'prognostic equation', 'prognostic')/), default=1)
+   call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', 'm/s^2', &
                    default=0._rk)
-   call branch%get(b_obs_NN, 'NN_ini', 'initial value of NN (=buoyancy gradient)', 's^-2', &
+   call branch%get(b_obs_NN, 'NN_ini', 'initial buoyancy gradient (squared buoyancy frequency)', 's^-2', &
                    default=0._rk)
-   call branch%get(b_obs_sbf, 'obs_sbf', 'observed constant surface buoyancy flux', '-', &
+   call branch%get(b_obs_sbf, 'obs_sbf', 'constant surface buoyancy flux', 'm^2/s^3', &
                    default=0._rk, display=display_hidden)
 
    branch => settings_store%get_child('eq_state', 'equation of state')
@@ -354,13 +376,13 @@
       if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
 #endif
 
-      call init_airsea(namlst)
+      call init_airsea(namlst,'airsea.nml')
    end if
 
 #ifdef _FABM_
    if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
 
-   ! Allow FABM to cretae its model tree. After this we know all biogeochemical variables
+   ! Allow FABM to create its model tree. After this we know all biogeochemical variables
    ! This must be done before gotm_fabm_input configuration.
    call gotm_fabm_create_model(namlst)
 

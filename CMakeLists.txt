@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 if(NOT PROJECT_NAME STREQUAL gotm)
-   project(gotm VERSION 5.4.0 LANGUAGES Fortran)
+   project(gotm VERSION 6.0.0 LANGUAGES Fortran)
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
@@ -19,6 +19,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
+
+# To check version of configuration file
+add_definitions(-D_CFG_VERSION_=${gotm_VERSION_MAJOR})
 
 # ----------------------------
 # User-configurable options

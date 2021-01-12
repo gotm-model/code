@@ -107,8 +107,9 @@
 ! !DESCRIPTION:
 !
 ! !LOCAL VARIABLES:
-   character(len=32) :: arg
+   character(len=1024) :: arg
    integer :: n, i, ios
+   logical :: file_exists
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -139,15 +140,22 @@
       case ('--detail')
          i = i+1
          if (i > n) then
-            FATAL 'Error parsing command line options: --detail must be followed by the detail level (0-3) to use in written yaml.'
+            FATAL 'Error parsing command line options: --detail must be followed by the detail level (minimal, default, full) to use in written yaml.'
             stop 2
          end if
          call get_command_argument(i, arg)
-         read (arg,*,iostat=ios) write_yaml_detail
-         if (ios /= 0) then
-            FATAL 'Error parsing command line options: --detail must be integer.'
+         select case (arg)
+         case ('0', 'minimal')
+            write_yaml_detail = 0
+         case ('1', 'default')
+            write_yaml_detail = 1
+         case ('2', 'full')
+            write_yaml_detail = 2
+         case default
+            FATAL 'Value "' // trim(arg) // '" for --detail not recognized.'
+            LEVEL1 'Supported options: minimal (0), default (1), full (2)'
             stop 2
-         end if
+         end select
       case ('--write_schema')
          i = i+1
          if (i > n) then
@@ -168,6 +176,11 @@
             stop 2
          end if
          yaml_file = arg
+         inquire(file=trim(yaml_file),exist=file_exists)
+         if (.not. file_exists) then
+            FATAL 'Custom configuration file '//trim(arg)//' does not exist.'
+            stop 2
+         end if
       end select
       i = i+1
    end do
@@ -202,7 +215,7 @@
       print '(a)', '  --output_id <string>  append to output file names - before extension'
       print '(a)', '  --read_nml            read configuration from namelist files'
       print '(a)', '  --write_yaml <file>   save yaml configuration to file'
-      print '(a)', '  --detail <level>      settings to include in saved yaml file (0: minimum, 1: common, 2: advanced)'
+      print '(a)', '  --detail <level>      settings to include in saved yaml file (minimal, default, full)'
       print '(a)', '  --write_schema <file> save configuration schema in xml format to file'
       print '(a)', ''
    end subroutine print_help

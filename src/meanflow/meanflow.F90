@@ -160,7 +160,7 @@
    branch => settings_store%get_typed_child('bottom')
    call branch%get(h0b, 'h0b', 'physical bottom roughness', 'm', &
                 minimum=0._rk,default=0.05_rk, description='physical bottom roughness or bed roughness. This variable, h0b, relates to the hydrodynamic bottom roughness z0b as z0b = 0.03*h0b + 0.1*nu/ustar.')
-   call branch%get(MaxItz0b, 'MaxItz0b', 'number of iterations for hydrodynamic bottom roughness', &
+   call branch%get(MaxItz0b, 'max_it_z0b', 'number of iterations for hydrodynamic bottom roughness', &
                 minimum=1,default=1, display=display_advanced, description='number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness.')
 
    branch => settings_store%get_typed_child('surface/roughness')
@@ -187,7 +187,7 @@
    !call branch%get(no_shear, 'no_shear', 'set shear production term to zero', &
    !             default=.false.)
    LEVEL2 'done'
-   return
+
    end subroutine init_meanflow_yaml
 !EOC
 
@@ -255,13 +255,13 @@
    no_shear     = .false.
 
 !  Read namelist from file.
-   open(10,file='gotmmean.nml',status='old',action='read',err=80)
-   read(10,nml=meanflow,err=81)
-   close (10)
+   open(namlst,file=fn,status='old',action='read',err=80)
+   read(namlst,nml=meanflow,err=81)
+   close (namlst)
    LEVEL2 'done.'
 
    return
-80 FATAL 'I could not open: ',trim('gotmmean.nml')
+80 FATAL 'I could not open: ',fn
    stop 'init_meanflow'
 81 FATAL 'I could not read "meanflow" namelist'
    stop 'init_meanflow'
