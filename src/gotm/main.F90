@@ -170,7 +170,7 @@
             stop 2
          end if
          call get_command_argument(i, output_id)
-      case ('-l', '--list')
+      case ('-l', '--list_variables')
          list_fields = .true.
       case default
          if (arg(1:2) == '--') then
@@ -214,6 +214,7 @@
       print '(a)', '  -v, --version         print version information'
       print '(a)', '  -c, --compiler        print compilation options'
       print '(a)', '  <yaml_file>           read configuration from file (default gotm.yaml)'
+      print '(a)', '  -l, --list_variables  list all variables available for output'
       print '(a)', '  --output_id <string>  append to output file names - before extension'
       print '(a)', '  --read_nml            read configuration from namelist files'
       print '(a)', '  --write_yaml <file>   save yaml configuration to file'
