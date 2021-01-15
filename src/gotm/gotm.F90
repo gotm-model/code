@@ -133,6 +133,7 @@
    character(len=1024), public :: output_id = ''
    logical, public             :: read_nml = .false.
    integer, public             :: write_yaml_detail = display_normal
+   logical, public             :: list_fields = .false.
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -183,7 +184,6 @@
                           restart_allow_perpetual,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
-   logical          ::    list_fields=.false.
    logical          ::    restart_online=.false.
    logical          ::    restart_offline = .false.
    logical          ::    restart_allow_missing_variable = .false.
@@ -600,7 +600,10 @@
    if (fabm_calc) call start_gotm_fabm(nlev, fm)
 #endif
 
-   if (list_fields) call fm%list()
+   if (list_fields) then
+      call fm%list()
+      stop 0
+   end if
 
    LEVEL2 'done.'
    STDERR LINE

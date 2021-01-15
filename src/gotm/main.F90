@@ -170,6 +170,8 @@
             stop 2
          end if
          call get_command_argument(i, output_id)
+      case ('-l', '--list')
+         list_fields = .true.
       case default
          if (arg(1:2) == '--') then
             FATAL 'Command line option '//trim(arg)//' not recognized. Use -h to see supported options'
