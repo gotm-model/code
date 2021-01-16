@@ -117,8 +117,7 @@
          nsecs = time_diff(jul2,secs2,jul1,secs1)
          MaxN  = nint(nsecs/timestep,kind=timestepkind)
 
-         ndays = jul2-jul1
-         if (nsecs .lt. 86400 .and. jul1 .ne. jul2) ndays = ndays-1
+         ndays = nsecs/86400
          nsecs = nsecs - 86400*ndays
          STDERR '        ==> ',ndays,' day(s) and ',nsecs,' seconds ==> ',MaxN,' micro time steps'
       case (3)

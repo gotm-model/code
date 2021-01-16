@@ -19,6 +19,7 @@
    public init_input, do_input, close_input, register_input
    public read_obs
    public type_input, type_scalar_input, type_profile_input
+   public type_scalar_input_list
 
    integer, parameter, public :: method_unsupported = huge(1)
 !
@@ -40,6 +41,8 @@
       integer                       :: index = 1     ! Column index of variable in input file
       REALTYPE                      :: add_offset = _ZERO_
       REALTYPE                      :: constant_value = _ZERO_
+      REALTYPE                      :: minimum = -huge(_ZERO_)
+      REALTYPE                      :: maximum = huge(_ZERO_)
 
       integer                       :: method_off = method_unsupported
       integer                       :: method_constant = 0
@@ -141,11 +144,12 @@
 
    contains
 
-   subroutine configure(self, method, path, index, constant_value, scale_factor, add_offset)
-      class (type_input), intent(inout) :: self
-      integer, optional :: method, index
-      character(len=*), optional :: path
-      REALTYPE, optional :: constant_value, scale_factor, add_offset
+   subroutine configure(self, method, path, index, constant_value, scale_factor, add_offset, name)
+      class (type_input),         intent(inout) :: self
+      integer,          optional, intent(in)    :: method, index
+      character(len=*), optional, intent(in)    :: path
+      REALTYPE,         optional, intent(in)    :: constant_value, scale_factor, add_offset
+      character(len=*), optional, intent(in)    :: name
 
       if (present(method)) self%method = method
       if (present(path)) self%path = path
@@ -153,6 +157,7 @@
       if (present(constant_value)) self%constant_value = constant_value
       if (present(scale_factor)) self%scale_factor = scale_factor
       if (present(add_offset)) self%add_offset = add_offset
+      if (present(name)) self%name = name
    end subroutine
 
 !-----------------------------------------------------------------------
@@ -536,7 +541,7 @@
    integer                      :: yy,mm,dd,hh,min,ss
    REALTYPE                     :: t,dt
    type (type_profile_input_node), pointer :: curvar
-   character(len=8)             :: strline
+   character(len=128)           :: strline
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -575,6 +580,18 @@
          curvar => self%variables%first
          do while (associated(curvar))
             self%prof2(:,curvar%p%index) = curvar%p%scale_factor * self%prof2(:,curvar%p%index) + curvar%p%add_offset
+            if (any(self%prof2(:,curvar%p%index) < curvar%p%minimum)) then
+               write (strline,'(a,a,a,i0.4,"-",i0.2,"-",i0.2," ",i0.2,":",i0.2,":",i0.2,a,g13.6,a)') &
+                  'One or more values of the ',trim(curvar%p%name),' profile at ',yy,mm,dd,hh,min,ss, &
+                  ' lie below prescribed minimum of ',curvar%p%minimum,'.'
+               call fatal_error('input::profile_file_update', trim(self%path)//': '//trim(strline))
+            end if
+            if (any(self%prof2(:,curvar%p%index) > curvar%p%maximum)) then
+               write (strline,'(a,a,a,i0.4,"-",i0.2,"-",i0.2," ",i0.2,":",i0.2,":",i0.2,a,g13.6,a)') &
+                  'One or more values of the ',trim(curvar%p%name),' profile at ',yy,mm,dd,hh,min,ss, &
+                  ' exceed the prescribed maximum of ',curvar%p%maximum,'.'
+               call fatal_error('input::profile_file_update', trim(self%path)//': '//trim(strline))
+            end if
             curvar => curvar%next
          end do
 
@@ -691,7 +708,7 @@
    integer                      :: yy,mm,dd,hh,mins,ss
    REALTYPE                     :: t,dt
    type (type_scalar_input_node),pointer :: curvar
-   character(len=8)             :: strline
+   character(len=128)           :: strline
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -715,6 +732,18 @@
          curvar => self%variables%first
          do while (associated(curvar))
             self%obs2(curvar%p%index) = curvar%p%scale_factor * self%obs2(curvar%p%index) + curvar%p%add_offset
+            if (self%obs2(curvar%p%index) < curvar%p%minimum) then
+               write (strline,'(a,a,i0.4,"-",i0.2,"-",i0.2," ",i0.2,":",i0.2,":",i0.2,a,g13.6,a)') &
+                  trim(curvar%p%name),' at ',yy,mm,dd,hh,mins,ss, &
+                  ' lies below prescribed minimum of ',curvar%p%minimum,'.'
+               call fatal_error('input::timeseries_file_update', trim(self%path)//': '//trim(strline))
+            end if
+            if (self%obs2(curvar%p%index) > curvar%p%maximum) then
+               write (strline,'(a,a,i0.4,"-",i0.2,"-",i0.2," ",i0.2,":",i0.2,":",i0.2,a,g13.6,a)') &
+                  trim(curvar%p%name),' at ',yy,mm,dd,hh,mins,ss, &
+                  ' exceeds the prescribed maximum of ',curvar%p%maximum,'.'
+               call fatal_error('input::timeseries_file_update', trim(self%path)//': '//trim(strline))
+            end if
             curvar => curvar%next
          end do
 

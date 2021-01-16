@@ -45,6 +45,7 @@
    LEVEL0 LINE
    LEVEL0 'GOTM:    ',gotm_commit_id,' (',gotm_branch_name,' branch)'
    LEVEL0 'TEOS-10  ',gsw_version
+   LEVEL0 'Config:  ',_CFG_VERSION_
    LEVEL0 'YAML:    ',yaml_commit_id,' (',yaml_branch_name,' branch)'
    LEVEL0 'flexout: ',flexout_commit_id,' (',flexout_branch_name,' branch)'
 #ifdef _ICE_
@@ -59,8 +60,11 @@
       version => version%next
    end do
 #endif
+#ifdef _CVMIX_
+   LEVEL0 'CVMix:   included'
+#endif
 #ifdef NETCDF_FMT
-   LEVEL0 'NetCDF: ',trim(NF90_INQ_LIBVERS())
+   LEVEL0 'NetCDF:  ',trim(NF90_INQ_LIBVERS())
 #endif
    LEVEL0 LINE
    LEVEL0 'Compiler: ',compiler_id,' ',compiler_version

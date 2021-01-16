@@ -1,0 +1,34 @@
+# https://travis-ci.org/dashboard
+# https://config.travis-ci.com/explore
+
+os: linux
+dist: bionic
+language: python
+arch:
+  - amd64
+#  - arm64
+#  - x64
+addons:
+  apt:
+    packages:
+      - gfortran netcdf-bin libnetcdf-dev libnetcdff-dev
+python:
+  - '3.6'
+env:
+  - FC=gfortran
+#  - FC=gfortran-8
+branches:
+  only:
+  - master
+script:
+  - mkdir build && cd build
+  - cmake ../ && make
+  - cd ../tests/entrainment
+  - ln -s ../../build/gotm
+  - ./run_all.sh
+  - ls -l *.log
+  - ls -l *.nc
+  - cat kepsilon.log
+
+#script: ctest --output-on-failure
+

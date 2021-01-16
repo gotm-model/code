@@ -99,6 +99,7 @@
 ! !USES:
    use turbulence, only: L,eps,tke,k_min,eps_min
    use turbulence, only: cde,galp,kappa,length_lim
+   use turbulence, only: Parabolic,Triangular,Xing_Davies,Robert_Ouellet,Blackadar,ispra_length
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -121,14 +122,6 @@
 !  buoyancy frequency (1/s^2)
    REALTYPE, intent(in)                :: NN(0:nlev)
 !
-! !DEFINED PARAMETERS:
-   integer, parameter                  :: Parabola=1
-   integer, parameter                  :: Triangle=2
-   integer, parameter                  :: Xing=3
-   integer, parameter                  :: RobertOuellet=4
-   integer, parameter                  :: Blackadar=5
-   integer, parameter                  :: ispra_length=7
-!
 ! !REVISION HISTORY:
 !  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard
 !
@@ -150,7 +143,7 @@
 ! parabolic shape
    select case (method)
 
-      case(parabola)
+      case(parabolic)
 
          do i=1,nlev-1
             db=db+h(i)
@@ -163,7 +156,7 @@
 !
 ! triangular shape
 
-      case(triangle)
+      case(triangular)
          do i=1,nlev-1
             db=db+h(i)
             ds=depth-db
@@ -175,7 +168,7 @@
 !
 ! modified Xing and Davies (1995)
 ! modification of parabolic mixing length
-      case(Xing)
+      case(Xing_Davies)
          beta = 2. ! a tuning parameter
          do i=1,nlev-1
            db=db+h(i)
@@ -190,7 +183,7 @@
 !
 ! modified Robert and Ouellet(1987)
 ! modification of parabolic mixing length
-      case(RobertOuellet)
+      case(Robert_Ouellet)
          do i=1,nlev-1
            db=db+h(i)
            ds=depth-db

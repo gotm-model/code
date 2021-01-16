@@ -152,7 +152,7 @@
 ! !IROUTINE: Initialise the air--sea interaction module \label{sec:init-air-sea}
 !
 ! !INTERFACE:
-   subroutine init_airsea_nml(namlst)
+   subroutine init_airsea_nml(namlst, fn)
 !
 ! !DESCRIPTION:
 !  This routine initialises the air-sea module by reading various variables
@@ -233,6 +233,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: namlst
+   character(len=*), intent(in)        :: fn
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -323,9 +324,9 @@
    sss_file = ''
 
 !  Read namelist variables from file.
-   open(10,file='airsea.nml',action='read',status='old',err=90)
-   read(10,nml=airsea,err=91)
-   close(10)
+   open(namlst,file=fn,action='read',status='old',err=90)
+   read(namlst,nml=airsea,err=91)
+   close(namlst)
 
    call I_0%configure(method=swr_method, path=swr_file, index=1, constant_value=const_swr, scale_factor=swr_factor)
 
@@ -349,11 +350,9 @@
    LEVEL2 'done'
    return
 
-90 FATAL 'I could not open airsea.nml'
+90 FATAL 'I could not open ' // fn
    stop 'init_airsea'
 91 FATAL 'I could not read airsea namelist'
-   stop 'init_airsea'
-93 FATAL 'I could not open ',trim(meteo_file)
    stop 'init_airsea'
 
    end subroutine init_airsea_nml
@@ -450,7 +449,6 @@
 !
 ! !LOCAL VARIABLES:
    class (type_gotm_settings), pointer :: branch, twig, leaf
-   integer, parameter :: rk = kind(_ONE_)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -459,8 +457,8 @@
    branch => settings_store%get_typed_child('surface')
 
    twig => branch%get_typed_child('fluxes', 'heat and momentum fluxes')
-   call twig%get(fluxes_method, 'method', 'method to calculate fluxes from meteorology', &
-                options=(/option(0, 'use prescribed fluxes'), option(1, 'Kondo (1975)'), option(2, 'Fairall et al. (1996)')/), default=0)
+   call twig%get(fluxes_method, 'method', 'method to calculate fluxes from meteorological conditions', &
+                options=(/option(0, 'use prescribed fluxes', 'off'), option(1, 'Kondo (1975)', 'kondo'), option(2, 'Fairall et al. (1996)', 'fairall')/), default=0)
    call twig%get(heat, 'heat', 'prescribed total heat flux (sensible, latent and net back-radiation)', 'W/m^2', &
                 default=0._rk)
    call twig%get(tx_, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
@@ -468,40 +466,39 @@
    call twig%get(ty_, 'ty', 'prescribed momentum flux in South-North direction', 'Pa', &
                 default=0._rk)
    
-   twig => branch%get_typed_child('meteo')
-   call twig%get(u10, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
+   call branch%get(u10, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
                 default=0._rk)
-   call twig%get(v10, 'v10', 'wind speed in South-North direction @ 10 m', 'm/s', &
+   call branch%get(v10, 'v10', 'wind speed in South-North direction @ 10 m', 'm/s', &
                 default=0._rk)
-   call twig%get(airp, 'airp', 'air pressure', 'Pa', &
+   call branch%get(ssuv_method, 'ssuv_method', 'wind treatment', &
+                options=(/option(0, 'use absolute wind speed', 'absolute'), option(1, 'use wind speed relative to current velocity', 'relative')/), default=1, display=display_advanced)
+   call branch%get(airp, 'airp', 'air pressure', 'Pa', &
                 default=0._rk)
-   call twig%get(airt, 'airt', 'air temperature @ 2 m', 'Celsius or K', &
+   call branch%get(airt, 'airt', 'air temperature @ 2 m', 'Celsius or K', &
                 default=0._rk)
-   call twig%get(hum, 'hum', 'humidity @ 2 m', '', &
+   call branch%get(hum, 'hum', 'humidity @ 2 m', '', &
                 default=0._rk, pchild=leaf)
    call leaf%get(hum_method, 'type', 'humidity metric', &
-                options=(/option(1, 'relative humidity (%)'), option(2, 'wet-bulb temperature'), &
-                option(3, 'dew point temperature'), option(4 ,'specific humidity (kg/kg)')/), default=1)
-   call twig%get(cloud, 'cloud', 'cloud cover', '1', &
+                options=(/option(1, 'relative humidity (%)', 'relative'), option(2, 'wet-bulb temperature', 'wet_bulb'), &
+                option(3, 'dew point temperature', 'dew_point'), option(4 ,'specific humidity (kg/kg)', 'specific')/), default=1)
+   call branch%get(cloud, 'cloud', 'cloud cover', '1', &
                 minimum=0._rk, maximum=1._rk, default=0._rk)
-   call twig%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
-                minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover')/))
-   call twig%get(precip, 'precip', 'precipitation', 'm/s', &
+   call branch%get(precip, 'precip', 'precipitation', 'm/s', &
                 default=0._rk, pchild=leaf)
    call leaf%get(rain_impact, 'flux_impact', 'include effect on fluxes of sensible heat and momentum', &
                 default=.false.)
-   call twig%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
+   call branch%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
                 default=.false.)
-   call twig%get(ssuv_method, 'ssuv_method', 'wind treatment', &
-                options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=1, display=display_advanced)
 
+   call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
+                minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
    call branch%get(ql, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand'), option(5, 'Josey-1'), option(6, 'Josey-2')/), default_method=1)
+               extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
 
    twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
-                options=(/option(0, 'constant'), option(1, 'Payne (1972)'), option(2, 'Cogley (1979)')/), default=1)
+                options=(/option(0, 'constant', 'constant'), option(PAYNE, 'Payne (1972)', 'Payne'), option(COGLEY, 'Cogley (1979)', 'Cogley')/), default=PAYNE)
    call twig%get(const_albedo, 'constant_value', 'constant value to use throughout the simulation', '1', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
 
@@ -693,17 +690,17 @@
       select case (ql%method)
          case(0) ! Read from file instead of calculating
             call register_input(ql)
-         case(1)
+         case(CLARK)
             LEVEL4 'using Clark formulation'
-         case(2)
+         case(HASTENRATH_LAMB)
             LEVEL4 'using Hastenrath formulation'
-         case(3)
+         case(BIGNAMI)
             LEVEL4 'using Bignami formulation'
-         case(4)
+         case(BERLIAND_BERLIAND)
             LEVEL4 'using Berliand formulation'
-         case(5)
+         case(JOSEY1)
             LEVEL4 'using Josey-1 formulation'
-         case(6)
+         case(JOSEY2)
             LEVEL4 'using Josey-2 formulation'
          case default
       end select
