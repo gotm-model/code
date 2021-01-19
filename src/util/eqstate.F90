@@ -237,7 +237,7 @@
                press=.true.
                x=unesco(S,T,p,press)
             case (2)
-               press=.false.
+               press=.true.
                x=unesco(S,T,p,press)
             case (3)
                if (init_linearised) then
@@ -262,7 +262,7 @@
                press=.true.
                x=rho_feistel(S,T,p*10.,press)
             case (2)
-               press=.false.
+               press=.true.
                x=rho_feistel(S,T,p*10.,press)
             case (3)
                if (init_linearised) then
