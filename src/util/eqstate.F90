@@ -146,7 +146,7 @@
    call branch%get(eq_state_mode, 'method', 'method', default=2, &
                    options=(/option(1, 'UNESCO', 'UNESCO'), option(2, 'Jackett et al. (2005)', 'Jackett')/))
    call branch%get(eq_state_method, 'form', 'formulation', &
-                   options=(/option(1, 'full with in-situ temperature/density', 'full'), option(2, 'full with potential temperature/density', 'full-pot'), &
+                   options=(/option(1, 'full', 'full'), option(2, 'full with buoyancy frequency based on surface pressure', 'full-pot'), &
                    option(3, 'linearized at T0,S0,p0', 'linear'), option(4, 'linearized at T0,S0,p0,dtr0,dsr0', 'linear_custom')/), default=1)
    twig => branch%get_child('linear')
    call twig%get(T0, 'T0', 'reference temperature', 'Celsius', &
@@ -237,7 +237,7 @@
                press=.true.
                x=unesco(S,T,p,press)
             case (2)
-               press=.true.
+               press=.false.
                x=unesco(S,T,p,press)
             case (3)
                if (init_linearised) then
@@ -262,7 +262,7 @@
                press=.true.
                x=rho_feistel(S,T,p*10.,press)
             case (2)
-               press=.true.
+               press=.false.
                x=rho_feistel(S,T,p*10.,press)
             case (3)
                if (init_linearised) then
