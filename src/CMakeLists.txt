@@ -1,10 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 if(NOT PROJECT_NAME STREQUAL gotm)
-   message(WARNING "You are using ${CMAKE_CURRENT_LIST_DIR} as source directory. This is deprecated. Please use its parent directory instead.")
-   project(gotm VERSION 5.3.0 LANGUAGES Fortran)
-   include("${CMAKE_CURRENT_LIST_DIR}/../CMakeLists.txt")
-   return()
+   message(FATAL_ERROR "You are using ${CMAKE_CURRENT_LIST_DIR} as source directory. Please use its parent directory instead.")
 endif()
 
 # ----------------------------
@@ -60,6 +57,10 @@ if(GOTM_USE_FABM)
    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm fabm)
 endif()
 
+if(GOTM_USE_CVMIX)
+    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/cvmix gotm_cvmix)
+endif()
+
 if(GOTM_BUILD_LIBRARIES_ONLY)
    return()
 endif()
@@ -68,6 +69,7 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/input input)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/config config)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/observations observations)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/meanflow meanflow)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/stokes_drift stokes_drift)
 
 if(GOTM_USE_SEAGRASS)
    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/extras/seagrass seagrass)

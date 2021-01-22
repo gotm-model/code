@@ -1,8 +1,7 @@
 #!/bin/sh
 
 # if not set use the suggested source code installation directories
-GOTM_BASE=${GOTM_BASE:=~/GOTM/code}
-FABM_BASE=${FABM_BASE:=~/FABM/code}
+GOTM_BASE=${GOTM_BASE:=~/source/repos/GOTM/code}
 
 # default Fortran compiler is gfortran - overide by setting compuiler like:
 # export compiler=ifort

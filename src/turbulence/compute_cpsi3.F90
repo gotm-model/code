@@ -19,9 +19,9 @@
    use turbulence, only:           cm0,cm0_fix,Prandtl0_fix
    use turbulence, only:           turb_method,stab_method
    use turbulence, only:           Constant
-   use turbulence, only:           MunkAnderson
-   use turbulence, only:           SchumGerz
-   use turbulence, only:           EiflerSchrimpf
+   use turbulence, only:           Munk_Anderson
+   use turbulence, only:           Schumann_Gerz
+   use turbulence, only:           Eifler_Schrimpf
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -49,11 +49,11 @@
             case(Constant)
                cmue1=cm0_fix
                cmue2=cm0_fix/Prandtl0_fix
-            case(MunkAnderson)
+            case(Munk_Anderson)
                call cmue_ma(2)
-            case(SchumGerz)
+            case(Schumann_Gerz)
                call cmue_sg(2)
-            case(EiflerSchrimpf)
+            case(Eifler_Schrimpf)
                call cmue_rf(2)
          end select
       else
@@ -67,11 +67,11 @@
             case(Constant)
                cmue1=cm0_fix
                cmue2=cm0_fix/Prandtl0_fix
-            case(MunkAnderson)
+            case(Munk_Anderson)
                call cmue_ma(2)
-            case(SchumGerz)
+            case(Schumann_Gerz)
                call cmue_sg(2)
-            case(EiflerSchrimpf)
+            case(Eifler_Schrimpf)
                call cmue_rf(2)
          end select
       else
@@ -99,11 +99,11 @@
          case(Constant)
             cmue1=cm0_fix
             cmue2=cm0_fix/Prandtl0_fix
-         case(MunkAnderson)
+         case(Munk_Anderson)
             call cmue_ma(2)
-         case(SchumGerz)
+         case(Schumann_Gerz)
             call cmue_sg(2)
-         case(EiflerSchrimpf)
+         case(Eifler_Schrimpf)
             call cmue_rf(2)
       end select
    else

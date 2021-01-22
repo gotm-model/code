@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 if(NOT PROJECT_NAME STREQUAL gotm)
-   project(gotm VERSION 5.4.0 LANGUAGES Fortran)
+   project(gotm VERSION 6.0.0 LANGUAGES Fortran)
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
@@ -20,9 +20,14 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+# To check version of configuration file
+add_definitions(-D_CFG_VERSION_=${gotm_VERSION_MAJOR})
+
 # ----------------------------
 # User-configurable options
 # ----------------------------
+
+option(GOTM_USE_CVMIX "Include support for the CVMix turbulence closure models (github.com/CVMix)" OFF)
 
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 
@@ -46,12 +51,21 @@ mark_as_advanced(GOTM_EXTRA_OUTPUT)
 # ----------------------------
 
 if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/flexout/src/CMakeLists.txt")
-   message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory.")
+   message(FATAL_ERROR "Flexible output manager not found at extern/flexout. Please retrieve this submodule first by running \"git submodule update --init --recursive\" within your GOTM source directory.")
 else()
    set(FLEXOUT_USE_NetCDF ${GOTM_USE_NetCDF} CACHE BOOL "Enable output in NetCDF format" FORCE)
    mark_as_advanced(FLEXOUT_USE_NetCDF)
    add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/extern/flexout" extern/flexout)
 endif()
+
+if(GOTM_USE_CVMIX)
+   if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/CVMix-src/CMakeLists.txt")
+      message(FATAL_ERROR "CVMix not found at extern/CVMix-src. Please retrieve this submodule first by running \"git submodule update --init\" within your GOTM source directory - followed by \"git pull --recurse-submodules\".")
+   else()
+#     mark_as_advanced(FORCE CVMIX_BASE CVMIX_EMBED_VERSION)
+      add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/extern/CVMix-src" extern/CVMix-src EXCLUDE_FROM_ALL)
+   endif()
+endif(GOTM_USE_CVMIX)
 
 if(GOTM_USE_FABM)
    mark_as_advanced(FORCE FABM_PREFIX FABM_BASE FABM_EMBED_VERSION)

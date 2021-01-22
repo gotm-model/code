@@ -1,0 +1,387 @@
+title: shear-driven entrainment            # simulation title used in output [default=GOTM simulation]
+location:
+   name: north pole                        # station name used in output [default=GOTM site]
+   latitude: 0.0                           # latitude [degrees North; min=-90.0; max=90.0; default=0.0]
+   longitude: 0.0                          # longitude [degrees East; min=-360.0; max=360.0; default=0.0]
+   depth: 50.0                             # water depth [m; min=0.0; default=100.0]
+time:
+   start: 2005-01-01 00:00:00              # start date and time [yyyy-mm-dd HH:MM:SS; default=2017-01-01 00:00:00]
+   stop: 2005-01-02 00:00:00               # stop date and time [yyyy-mm-dd HH:MM:SS; default=2018-01-01 00:00:00]
+   dt: 60.0                                # time step for integration [s; min=0.0; default=3600.0]
+grid:
+   nlev: 50                                # number of layers [min=1; default=100]
+   method: 0                               # layer thicknesses [0=equal by default with optional zooming, 1=prescribed relative fractions, 2=prescribed thicknesses; default=0]
+   ddu: 0.0                                # surface zooming [dimensionless; min=0.0; default=0.0]
+   ddl: 0.0                                # bottom zooming [dimensionless; min=0.0; default=0.0]
+   file:                                   # file with custom grid [default=]
+temperature:                               # temperature profile used for initialization and optionally relaxation
+   method: 1                               # method [0=off, 1=analytical, 2=from file; default=0]
+   file:                                   # path to file with series of profiles [default=]
+   column: 1                               # index of column to read from [default=1]
+   analytical:
+      method: 3                            # type of analytical initial temperature profile [1=constant, 2=two layers, 3=from salinity and buoyancy frequency; default=1]
+      z_t1: 30.0                           # upper layer thickness [m; min=0.0; default=0.0]
+      t_1: 20.0                            # upper layer temperature [Celsius; min=0.0; max=40.0; default=0.0]
+      z_t2: 40.0                           # lower layer thickness [m; min=0.0; default=0.0]
+      t_2: 15.0                            # lower layer temperature [Celsius; min=0.0; max=40.0; default=0.0]
+      obs_NN: 1.00000000E-04               # constant buoyancy frequency [s^-2; min=0.0; default=0.0]
+   relax:                                  # relax model temperature to observed/prescribed value
+      tau: 1.00000000E+15                  # time scale for interior layer [s; min=0.0; default=1.00000000E+15]
+salinity:                                  # salinity profile used for initialization and optionally relaxation
+   method: 1                               # method [0=off, 1=analytical, 2=from file; default=0]
+   file:                                   # path to file with series of profiles [default=]
+   column: 1                               # index of column to read from [default=1]
+   analytical:
+      method: 1                            # type of analytical initial salinity profile [1=constant, 2=two layers, 3=from temperature and buoyancy frequency; default=1]
+      z_s1: 30.0                           # upper layer thickness [m; min=0.0; default=0.0]
+      s_1: 20.0                            # upper layer salinity [psu; min=0.0; max=40.0; default=0.0]
+      z_s2: 40.0                           # lower layer thickness [m; min=0.0; default=0.0]
+      s_2: 15.0                            # lower layer salinity [psu; min=0.0; max=40.0; default=0.0]
+      obs_NN: 2.56000000E-04               # constant buoyancy frequency [s^-2; min=0.0; default=0.0]
+   relax:                                  # relax model salinity to observed/prescribed value
+      tau: 1.00000000E+15                  # time scale for interior layer [s; min=0.0; default=1.00000000E+15]
+surface:
+   fluxes:                                 # heat and momentum fluxes
+      method: 0                            # method to calculate fluxes from meteorology [0=use prescribed fluxes, 1=Kondo (1975), 2=Fairall et al. (1996); default=0]
+      heat:                                # prescribed total heat flux (sensible, latent and net back-radiation)
+         method: 1                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [W/m^2; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      tx:                                  # prescribed momentum flux in West-East direction
+         method: 1                         # method [0=constant, 2=from file; default=0]
+         constant_value: 1.02700000E-01    # value to use throughout the simulation [Pa; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      ty:                                  # prescribed momentum flux in South-North direction
+         method: 1                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [Pa; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+   meteo:
+      u10:                                 # wind speed in West-East direction @ 10 m
+         method: 2                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [m/s; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      v10:                                 # wind speed in South-North direction @ 10 m
+         method: 2                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [m/s; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 2                         # index of column to read from [default=1]
+      airp:                                # air pressure
+         method: 2                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [Pa; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 3                         # index of column to read from [default=1]
+         scale_factor: 100.0               # scale factor to be applied to values read from file [default=1.0]
+      airt:                                # air temperature @ 2 m
+         method: 2                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [Celsius or K; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 4                         # index of column to read from [default=1]
+      hum:                                 # humidity @ 2 m
+         method: 2                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 5                         # index of column to read from [default=1]
+         type: 1                           # humidity metric [1=relative humidity (%), 2=wet-bulb temperature, 3=dew point temperature, 4=specific humidity (kg/kg); default=1]
+      cloud:                               # cloud cover
+         method: 2                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [fraction; min=0.0; max=1.0; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 6                         # index of column to read from [default=1]
+      swr:                                 # shortwave radiation
+         method: 1                         # method [0=constant, 2=from file, 3=from time, location and cloud cover; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [W/m^2; min=0.0; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      precip:                              # precipitation
+         method: 0                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [m/s; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+         flux_impact: false                # include effect on fluxes of sensible heat and momentum [default=false]
+      calc_evaporation: false              # calculate evaporation from meteorological conditions [default=false]
+      ssuv_method: 0                       # wind treatment [0=use absolute wind speed, 1=use wind speed relative to current velocity; default=1]
+   longwave_radiation:                     # net longwave radiation
+      method: 1                            # method [0=from file, 1=Clark, 2=Hastenrath, 3=Bignami, 4=Berliand, 5=Josey-1, 6=Josey-2; default=1]
+      file:                                # path to file with time series [default=]
+      column: 1                            # index of column to read from [default=1]
+   albedo:
+      method: 0                            # method to compute albedo [0=constant, 1=Payne (1972), 2=Cogley (1979); default=1]
+      constant_value: 0.0                  # constant value to use throughout the simulation [fraction; min=0.0; max=1.0; default=0.0]
+   roughness:
+      charnock: false                      # use Charnock (1955) roughness adaptation [default=false]
+      charnock_val: 1400.0                 # empirical constant for roughness adaptation [dimensionless; min=0.0; default=1400.0]
+      z0s_min: 0.02                        # hydrodynamic roughness (minimum value if Charnock adaptation is used) [m; min=0.0; default=0.02]
+bottom:
+   h0b: 0.05                               # physical bottom roughness [m; min=0.0; default=0.05]
+light_extinction:
+   method: 1                               # water type [1=Jerlov type I, 2=Jerlov type 1 (upper 50 m), 3=Jerlov type IA, 4=Jerlov type IB, 5=Jerlov type II, 6=Jerlov type III, 7=custom; default=1]
+   A:                                      # non-visible fraction of shortwave radiation
+      method: 0                            # method [0=constant, 2=from file; default=0]
+      constant_value: 0.7                  # value to use throughout the simulation [fraction; min=0.0; max=1.0; default=0.7]
+      file:                                # path to file with time series [default=]
+      column: 1                            # index of column to read from [default=1]
+   g1:                                     # e-folding depth of non-visible shortwave radiation
+      method: 0                            # method [0=constant, 2=from file; default=0]
+      constant_value: 0.4                  # value to use throughout the simulation [m; min=0.0; default=0.4]
+      file:                                # path to file with time series [default=]
+      column: 1                            # index of column to read from [default=1]
+   g2:                                     # e-folding depth of visible shortwave radiation
+      method: 0                            # method [0=constant, 2=from file; default=0]
+      constant_value: 8.0                  # value to use throughout the simulation [m; min=0.0; default=8.0]
+      file:                                # path to file with time series [default=]
+      column: 1                            # index of column to read from [default=1]
+turbulence:
+   turb_method: 99                         # turbulence closure [0=convective adjustment, 2=first-order, 3=second-order, 100=cvmix; default=3]
+   tke_method: 2                           # turbulent kinetic energy equation [1=algebraic length scale equation, 2=differential equation for tke (k-epsilon style), 3=differential equation for q^2/2 (Mellor-Yamada style); default=2]
+   len_scale_method: 8                     # dissipative length scale [1=parabolic, 2=triangular, 3=Xing and Davies (1995), 4=Robert and Ouellet (1987), 5=Blackadar (two boundaries) (1962), 6=Bougeault and Andre (1986), 7=Eifler and Schrimpf (ISPRAMIX) (1992), 8=dynamic dissipation rate equation, 9=dynamic Mellor-Yamada q^2 l-equation, 10=generic length scale (GLS); default=8]
+   stab_method: 1                          # stability functions [1=constant, 2=Munk and Anderson (1954), 3=Schumann and Gerz (1995), 4=Eifler and Schrimpf (1992); default=1]
+   turb_param:
+      cm0_fix: 5.47699988E-01              # value of cm0 [dimensionless; min=0.0; default=5.47700000E-01]
+      Prandtl0_fix: 7.40000010E-01         # turbulent Prandtl-number [dimensionless; min=0.0; default=0.74]
+      cw: 100.0                            # constant of the wave-breaking model [dimensionless; min=0.0; default=100.0]
+      compute_kappa: false                 # compute von Karman constant from model parameters [default=false]
+      kappa: 4.00000006E-01                # von Karman constant [dimensionless; min=0.0; default=0.4]
+      compute_c3: false                    # compute c3 (E3 for Mellor-Yamada) from steady-state Richardson number [default=true]
+      Ri_st: 0.25                          # desired steady-state Richardson number [dimensionless; min=0.0; default=0.25]
+      length_lim: false                    # apply Galperin et al. (1988) length scale limitation [default=true]
+      galp: 5.29999971E-01                 # coefficient for length scale limitation [dimensionless; min=0.0; default=0.27]
+      const_num: 5.00000024E-04            # constant eddy diffusivity [m^2/s; min=0.0; default=5.00000000E-04]
+      const_nuh: 5.00000024E-04            # constant heat diffusivity [m^2/s; min=0.0; default=5.00000000E-04]
+      k_min: 9.99999994E-09                # minimum turbulent kinetic energy [m^2/s^2; min=0.0; default=1.00000000E-10]
+      eps_min: 9.99999996E-13              # minimum dissipation rate [m^2/s^3; min=0.0; default=1.00000000E-12]
+      kb_min: 9.99999994E-09               # minimum buoyancy variance [m^2/s^4; min=0.0; default=1.00000000E-10]
+      epsb_min: 9.99999996E-13             # minimum buoyancy variance destruction rate [m^2/s^5; min=0.0; default=1.00000000E-14]
+   generic:                                # generic length scale (GLS) model
+      cpsi1: 1.44000006E+00                # empirical coefficient cpsi1 in psi equation [dimensionless; default=1.44]
+      cpsi2: 1.91999996E+00                # empirical coefficient cpsi2 in psi equation [dimensionless; default=1.92]
+      sig_psi: 1.29999995E+00              # Schmidt number for psi diffusivity [dimensionless; default=1.3]
+      gen_d: -1.20000005E+00               # temporal decay rate d in homogeneous turbulence [dimensionless; default=-1.2]
+      gen_l: 2.00000003E-01                # slope L of the length scale in shear-free turbulence [dimensionless; default=0.2]
+   keps:                                   # k-epsilon model
+      ce1: 1.44000006E+00                  # empirical coefficient ce1 in dissipation equation [dimensionless; default=1.44]
+      ce2: 1.91999996E+00                  # empirical coefficient ce2 in dissipation equation [dimensionless; default=1.92]
+      sig_e: 1.29999995E+00                # Schmidt number for dissipation diffusivity [dimensionless; default=1.3]
+   my:                                     # Mellor-Yamada model
+      e1: 1.79999995E+00                   # coefficient e1 in q^2 l equation [dimensionless; default=1.8]
+      e2: 1.33000004E+00                   # coefficient e2 in q^2 l equation [dimensionless; default=1.33]
+      e3: 1.79999995E+00                   # coefficient e3 in q^2 l equation [dimensionless; default=1.8]
+      sq: 2.00000003E-01                   # turbulent diffusivities of q^2 (= 2k) [dimensionless; default=0.2]
+      sl: 2.00000003E-01                   # turbulent diffusivities of q^2 l [dimensionless; default=0.2]
+   scnd:                                   # second-order model
+      method: 0                            # method [1=quasi-equilibrium, 2=weak equilibrium with algebraic buoyancy variance; default=2]
+      kb_method: 0                         # equation for buoyancy variance [1=algebraic, 2=prognostic; default=1]
+      epsb_method: 0                       # equation for variance destruction [1=algebraic; default=1]
+      scnd_coeff: 0                        # coefficients of second-order model [0=custom, 1=Gibson and Launder (1978), 2=Mellor and Yamada (1982), 3=Kantha and Clayson (1994), 4=Luyten et al. (1996), 5=Canuto et al. (2001) (version A), 6=Canuto et al. (2001) (version B), 7=Cheng et al. (2002); default=5]
+      cc1: 0.0                             # cc1 [dimensionless; default=3.6]
+      cc2: 0.0                             # cc2 [dimensionless; default=0.8]
+      cc3: 0.0                             # cc3 [dimensionless; default=1.2]
+      cc4: 0.0                             # cc4 [dimensionless; default=1.2]
+      cc6: 0.0                             # cc6 [dimensionless; default=0.3]
+      ct1: 0.0                             # ct1 [dimensionless; default=3.28]
+      ct2: 0.0                             # ct2 [dimensionless; default=0.4]
+      ct3: 0.0                             # ct3 [dimensionless; default=0.4]
+      ct5: 0.0                             # ct5 [dimensionless; default=0.4]
+      ctt: 0.0                             # ctt [dimensionless; default=0.8]
+   iw:                                     # internal wave mixing
+      klim: 9.99999997E-07                 # critical value of TKE [m^2/s^2; default=1.00000000E-06]
+      rich_cr: 6.99999988E-01              # critical Richardson number for shear instability [dimensionless; default=0.7]
+      numshear: 4.99999989E-03             # background diffusivity for shear instability [m^2/s; default=0.005]
+      num: 9.99999975E-05                  # background viscosity for internal wave breaking [m^2/s; default=1.00000000E-04]
+      nuh: 4.99999987E-05                  # background diffusivity for internal wave breaking [m^2/s; default=1.00000000E-05]
+mimic_3d:                                  # effects of horizontal gradients
+   ext_pressure:                           # external pressure
+      mode: 0                              # formulation [0=horizontal gradient in surface elevation, 1=horizontal velocities at given height above bed, 2=vertically averaged horizontal velocities; default=0]
+      dpdx:                                # pressure in West-East direction
+         method: 0                         # method [0=constant, 1=from tidal constituents, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+         AmpM: 0.0                         # amplitude of 1st harmonic [dimensionless; default=0.0]
+         PhaseM: 0.0                       # phase of 1st harmonic [s; default=0.0]
+         AmpS: 0.0                         # amplitude of 2nd harmonic [dimensionless; default=0.0]
+         PhaseS: 0.0                       # phase of 2nd harmonic [s; default=0.0]
+      dpdy:                                # pressure in South-North direction
+         method: 0                         # method [0=constant, 1=from tidal constituents, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+         AmpM: 0.0                         # amplitude of 1st harmonic [dimensionless; default=0.0]
+         PhaseM: 0.0                       # phase of 1st harmonic [s; default=0.0]
+         AmpS: 0.0                         # amplitude of 2nd harmonic [dimensionless; default=0.0]
+         PhaseS: 0.0                       # phase of 2nd harmonic [s; default=0.0]
+      h:                                   # height above bed
+         method: 0                         # method [0=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [m; min=0.0; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      PeriodM: 44714.0                     # period of 1st tidal harmonic (eg. M2-tide) [s; default=44714.0]
+      PeriodS: 43200.0                     # period of 2nd tidal harmonic (eg. S2-tide) [s; default=43200.0]
+   int_press:                              # internal pressure
+      dtdx:                                # temperature gradient in West-East direction
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [Celsius/m; default=0.0]
+         file:                             # path to file with series of profiles [default=]
+         column: 1                         # index of column to read from [default=1]
+      dtdy:                                # temperature gradient in South-North direction
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [Celsius/m; default=0.0]
+         file:                             # path to file with series of profiles [default=]
+         column: 1                         # index of column to read from [default=1]
+      dsdx:                                # salinity gradient in West-East direction
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [psu/m; default=0.0]
+         file:                             # path to file with series of profiles [default=]
+         column: 1                         # index of column to read from [default=1]
+      dsdy:                                # salinity gradient in South-North direction
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [psu/m; default=0.0]
+         file:                             # path to file with series of profiles [default=]
+         column: 1                         # index of column to read from [default=1]
+      t_adv: false                         # horizontally advect temperature [default=false]
+      s_adv: false                         # horizontally advect salinity [default=false]
+   zeta:                                   # surface elevation
+      method: 0                            # method [0=constant, 1=from tidal constituents, 2=from file; default=0]
+      constant_value: 0.0                  # value to use throughout the simulation [m; default=0.0]
+      file:                                # path to file with time series [default=]
+      column: 1                            # index of column to read from [default=1]
+      period_1: 44714.0                    # period of 1st harmonic (eg. M2-tide) [s; default=44714.0]
+      amp_1: 1.0                           # amplitude of 1st harmonic [m; default=0.0]
+      phase_1: 0.0                         # phase of 1st harmonic [s; default=0.0]
+      period_2: 43200.0                    # period of 2nd harmonic (eg. S2-tide) [s; default=43200.0]
+      amp_2: 0.5                           # amplitude of 2nd harmonic [m; default=0.0]
+      phase_2: 0.0                         # phase of 2nd harmonic [s; default=0.0]
+   w:                                      # vertical velocity
+      max:                                 # maximum velocity
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [m/s; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      height:                              # height of maximum velocity
+         method: 1                         # method [1=constant, 2=from file; default=1]
+         constant_value: 0.0               # value to use throughout the simulation [m; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      adv_discr: 4                         # vertical advection scheme [1=first-order upstream, 3=third-order upstream-biased polynomial, 4=third-order TVD with Superbee limiter, 5=third-order TVD with MUSCL limiter, 6=third-order TVD with ULTIMATE QUICKEST limiter; default=6]
+velocities:                                # observed/prescribed horizontal velocities
+   u:                                      # velocity in West-East direction
+      method: 0                            # method [0=off, 2=from file; default=0]
+      file:                                # path to file with series of profiles [default=]
+      column: 1                            # index of column to read from [default=1]
+   v:                                      # velocity in South-North direction
+      method: 0                            # method [0=off, 2=from file; default=0]
+      file:                                # path to file with series of profiles [default=]
+      column: 1                            # index of column to read from [default=1]
+   relax:                                  # relax model velocities towards observed/prescribed value
+      tau: 1.00000000E+15                  # time scale [s; min=0.0; default=1.00000000E+15]
+      ramp: 1.00000000E+15                 # duration of initial relaxation period [s; min=0.0; default=1.00000000E+15]
+o2:                                        # oxygen
+   scale_factor: 31.25                     # scale factor to be applied to values read from file [default=1.0]
+stokes_drift:                              # observed/prescribed Stokes drift
+   us:                                     # Stokes drift in West-East direction
+      method: 0                            # method [0=off, 2=from file, 3=exponential profile, 4=empirical theory-wave of Li et al., 2017; default=0]
+      file:                                # path to file with series of profiles [default=]
+      column: 1                            # index of column to read from [default=1]
+   vs:                                     # Stokes drift in South-North direction
+      method: 0                            # method [0=off, 2=from file, 3=exponential profile, 4=empirical theory-wave of Li et al., 2017; default=0]
+      file:                                # path to file with series of profiles [default=]
+      column: 1                            # index of column to read from [default=1]
+   dusdz:                                  # Stokes drift shear in West-East direction
+      method: 0                            # method [0=off, 2=from file, 3=compute from us; default=0]
+      file:                                # path to file with series of profiles [default=]
+      column: 1                            # index of column to read from [default=1]
+   dvsdz:                                  # Stokes drift shear in South-North direction
+      method: 0                            # method [0=off, 2=from file, 3=compute from vs; default=0]
+      file:                                # path to file with series of profiles [default=]
+      column: 1                            # index of column to read from [default=1]
+   exponential:                            # exponential Stokes drift profile defined by surface value and decay depth
+      us0:                                 # Surface Stokes drift in West-East direction
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [m/s; min=0.0; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      vs0:                                 # Surface Stokes drift in South-North direction
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [m/s; min=0.0; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      ds:                                  # Stokes drift decay depth
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 5.0               # value to use throughout the simulation [m; min=0.0; default=5.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+   empirical:                              # approximate Stokes drift from empirical wave spectrum following Li et al., 2017
+      uwnd:                                # Surface wind for Stokes drift in West-East direction
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [m/s; min=0.0; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+      vwnd:                                # Surface wind for Stokes drift in South-North direction
+         method: 0                         # method [0=off, 1=constant, 2=from file; default=0]
+         constant_value: 0.0               # value to use throughout the simulation [m/s; min=0.0; default=0.0]
+         file:                             # path to file with time series [default=]
+         column: 1                         # index of column to read from [default=1]
+cvmix:
+   surface_layer:                          # surface layer mixing
+      use: true                            # compute surface layer mixing coefficients [default=true]
+      kpp:                                 # K-Profile Parameterization
+         use: true                         # use the K-Profile Parameterization [default=true]
+         langmuir_method: 0                # method of Langmuir turbulence pararmeterization [0=none, 1=Li et al. (2016), 2=Li and Fox-Kemper (2017), 3=Reichl et al. (2016); default=0]
+         surface_layer_extent: 0.1         # extent of surface layer in fraction of the boundary layer [dimensionless; min=0.0; max=1.0; default=0.1]
+         Ri_c: 0.3                         # critical Richardson number [dimensionless; min=0.0; default=0.3]
+         check_Ekman_length: false         # limit the OBL by the Ekman depth [default=false]
+         check_MonOb_length: false         # limit the OBL by the Monin-Obukhov depth [default=false]
+         use_enhanced_diff: true           # enhance diffusivity at OBL [default=true]
+         use_noDGat1: true                 # zero gradient of the shape function at OBL [default=true]
+         match_technique: 1                # matching technique with the ocean interior [1=SimpleShapes, 2=MatchGradient, 3=MatchBoth, 4=ParabolicNonLocal; default=1]
+         bulk_Ri_interp_type: 2            # interpolation type for the bulk Richardson number [1=linear, 2=quadratic, 3=cubic; default=2]
+         OBL_interp_type: 4                # interpolation type for diffusivity and viscosity at OBL [1=linear, 2=quadratic, 3=cubic, 4=LMD94; default=4]
+   interior:                               # interior mixing
+      use: false                           # compute interior mixing coefficients [default=false]
+      background:
+         use: false                        # use interior background mixing coefficients [default=false]
+         diffusivity: 1.00000000E-05       # background diffusivity [m^2/s; default=1.00000000E-05]
+         viscosity: 1.00000000E-04         # background viscosity [m^2/s; default=1.00000000E-04]
+      shear:
+         use: false                        # compute interior shear mixing coefficients [default=false]
+         num_smooth_Ri: 1                  # number of iterations to smooth the gradient Richardson number [default=1]
+         mix_scheme: 2                     # shear mixing scheme [1=PP, Pacanowski and Philander (1981), 2=KPP, Large et al. (1994); default=2]
+         PP_nu_zero: 0.005                 # numerator in viscosity term in PP [m^2/s; default=0.005]
+         PP_alpha: 5.0                     # coefficient of Ri in denominator of visc / diff terms [dimensionless; default=5.0]
+         PP_exp: 2.0                       # exponent of denominator in viscosity term [dimensionless; default=2.0]
+         KPP_nu_zero: 0.005                # leading coefficient of the KPP shear mixing formula [m^2/s; default=0.005]
+         KPP_Ri_zero: 0.7                  # critical Richardson number for KPP shear mixing [dimensionless; default=0.7]
+         KPP_exp: 3.0                      # exponent of unitless factor of diffusivity [dimensionless; default=3.0]
+      convection:
+         use: false                        # compute interior convective mixing coefficients [default=false]
+         diffusivity: 1.0                  # convective diffusivity [m^2/s; default=1.0]
+         viscosity: 1.0                    # convective viscosity [m^2/s; default=1.0]
+         basedOnBVF: true                  # triger convection based on the squared Brunt-Vaisala frequency [default=true]
+         triggerBVF: 0.0                   # threshold of squared Brunt-Vaisala frequency [1/s^2; default=0.0]
+      tidal_mixing:
+         use: false                        # compute interior tidal mixing coefficients [default=false]
+      double_diffusion:
+         use: false                        # compute interior double diffusion mixing coefficients [default=false]
+buoyancy:
+   NN_ini: 1.00000000E-04                  # initial value of NN (=buoyancy gradient) [s^-2; default=0.0]
+eq_state:                                  # equation of state
+   mode: 1                                 # formula [1=UNESCO, 2=Jackett et al. (2005); default=2]
+   method: 2                               # implementation [1=full with in-situ temperature/density, 2=full with potential temperature/density, 3=linearized at T0,S0,p0, 4=linearized at T0,S0,p0,dtr0,dsr0; default=1]
+   T0: 10.0                                # reference temperature [Celsius; min=-2.0; default=10.0]
+   S0: 35.0                                # reference salinity [psu; min=0.0; default=35.0]
+   p0: 0.0                                 # reference pressure [Pa; default=0.0]
+   dtr0: -0.17                             # thermal expansion coefficient [kg/m^3/K; default=-0.17]
+   dsr0: 0.78                              # saline expansion coefficient [kg/m^3/psu; default=0.78]
+restart:
+   load: false                             # initialize simulation with state stored in restart.nc [default=false]
+output:
+   entrainment:                            # path of output file, excluding extension
+      format: netcdf                       # format [text, netcdf; default=netcdf]
+      time_unit: dt                        # time unit [second, hour, day, month, year, dt=model time step; default=day]
+      time_step: 60                        # number of time units between output [min=1; default=1]
+      time_method: point                   # treatment of time dimension [point=instantaneous, mean, integrated; default=point]
+      variables:
+      - source: *                          # variable name in model

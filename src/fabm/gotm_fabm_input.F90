@@ -1,6 +1,7 @@
 #ifdef _FABM_
 
 #include "cppdefs.h"
+#include "fabm_version.h"
 
 !-----------------------------------------------------------------------
 !BOP
@@ -16,9 +17,11 @@
 !  variables.
 !
 ! !USES:
-   use fabm, only: fabm_get_bulk_variable_id,fabm_get_horizontal_variable_id,fabm_get_scalar_variable_id,fabm_is_variable_used,fabm_get_variable_name
-   use fabm,only: type_bulk_variable_id,type_horizontal_variable_id,type_scalar_variable_id
-   use fabm_types, only:rk, attribute_length
+   use fabm
+   use fabm_types, only: attribute_length
+#if _FABM_API_VERSION_ > 0
+   use fabm_v0_compatibility
+#endif
    use gotm_fabm,only:fabm_calc,model,cc,register_observation
    use input,only: register_input, type_scalar_input, type_profile_input
    use settings
@@ -112,7 +115,7 @@
       allocate(input_variable)
 
 !     First search in interior variables
-      input_variable%interior_id = fabm_get_bulk_variable_id(model, pair%name)
+      input_variable%interior_id = model%get_bulk_variable_id(pair%name)
 
       if (fabm_is_variable_used(input_variable%interior_id)) then
          fabm_name = fabm_get_variable_name(model, input_variable%interior_id)
@@ -129,7 +132,7 @@
          end do
       else
 !        Variable was not found among interior variables. Try variables defined on horizontal slice of model domain (e.g., benthos)
-         input_variable%horizontal_id = fabm_get_horizontal_variable_id(model, pair%name)
+         input_variable%horizontal_id = model%get_horizontal_variable_id(pair%name)
          if (fabm_is_variable_used(input_variable%horizontal_id)) then
             fabm_name = fabm_get_variable_name(model, input_variable%horizontal_id)
             call type_input_create(pair, input_variable%scalar_input, trim(input_variable%horizontal_id%variable%long_name), trim(input_variable%horizontal_id%variable%units), default=0._rk, pchild=branch)
@@ -141,7 +144,7 @@
             end do
          else
 !           Variable was not found among interior or horizontal variables. Try global scalars.
-            input_variable%scalar_id = fabm_get_scalar_variable_id(model, pair%name)
+            input_variable%scalar_id = model%get_scalar_variable_id(pair%name)
             if (.not. fabm_is_variable_used(input_variable%scalar_id)) then
                FATAL 'Variable '//pair%name//', referenced among FABM inputs was not found in model.'
                stop 'gotm_fabm_input:init_gotm_fabm_input'
