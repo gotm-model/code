@@ -5,6 +5,8 @@ import tempfile
 import shutil
 import copy
 import os
+import glob
+import sys
 
 try:
     import yaml
@@ -126,37 +128,56 @@ def update_yaml(oldroot):
     root.move_to_end('version', last=False)
     return root
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('infile', nargs='?', help='Path to existing gotm.yaml configuration', default='gotm.yaml')
-    parser.add_argument('--out', help='Path to updated gotm.yaml configuration file that will be written. Defaults to <in>.', default=None)
-    parser.add_argument('--gotm', help='Path to GOTM executable. This will be called to add documentation to the yaml file.')
-    parser.add_argument('--detail', choices=('minimal', 'default', 'full'), help='Level of detail of updated yaml file (which settings to include): minimal, default or full.', default='default')
-    args = parser.parse_args()
-    if args.out is None:
-        print('No path for output file provided. %s will be updated in-place.' % args.infile)
-        args.out = args.infile
+def process_file(infile, outfile=None, gotm=None, detail='default'):
+    if outfile is None:
+        outfile = infile
 
-    with open(args.infile) as f:
+    with open(infile) as f:
         settings = yaml.safe_load(f)
 
-    print('Updating configuration to latest version...', end='')
+    print('Processing %s...' % infile)
+    print('- Updating configuration to latest version...', end='')
     settings = update_yaml(settings)
     print(' Done.')
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        print(tmpdir)
         path = os.path.join(tmpdir, 'gotm.yaml')
         with open(path, 'w') as f:
             yaml.dump(settings, f, default_flow_style=False, indent=2)
 
-        fabm_yaml = os.path.join(os.path.dirname(args.infile), 'fabm.yaml')
+        fabm_yaml = os.path.join(os.path.dirname(infile), 'fabm.yaml')
         if os.path.isfile(fabm_yaml):
             shutil.copyfile(fabm_yaml, os.path.join(tmpdir, 'fabm.yaml'))
 
-        if args.gotm is not None:
-            subprocess.check_call([args.gotm, '--write_yaml', path, '--detail', args.detail], cwd=tmpdir)
+        if gotm is not None:
+            print('- Calling GOTM to clean-up yaml file...', end='')
+            try:
+                subprocess.check_output([gotm, '--write_yaml', path, '--detail', detail], cwd=tmpdir, stderr=subprocess.STDOUT, universal_newlines=True)
+                print(' Done.')
+            except subprocess.CalledProcessError as e:
+                print('FAILED:\n%s' % e.stdout)
+                return False
 
-        print('Writing updated %s...' % args.out, end='')
-        shutil.copyfile(path, args.out)
+        print('- Writing updated %s...' % outfile, end='')
+        shutil.copyfile(path, outfile)
         print(' Done.')
+        return True
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('infile', nargs='+', help='Path to existing gotm.yaml configuration', default='gotm.yaml')
+    parser.add_argument('--out', help='Path to updated gotm.yaml configuration file that will be written. Defaults to <in>.', default=None)
+    parser.add_argument('--gotm', help='Path to GOTM executable. This will be called to add documentation to the yaml file.')
+    parser.add_argument('--detail', choices=('minimal', 'default', 'full'), help='Level of detail of updated yaml file (which settings to include): minimal, default or full.', default='default')
+    args = parser.parse_args()
+    infiles = []
+    for name in args.infile:
+        infiles.extend(glob.glob(name))
+    if args.out is None:
+        print('No path for output file provided (--out). Configurations will be updated in-place.')
+    elif len(infiles) > 1:
+        print('Path for output file cannot be provided if called in batch mode (multiple input files).')
+        sys.exit(2)
+
+    for infile in infiles:
+        process_file(infile, outfile=args.out, gotm=args.gotm, detail=args.detail)
