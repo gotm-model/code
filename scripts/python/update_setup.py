@@ -76,6 +76,8 @@ def update_yaml(oldroot):
     root = copy.deepcopy(oldroot)
     version = root.get('version', 5)
     if version == 5:
+        update_node(root, 'temperature/constant_value', get_node(root, 'temperature/analytical/t_1', default=0.))
+        update_node(root, 'salinity/constant_value', get_node(root, 'salinity/analytical/s_1', default=0.))
         move_node(root, 'temperature/analytical/z_t1', 'temperature/two_layer/z_s')
         move_node(root, 'temperature/analytical/t_1', 'temperature/two_layer/t_s')
         move_node(root, 'temperature/analytical/z_t2', 'temperature/two_layer/z_b')
