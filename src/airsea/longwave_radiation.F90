@@ -5,7 +5,7 @@
 ! !ROUTINE: Calculate the net longwave radiation \label{sec:back-rad}
 !
 ! !INTERFACE:
-   subroutine longwave_radiation(method,type,dlat,tw,ta,cloud,ql)
+   subroutine longwave_radiation(method,type,dlat,tw,ta,cloud,qlobs,ql)
 !
 ! !DESCRIPTION:
 !
@@ -29,7 +29,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: method,type
-   REALTYPE, intent(in)                :: dlat,tw,ta,cloud
+   REALTYPE, intent(in)                :: dlat,tw,ta,cloud,qlobs
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(inout)               :: ql
@@ -39,13 +39,13 @@
 !
 ! !LOCAL VARIABLES:
 !cherry pick -- > jpnote to get rid of and add to airseavariables
-   integer, parameter   :: from_file=0
-   integer, parameter   :: clark=1      ! Clark et al, 1974
-   integer, parameter   :: hastenrath=2 ! Hastenrath and Lamb, 1978
-   integer, parameter   :: bignami=3    ! Bignami et al., 1995 - Medsea
-   integer, parameter   :: berliand=4   ! Berliand and Berliand, 1952 - ROMS
-   integer, parameter   :: josey1=5     ! Josey 2003, (J1,9)
-   integer, parameter   :: josey2=6     ! Josey 2003, (J2,14)
+   !integer, parameter   :: from_file=0
+   !integer, parameter   :: clark=1      ! Clark et al, 1974
+   !integer, parameter   :: hastenrath=2 ! Hastenrath and Lamb, 1978
+   !integer, parameter   :: bignami=3    ! Bignami et al., 1995 - Medsea
+   !integer, parameter   :: berliand=4   ! Berliand and Berliand, 1952 - ROMS
+   !integer, parameter   :: josey1=5     ! Josey 2003, (J1,9)
+   !integer, parameter   :: josey2=6     ! Josey 2003, (J2,14)
 
    REALTYPE, parameter, dimension(91)  :: cloud_correction_factor = (/ &
      0.497202,     0.501885,     0.506568,     0.511250,     0.515933, &
@@ -83,8 +83,9 @@
       case(from_file)
          select case(type)
             case(1)
+               ql=qlobs
             case(2)
-               ql = ql-bolz*emiss*(tw**4)
+               ql = qlobs-bolz*emiss*(tw**4)
          end select
       case(clark)
 !        Clark et al. (1974) formula.

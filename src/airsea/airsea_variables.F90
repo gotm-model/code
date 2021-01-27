@@ -47,6 +47,7 @@
    integer, public,  parameter         :: COGLEY=2
 
    ! Longwave radiation
+   integer, public,  parameter         :: FILE = 0                ! From file
    integer, public,  parameter         :: CLARK = 1               ! Clark et al, 1974
    integer, public,  parameter         :: HASTENRATH_LAMB = 2     ! Hastenrath and Lamb, 1978
    integer, public,  parameter         :: BIGNAMI = 3             ! Bignami et al., 1995 - Medsea

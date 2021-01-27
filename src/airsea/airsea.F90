@@ -77,10 +77,10 @@
 !
 !  surface shortwave radiation
 !  and surface heat flux (W/m^2)
-   type (type_scalar_input), public, target :: I_0, ql
+   type (type_scalar_input), public, target :: I_0
    REALTYPE, public, target            :: albedo
-   type (type_scalar_input), public, target            :: heat
-   REALTYPE, public                    :: qe,qh
+   type (type_scalar_input), public, target :: heat, ql_
+   REALTYPE, public                    :: qe,qh,ql
 
 !  surface stress components (Pa)
    REALTYPE, public, target                 :: tx,ty
@@ -342,7 +342,7 @@
    call tx_%configure(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
    call ty_%configure(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
    call heat%configure(method=heat_method, path=heatflux_file, index=1, scale_factor=shf_factor, constant_value=const_heat)
-   call ql%configure(method=back_radiation_method, path=back_radiation_file, index=1)
+   call ql_%configure(method=back_radiation_method, path=back_radiation_file, index=1)
    call sst_obs%configure(method=sst_method, path=sst_file, index=1)
    call sss%configure(method=sss_method, path=sss_file, index=1)
    call precip%configure(method=precip_method, path=precip_file, index=1, scale_factor=precip_factor, constant_value=const_precip)
@@ -491,19 +491,25 @@
                 default=.false.)
    call branch%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
                 default=.false.)
-!jpnote: before cherry pick  -- keeping commented because unsure if removing I/0 does anything -- also should check yaml. 
-   !call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
-               ! minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
+
+ !jpnote: before cherry pick 
+   call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
+                minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
    !call branch%get(ql, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
                ! default=0._rk, method_file=0, method_constant=method_unsupported, &
                !extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
-!jpnote: after cherry pick 
-   call branch%get(ql, 'longwave_radiation', 'longwave radiation', 'W/m^2', &
+!jpnote: after cherry pick 1
+   !call branch%get(ql, 'longwave_radiation', 'longwave radiation', 'W/m^2', &
+   !call twig%get(ssuv_method, 'ssuv_method', 'wind treatment', &
+                !options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=1, display=display_advanced)
+!jpnote: after cherry pick 2
+   call branch%get(ql_, 'longwave_radiation', 'longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
                extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand'), option(5, 'Josey-1'), option(6, 'Josey-2')/), default_method=1, pchild=leaf)
    call leaf%get(longwave_type, 'type', 'longwave type from file', &
                  options=(/option(1, 'net longwave radiation'), option(2, 'incoming longwave radiation')/), default=1)
 
+         
    twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
                 options=(/option(0, 'constant', 'constant'), option(PAYNE, 'Payne (1972)', 'Payne'), option(COGLEY, 'Cogley (1979)', 'Cogley')/), default=PAYNE)
@@ -695,10 +701,10 @@
          case default
       end select
       LEVEL3 'longwave radiation:'
-      select case (ql%method)
+      select case (ql_%method)
          case(0) ! Read from file instead of calculating
-            call register_input(ql)
-         case(CLARK)
+            call register_input(ql_) !jpnote commmit 2 change
+         case(1)
             LEVEL4 'using Clark formulation'
          case(HASTENRATH_LAMB)
             LEVEL4 'using Hastenrath formulation'
@@ -799,10 +805,10 @@
    latent = qe
 #if 0
    if (qe .lt. _ZERO_) then
-      STDERR 'Stefan# ',qh/qe
+!KB      STDERR 'Stefan# ',qh/qe
    end if
 #endif
-   longwave_radiation = ql%value
+   longwave_radiation = ql
    return
    end subroutine surface_fluxes
 !EOC
@@ -1024,8 +1030,8 @@
       cloud1 = cloud2
 
       call humidity(hum_method,hum,airp,tw,ta)
-      call longwave_radiation(ql%method,longwave_type, &
-                              dlat,tw_k,ta_k,cloud,ql%value)
+      call longwave_radiation(ql_%method,longwave_type, &
+                              dlat,tw_k,ta_k,cloud,ql_%value,ql)
       end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
@@ -1034,7 +1040,7 @@
       call airsea_fluxes(fluxes_method, &
                          tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)
 #endif
-      h2     = ql%value+qe+qh
+      h2     = ql+qe+qh
       cloud2 = cloud%value
 
       if (init_saved_vars) then
@@ -1075,11 +1081,11 @@
    end if
 
    call humidity(hum_method,hum%value,airp%value,tw,ta)
-   call longwave_radiation(ql%method,longwave_type, &
-                           dlat,tw_k,ta_k,cloud%value,ql%value)
+   call longwave_radiation(ql_%method,longwave_type, &
+                           dlat,tw_k,ta_k,cloud%value,ql_%value,ql)
    call airsea_fluxes(fluxes_method, &
                       tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx_%value,ty_%value,qe,qh)
-   heat%value = (ql%value+qe+qh)
+   heat%value = (ql+qe+qh)
 #endif
 
    w = sqrt((u10%value-ssu)*(u10%value-ssu)+(v10%value-ssv)*(v10%value-ssv))
