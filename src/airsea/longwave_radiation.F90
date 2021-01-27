@@ -5,7 +5,7 @@
 ! !ROUTINE: Calculate the net longwave radiation \label{sec:back-rad}
 !
 ! !INTERFACE:
-   subroutine longwave_radiation(method,type,dlat,tw,ta,cloud,ql)
+   subroutine longwave_radiation(method,type,dlat,tw,ta,cloud,qlobs,ql)
 !
 ! !DESCRIPTION:
 !
@@ -28,7 +28,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: method,type
-   REALTYPE, intent(in)                :: dlat,tw,ta,cloud
+   REALTYPE, intent(in)                :: dlat,tw,ta,cloud,qlobs
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(inout)               :: ql
@@ -79,8 +79,9 @@
       case(from_file)
          select case(type)
             case(1)
+               ql=qlobs
             case(2)
-               ql = ql-bolz*emiss*(tw**4)
+               ql = qlobs-bolz*emiss*(tw**4)
          end select
       case(clark)
 !        Clark et al. (1974) formula.
