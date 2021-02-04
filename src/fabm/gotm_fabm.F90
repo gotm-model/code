@@ -805,7 +805,7 @@
 !
 ! !INPUT/OUTPUT PARAMETERS:
    type(type_bulk_variable_id),intent(inout) :: id
-   REALTYPE,target,dimension(0:) :: data,relax_tau
+   REALTYPE,target,dimension(0:) _CONTIGUOUS_ :: data,relax_tau
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
