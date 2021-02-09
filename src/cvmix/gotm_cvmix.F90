@@ -372,10 +372,12 @@
    call leaf%get(use_kpp, 'use', 'use the K-Profile Parameterization', &
       default=.true.)
    call leaf%get(kpp_langmuir_method, 'langmuir_method',               &
-      'method of Langmuir turbulence pararmeterization', default=0,    &
-      options=(/option(0, 'none'), option(1, 'Li et al. (2016)'),      &
-      option(2, 'Li and Fox-Kemper (2017)'),                           &
-      option(3, 'Reichl et al. (2016)')/))
+      'method of Langmuir turbulence pararmeterization',               &
+      default=CVMIX_LT_NOLANGMUIR,                                     &
+      options=(/option(CVMIX_LT_NOLANGMUIR, 'none', 'none'),           &
+      option(CVMIX_LT_LWF16, 'Li et al. (2016)', 'LWF16'),             &
+      option(CVMIX_LT_LF17, 'Li and Fox-Kemper (2017)', 'LF17'),       &
+      option(CVMIX_LT_RWH16, 'Reichl et al. (2016)', 'RWH16')/))
    call leaf%get(kpp_surface_layer_extent, 'surface_layer_extent',     &
       'extent of surface layer in fraction of the boundary layer', '-',&
       minimum=0._rk, maximum=1._rk, default=0.1_rk)
@@ -390,21 +392,27 @@
    call leaf%get(kpp_use_noDGat1, 'use_noDGat1',                       &
       'zero gradient of the shape function at OBL', default=.true.)
    call leaf%get(kpp_match_technique, 'match_technique',               &
-      'matching technique with the ocean interior',                    &
-      default=1, options=(/                                            &
-      option(1, 'SimpleShapes'),                                       &
-      option(2, 'MatchGradient'),                                      &
-      option(3, 'MatchBoth'),                                          &
-      option(4, 'ParabolicNonLocal')/))
+      'matching technique of shape functions with the ocean interior', &
+      default=CVMIX_MATCH_SIMPLE, options=(/                           &
+      option(CVMIX_MATCH_SIMPLE, 'simple shapes', 'simple'),           &
+      option(CVMIX_MATCH_GRADIENT, 'gradient term', 'gradient'),       &
+      option(CVMIX_MATCH_BOTH,                                         &
+             'both gradient and nonlocal terms', 'both'),              &
+      option(CVMIX_MATCH_PARABOLIC,                                    &
+             'parabolic nonlocal term', 'parabolic')/))
    call leaf%get(kpp_bulk_Ri_interp_type, 'bulk_Ri_interp_type',       &
       'interpolation type for the bulk Richardson number',             &
-      default=2, options=(/                                            &
-      option(1, 'linear'), option(2, 'quadratic'), option(3, 'cubic')/))
+      default=CVMIX_INTERP_QUADRATIC, options=(/                       &
+      option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
+      option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
+      option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic')/))
    call leaf%get(kpp_OBL_interp_type, 'OBL_interp_type',               &
       'interpolation type for diffusivity and viscosity at OBL',       &
-      default=4, options=(/                                            &
-      option(1, 'linear'), option(2, 'quadratic'),                     &
-      option(3, 'cubic'), option(4, 'LMD94')/))
+      default=CVMIX_INTERP_LMD94, options=(/                           &
+      option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
+      option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
+      option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic'),                    &
+      option(CVMIX_INTERP_LMD94, 'LMD94', 'LMD94')/))
 
    twig => branch%get_child('interior', 'interior mixing')
    call twig%get(use_interior, 'use',                                  &
@@ -425,9 +433,9 @@
       'number of iterations to smooth the gradient Richardson number', &
       default=1)
    call leaf%get(shear_mix_scheme, 'mix_scheme', 'shear mixing scheme',&
-      default=2, options=(/                                            &
-      option(1, 'PP, Pacanowski and Philander (1981)'),                &
-      option(2, 'KPP, Large et al. (1994)')/))
+      default=CVMIX_SHEAR_KPP, options=(/                              &
+      option(CVMIX_SHEAR_PP, 'Pacanowski and Philander (1981)', 'PP'), &
+      option(CVMIX_SHEAR_KPP, 'Large et al. (1994)', 'KPP')/))
    call leaf%get(shear_PP_nu_zero, 'PP_nu_zero',                       &
       'numerator in viscosity term in PP', 'm^2/s',                    &
       default=0.005_rk)
