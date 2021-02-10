@@ -412,7 +412,7 @@
       option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
       option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
       option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic'),                    &
-      option(CVMIX_INTERP_LMD94, 'LMD94', 'LMD94')/))
+      option(CVMIX_INTERP_LMD94, 'Large et al. (1994)', 'LMD94')/))
 
    twig => branch%get_child('interior', 'interior mixing')
    call twig%get(use_interior, 'use',                                  &
