@@ -11,7 +11,7 @@ jobs:
          fail-fast: false
       runs-on: ubuntu-latest
       steps:
-      - name: Install dependencies
+      - name: Install compiler
         run: sudo apt-get install gfortran-${{ matrix.version }}
       - name: Clone gotm
         uses: actions/checkout@v2
@@ -23,5 +23,5 @@ jobs:
         with:
            path: cases
            repository: gotm-model/cases
-      - name: Run all test cases
-        run: python3 -u cases/scripts/run_all.py --show_logs --gotm_base=${GITHUB_WORKSPACE}/gotm --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_NetCDF=OFF ${{ matrix.cmake_args }}
+      - name: Build and run all test cases
+        run: python3 cases/scripts/run_all.py --show_logs --gotm_base=gotm --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_NetCDF=OFF ${{ matrix.cmake_args }}
