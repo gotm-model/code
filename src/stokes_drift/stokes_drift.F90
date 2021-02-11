@@ -136,6 +136,8 @@
    character(LEN=PATH_MAX)   :: wnd_file
    REALTYPE                  :: const_uwnd, const_vwnd
 
+   logical :: ext
+
 !  Stokes drift namelist
    namelist /stokes_drift/                                      &
             us_prof_method,us_prof_file,                        &
@@ -161,6 +163,9 @@
    wnd_file='wnd_file.dat'
    const_uwnd=_ZERO_
    const_vwnd=_ZERO_
+
+   inquire(file=fn, exist=ext)
+   if (.not. ext) return
 
    open(namlst,file=fn,status='old',action='read',err=91)
    read(namlst,nml=stokes_drift,err=92)
@@ -218,38 +223,34 @@
 !BOC
    LEVEL1 'init_stokes_drift_yaml'
 
-   branch => settings_store%get_typed_child('stokes_drift', 'observed/prescribed Stokes drift')
+   branch => settings_store%get_typed_child('waves/stokes_drift', 'observed/prescribed Stokes drift', display=display_advanced)
    call branch%get(usprof, 'us', 'Stokes drift in West-East direction', 'm/s', default=0._rk,    &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
-                   extra_options=(/option(EXPONENTIAL, 'exponential profile'), &
-                                   option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017')/))
+                   extra_options=(/option(EXPONENTIAL, 'exponential profile', 'exponential'), &
+                                   option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017', 'empirical')/))
    call branch%get(vsprof, 'vs', 'Stokes drift in South-North direction', 'm/s', default=0._rk,  &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
-                   extra_options=(/option(EXPONENTIAL, 'exponential profile'), &
-                                   option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017')/))
+                   extra_options=(/option(EXPONENTIAL, 'exponential profile', 'exponential'), &
+                                   option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017', 'empirical')/))
    call branch%get(dusdz, 'dusdz', 'Stokes drift shear in West-East direction', '1/s', default=0._rk,    &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
-                   extra_options=(/option(FROMUS, 'compute from us')/))
+                   extra_options=(/option(FROMUS, 'compute from us', 'us')/))
    call branch%get(dvsdz, 'dvsdz', 'Stokes drift shear in South-North direction', '1/s', default=0._rk,  &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
-                   extra_options=(/option(FROMUS, 'compute from vs')/))
+                   extra_options=(/option(FROMUS, 'compute from vs', 'vs')/))
    twig => branch%get_typed_child('exponential', 'exponential Stokes drift profile defined by surface value and decay depth')
-   call twig%get(us0, 'us0', 'Surface Stokes drift in West-East direction', 'm/s',   &
-                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, &
-                 minimum=0._rk, default=0._rk)
-   call twig%get(vs0, 'vs0', 'Surface Stokes drift in South-North direction', 'm/s', &
-                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, &
-                 minimum=0._rk, default=0._rk)
+   call twig%get(us0, 'us0', 'surface Stokes drift in West-East direction', 'm/s',                &
+                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
+   call twig%get(vs0, 'vs0', 'surface Stokes drift in South-North direction', 'm/s',              &
+                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
    call twig%get(ds, 'ds', 'Stokes drift decay depth', 'm',                          &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, &
                  minimum=0._rk, default=5._rk)
    twig => branch%get_typed_child('empirical', 'approximate Stokes drift from empirical wave spectrum following Li et al., 2017')
-   call twig%get(uwnd, 'uwnd', 'Surface wind for Stokes drift in West-East direction', 'm/s',     &
-                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE,              &
-                 minimum=0._rk, default=0._rk)
-   call twig%get(vwnd, 'vwnd', 'Surface wind for Stokes drift in South-North direction', 'm/s',   &
-                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE,              &
-                 minimum=0._rk, default=0._rk)
+   call twig%get(uwnd, 'uwnd', 'surface wind for Stokes drift in West-East direction', 'm/s',     &
+                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
+   call twig%get(vwnd, 'vwnd', 'surface wind for Stokes drift in South-North direction', 'm/s',   &
+                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
 
    LEVEL2 'done'
 
@@ -493,11 +494,11 @@
       vssl = vs0%value
    end if
 
-   if (us_srf .gt. _ZERO_) then
+   if (us_srf .gt. 1e-4 .and. u_taus .gt. 1e-4) then
       ! turbulent Langmuir number (McWilliams et al., 1997)
       La_Turb = sqrt(u_taus/us_srf)
       ! surface layer averaged Langmuir number (Harcourt and D'Asaro, 2008)
-      La_SL = sqrt(u_taus/(sqrt(ussl**2+vssl**2) &
+      La_SL = sqrt(u_taus/abs(sqrt(ussl**2+vssl**2) &
                          -sqrt(usprof%data(kbl)**2+vsprof%data(kbl)**2) &
                          +SMALL*SMALL))
       ! angles between wind and waves

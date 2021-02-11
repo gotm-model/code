@@ -10,7 +10,7 @@ module settings
    public type_gotm_settings, settings_store, type_input_create
 
    ! From yaml_settings module:
-   public type_settings, option, display_normal, display_advanced, display_hidden, rk
+   public type_settings, option, display_normal, display_advanced, display_hidden, rk, type_header
 
    type,extends(type_settings) :: type_gotm_settings
    contains
@@ -112,6 +112,7 @@ contains
 
       istart = index(setting%path, '/', .true.) + 1
       setting%long_name = long_name
+      if (units /= '') setting%long_name = setting%long_name // ' [' // units // ']'
       if (present(description)) setting%description = description
       if (present(display)) setting%display = display
 
@@ -156,15 +157,15 @@ contains
       noptions = 0
       if (target%method_off /= method_unsupported) then
          noptions = noptions + 1
-         options(noptions) = option(target%method_off, 'off')
+         options(noptions) = option(target%method_off, 'off', 'off')
       end if
       if (target%method_constant /= method_unsupported) then
          noptions = noptions + 1
-         options(noptions) = option(target%method_constant, 'constant')
+         options(noptions) = option(target%method_constant, 'constant', 'constant')
       end if
       if (target%method_file /= method_unsupported) then
          noptions = noptions + 1
-         options(noptions) = option(target%method_file, 'from file')
+         options(noptions) = option(target%method_file, 'from file', 'file')
       end if
       if (present(extra_options)) options(noptions + 1:) = extra_options
       if (default_method_ == method_unsupported) default_method_ = options(1)%value
@@ -187,8 +188,10 @@ contains
          call setting%get(target%index, 'column', 'index of column to read from', default=1)
          call setting%get(target%scale_factor, 'scale_factor', 'scale factor to be applied to values read from file', '', default=1._rk, display=display_advanced)
          call setting%get(target%add_offset, 'offset', 'offset to be added to values read from file', units=units, default=0._rk, display=display_advanced)
+         if (present(minimum)) target%minimum = minimum
+         if (present(maximum)) target%maximum = maximum
       end if
-      target%name = setting%path
+      target%name = setting%path(2:)
       if (present(pchild)) pchild => setting
 
    end subroutine type_input_create

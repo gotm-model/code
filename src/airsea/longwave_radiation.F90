@@ -23,6 +23,7 @@
 ! !USES:
    use airsea_variables, only: emiss,bolz
    use airsea_variables, only: ea,qa
+   use airsea_variables, only: CLARK, HASTENRATH_LAMB, BIGNAMI, BERLIAND_BERLIAND, JOSEY1, JOSEY2
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -33,17 +34,9 @@
    REALTYPE, intent(out)               :: ql
 !
 ! !REVISION HISTORY:
-!  Original author(s): Adols Stips, Hans Burchard & Karsten Bolding
+!  Original author(s): Adolf Stips, Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-
-   integer, parameter   :: clark=1      ! Clark et al, 1974
-   integer, parameter   :: hastenrath=2 ! Hastenrath and Lamb, 1978
-   integer, parameter   :: bignami=3    ! Bignami et al., 1995 - Medsea
-   integer, parameter   :: berliand=4   ! Berliand and Berliand, 1952 - ROMS
-   integer, parameter   :: josey1=5     ! Josey 2003, (J1,9)
-   integer, parameter   :: josey2=6     ! Josey 2003, (J2,14)
-
    REALTYPE, parameter, dimension(91)  :: cloud_correction_factor = (/ &
      0.497202,     0.501885,     0.506568,     0.511250,     0.515933, &
      0.520616,     0.525299,     0.529982,     0.534665,     0.539348, &
@@ -75,7 +68,7 @@
    ccf= cloud_correction_factor(nint(abs(dlat))+1)
 
    select case(method)
-      case(clark)
+      case(CLARK)
 !        Clark et al. (1974) formula.
 !        unit of ea is Pascal, must hPa
 !        Black body defect term, clouds, water vapor correction
@@ -84,13 +77,13 @@
 !        temperature jump term
          x3=4.0*(tw**3)*(tw-ta)
          ql=-emiss*bolz*(x1*x2+x3)
-      case(hastenrath) ! qa in g(water)/kg(wet air)
+      case(HASTENRATH_LAMB) ! qa in g(water)/kg(wet air)
 !        Hastenrath and Lamb (1978) formula.
          x1=(1.0-ccf*cloud*cloud)*(tw**4)
          x2=(0.39-0.056*sqrt(1000.0*qa))
          x3=4.0*(tw**3)*(tw-ta)
          ql=-emiss*bolz*(x1*x2+x3)
-      case(bignami)
+      case(BIGNAMI)
 !        Bignami et al. (1995) formula (Med Sea).
 !        unit of ea is Pascal, must hPa
          ccf=0.1762
@@ -98,19 +91,19 @@
          x2=(0.653+0.00535*(ea*0.01))
          x3= emiss*(tw**4)
          ql=-bolz*(-x1*x2+x3)
-      case(berliand)
+      case(BERLIAND_BERLIAND)
 !        Berliand & Berliand (1952) formula (ROMS).
          x1=(1.0-0.6823*cloud*cloud)*ta**4
          x2=(0.39-0.05*sqrt(0.01*ea))
          x3=4.0*ta**3*(tw-ta)
          ql=-emiss*bolz*(x1*x2+x3)
-      case(josey1)
+      case(JOSEY1)
 !        Use Josey et.al. 2003 - (J1,9)
          x1=emiss*tw**4
          x2=(10.77*cloud+2.34)*cloud-18.44
          x3=0.955*(ta+x2)**4
          ql=-bolz*(x1-x3)
-      case(josey2)
+      case(JOSEY2)
 !        Use Josey et.al. 2003 - (J2,14)
          x1=emiss*tw**4
          ! AS avoid zero trap, limit to about 1% rel. humidity ~ 10Pa
