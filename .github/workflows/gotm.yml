@@ -24,4 +24,4 @@ jobs:
            path: cases
            repository: gotm-model/cases
       - name: Run all test cases
-        run: python cases/scripts/run_all.py --gotm_base=gotm --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_NETCDF=OFF
+        run: python3 cases/scripts/run_all.py --gotm_base=gotm --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_NETCDF=OFF
