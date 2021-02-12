@@ -1,0 +1,27 @@
+name: Build and test
+on: push
+jobs:
+   gfortran:
+      strategy:
+         matrix:
+            version: [6, 7, 8, 9, 10]
+            include:
+               - version: 8
+                 cmake_args: -DFABM_USE_CONTIGUOUS=OFF
+         fail-fast: false
+      runs-on: ubuntu-latest
+      steps:
+      - name: Install compiler
+        run: sudo apt-get install gfortran-${{ matrix.version }}
+      - name: Clone gotm
+        uses: actions/checkout@v2
+        with:
+           path: gotm
+           submodules: recursive
+      - name: Clone gotm-cases
+        uses: actions/checkout@v2
+        with:
+           path: cases
+           repository: gotm-model/cases
+      - name: Build and run all test cases
+        run: python3 cases/scripts/run_all.py --show_logs --gotm_base=gotm --exclude plume --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_SEAGRASS=ON -DGOTM_USE_NetCDF=OFF ${{ matrix.cmake_args }}
