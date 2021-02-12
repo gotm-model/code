@@ -4,7 +4,7 @@ jobs:
    gfortran:
       strategy:
          matrix:
-            version: [5, 6, 7, 8, 9, 10]
+            version: [6, 7, 8, 9, 10]
             include:
                - version: 8
                  cmake_args: -DFABM_USE_CONTIGUOUS=OFF
@@ -24,4 +24,4 @@ jobs:
            path: cases
            repository: gotm-model/cases
       - name: Build and run all test cases
-        run: python3 cases/scripts/run_all.py --show_logs --gotm_base=gotm --exclude plume --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_NetCDF=OFF ${{ matrix.cmake_args }}
+        run: python3 cases/scripts/run_all.py --show_logs --gotm_base=gotm --exclude plume --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_SEAGRASS=ON -DGOTM_USE_NetCDF=OFF ${{ matrix.cmake_args }}
