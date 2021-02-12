@@ -326,6 +326,11 @@
    call init_airsea()
 #ifdef _ICE_
    call init_ice()
+#else
+   if (settings_store%ignore('surface/ice')) then
+      LEVEL3 'WARNING: surface/ice section in ' // trim(yaml_file) // ' is ignored because GOTM was compiled without STIM.'
+      LEVEL3 'To change this, specify -DGOTM_USE_STIM=ON when running cmake, then rebuild GOTM.'
+   end if
 #endif
    call init_observations()
    call init_stokes_drift()
@@ -334,10 +339,20 @@
 #ifdef _CVMIX_
    branch => settings_store%get_child('cvmix')
    call init_cvmix(branch)
+#else
+   if (settings_store%ignore('cvmix')) then
+      LEVEL3 'WARNING: cvmix section in ' // trim(yaml_file) // ' is ignored because GOTM was compiled without CVMix.'
+      LEVEL3 'To change this, specify -DGOTM_USE_CVMIX=ON when running cmake, then rebuild GOTM.'
+   end if
 #endif
 #ifdef _FABM_
    branch => settings_store%get_typed_child('fabm', 'Framework for Aquatic Biogeochemical Models')
    call configure_gotm_fabm(branch)
+#else
+   if (settings_store%ignore('fabm')) then
+      LEVEL3 'WARNING: fabm section in ' // trim(yaml_file) // ' is ignored because GOTM was compiled without FABM.'
+      LEVEL3 'To change this, specify -DGOTM_USE_FABM=ON when running cmake, then rebuild GOTM.'
+   end if
 #endif
    call init_meanflow()
 
