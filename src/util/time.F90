@@ -119,7 +119,7 @@
 
          ndays = nsecs/86400
          nsecs = nsecs - 86400*ndays
-         STDERR '        ==> ',ndays,' day(s) and ',nsecs,' seconds ==> ',MaxN,' micro time steps'
+         STDOUT '        ==> ',ndays,' day(s) and ',nsecs,' seconds ==> ',MaxN,' micro time steps'
       case (3)
          HasRealTime=.true.
          LEVEL2 'Start:          ',start
@@ -135,7 +135,7 @@
          call write_time_string(jul2,secs2,stop)
          LEVEL2 'Stop:           ',stop
       case default
-         STDERR 'Fatal error: A non valid input format has been chosen'
+         STDOUT 'Fatal error: A non valid input format has been chosen'
          stop 'init_time'
    end select
 
