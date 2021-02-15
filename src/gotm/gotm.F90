@@ -134,6 +134,7 @@
    logical, public             :: read_nml = .false.
    integer, public             :: write_yaml_detail = display_normal
    logical, public             :: list_fields = .false.
+   logical, public             :: ignore_unknown_config = .false.
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -426,8 +427,13 @@
 
    ! Make sure all elements in the YAML configuration file were recognized
    if (.not. settings_store%check_all_used()) then
-      FATAL trim(yaml_file) // ' is invalid.'
-      stop 1
+      if (ignore_unknown_config) then
+         LEVEL0 'Continuing because --ignore_unknown_config is specified.'
+      else
+         LEVEL0 'If you want GOTM to ignore unknown settings in ' // trim(yaml_file) // ','
+         LEVEL0 'rerun with --ignore_unknown_config.'
+         stop 1
+      end if
    end if
 
    if (write_yaml_path /= '') then

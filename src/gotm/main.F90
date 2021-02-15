@@ -172,6 +172,8 @@
          call get_command_argument(i, output_id)
       case ('-l', '--list_variables')
          list_fields = .true.
+      case ('--ignore_unknown_config')
+         ignore_unknown_config = .true.
       case default
          if (arg(1:2) == '--') then
             FATAL 'Command line option '//trim(arg)//' not recognized. Use -h to see supported options'
