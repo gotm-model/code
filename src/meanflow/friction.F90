@@ -5,7 +5,7 @@
 ! !ROUTINE: The vertical friction \label{sec:friction}
 !
 ! !INTERFACE:
-   subroutine friction(nlev,kappa,avmolu,tx,ty,int_press_mode)
+   subroutine friction(nlev,kappa,avmolu,tx,ty,plume_type)
 !
 ! !DESCRIPTION:
 !  This subroutine updates the bottom roughness
@@ -67,7 +67,7 @@
    integer, intent(in)                 :: nlev
 
    REALTYPE, intent(in)                :: kappa,avmolu,tx,ty
-   integer, intent(in)                 :: int_press_mode
+   integer, intent(in)                 :: plume_type
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -119,7 +119,7 @@
 
    end do
 !  compute the factor r (version 1, with log-law)
-   if (int_press_mode.eq.2) rr_s=kappa/(log((z0s+h(nlev)/2)/z0s))
+   if (plume_type .eq. 1) rr_s=kappa/(log((z0s+h(nlev)/2)/z0s))
 
 !  calculate bottom stress, which is used by sediment resuspension models
    taub = u_taub*u_taub*rho_0
@@ -128,14 +128,14 @@
    drag(1) = drag(1) +  rr_b*rr_b
     
 !  add for surface plume scenario surface friction as source term for the momentum equation
-   if (int_press_mode.eq.2) drag(nlev) = drag(nlev) +  rr_s*rr_s
+   if (plume_type .eq. 1) drag(nlev) = drag(nlev) +  rr_s*rr_s
 
 !  be careful: tx and ty are the surface shear-stresses
 !  already divided by rho!
-if (int_press_mode.ne.2) then
+if (plume_type .ne. 2) then
       u_taus=(tx**2+ty**2)**(1./4.)
    else
-      u_taus=rr_b*sqrt( u(nlev)*u(nlev) + v(nlev)*v(nlev) )     
+      u_taus=rr_s*sqrt( u(nlev)*u(nlev) + v(nlev)*v(nlev) )     
    endif
 
    return

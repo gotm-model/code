@@ -79,7 +79,10 @@
 ! !USES:
    use meanflow,      only: T,S
    use meanflow,      only: gravity,rho_0,h
+   use meanflow,      only: buoy
+   use observations,  only: int_press_type
    use observations,  only: dsdx,dsdy,dtdx,dtdy
+   use observations,  only: plume_type,plume_slope_x,plume_slope_y
    use observations,  only: idpdx,idpdy
    use eqstate,       only: eqstate1
    IMPLICIT NONE
@@ -103,7 +106,8 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   if (dsdx%method .ne. 0 .or. dsdy%method .ne. 0 .or. dtdx%method .ne. 0 .or. dtdy%method .ne. 0) then
+!KB   if (dsdx%method .ne. 0 .or. dsdy%method .ne. 0 .or. dtdx%method .ne. 0 .or. dtdy%method .ne. 0) then
+   if (int_press_type == 1) then ! T and S gradients
 
 !     initialize local depth
 !     and pressure gradient
@@ -150,6 +154,26 @@
          int=int+0.5*h(i+1)*dyB(i+1)+0.5*h(i)*dyB(i)
          idpdy(i)=int
       end do
+
+   endif
+
+   if (int_press_type == 2) then ! plume
+
+!     surface plume 
+      if (plume_type .eq. 1) then
+         do i=nlev,1,-1
+            idpdx(i) = plume_slope_x*(buoy(nlev)-buoy(i)) 
+            idpdy(i) = plume_slope_y*(buoy(nlev)-buoy(i))
+         end do
+      end if
+
+!     bottom plume 
+      if (plume_type .eq. 2) then 
+         do i=nlev,1,-1
+            idpdx(i) = plume_slope_x*(buoy(i)-buoy(1))
+            idpdy(i) = plume_slope_y*(buoy(i)-buoy(1))
+         end do
+      end if
 
    endif
 
