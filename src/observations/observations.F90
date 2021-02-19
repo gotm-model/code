@@ -670,7 +670,7 @@
       default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
 
    leaf => twig%get_typed_child('plume', 'surface or bottom plume')
-   call leaf%get(plume_type, 'type', 'plume type', options=(/option(1, 'buoyant surface-attached','surface'), option(2, 'dense bottom-attached','bottom')/), default=1)
+   call leaf%get(plume_type, 'type', 'plume type', options=(/option(1, 'buoyant surface-attached','surface'), option(2, 'dense bottom-attached','bottom')/), default=2)
    call leaf%get(plume_slope_x, 'x_slope', 'plume slope in West-East direction', '-',   default=0._rk)
    call leaf%get(plume_slope_y, 'y_slope', 'plume slope in South-North direction', '-', default=0._rk)
 
