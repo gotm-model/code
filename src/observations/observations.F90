@@ -658,16 +658,12 @@
                    default=43200._rk)
 
    twig => branch%get_typed_child('int_press', 'internal pressure')
-   call twig%get(int_press_type, 'mode', 'formulation', options=(/option(0, 'None', 'none'), option(1, 'prescribed horiztonal gradients of T and S','gradients'), option(2, 'surface or bottom plume','plume')/), default=0)
+   call twig%get(int_press_type, 'type', 'method', options=(/option(0, 'None', 'none'), option(1, 'prescribed horiztonal gradients of T and S','gradients'), option(2, 'surface or bottom plume','plume')/), default=0)
    leaf => twig%get_typed_child('gradients', 'horizontal salinity and temperature gradients')
-   call leaf%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'Celsius/m', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call leaf%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'Celsius/m', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call leaf%get(dsdx, 'dsdx', 'salinity gradient in West-East direction', 'psu/m', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call leaf%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'psu/m', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call leaf%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'Celsius/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call leaf%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'Celsius/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call leaf%get(dsdx, 'dsdx', 'salinity gradient in West-East direction', 'psu/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call leaf%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'psu/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
 
    leaf => twig%get_typed_child('plume', 'surface or bottom plume')
    call leaf%get(plume_type, 'type', 'plume type', options=(/option(1, 'buoyant surface-attached','surface'), option(2, 'dense bottom-attached','bottom')/), default=2)

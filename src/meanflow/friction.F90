@@ -132,10 +132,10 @@
 
 !  be careful: tx and ty are the surface shear-stresses
 !  already divided by rho!
-if (plume_type .ne. 2) then
-      u_taus=(tx**2+ty**2)**(1./4.)
-   else
+   if (plume_type == 1) then
       u_taus=rr_s*sqrt( u(nlev)*u(nlev) + v(nlev)*v(nlev) )     
+   else
+      u_taus=(tx**2+ty**2)**(1./4.)
    endif
 
    return
