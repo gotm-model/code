@@ -162,16 +162,16 @@
 !     surface plume 
       if (plume_type .eq. 1) then
          do i=nlev,1,-1
-            idpdx(i) = plume_slope_x*(buoy(nlev)-buoy(i)) 
-            idpdy(i) = plume_slope_y*(buoy(nlev)-buoy(i))
+            idpdx(i) = plume_slope_x*(buoy(i)-buoy(1))
+            idpdy(i) = plume_slope_y*(buoy(i)-buoy(1))
          end do
       end if
 
 !     bottom plume 
       if (plume_type .eq. 2) then 
          do i=nlev,1,-1
-            idpdx(i) = plume_slope_x*(buoy(i)-buoy(1))
-            idpdy(i) = plume_slope_y*(buoy(i)-buoy(1))
+            idpdx(i) = -plume_slope_x*(buoy(nlev)-buoy(i))
+            idpdy(i) = -plume_slope_y*(buoy(nlev)-buoy(i))
          end do
       end if
 
