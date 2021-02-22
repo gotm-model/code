@@ -21,28 +21,35 @@
 !  - \frac{1}{\rho_0} \partder{P}{x}=
 !  -g \partder{\zeta}{x}
 !  +\int_z^{\zeta}\partder{B}{x} \, dz'
+!  -\frac{1}{\rho_0} \partder{P(\zeta)}{x}
 !  \end{equation}
 !  and
 !  \begin{equation}\label{InternalPressurey}
 !  - \frac{1}{\rho_0} \partder{P}{y}=
 !  -g \partder{\zeta}{y}
 !  +\int_z^{\zeta} \partder{B}{y} \, dz'
+!  -\frac{1}{\rho_0} \partder{P(\zeta)}{y}
 !   \comma
 !  \end{equation}
-!  where $\zeta$ is the surface elevation and $B$ the
+!  where $\zeta$ is the surface elevation, and $B$ the
 !  mean buoyancy as defined in \eq{DefBuoyancy}.
 !
 !  The first term on the right hand side
 !  in \eq{InternalPressurex}
 !  and \eq{InternalPressurey} is the external pressure-gradient
-!  due to surface slopes,  and the second the internal pressure-gradient
-!  due to the density gradient.
+!  due to surface slopes,  the second the internal pressure-gradient
+!  due to the density gradient and the third term is the
+!  atmoshperic pressure gradient at sea surface height.
 !  The internal pressure-gradient will only be established by
 !  gradients of mean potential temperature $\Theta$ and mean
 !  salinity $S$. Sediment concentration is assumed to be
 !  horizontally homogeneous.
 !
-!  In this subroutine, first, the horizontal buoyancy gradients,
+!  In this subroutine there are two ways to calculate the internal pressure
+!  gradient.
+!
+!  {\bf Scenarios with flat bottom:}
+!  First, the horizontal buoyancy gradients,
 !  $\partial_xB$ and $\partial_yB$,
 !  are calculated from the prescribed gradients of salinity, $\partial_xS$
 !  and $\partial_yS$, and temperature, $\partial_x\Theta$ and $\partial_y\Theta$,
@@ -75,6 +82,74 @@
 ! The horizontal salinity and temperature gradients have to supplied by the
 ! user, either as constant values or as profiles given in a file (see
 ! {\tt obs.nml}).
+!
+! {\bf Scenarios for dense bottom and buoyant surface plumes in a sloping frame:}
+! Assuming for a {\it sloping water-colum model model}
+! that all density gradients
+! along the sloping surface or bottom vanish, i.e.,
+! \begin{equation}
+! \partder{B}{x} = - \partder{\zeta}{x} \partder{B}{z}\comma
+! \end{equation}
+! \begin{equation}
+! \partder{B}{y} = - \partder{\zeta}{y} \partder{B}{z}\comma
+! \end{equation}
+! we obtain
+! \begin{equation}
+! -\frac{1}{\rho_0} \partder{P}{x} =
+! -\frac{1}{\rho_0} \partder {P(\zeta)}{x}
+! +\partder{\zeta}{x} B(z)\comma
+! \end{equation}
+! \begin{equation}
+! -\frac{1}{\rho_0} \partder{P}{y} =
+! -\frac{1}{\rho_0} \partder {P(\zeta)}{y}
+! +\partder{\zeta}{y} B(z).
+! \end{equation}
+!
+! {\it Buoyant plume under shelf ice.}
+! For the ambient water below the plume
+! with $z\rightarrow -H$
+! with the ambient buoyancy, $B(-H)$, we demand that the pressure
+! gradient vanishes, i.e.,
+! \begin{equation}
+! 0=
+! -\frac{1}{\rho_0} \partder{P}{x} =
+! -\frac{1}{\rho_0} \partder{P(\zeta)}{x}
+! +\partder{\zeta}{x} B(-H)\comma
+! \end{equation}
+! \begin{equation}
+! 0=
+! -\frac{1}{\rho_0} \partder{P}{y} =
+! -\frac{1}{\rho_0} \partder{P(\zeta)}{y}
+! +\partder{\zeta}{y} B(-H)\comma
+! \end{equation}
+! such that we obtain
+! \begin{equation}
+! -\frac{1}{\rho_0} \partial_x p =
+! \partder{\zeta}{x} \left(B(z)-B(-H)\right)\comma
+! \end{equation}
+! \begin{equation}
+! -\frac{1}{\rho_0} \partial_y p =
+! \partder{\zeta}{y} \left(B(z)-B(-H)\right).
+! \end{equation}
+! Those simulations are only useful in situations with
+! a sufficient amount of unstratified ambient water left below the plume,
+! i.e., the bottom layer must not be entrained into the plume and must stay
+! at ambient buoyancy.
+!
+! {\it Dense plume over sloping topography.}
+! Similar considerations lead to the formulation of a bottom-attached
+! dense plume:
+! \begin{equation}
+! -\frac{1}{\rho_0} \partder{P}{x} =
+! \partder{\zeta}{x} \left(B(\zeta)-B(z)\right)\comma
+! \end{equation}
+! \begin{equation}
+! -\frac{1}{\rho_0} \partder{P}{y} =
+! \partder{\zeta}{y} \left(B(\zeta)-B(z)\right)\comma
+! \end{equation}
+! where the ambient water is now assumed to be above the plume.
+! In this case, the surface layer must not be entrained
+! into the plume.
 !
 ! !USES:
    use meanflow,      only: T,S
@@ -159,7 +234,7 @@
 
    if (int_press_type == 2) then ! plume
 
-!     surface plume 
+!     surface plume
       if (plume_type .eq. 1) then
          do i=nlev,1,-1
             idpdx(i) = plume_slope_x*(buoy(i)-buoy(1))
@@ -167,8 +242,8 @@
          end do
       end if
 
-!     bottom plume 
-      if (plume_type .eq. 2) then 
+!     bottom plume
+      if (plume_type .eq. 2) then
          do i=nlev,1,-1
             idpdx(i) = -plume_slope_x*(buoy(nlev)-buoy(i))
             idpdy(i) = -plume_slope_y*(buoy(nlev)-buoy(i))
