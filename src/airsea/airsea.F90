@@ -465,7 +465,7 @@
                 default=0._rk)
    call twig%get(ty_, 'ty', 'prescribed momentum flux in South-North direction', 'Pa', &
                 default=0._rk)
-   
+
    call branch%get(u10, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
                 default=0._rk)
    call branch%get(v10, 'v10', 'wind speed in South-North direction @ 10 m', 'm/s', &
@@ -754,7 +754,7 @@
    call flux_from_meteo(mjul,msecs)
    sensible = qh
    latent = qe
-#if 1
+#if 0
    if (qe .lt. _ZERO_) then
       STDERR 'Stefan# ',qh/qe
    end if
