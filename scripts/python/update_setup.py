@@ -138,7 +138,7 @@ def process_file(infile, outfile=None, gotm=None, detail='default'):
         settings = yaml.safe_load(f)
 
     print('Processing %s...' % infile)
-    print('- Updating configuration to latest version...', end='')
+    print('- Updating configuration to latest version...', end='', flush=True)
     settings = update_yaml(settings)
     print(' Done.')
 
@@ -152,7 +152,7 @@ def process_file(infile, outfile=None, gotm=None, detail='default'):
             shutil.copyfile(fabm_yaml, os.path.join(tmpdir, 'fabm.yaml'))
 
         if gotm is not None:
-            print('- Calling GOTM to clean-up yaml file...', end='')
+            print('- Calling GOTM to clean-up yaml file...', end='', flush=True)
             try:
                 subprocess.check_output([gotm, '--write_yaml', path, '--detail', detail], cwd=tmpdir, stderr=subprocess.STDOUT, universal_newlines=True)
                 print(' Done.')
@@ -160,7 +160,7 @@ def process_file(infile, outfile=None, gotm=None, detail='default'):
                 print('FAILED:\n%s' % e.stdout)
                 return False
 
-        print('- Writing updated %s...' % outfile, end='')
+        print('- Writing updated %s...' % outfile, end='', flush=True)
         shutil.copyfile(path, outfile)
         print(' Done.')
         return True
