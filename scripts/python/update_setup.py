@@ -128,6 +128,12 @@ def update_yaml(oldroot):
         move_node(root, 'eq_state/dsr0', 'eq_state/linear/dsr0')
         root['version'] = 6
     if version == 6:
+        # Adding the plume feature
+        move_node(root, 'mimic_3d/int_press', 'mimic_3d/int_pressure')
+        move_node(root, 'mimic_3d/int_pressure/dtdx', 'mimic_3d/int_pressure/gradients/dtdx')
+        move_node(root, 'mimic_3d/int_pressure/dtdy', 'mimic_3d/int_pressure/gradients/dtdy')
+        move_node(root, 'mimic_3d/int_pressure/dsdx', 'mimic_3d/int_pressure/gradients/dsdx')
+        move_node(root, 'mimic_3d/int_pressure/dsdy', 'mimic_3d/int_pressure/gradients/dsdy')
         root['version'] = 7
     root.move_to_end('version', last=False)
     return root
