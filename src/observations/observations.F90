@@ -657,7 +657,7 @@
    call twig%get(PeriodS, 'period_2', 'period of 2nd tidal harmonic (eg. S2-tide)', 's', &
                    default=43200._rk)
 
-   twig => branch%get_typed_child('int_press', 'internal pressure')
+   twig => branch%get_typed_child('int_pressure', 'internal pressure')
    call twig%get(int_press_type, 'type', 'method', options=(/option(0, 'None', 'none'), option(1, 'prescribed horiztonal gradients of T and S','gradients'), option(2, 'surface or bottom plume','plume')/), default=0)
    leaf => twig%get_typed_child('gradients', 'horizontal salinity and temperature gradients')
    call leaf%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'Celsius/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
