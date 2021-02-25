@@ -126,7 +126,9 @@ def update_yaml(oldroot):
         move_node(root, 'eq_state/p0', 'eq_state/linear/p0')
         move_node(root, 'eq_state/dtr0', 'eq_state/linear/dtr0')
         move_node(root, 'eq_state/dsr0', 'eq_state/linear/dsr0')
-    root['version'] = 6
+        root['version'] = 6
+    if version == 6:
+        root['version'] = 7
     root.move_to_end('version', last=False)
     return root
 
@@ -138,7 +140,7 @@ def process_file(infile, outfile=None, gotm=None, detail='default'):
         settings = yaml.safe_load(f)
 
     print('Processing %s...' % infile)
-    print('- Updating configuration to latest version...', end='')
+    print('- Updating configuration to latest version...', end='', flush=True)
     settings = update_yaml(settings)
     print(' Done.')
 
@@ -152,7 +154,7 @@ def process_file(infile, outfile=None, gotm=None, detail='default'):
             shutil.copyfile(fabm_yaml, os.path.join(tmpdir, 'fabm.yaml'))
 
         if gotm is not None:
-            print('- Calling GOTM to clean-up yaml file...', end='')
+            print('- Calling GOTM to clean-up yaml file...', end='', flush=True)
             try:
                 subprocess.check_output([gotm, '--write_yaml', path, '--detail', detail], cwd=tmpdir, stderr=subprocess.STDOUT, universal_newlines=True)
                 print(' Done.')
@@ -160,7 +162,7 @@ def process_file(infile, outfile=None, gotm=None, detail='default'):
                 print('FAILED:\n%s' % e.stdout)
                 return False
 
-        print('- Writing updated %s...' % outfile, end='')
+        print('- Writing updated %s...' % outfile, end='', flush=True)
         shutil.copyfile(path, outfile)
         print(' Done.')
         return True
