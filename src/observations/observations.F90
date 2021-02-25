@@ -118,8 +118,14 @@
    REALTYPE, public          :: PhaseSv
 
 !  Internal pressure - 'internal_pressure' namelist
+   integer, public           :: int_press_type
    logical, public           :: s_adv
    logical, public           :: t_adv
+
+!  Plume
+   integer, public           :: plume_type
+   REALTYPE, public          :: plume_slope_x
+   REALTYPE, public          :: plume_slope_y
 
 !  Light extinction - the 'extinct' namelist
    integer                   :: extinct_method
@@ -280,9 +286,9 @@
             PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv
 
    namelist /int_pressure/                                      &
-            int_press_method,int_press_file,                    &
+            int_press_method,int_press_type,int_press_file,     &
             const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
-            s_adv,t_adv
+            s_adv,t_adv,plume_slope_x,plume_slope_y
 
    namelist /extinct/ extinct_method,extinct_file,A,g1,g2
 
@@ -362,6 +368,7 @@
 
 !  Internal pressure - 'internal_pressure' namelist
    int_press_method=0
+   int_press_type=0
    int_press_file=''
    const_dsdx=_ZERO_
    const_dsdy=_ZERO_
@@ -650,15 +657,19 @@
    call twig%get(PeriodS, 'period_2', 'period of 2nd tidal harmonic (eg. S2-tide)', 's', &
                    default=43200._rk)
 
-   twig => branch%get_typed_child('int_press', 'internal pressure')
-   call twig%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'Celsius/m', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'Celsius/m', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dsdx, 'dsdx', 'salinity gradient in West-East direction', 'psu/m', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
-   call twig%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'psu/m', &
-      default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   twig => branch%get_typed_child('int_pressure', 'internal pressure')
+   call twig%get(int_press_type, 'type', 'method', options=(/option(0, 'None', 'none'), option(1, 'prescribed horiztonal gradients of T and S','gradients'), option(2, 'surface or bottom plume','plume')/), default=0)
+   leaf => twig%get_typed_child('gradients', 'horizontal salinity and temperature gradients')
+   call leaf%get(dtdx, 'dtdx', 'temperature gradient in West-East direction', 'Celsius/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call leaf%get(dtdy, 'dtdy', 'temperature gradient in South-North direction', 'Celsius/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call leaf%get(dsdx, 'dsdx', 'salinity gradient in West-East direction', 'psu/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+   call leaf%get(dsdy, 'dsdy', 'salinity gradient in South-North direction', 'psu/m', default=0._rk, method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE)
+
+   leaf => twig%get_typed_child('plume', 'surface or bottom plume')
+   call leaf%get(plume_type, 'type', 'plume type', options=(/option(1, 'buoyant surface-attached','surface'), option(2, 'dense bottom-attached','bottom')/), default=2)
+   call leaf%get(plume_slope_x, 'x_slope', 'plume slope in West-East direction', '-',   default=0._rk)
+   call leaf%get(plume_slope_y, 'y_slope', 'plume slope in South-North direction', '-', default=0._rk)
+
    call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
 
@@ -1063,9 +1074,9 @@
             PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv
 
    LEVEL2 'internal_pressure namelist',                         &
-            int_press_method,int_press_file,                    &
+            int_press_method,int_press_type,int_press_file,     &
             const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
-            s_adv,t_adv
+            s_adv,t_adv,plume_slope_x,plume_slope_y
 
    LEVEL2 'extinct namelist',extinct_method,extinct_file
 

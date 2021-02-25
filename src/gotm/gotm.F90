@@ -595,7 +595,7 @@
       if (restart_offline) then
          LEVEL1 'read_restart'
          call read_restart(restart_allow_perpetual, restart_allow_missing_variable)
-         call friction(kappa,avmolu,tx,ty)
+         call friction(nlev,kappa,avmolu,tx,ty,plume_type)
       end if
       if (restart_online) then
       end if
@@ -780,7 +780,7 @@
       call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
       call extpressure(ext_press_mode,nlev)
       call intpressure(nlev)
-      call friction(kappa,avmolu,tx,ty)
+      call friction(nlev,kappa,avmolu,tx,ty,plume_type)
 
 #ifdef SEAGRASS
       if(seagrass_calc) call do_seagrass(nlev,dt)
