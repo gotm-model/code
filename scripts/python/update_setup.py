@@ -126,7 +126,9 @@ def update_yaml(oldroot):
         move_node(root, 'eq_state/p0', 'eq_state/linear/p0')
         move_node(root, 'eq_state/dtr0', 'eq_state/linear/dtr0')
         move_node(root, 'eq_state/dsr0', 'eq_state/linear/dsr0')
-    root['version'] = 6
+        root['version'] = 6
+    if version == 6:
+        root['version'] = 7
     root.move_to_end('version', last=False)
     return root
 
