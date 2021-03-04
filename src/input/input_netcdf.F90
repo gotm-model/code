@@ -152,9 +152,9 @@
    end if
 
    if (jd .ne. julianday .or. secs .ne. secondsofday) then
-      FATAL 'start time given in namelist does not match time'
+      FATAL 'start time given in gotm.yaml does not match time'
       FATAL 'read from restart file'
-      FATAL 'from namelist: ',julianday,secondsofday
+      FATAL 'from gotm.yaml: ',julianday,secondsofday
       call write_time_string(julianday,secondsofday,timestr_out)
       LEVEL3 trim(timestr_out)
       FATAL 'from hotstart: ',jd,secs

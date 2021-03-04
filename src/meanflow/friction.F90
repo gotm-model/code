@@ -51,7 +51,7 @@
 !   \point
 !  \end{equation}
 !  The model constant $\alpha$ is read in as {\tt charnock\_val} from
-!  the {\tt meanflow} namelist.
+!  the {\tt gotm.yaml}.
 !
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za

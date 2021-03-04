@@ -10,7 +10,7 @@
 ! !DESCRIPTION:
 !  This subroutine calculates vertical velocity profiles, if
 !  {\tt w\_adv\_method} is 1 or 2, which has to be chosen in the
-!  {\tt w\_advspec} namelist in {\tt obs.nml}. The profiles of vertical
+!  {\tt w\_advspec} in {\tt gotm.yaml}. The profiles of vertical
 !  velocity are determined by two values,
 !  the height of maximum absolute value of vertical velocity, {\tt w\_height},
 !  and the vertical velocity at this height, {\tt w\_adv}. From {\tt w\_height},

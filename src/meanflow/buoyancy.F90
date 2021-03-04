@@ -114,7 +114,7 @@
       avh(i)=nub(i)
    end do
 
-!  construct initial linear profile from information in namelist
+!  construct initial linear profile from information in gotm.yaml
    if (init_buoyancy) then
 
       zz=_ZERO_

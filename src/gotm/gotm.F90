@@ -14,24 +14,6 @@
 ! two routines in turn call more specialised routines e.g.\ of the
 ! {\tt meanflow} and {\tt turbulence} modules to delegate the job.
 !
-!  Here is also the place for a few words on FORTRAN `units' we used.
-!  The method of FORTRAN units is quite rigid and also a bit dangerous,
-!  but lacking a better alternative we adopted it here. This requires
-!  the definition of ranges of units for different purposes. In GOTM
-!  we strongly suggest to use units according to the following
-!  conventions.
-!  \begin{itemize}
-!     \item unit=10 is reserved for reading namelists.
-!     \item units 20-29 are reserved for the {\tt airsea} module.
-!     \item units 30-39 are reserved for the {\tt meanflow} module.
-!     \item units 40-49 are reserved for the {\tt turbulence} module.
-!     \item units 50-59 are reserved for the {\tt output} module.
-!     \item units 60-69 are reserved for the {\tt extra} modules
-!           like those dealing with sediments or sea-grass.
-!     \item units 70- are \emph{not} reserved and can be used as you
-!           wish.
-!  \end{itemize}
-!
 ! !USES:
    use field_manager
    use register_all_variables, only: do_register_all_variables, fm
@@ -89,10 +71,10 @@
    use spm, only: init_spm, set_env_spm, do_spm, end_spm
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:configure_gotm_fabm,configure_gotm_fabm_from_nml,gotm_fabm_create_model,init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
+   use gotm_fabm,only:configure_gotm_fabm,gotm_fabm_create_model,init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm, only: fabm_airp, fabm_calendar_date, fabm_julianday
-   use gotm_fabm_input,only: configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
+   use gotm_fabm_input,only: configure_gotm_fabm_input, init_gotm_fabm_input
 #endif
 
    IMPLICIT NONE
@@ -116,7 +98,7 @@
 !
 !EOP
 !
-!  private data members initialised via namelists
+!  private data members initialised via gotm.yaml
    character(len=80)         :: title
    integer                   :: nlev
    REALTYPE                  :: dt
@@ -131,7 +113,6 @@
    character(len=1024), public :: write_yaml_path = ''
    character(len=1024), public :: write_schema_path = ''
    character(len=1024), public :: output_id = ''
-   logical, public             :: read_nml = .false.
    integer, public             :: write_yaml_detail = display_normal
    logical, public             :: list_fields = .false.
    logical, public             :: ignore_unknown_config = .false.
@@ -157,7 +138,7 @@
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
-!  The first section reads the namelists of {\tt gotmrun.nml} with
+!  The first section reads {\tt gotm.yaml} with
 !  the user specifications. Then, one by one each of the modules are
 !  initialised with help of more specialised routines like
 !  {\tt init\_meanflow()} or {\tt init\_turbulence()} defined inside
@@ -181,10 +162,6 @@
    class (type_settings), pointer :: branch, twig
    integer, parameter :: rk = kind(_ONE_)
 
-   namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
-                          restart_allow_perpetual,cnpar,buoy_method
-   namelist /station/     name,latitude,longitude,depth
-   namelist /time/        timefmt,MaxN,start,stop
    logical          ::    restart_online=.false.
    logical          ::    restart_offline = .false.
    logical          ::    restart_allow_missing_variable = .false.
@@ -209,24 +186,20 @@
    STDERR LINE
 
    settings_store%path = ''
-   if (.not. read_nml) then
-      inquire(file=trim(yaml_file),exist=file_exists)
-      if (file_exists) then
-         LEVEL2 'Reading configuration from: ',trim(yaml_file)
-         call settings_store%load(trim(yaml_file), namlst)
-      elseif (config_only) then
-         LEVEL2 'Configuration file ' // trim(yaml_file) // ' not found. Using default settings.'
-      else
-         FATAL 'Configuration file ' // trim(yaml_file) // ' not found.'
-         LEVEL1 'To generate a file with default settings, specify --write_yaml gotm.yaml.'
-         LEVEL1 'To read a configuration in namelists format (gotmrun.nml etc.), specify --read_nml.'
-         LEVEL1 'To migrate namelists to yaml, specify --read_nml --write_yaml gotm.yaml.'
-         LEVEL1 'For more information, run gotm with -h.'
-         stop 2
-      end if
+   inquire(file=trim(yaml_file),exist=file_exists)
+   if (file_exists) then
+      LEVEL2 'Reading configuration from: ',trim(yaml_file)
+      call settings_store%load(trim(yaml_file), namlst)
+   elseif (config_only) then
+      LEVEL2 'Configuration file ' // trim(yaml_file) // ' not found. Using default settings.'
+   else
+      FATAL 'Configuration file ' // trim(yaml_file) // ' not found.'
+      LEVEL1 'To generate a file with default settings, specify --write_yaml gotm.yaml.'
+      LEVEL1 'For more information, run gotm with -h.'
+      stop 2
    end if
 
-   if (config_only .or. read_nml) then
+   if (config_only) then
       call settings_store%get(cfg_version, 'version', 'version of configuration file', default=configuration_version)
    else
       call settings_store%get(cfg_version, 'version', 'version of configuration file', default=-1)
@@ -370,41 +343,12 @@
    branch => settings_store%get_child('eq_state', 'equation of state')
    call init_eqstate(branch)
 
-!  open the namelist file.
-   if (read_nml) then
-      LEVEL2 'reading model setup namelists..'
-      open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
-
-      read(namlst,nml=model_setup,err=91)
-      read(namlst,nml=station,err=92)
-      read(namlst,nml=time,err=93)
-      call init_eqstate(namlst)
-      close (namlst)
-
-      call init_meanflow(namlst,'gotmmean.nml')
-
-      call init_observations(namlst,'obs.nml')
-
-      call init_stokes_drift(namlst,'stokes_drift.nml')
-
-      call init_turbulence(namlst,'gotmturb.nml')
-      if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
-#ifdef _CVMIX_
-      if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
-#endif
-
-      call init_airsea(namlst,'airsea.nml')
-   end if
-
 #ifdef _FABM_
-   if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
-
    ! Allow FABM to create its model tree. After this we know all biogeochemical variables
    ! This must be done before gotm_fabm_input configuration.
    call gotm_fabm_create_model(namlst)
 
    call configure_gotm_fabm_input()
-   if (read_nml) call configure_gotm_fabm_input_from_nml(namlst, 'fabm_input.nml')
 #endif
 
    ! Initialize field manager
@@ -420,10 +364,8 @@
    branch => settings_store%get_child('output')
    call output_manager_init(fm,title,settings=branch,postfix=output_id)
 
+!KB
    inquire(file='output.yaml',exist=file_exists)
-   if (read_nml .and. .not. file_exists) then
-      call deprecated_output(namlst,title,dt,list_fields)
-   end if
 
    ! Make sure all elements in the YAML configuration file were recognized
    if (.not. settings_store%check_all_used()) then
@@ -465,7 +407,7 @@
    if (config_only) stop 0
 
    if (restart_online) then
-      LEVEL3 'online restart - updating values in the time namelist ...'
+      LEVEL3 'online restart - updating values read from gotm.yaml ...'
       LEVEL4 'orignal: ',start,' -> ',stop
 !KB      start = t1
 !KB      stop  = t2
@@ -482,7 +424,7 @@
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.
 
-!  initialize a few things from  namelists
+!  initialize a few things from gotm.yaml
    timestep   = dt
    depth0     = depth
 
@@ -632,16 +574,6 @@
 #ifdef _PRINTSTATE_
    call print_state
 #endif
-   return
-
-90 FATAL 'I could not open gotmrun.nml for reading'
-   stop 'init_gotm'
-91 FATAL 'I could not read the "model_setup" namelist'
-   stop 'init_gotm'
-92 FATAL 'I could not read the "station" namelist'
-   stop 'init_gotm'
-93 FATAL 'I could not read the "time" namelist'
-   stop 'init_gotm'
    end subroutine init_gotm
 !EOC
 

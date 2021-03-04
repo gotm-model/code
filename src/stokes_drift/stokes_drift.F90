@@ -24,7 +24,6 @@
       langmuir_number
 
    interface init_stokes_drift
-      module procedure init_stokes_drift_nml
       module procedure init_stokes_drift_yaml
    end interface
 !
@@ -95,105 +94,6 @@
 !-----------------------------------------------------------------------
 
    contains
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the Stokes drift module
-!
-! !INTERFACE:
-   subroutine init_stokes_drift_nml(namlst,fn)
-!
-! !DESCRIPTION:
-!  The {\tt init\_stokes_drift_nml()} subroutine reads the {\tt stokes_drift.nml}
-!  file with a number of different Stokes drift input options.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: namlst
-   character(len=*), intent(in)        :: fn
-!
-! !REVISION HISTORY:
-!  Original author(s): Qing Li
-!
-! !LOCAL VARIABLES:
-!  Stokes drift - 'stokes_drift' namelist
-   integer                   :: us_prof_method
-   character(LEN=PATH_MAX)   :: us_prof_file
-
-   integer                   :: dusdz_prof_method
-   character(LEN=PATH_MAX)   :: dusdz_prof_file
-
-   integer                   :: us0_method
-   character(LEN=PATH_MAX)   :: us0_file
-   REALTYPE                  :: const_us0
-   REALTYPE                  :: const_vs0
-   REALTYPE                  :: const_ds
-
-   integer                   :: wnd_method
-   character(LEN=PATH_MAX)   :: wnd_file
-   REALTYPE                  :: const_uwnd, const_vwnd
-
-   logical :: ext
-
-!  Stokes drift namelist
-   namelist /stokes_drift/                                      &
-            us_prof_method,us_prof_file,                        &
-            dusdz_prof_method,dusdz_prof_file,                  &
-            us0_method,us0_file,const_us0,const_vs0,const_ds,   &
-            wnd_method,wnd_file,const_uwnd,const_vwnd
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   LEVEL1 'init_stokes_drift_nml'
-
-!  Stokes drift - 'stokes_drift' namelist
-   us_prof_method=0
-   us_prof_file='us_prof_file.dat'
-   dusdz_prof_method=0
-   dusdz_prof_file='dusdz_prof_file.dat'
-   us0_method=0
-   us0_file='us0_file.dat'
-   const_us0=_ZERO_
-   const_vs0=_ZERO_
-   const_ds=5.0
-   wnd_method=0
-   wnd_file='wnd_file.dat'
-   const_uwnd=_ZERO_
-   const_vwnd=_ZERO_
-
-   inquire(file=fn, exist=ext)
-   if (.not. ext) return
-
-   open(namlst,file=fn,status='old',action='read',err=91)
-   read(namlst,nml=stokes_drift,err=92)
-   close(namlst)
-
-   call usprof%configure(method=us_prof_method, path=us_prof_file, index=1)
-   call vsprof%configure(method=us_prof_method, path=us_prof_file, index=2)
-
-   call dusdz%configure(method=dusdz_prof_method, path=dusdz_prof_file, index=1)
-   call dvsdz%configure(method=dusdz_prof_method, path=dusdz_prof_file, index=2)
-
-   call us0%configure(method=us0_method, path=us0_file, index=1, constant_value=const_us0)
-   call vs0%configure(method=us0_method, path=us0_file, index=2, constant_value=const_vs0)
-   call  ds%configure(method=us0_method, path=us0_file, index=3, constant_value=const_ds)
-
-   call uwnd%configure(method=wnd_method, path=wnd_file, index=1, constant_value=const_uwnd)
-   call vwnd%configure(method=wnd_method, path=wnd_file, index=2, constant_value=const_vwnd)
-
-   LEVEL2 'done'
-
-   return
-
-91 FATAL 'I could not open "stokes_drift.nml"'
-   stop 'init_stokes_drift_nml'
-92 FATAL 'I could not read "stokes_drift" namelist'
-   stop 'init_stokes_drift_nml'
-
-   end subroutine init_stokes_drift_nml
 
 !-----------------------------------------------------------------------
 !BOP
