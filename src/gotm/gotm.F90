@@ -938,6 +938,8 @@
 
    call fm%finalize()
 
+   call settings_store%finalize()
+
    return
    end subroutine clean_up
 !EOC
