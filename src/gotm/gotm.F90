@@ -933,6 +933,7 @@
    call close_input()
 
    call output_manager_clean()
+   if (associated(output_manager_host)) deallocate(output_manager_host)
 
    call clean_diagnostics()
 
