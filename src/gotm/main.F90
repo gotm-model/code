@@ -18,6 +18,10 @@
 ! !USES:
    use time
    use gotm
+#ifdef _FABM_
+   use fabm, only: fabm_finalize_library
+   use fabm_driver, only: driver
+#endif
 !
    IMPLICIT NONE
 !
@@ -92,6 +96,12 @@
 #endif
 
    call print_version()
+
+#ifdef _FABM_
+   ! Final FABM clean-up that can happen only after print_version
+   call fabm_finalize_library()
+   if (associated(driver)) deallocate(driver)
+#endif
 
    contains
 

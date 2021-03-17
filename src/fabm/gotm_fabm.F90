@@ -326,10 +326,10 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. fabm_calc) return
-
    ! Provide FABM with an object for communication with host
    allocate(type_gotm_driver::driver)
+
+   if (.not. fabm_calc) return
 
    fabm_ready = .false.
 
@@ -1638,6 +1638,11 @@
    LEVEL1 'Time spent on diffusion of FABM variables:',clock_diff*tick_rate
    LEVEL1 'Time spent on sink/source terms of FABM variables:',clock_source*tick_rate
 
+   if (associated(model)) then
+      call model%finalize()
+      deallocate(model)
+   end if
+
    ! Deallocate internal arrays
    if (allocated(cc))          deallocate(cc)
    if (allocated(cc_info))     deallocate(cc_info)
@@ -1657,6 +1662,7 @@
    if (allocated(curnuh))          deallocate(curnuh)
    if (allocated(cc_old))          deallocate(cc_old)
    if (allocated(cc_transport))    deallocate(cc_transport)
+   if (allocated(iweights))        deallocate(iweights)
    if (allocated(posconc))         deallocate(posconc)
    if (allocated(local))           deallocate(local)
    if (allocated(total0))          deallocate(total0)
@@ -1688,7 +1694,6 @@
    nullify(g2)
    nullify(yearday)
    nullify(secondsofday)
-   nullify(model)
 
    LEVEL1 'done.'
 
