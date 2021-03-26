@@ -99,7 +99,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm, time_loop, clean_up
+   public initialize_gotm, integrate_gotm, finalize_gotm
 
 !
 ! !DEFINED PARAMETERS:
@@ -141,7 +141,8 @@
       procedure :: julian_day => gotm_host_julian_day
       procedure :: calendar_date => gotm_host_calendar_date
    end type
-!
+
+   integer(kind=timestepkind):: progress
 !-----------------------------------------------------------------------
 
    contains
@@ -152,8 +153,7 @@
 ! !IROUTINE: Initialise the model \label{initGOTM}
 !
 ! !INTERFACE:
-!KB   subroutine init_gotm(t1,t2)
-   subroutine init_gotm()
+   subroutine initialize_gotm()
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
@@ -172,7 +172,6 @@
   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-!KB   character(len=*), intent(in), optional  :: t1,t2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -198,7 +197,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_gotm'
+   LEVEL1 'initialize_gotm'
 #if 0
    if (present(t1)) then
       restart_online = .true.
@@ -629,20 +628,22 @@
    LEVEL2 'done.'
    STDERR LINE
 
+   progress = (MaxN-MinN+1)/10
+
 #ifdef _PRINTSTATE_
    call print_state
 #endif
    return
 
 90 FATAL 'I could not open gotmrun.nml for reading'
-   stop 'init_gotm'
+   stop 'initialize_gotm'
 91 FATAL 'I could not read the "model_setup" namelist'
-   stop 'init_gotm'
+   stop 'initialize_gotm'
 92 FATAL 'I could not read the "station" namelist'
-   stop 'init_gotm'
+   stop 'initialize_gotm'
 93 FATAL 'I could not read the "time" namelist'
-   stop 'init_gotm'
-   end subroutine init_gotm
+   stop 'initialize_gotm'
+   end subroutine initialize_gotm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -651,7 +652,7 @@
 ! !IROUTINE: Manage global time--stepping \label{timeLoop}
 !
 ! !INTERFACE:
-   subroutine time_loop()
+   subroutine integrate_gotm()
 !
 ! !DESCRIPTION:
 ! This internal routine is the heart of the code. It contains
@@ -683,36 +684,28 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer(kind=timestepkind):: n,progress
-   integer                   :: i
+   integer(kind=timestepkind):: n
+   integer                   :: i=0
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
-   character(8)              :: d_
-   character(10)             :: t_
 
    REALTYPE                  :: Qsw, Qflux
    REALTYPE                  :: La, EFactor
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. restart) then
+   if (i == 0 .and. .not. restart) then
       LEVEL1 'saving initial conditions'
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
+      STDERR LINE
+      LEVEL1 'integrate_gotm'
+      STDERR LINE
    end if
-   STDERR LINE
-   LEVEL1 'time_loop'
-   progress = (MaxN-MinN+1)/10
-   i=0
    do n=MinN,MaxN
 
-      if(mod(n,progress) .eq. 0 .or. n .eq. MinN) then
-#if 0
-         call date_and_time(date=d_,time=t_)
-         LEVEL0 i,'%: ',t_(1:2),':',t_(3:4),':',t_(5:10)
-#else
+      if(mod(n,progress) .eq. 0 .or. i == 0) then
          LEVEL0 i,'%'
-#endif
          i = i +10
       end if
 
@@ -871,7 +864,7 @@
    STDERR LINE
 
    return
-   end subroutine time_loop
+   end subroutine integrate_gotm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -880,7 +873,7 @@
 ! !IROUTINE: The run is over --- now clean up.
 !
 ! !INTERFACE:
-   subroutine clean_up()
+   subroutine finalize_gotm()
 !
 ! !DESCRIPTION:
 ! This function is just a wrapper for the external routine
@@ -900,7 +893,7 @@
    call print_state
 #endif
 
-   LEVEL1 'clean_up'
+   LEVEL1 'finalize_gotm'
 
    call clean_airsea()
 
@@ -942,7 +935,7 @@
    call settings_store%finalize()
 
    return
-   end subroutine clean_up
+   end subroutine finalize_gotm
 !EOC
 
 #ifdef _PRINTSTATE_
