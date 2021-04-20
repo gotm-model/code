@@ -13,7 +13,6 @@
    implicit none
 !
 ! !LOCAL VARIABLES
-   integer                   :: jul1,secs1
    integer                   :: ndays,nsecs
    integer                   :: yyyy,mm,dd
 !EOP
