@@ -189,8 +189,9 @@
    use stim_variables, only: Tice_surface,Tice,Tf
    use stim_variables, only: Hice, Hfrazil, dHis, dHib
    use stim_variables, only: surface_ice_energy,bottom_ice_energy
-   use stim_variables, only: ocean_ice_flux
-   use stim_variables, only: nilay, sfall_method,const_sfall, dfact , depmix, sice_method, snow_dist, const_Sice, distr_type, meltpond, Ameltmax, drainrate, hh0, ice_hi_i, ice_hs_i, albice_method, albice_f, albmelt, albsnow_f, albice_m, albsnow_m, transsf, transsm, transif, transim, transm, swkappasm, swkappasf, swkappaim, swkappaif
+   !use stim_variables, only: ocean_ice_flux
+   use stim_variables!, only: nilay, sfall_method,const_sfall, dfact , depmix, sice_method, snow_dist, const_Sice, distr_type, meltpond, Ameltmax, drainrate, hh0, ice_hi_i, ice_hs_i, albice_method, albice_f, albmelt, albsnow_f, albice_m, albsnow_m, transsf, transsm, transif, transim, transm, swkappasm, swkappasf, swkappaim, swkappaif
+   
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -217,13 +218,11 @@
    call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice')
    !Flato
 ! public vars
-#if 0
-    !*****************
-   call fm%register('hlaymin', '', '', standard_name='', data0d=hlaymin, category='ice')
-   call fm%register('rhoice', '', '', standard_name='', data0d=rhoice, category='ice')
-   call fm%register('Tfreezi', '', '', standard_name='', data0d=Tfreezi, category='ice')
-   call fm%register('rCpmix', '', '', standard_name='', data0d=rCpmix, category='ice')
-   call fm%register('Hfi', '', '', standard_name='', data0d=Hfi, category='ice')
+   !call fm%register('hlaymin', '', 'hlaymin', standard_name='', data0d=hlaymin, category='ice')
+   !call fm%register('rhoice', '', 'rhoice', standard_name='', data0d=rhoice, category='ice')
+   !call fm%register('Tfreezi', '', 'Tfreezi', standard_name='', data0d=Tfreezi, category='ice')
+   !call fm%register('rCpmix', '', 'rCpmix', standard_name='', data0d=rCpmix, category='ice')
+   !call fm%register('Hfi', '', 'Hfi', standard_name='', data0d=Hfi, category='ice')
    call fm%register('hsmin', 'm', 'minimum snow thickness required for separate snow layer', standard_name='', data0d=hsmin, category='ice')
    call fm%register('theta ', '', 'a parameter between 0.5 and 1. which determines how implicit the scheme is', standard_name='', data0d=theta, category='ice')
    call fm%register('sigma ', 'W m-2 K-4)', 'Stefan-Boltzmann constant', standard_name='', data0d=sigma, category='ice')
@@ -239,70 +238,29 @@
    call fm%register('Tmelti', 'K', 'melting temperature of sea ice', standard_name='', data0d=Tmelti, category='ice')
    call fm%register('Condfi', 'W m-1 K-1', 'conductivity of pure ice', standard_name='', data0d=Condfi, category='ice')
    call fm%register('rhoCpfi', 'J m-3 K-1', 'heat capacity of pure ice', standard_name='', data0d=rhoCpfi, category='ice')
-   call fm%register('rCpmix', 'J m-3 K-1', 'volumetric heat capacity of sea water ', standard_name='', data0d=rrCpmix, category='ice')
+   call fm%register('rCpmix', 'J m-3 K-1', 'volumetric heat capacity of sea water ', standard_name='', data0d=rCpmix, category='ice')
    call fm%register('Hfi', 'J kg-1', 'latent heat of fusion of sea ice ', standard_name='', data0d=Hfi , category='ice')
    call fm%register('Hfw', 'J kg-1', 'latent heat of fusion of fresh water', standard_name='', data0d=Hfw, category='ice')
    call fm%register('swkappa', 'm-1', 'bulk short-wave extinction coefficient', standard_name='', data0d=swkappa , category='ice')
    call fm%register('Tfreezi', 'K', 'freezing temperature of sea water', standard_name='', data0d=Tfreezi , category='ice')
-   call fm%register('nlmax', '', 'Maximum snow and ice layers', standard_name='', data0d=nlmax , category='ice')
-
-#endif
-! local vars 
-
-#if 0
-   call fm%register('rhosnow', 'kg m-3', 'snow density', standard_name='', data0d=rhosnow, category='ice')
-   call fm%register('Iceflux', 'W m-2', '2-element array of time-step averaged boundary fluxes', standard_name='', data2d=Iceflux, category='ice')
-   call fm%register('bctype', '', '2 element array defining upper and lower boundary condition type', standard_name='', data2d=bctype, category='ice')
-   call fm%register('bcs', 'W m-2', '2 element array containing boundary condition values', standard_name='', data2d=bcs, category='ice')
-   call fm%register('dti', '', 'timestep in the ice model', standard_name='', data0d=dti, category='ice')
-   call fm%register('qb', 'W m-2', 'long wave back radiation (in-out)', standard_name='', data0d=qb, category='ice')
-   call fm%register('qh', 'W m-2', 'latent heat flux into ice', standard_name='', data0d=qh, category='ice')
-   call fm%register('qe', 'W m-2', 'sensible heat flux into ice', standard_name='', data0d=qe, category='ice')
-   call fm%register('tx', 'Pa', 'surface stress components in x direction', standard_name='', data0d=tx, category='ice')
-   call fm%register('ty', 'Pa', 'surface stress components in y direction', standard_name='', data0d=ty, category='ice')
-   call fm%register('PenSW', 'W m-2', 'short wave radiation that penetrates the surface', standard_name='', data0d=PenSW, category='ice')
-   call fm%register('fluxt', 'W m-2', 'net flux at surface of ice/snow slab', standard_name='', data0d=fluxt, category='ice')
-   call fm%register('simass', 'kg m-2', 'ice mass per unit area', standard_name='', data0d=simass, category='ice')
-   call fm%register('snmass', 'kg m-2', 'snow mass per unit area ', standard_name='', data0d=snmass, category='ice')
-   call fm%register('simasso', 'kg m-2', 'ice mass per unit area at previous timestep', standard_name='', data0d=simasso, category='ice')
-   call fm%register('snmasso', 'kg m-2', 'snow mass per unit area at previous timestep', standard_name='', data0d=snmasso, category='ice')
-   call fm%register('Ts', 'K', 'upper surface temperature', standard_name='', data0d=Ts, category='ice')
-   call fm%register('Tsav', 'K', 'average snow layer temperature', standard_name='', data0d=Tsav , category='ice')
-   call fm%register('ice_salt', '', 'logical variable to turn on/off the salt profile scheme', category='ice')
-   call fm%register('sfall', 'm s-1', 'snow fall rate', standard_name='', data0d=sfall, category='ice')
-   call fm%register('airtk', 'K', 'surface air temperature', standard_name='', data0d=airtk, category='ice')
-   call fm%register('C', '', 'coefficients for', standard_name='', data0d=C, category='ice')
-   call fm%register('R', '', 'coefficients for RHS vector', standard_name='', data0d=R, category='ice')
-   call fm%register('dto', 'dt', 'time step from GOTM', standard_name='', data0d=dto, category='ice')
-   call fm%register('nslay', '', 'number of snow layers', standard_name='', data0d=nslay, category='ice')
-   call fm%register('Asnow', '', 'Area which is covered with snow ', standard_name='', data0d=Asnow, category='ice')
-   call fm%register('Aice', '', 'Area which is covered with ice', standard_name='', data0d=Aice, category='ice')
-   call fm%register('Amelt', '', 'Area which is covered with melt pond', standard_name='', data0d=Amelt, category='ice')
-   call fm%register('hsmax', '', 'Maximal height of snow for the calculations of Weibull-distributed snow', standard_name='', data0d=hsmax, category='ice')
-   call fm%register('albice', '', 'Albedo of ice', standard_name='', data0d=albice, category='ice')
-   call fm%register('albsnow', '', 'Albedo of snow', standard_name='', data0d=albsnow, category='ice')
-   call fm%register('meltmass', 'kg m-2', 'melt pond mass per unit area', standard_name='', data0d=meltmass, category='ice')
-   call fm%register('meltmasso', 'kg m-2', 'melt pond mass per unit area at previous timestep', standard_name='', data0d=meltmasso, category='ice')
-   call fm%register('pi', '', 'Pi', standard_name='', data0d=pi, category='ice')
-
-#endif 
-! yaml vars
-   call fm%register('nilay', '', 'number of ice layers', category='ice')
-   call fm%register('sfall_method', '', '1:constant snow fall 2:calculate snowfall from precipitation', category='ice')
+   !call fm%register('nlmax', '', 'Maximum snow and ice layers',category='ice')
+! yaml variables
+   !call fm%register('nilay', '', 'number of ice layers', category='ice')
+   !call fm%register('sfall_method', '', '1:constant snow fall 2:calculate snowfall from precipitation', category='ice')
    call fm%register('const_sfall ', 'm d^-1', 'constant snow fall rate', standard_name='', data0d=const_sfall , category='ice')
    call fm%register('dfact ', '', 'drift factor allowing a factor to increase snow fall from precipitation via drifing snow', standard_name='', data0d=dfact , category='ice')
    call fm%register('depmix ', '', 'prescribed mixed layer depth', standard_name='', data0d=depmix , category='ice')
-   call fm%register('sice_method ', '', ' 1: constant ice salinity 2: Simple ice salinity profile', category='ice')
+  ! call fm%register('sice_method ', '', ' 1: constant ice salinity 2: Simple ice salinity profile', category='ice')
    call fm%register('const_Sice', 'ppt','prescribed sea ice salinity', standard_name='', data0d=const_Sice, category='ice')
-   call fm%register('snow_dist ', '', 'logical switch between uniform and Weibull-distributed snow', category='ice')
-   call fm%register('distr_type', '', 'integer to chose the type of distribution', category='ice')
-   call fm%register('meltpond', '', 'If true meltponds are included If false only bare ice is included', category='ice')
+  ! call fm%register('snow_dist ', '', 'logical switch between uniform and Weibull-distributed snow', category='ice')
+   !call fm%register('distr_type', '', 'integer to chose the type of distribution', category='ice')
+   !call fm%register('meltpond', '', 'If true meltponds are included If false only bare ice is included', category='ice')
    call fm%register('Ameltmax ', '', 'Maximum meltpond area fraction allowed', standard_name='', data0d= Ameltmax , category='ice')
    call fm%register('drainrate', 'm/d', 'Melt pond drainage rate in ', standard_name='', data0d=drainrate, category='ice')
    call fm%register('hh0', '', 'initial thickness for S calculation', standard_name='', data0d=hh0, category='ice')
    call fm%register('ice_hi_i ', '', 'initial ice thickness', standard_name='', data0d=ice_hi_i , category='ice')
    call fm%register('ice_hs_i ', '', ' initial snow thickness', standard_name='', data0d=ice_hs_i , category='ice')
-   call fm%register('albice_method ', '', ' albice method', category='ice')
+   !call fm%register('albice_method ', '', 'albice method', category='ice')
    call fm%register('albice_f', '', 'ice thickness frazil', standard_name='', data0d= albice_f, category='ice')
    call fm%register('albmelt', '', 'ice thickness frazil', standard_name='', data0d=albmelt, category='ice')
    call fm%register('albsnow_f', '', 'ice thickness frazil', standard_name='', data0d=albsnow_f , category='ice')
@@ -318,10 +276,6 @@
    call fm%register('swkappaim ', '', 'melting ice extinction coefficient', standard_name='', data0d=swkappaim, category='ice')
    call fm%register('swkappaif', '', 'freezing ice extinction coefficient', standard_name='', data0d=swkappaif, category='ice')
 !
-!******************
-   
-   
-
 
    return
    end subroutine register_stim_variables
