@@ -208,6 +208,10 @@
       call fm%register('T1', 'celsius', 'ice temperature (upper)', standard_name='', data0d=Tice(1), category='ice')
       call fm%register('T2', 'celsius', 'ice temperature (lower)', standard_name='', data0d=Tice(2), category='ice')
    end if
+   if (ice_model .eq. 4) then
+      call fm%register('T1', 'celsius', 'ice temperature (upper)', standard_name='', data0d=Tice(1), category='ice')
+      call fm%register('T2', 'celsius', 'ice temperature (lower)', standard_name='', data0d=Tice(2), category='ice')
+   end if
    call fm%register('Tf', 'celsius', 'ice freezing temperature', standard_name='', data0d=Tf, category='ice')
    call fm%register('Hice', 'm', 'ice thickness', standard_name='', data0d=Hice, category='ice')
    call fm%register('surface_ice_energy', 'J/m2', 'ice energy (surface)', standard_name='', data0d=surface_ice_energy, category='ice')
