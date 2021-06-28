@@ -64,6 +64,7 @@
 !
 !  Meteorological forcing variables
    integer,  public                    :: hum_method
+   integer,  public                    :: back_radiation_method
    character(len=PATH_MAX)   :: meteo_file
    type (type_scalar_input), public, target            :: u10,v10
    type (type_scalar_input), public, target            :: airp,airt
@@ -262,7 +263,7 @@
    REALTYPE                  :: const_tx,const_ty
    REALTYPE                  :: const_precip
    REALTYPE                  :: precip_factor
-   integer                   :: back_radiation_method
+   !integer                  :: back_radiation_method jp--> to be used in ice must be declared as public outside of this subroutine.
    integer                   :: heat_method
 
    namelist /airsea/ calc_fluxes, &

@@ -256,8 +256,8 @@
    call fm%register('Tfreezi', 'K', 'freezing temperature of sea water', standard_name='', data0d=Tfreezi , category='ice')
    !call fm%register('nlmax', '', 'Maximum snow and ice layers',category='ice')
 ! yaml variables
-   !call fm%register('nilay', '', 'number of ice layers', category='ice')
-   !call fm%register('sfall_method', '', '1:constant snow fall 2:calculate snowfall from precipitation', category='ice')
+   !call fm%register('nilay', '', 'number of ice layers', category='ice') ! com
+   !call fm%register('sfall_method', '', '1:constant snow fall 2:calculate snowfall from precipitation', category='ice') 
    call fm%register('const_sfall ', 'm d^-1', 'constant snow fall rate', standard_name='', data0d=const_sfall , category='ice')
    call fm%register('dfact ', '', 'drift factor allowing a factor to increase snow fall from precipitation via drifing snow', standard_name='', data0d=dfact , category='ice')
    call fm%register('depmix ', '', 'prescribed mixed layer depth', standard_name='', data0d=depmix , category='ice')

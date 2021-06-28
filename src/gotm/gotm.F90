@@ -52,9 +52,10 @@
    use airsea_driver, only: surface_fluxes
    use airsea_driver, only: set_sst,set_ssuv,integrated_fluxes
    use airsea_driver, only: fluxes_method
-   use airsea_driver, only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
+   use airsea_driver, only: wind=>w,tx,ty,hum,I_0,cloud,heat,precip,evap,airp,albedo
    use airsea_driver, only: bio_albedo,bio_drag_scale
-   use airsea_driver, only: u10, v10
+   use airsea_driver, only: u10,v10,airt,sst,sss
+   use airsea_driver, only: back_radiation_method,hum_method,fluxes_method
    use airsea_variables, only: qa,ta
 
 #ifdef _ICE_
@@ -743,7 +744,11 @@
 
 #ifdef _ICE_
       Qsw = I_0%value
-      call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw,surface_fluxes)
+      call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw, &
+                  surface_fluxes,julianday,secondsofday,longitude, &
+                  latitude,I_0%value,airt%value,airp%value,hum%value, &
+                  u10%value,v10%value,cloud%value,sst,sss%value,rho(nlev),rho_0,back_radiation_method, &
+                  hum_method,fluxes_method,albedo,heat%value)
 #endif
 
 !     reset some quantities
