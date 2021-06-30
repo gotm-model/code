@@ -189,8 +189,15 @@
    use stim_variables, only: Tice_surface,Tice,Tf
    use stim_variables, only: Hice, Hfrazil, dHis, dHib
    use stim_variables, only: surface_ice_energy,bottom_ice_energy
-   !use stim_variables, only: ocean_ice_flux
-   use stim_variables!, only: nilay, sfall_method,const_sfall, dfact , depmix, sice_method, snow_dist, const_Sice, distr_type, meltpond, Ameltmax, drainrate, hh0, ice_hi_i, ice_hs_i, albice_method, albice_f, albmelt, albsnow_f, albice_m, albsnow_m, transsf, transsm, transif, transim, transm, swkappasm, swkappasf, swkappaim, swkappaif
+   use stim_variables, only: ocean_ice_flux
+   use stim_variables, only: hsmin, PenFrac, hlaymin 
+   use stim_variables, only: rhoscold, rhoswarm,rhowaterfresh, rhoice
+   use stim_variables, only: Tmelts, Tmelti, Condfi, rhoCpfi, rCpmix, Hfi, Hfw, swkappa, Tfreezi
+   use stim_variables, only: const_sfall, dfact, depmix, const_Sice, Ameltmax
+   use stim_variables, only: drainrate, hh0,ice_hi_i, ice_hs_i 
+   use stim_variables, only: albice_f, albmelt, albsnow_f, albice_m, albsnow_m 
+   use stim_variables, only: transsf, transsm, transif, transim, transm 
+   use stim_variables, only: swkappasm, swkappasf, swkappaim, swkappaif
    
    IMPLICIT NONE
 !
@@ -228,16 +235,16 @@
    !call fm%register('rCpmix', '', 'rCpmix', standard_name='', data0d=rCpmix, category='ice')
    !call fm%register('Hfi', '', 'Hfi', standard_name='', data0d=Hfi, category='ice')
    call fm%register('hsmin', 'm', 'minimum snow thickness required for separate snow layer', standard_name='', data0d=hsmin, category='ice')
-   call fm%register('theta ', '', 'a parameter between 0.5 and 1. which determines how implicit the scheme is', standard_name='', data0d=theta, category='ice')
-   call fm%register('sigma ', 'W m-2 K-4)', 'Stefan-Boltzmann constant', standard_name='', data0d=sigma, category='ice')
-   call fm%register('epsilon', 'dimensionless', 'emissivity of ice', standard_name='', data0d=epsilon, category='ice')
+   !call fm%register('theta ', '', 'a parameter between 0.5 and 1. which determines how implicit the scheme is', standard_name='', data0d=theta, category='ice')
+   !call fm%register('sigma ', 'W m-2 K-4)', 'Stefan-Boltzmann constant', standard_name='', data0d=sigma, category='ice')
+   !call fm%register('epsilon', 'dimensionless', 'emissivity of ice', standard_name='', data0d=epsilon, category='ice')
    call fm%register('PenFrac', '', 'fraction of incoming short wave radiation that penetrates  the surface', standard_name='', data0d=PenFrac, category='ice')
    call fm%register('hlaymin', 'm', 'thickness below which a linear temperature profile is assumed', standard_name='', data0d=hlaymin, category='ice')
    call fm%register('rhoscold', 'kg m-3', 'specified cold snow density', standard_name='', data0d=rhoscold, category='ice')
    call fm%register('rhoswarm', 'kg m-3', 'specified warm snow density', standard_name='', data0d=rhoswarm, category='ice')
    call fm%register('rhowaterfresh', 'kg m-3', 'fresh water density', standard_name='', data0d=rhowaterfresh, category='ice')
    call fm%register('rhoice', 'kg m-3', 'ice density', standard_name='', data0d=rhoice, category='ice')
-   call fm%register('kelvin', 'K', 'zero deg Celsius', standard_name='', data0d=kelvin, category='ice')
+   !call fm%register('kelvin', 'K', 'zero deg Celsius', standard_name='', data0d=kelvin, category='ice')
    call fm%register('Tmelts', 'K', 'melting temperature of snow (fresh water)', standard_name='', data0d=Tmelts, category='ice')
    call fm%register('Tmelti', 'K', 'melting temperature of sea ice', standard_name='', data0d=Tmelti, category='ice')
    call fm%register('Condfi', 'W m-1 K-1', 'conductivity of pure ice', standard_name='', data0d=Condfi, category='ice')
@@ -249,8 +256,8 @@
    call fm%register('Tfreezi', 'K', 'freezing temperature of sea water', standard_name='', data0d=Tfreezi , category='ice')
    !call fm%register('nlmax', '', 'Maximum snow and ice layers',category='ice')
 ! yaml variables
-   !call fm%register('nilay', '', 'number of ice layers', category='ice')
-   !call fm%register('sfall_method', '', '1:constant snow fall 2:calculate snowfall from precipitation', category='ice')
+   !call fm%register('nilay', '', 'number of ice layers', category='ice') ! com
+   !call fm%register('sfall_method', '', '1:constant snow fall 2:calculate snowfall from precipitation', category='ice') 
    call fm%register('const_sfall ', 'm d^-1', 'constant snow fall rate', standard_name='', data0d=const_sfall , category='ice')
    call fm%register('dfact ', '', 'drift factor allowing a factor to increase snow fall from precipitation via drifing snow', standard_name='', data0d=dfact , category='ice')
    call fm%register('depmix ', '', 'prescribed mixed layer depth', standard_name='', data0d=depmix , category='ice')
