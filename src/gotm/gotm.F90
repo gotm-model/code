@@ -747,7 +747,7 @@
       call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw, &
                   surface_fluxes,julianday,secondsofday,longitude, &
                   latitude,I_0%value,airt%value,airp%value,hum%value, &
-                  u10%value,v10%value,cloud%value,sst,sss%value,rho(nlev),rho_0,back_radiation_method, &
+                  u10%value,v10%value,cloud%value,rho(nlev),rho_0,back_radiation_method, &  !sst,sss%value,
                   hum_method,fluxes_method,albedo,heat%value)
 #endif
 
