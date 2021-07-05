@@ -55,7 +55,7 @@
    use airsea_driver, only: wind=>w,tx,ty,hum,I_0,cloud,heat,precip,evap,airp,albedo
    use airsea_driver, only: bio_albedo,bio_drag_scale
    use airsea_driver, only: u10,v10,airt,sst,sss
-   use airsea_driver, only: back_radiation_method,hum_method,fluxes_method
+   use airsea_driver, only: ql,hum_method,fluxes_method
    use airsea_variables, only: qa,ta
 
 #ifdef _ICE_
@@ -747,7 +747,7 @@
       call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw, &
                   surface_fluxes,julianday,secondsofday,longitude, &
                   latitude,I_0%value,airt%value,airp%value,hum%value, &
-                  u10%value,v10%value,cloud%value,rho(nlev),rho_0,back_radiation_method, &  !sst,sss%value,
+                  u10%value,v10%value,cloud%value,rho(nlev),rho_0,ql%method, &  !sst,sss%value, !ql%method == longwave_radiation_method 
                   hum_method,fluxes_method,albedo,heat%value)
 #endif
 
