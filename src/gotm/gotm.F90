@@ -60,7 +60,7 @@
 
 #ifdef _ICE_
    use ice,         only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
-   use stim_variables, only: Tice_surface,albedo_ice,transmissivity
+   use stim_variables, only: Tice_surface,albedo_ice,transmissivity, nilay
 #endif
 
    use turbulence,  only: turb_method
@@ -413,6 +413,7 @@
    call fm%register_dimension('lat',1,id=id_dim_lat)
    call fm%register_dimension('z',nlev,id=id_dim_z)
    call fm%register_dimension('zi',nlev+1,id=id_dim_zi)
+   call fm%register_dimension('zice',nilay+1,id=id_dim_zice) !jpnote
    call fm%register_dimension('time',id=id_dim_time)
    call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
 
@@ -744,7 +745,7 @@
 
 #ifdef _ICE_
       Qsw = I_0%value
-      call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw, &
+      call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw, &   !h -- sum of dz ,, T -- temp of water !make sure arrays are not shaped for water  
                   surface_fluxes,julianday,secondsofday,longitude, &
                   latitude,I_0%value,airt%value,airp%value,hum%value, &
                   u10%value,v10%value,cloud%value,rho(nlev),rho_0,ql%method, &  !sst,sss%value, !ql%method == longwave_radiation_method 
