@@ -111,6 +111,9 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
+   !----------------- jp added : uncomment for test 
+   !precip%value = 0.0 !jpnote precip reset -- resolves kb error (not reading precip_EC.dat file correctly? )
+   !------------------
    DiffSup        = -S(nlev)*(precip%value+evap)
    DiffSdw        = _ZERO_
 

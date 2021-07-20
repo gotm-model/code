@@ -193,7 +193,7 @@
    use stim_variables, only: ice_hi,ice_hs,ice_uvic_hm,ice_uvic_ts,ice_uvic_tb,ice_uvic_swr_0,ice_uvic_precip_i,ice_uvic_sfall_i,ice_uvic_parb,ice_uvic_parui
    use stim_variables, only: ice_uvic_Fh,ice_uvic_Fs,ice_uvic_Ff,ice_uvic_Sicebulk
    use stim_variables, only: ice_uvic_topmelt,ice_uvic_botmelt,ice_uvic_termelt,ice_uvic_topgrowth,ice_uvic_botgrowth
-   use stim_variables, only: ice_uvic_Hmix,ice_uvic_Aice,ice_uvic_asnow,ice_uvic_Amelt,ice_uvic_dzi,ice_uvic_Cond,ice_uvic_rhoCp,ice_uvic_zi,ice_uvic_Tice,ice_uvic_Sint,ice_uvic_Pari
+   use stim_variables, only: ice_uvic_Hmix,ice_uvic_Aice,ice_uvic_asnow,ice_uvic_Amelt,ice_uvic_dzi,ice_uvic_Cond,ice_uvic_rhoCp,ice_uvic_zi,ice_uvic_zice,ice_uvic_dzice,ice_uvic_Tice,ice_uvic_Sint,ice_uvic_Pari
    use stim_variables, only: nilay
    use stim_variables, only: ocean_ice_flux
   ! use stim_variables, only: hsmin, PenFrac, hlaymin 
@@ -273,14 +273,19 @@
    call fm%register('Amelt', '', 'fraction of ice area that is melt pond', standard_name='', data0d=ice_uvic_Amelt, category='ice')
    !call fm%register('h', '', '', standard_name='', data0d=, category='ice')
 
-   !nilay or nlev? ??jpnote 
+     !----------------------------  jpnote 
    call fm%register('ice_zi', 'm', 'Ice interface depth', standard_name='', data0d=ice_uvic_zi(nilay+1), category='ice')  !??? 
-   call fm%register('dzi', 'm', 'Ice layer thickness', standard_name='', data0d=ice_uvic_dzi(nilay), category='ice')
-   call fm%register('Cond', 'W m-1 kg-1', 'Ice conductivity', standard_name='',data0d=ice_uvic_Cond(nilay), category='ice')
-   call fm%register('rhoCp', '10^6 J m-3 K-1', 'volum heat capacity', standard_name='', data0d=ice_uvic_rhoCp(nilay), category='ice')
+   call fm%register('ice_dzi', 'm', 'Ice interface depth', standard_name='', data0d=ice_uvic_dzi(nilay), category='ice') 
+   call fm%register('ice_zice', 'layers', 'zice', standard_name='', data0d=ice_uvic_zice(nilay+1), category='ice') 
+   call fm%register('ice_dzice', 'layer', 'dzice', standard_name='', data0d=ice_uvic_dzice(nilay), category='ice') 
+
+   !--------------------------
+  
+   call fm%register('dzi', 'm', 'Ice layer thickness', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_dzi(1:nilay), category='ice')
    
-   !Causing error for now  jpnote 
-   call fm%register('Tice', 'Celsius', 'Ice slab temperature', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Tice(0:nilay), category='ice')
+   call fm%register('Cond', 'W m-1 kg-1', 'Ice conductivity', standard_name='',dimensions=(/id_dim_dzice/),data1d=ice_uvic_Cond(1:nilay), category='ice')
+   call fm%register('rhoCp', '10^6 J m-3 K-1', 'volum heat capacity', standard_name='',dimensions=(/id_dim_dzice/), data1d=ice_uvic_rhoCp(1:nilay), category='ice')
+   call fm%register('Tice', 'Celsius', 'Ice slab temperature', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Tice(2:nilay+2), category='ice')        ! jpnote: changed range so that it matched the mortenson output 
    call fm%register('Sint', 'W m-3', 'Ice SW internal heat', standard_name='',dimensions=(/id_dim_zice/),data1d=ice_uvic_Sint(1:nilay+1), category='ice')
    call fm%register('Pari', 'W m-2', 'PAR radiation in ice', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Pari(1:nilay+1), category='ice')
  !--------------------------------------------------------------------------------------  
