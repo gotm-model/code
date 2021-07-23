@@ -413,7 +413,7 @@
    call fm%register_dimension('lat',1,id=id_dim_lat)
    call fm%register_dimension('z',nlev,id=id_dim_z)
    call fm%register_dimension('zi',nlev+1,id=id_dim_zi)
-   call fm%register_dimension('z1',nilay,id=id_dim_z1)
+  ! call fm%register_dimension('z1',nilay,id=id_dim_z1) !jpnote commented 
    call fm%register_dimension('zice',nilay+1,id=id_dim_zice) !jpnote
    call fm%register_dimension('dzice',nilay,id=id_dim_dzice) !jpnote
    call fm%register_dimension('time',id=id_dim_time)
