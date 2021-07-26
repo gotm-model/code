@@ -23,5 +23,6 @@ jobs:
         with:
            path: cases
            repository: gotm-model/cases
+           ref: v6.0
       - name: Build and run all test cases
         run: python3 cases/scripts/run_all.py --show_logs --gotm_base=gotm --exclude plume --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_SEAGRASS=ON -DGOTM_USE_NetCDF=OFF ${{ matrix.cmake_args }}
