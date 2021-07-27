@@ -263,7 +263,7 @@
    
    call fm%register('ice_uvic_zi', 'm', 'interface depth', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_zi(1:nilay), category='ice')  !zi in old code .. zi in new code is from meanflow and gives different vals -- 
    
-   call fm%register('Cond', 'W m-1 kg-1', 'Ice conductivity', standard_name='',dimensions=(/id_dim_dzice/),data1d=ice_uvic_Cond(1:nilay), category='ice')   !undo 
+   call fm%register('Cond', 'W m-1 kg-1', 'Ice conductivity', standard_name='',dimensions=(/id_dim_dzice/),data1d=ice_uvic_Cond(2:nilay+1), category='ice')   !undo 
    call fm%register('rhoCp', '10^6 J m-3 K-1', 'volum heat capacity', standard_name='',dimensions=(/id_dim_dzice/), data1d=ice_uvic_rhoCp(2:nilay+1), category='ice') !keep - from 1:nilay to 2:nilay+1
    call fm%register('Tice', 'Celsius', 'Ice slab temperature', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Tice(2:nilay+2), category='ice')        !changing from 1:nilay+1 to 2:nilay+2
    call fm%register('Sint', 'W m-3', 'Ice SW internal heat', standard_name='',dimensions=(/id_dim_zice/),data1d=ice_uvic_Sint(2:nilay+2), category='ice')    !from 1:nilay+1 to 2:nilay+2
