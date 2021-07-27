@@ -258,12 +258,16 @@
    call fm%register('Aice', '', 'fraction of ice area that is bare ice', standard_name='', data0d=ice_uvic_Aice, category='ice')
    call fm%register('Asnow', '', 'fraction of ice area that is snow covered', standard_name='', data0d=ice_uvic_Asnow, category='ice')
    call fm%register('Amelt', '', 'fraction of ice area that is melt pond', standard_name='', data0d=ice_uvic_Amelt, category='ice')  
-   call fm%register('dzi', 'm', 'Ice layer thickness', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_dzi(1:nilay), category='ice')
-   call fm%register('Cond', 'W m-1 kg-1', 'Ice conductivity', standard_name='',dimensions=(/id_dim_dzice/),data1d=ice_uvic_Cond(1:nilay), category='ice')
-   call fm%register('rhoCp', '10^6 J m-3 K-1', 'volum heat capacity', standard_name='',dimensions=(/id_dim_dzice/), data1d=ice_uvic_rhoCp(1:nilay), category='ice')
-   call fm%register('Tice', 'Celsius', 'Ice slab temperature', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Tice(1:nilay+1), category='ice')  
-   call fm%register('Sint', 'W m-3', 'Ice SW internal heat', standard_name='',dimensions=(/id_dim_zice/),data1d=ice_uvic_Sint(1:nilay+1), category='ice')
-   call fm%register('Pari', 'W m-2', 'PAR radiation in ice', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Pari(1:nilay+1), category='ice')
+  
+   call fm%register('dzi', 'm', 'Ice layer thickness', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_dzi(2:nilay+1), category='ice') !changed from 1:nilay to 2:nilay+1
+   
+   call fm%register('ice_uvic_zi', 'm', 'interface depth', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_zi(1:nilay), category='ice')  !zi in old code .. zi in new code is from meanflow and gives different vals -- 
+   
+   call fm%register('Cond', 'W m-1 kg-1', 'Ice conductivity', standard_name='',dimensions=(/id_dim_dzice/),data1d=ice_uvic_Cond(1:nilay), category='ice')   !undo 
+   call fm%register('rhoCp', '10^6 J m-3 K-1', 'volum heat capacity', standard_name='',dimensions=(/id_dim_dzice/), data1d=ice_uvic_rhoCp(2:nilay+1), category='ice') !keep - from 1:nilay to 2:nilay+1
+   call fm%register('Tice', 'Celsius', 'Ice slab temperature', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Tice(2:nilay+2), category='ice')        !changing from 1:nilay+1 to 2:nilay+2
+   call fm%register('Sint', 'W m-3', 'Ice SW internal heat', standard_name='',dimensions=(/id_dim_zice/),data1d=ice_uvic_Sint(2:nilay+2), category='ice')    !from 1:nilay+1 to 2:nilay+2
+   call fm%register('Pari', 'W m-2', 'PAR radiation in ice', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Pari(2:nilay+2), category='ice')  !keep - changing from 1:nilay+1 to 2:nilay+2
 
    return
    end subroutine register_stim_variables
