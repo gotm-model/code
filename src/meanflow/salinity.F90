@@ -116,10 +116,8 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   !DiffSup        = -S(nlev)*(precip%value+evap) !jpnote commenting 
-
-   DiffSup        = -S(nlev)*(precip%value+evap+Ff)-Fs ! jpnote adding equation used in old code !need to pass in ff and fs for this 
-
+   DiffSup        = -S(nlev)*(precip%value+evap+Ff)-Fs !NSnote, check signs
+!  DiffSup        = -S(nlev)*(precip%value+evap) 
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided
