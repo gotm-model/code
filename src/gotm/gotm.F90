@@ -60,7 +60,9 @@
 
 #ifdef _ICE_
    use ice,         only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
-   use stim_variables, only: Tice_surface,albedo_ice,transmissivity,nilay,ice_uvic_Tice
+   use stim_variables,  only: Tice_surface,albedo_ice,transmissivity,nilay,ice_uvic_Tice
+   use stim_variables,  only: ice_hs,ice_hi,ice_uvic_topmelt,ice_uvic_topgrowth,ice_uvic_termelt,ice_uvic_botmelt,ice_uvic_botgrowth,ice_uvic_tb,ice_uvic_ts
+   use stim_variables,  only: ice_uvic_Fs,ice_uvic_Ff,ice_uvic_parb,ice_uvic_parui,ice_uvic_Amelt
 #endif
 
    use turbulence,  only: turb_method
@@ -414,8 +416,11 @@
    call fm%register_dimension('z',nlev,id=id_dim_z)
    call fm%register_dimension('zi',nlev+1,id=id_dim_zi)
   ! call fm%register_dimension('z1',nilay,id=id_dim_z1) !jpnote commented 
+#ifdef _ICE_  
+!when compiling with stim off we dont have access to stim variables 
    call fm%register_dimension('zice',nilay+1,id=id_dim_zice) !jpnote
    call fm%register_dimension('dzice',nilay,id=id_dim_dzice) !jpnote
+#endif 
    call fm%register_dimension('time',id=id_dim_time)
    call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
 
@@ -688,6 +693,9 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+
+  ! integer :: np !jpnote 
+
    integer(kind=timestepkind):: n
    integer                   :: i=0
 
@@ -747,11 +755,19 @@
 
 #ifdef _ICE_
       Qsw = I_0%value
+
+     !np = ubound(S,1)
       call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw, &   !h -- sum of dz ,, T -- temp of water !make sure arrays are not shaped for water  
                   surface_fluxes,julianday,secondsofday,longitude, &
                   latitude,I_0%value,airt%value,airp%value,hum%value, &
                   u10%value,v10%value,cloud%value,rho(nlev),rho_0,ql%method, &  !sst,sss%value, !ql%method == longwave_radiation_method 
                   hum_method,fluxes_method,albedo,heat%value)
+
+      !call do_ice(h(np),dt,T(np),S(np),ta,precip%value,Qsw, &   !h -- sum of dz ,, T -- temp of water !make sure arrays are not shaped for water  
+       !        surface_fluxes,julianday,secondsofday,longitude, &
+        !       latitude,I_0%value,airt%value,airp%value,hum%value, &
+         !      u10%value,v10%value,cloud%value,rho(np),rho_0,ql%method, &  !sst,sss%value, !ql%method == longwave_radiation_method 
+          !      hum_method,fluxes_method,albedo,heat%value)
 #endif
 
 !     reset some quantities
@@ -789,7 +805,7 @@
 
 !     update temperature and salinity
       if (sprof%method .ne. 0) then
-         call salinity(nlev,dt,cnpar,nus,gams)
+         call salinity(nlev,dt,cnpar,nus,gams,ice_uvic_Fs,ice_uvic_Ff) !jpnote passing ice_uvic_fs and ice_uvic_ff from ice 
       endif
 
       if (tprof%method .ne. 0) then
