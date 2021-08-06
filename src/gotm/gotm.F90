@@ -822,12 +822,8 @@
 
 !     update temperature and salinity
       if (sprof%method .ne. 0) then
-#ifdef _ICE_
 
          call salinity(nlev,dt,cnpar,nus,gams,ice_uvic_Fs,ice_uvic_Ff) 
-#else
-         call salinity(nlev,dt,cnpar,nus,gams)
-#endif
 
       endif
 

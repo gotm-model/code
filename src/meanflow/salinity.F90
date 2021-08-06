@@ -116,11 +116,10 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-#ifdef _ICE_
    DiffSup        = -S(nlev)*(precip%value+evap+Ff)-Fs !NSnote, check signs
-#else
-  DiffSup        = -S(nlev)*(precip%value+evap) 
-#endif
+
+  !DiffSup        = -S(nlev)*(precip%value+evap) 
+
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided
