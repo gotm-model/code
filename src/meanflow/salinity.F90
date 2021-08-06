@@ -91,7 +91,7 @@
 !
 !
 !  ice-ocean interaction salt and freshwater fluxes
-   REALTYPE, intent(in)                :: Fs,Ff  !jpnote added 
+   REALTYPE, optional, intent(in)                :: Fs,Ff  !jpnote added  !optional - not needed when not running ice? 
 
 !
 ! !REVISION HISTORY:
@@ -116,8 +116,11 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
+#ifdef _ICE_
    DiffSup        = -S(nlev)*(precip%value+evap+Ff)-Fs !NSnote, check signs
-!  DiffSup        = -S(nlev)*(precip%value+evap) 
+#else
+  DiffSup        = -S(nlev)*(precip%value+evap) 
+#endif
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided

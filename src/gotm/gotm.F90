@@ -61,9 +61,9 @@
 #ifdef _ICE_
    use ice,         only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
    use stim_variables,  only: Tice_surface,albedo_ice,transmissivity,nilay,ice_uvic_Tice
+#endif
    use stim_variables,  only: ice_hs,ice_hi,ice_uvic_topmelt,ice_uvic_topgrowth,ice_uvic_termelt,ice_uvic_botmelt,ice_uvic_botgrowth,ice_uvic_tb,ice_uvic_ts
    use stim_variables,  only: ice_uvic_Fs,ice_uvic_Ff,ice_uvic_parb,ice_uvic_parui,ice_uvic_Amelt
-#endif
 
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,post_init_turbulence,do_turbulence
@@ -568,6 +568,28 @@
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth,depth)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_roughness_length,z0b)
+
+
+      !ice vars--------- jpnote 
+#if 0
+      call model_fabm%link_horizontal_data(standard_variables_fabm%sea_ice_thickness,ice_hi)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%snow_thickness,ice_hs)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%topmelt,ice_uvic_topmelt)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%f_melt,ice_uvic_Amelt)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%topgrowth,ice_uvic_topgrowth)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%termelt,ice_uvic_termelt)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%tendency_of_sea_ice_thickness_due_to_thermodynamics_melt,ice_uvic_botmelt)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%tendency_of_sea_ice_thickness_due_to_thermodynamics_grow,ice_uvic_botgrowth)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%sea_ice_temperature,ice_uvic_tb)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%surface_ice_temperature,ice_uvic_ts)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%lowest_ice_layer_PAR,ice_uvic_parb)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%under_ice_PAR,ice_uvic_parui)
+
+      call model_fabm%link_bulk_data(standard_variables_fabm%zonal_current,u(1:nlev))
+      call model_fabm%link_bulk_data(standard_variables_fabm%meridional_current,v(1:nlev))
+      !------------------
+#endif
+
       if (fluxes_method /= 0) then
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp%value)
@@ -595,6 +617,10 @@
 !  Initialize FABM initial state (this is done after the first call to do_input,
 !  to allow user-specified observed values to be used as initial state)
    if (fabm_calc) call init_gotm_fabm_state(nlev)
+
+
+   !jpnote call init_gotm_fabm_output? 
+
 #endif
 
    if (restart) then
@@ -796,7 +822,13 @@
 
 !     update temperature and salinity
       if (sprof%method .ne. 0) then
+#ifdef _ICE_
+
          call salinity(nlev,dt,cnpar,nus,gams,ice_uvic_Fs,ice_uvic_Ff) 
+#else
+         call salinity(nlev,dt,cnpar,nus,gams)
+#endif
+
       endif
 
       if (tprof%method .ne. 0) then

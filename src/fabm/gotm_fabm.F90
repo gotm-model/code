@@ -105,6 +105,24 @@
                                 bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
                                 freshwater_impact,salinity_relaxation_to_freshwater_flux, &
                                 save_inputs, no_surface
+   
+
+
+   !declare fabm variables here? jpnote 
+      !Yaml variables 
+      !
+   logical                    :: no_precipitation_dilution
+   REALTYPE                   :: r_pond,fmethod,fflush,drag,f_graze,zia,ac_ia,rnit,skno3_0,sknh4_0, &
+                                 sksil_0,ia_0,ia_b,ks_no3,ks_sil,maxg,mort,mort2,crit_melt,lcompp,rpp, &
+                                 t_sens,nu,md_no3,md_sil,chl2n,sil2n
+
+   REALTYPE :: ac,f_seed,ph1_0,ph2_0,zo1_0,zo2_0,no3_0,nh4_0,de1_0,de2_0,bsi_0,sil_0,w1,w2,mu1,mu2,kn,rpp1,rpp2,mp1,mp2,gz1,kz1,az1,az2,mz1,rc,pp1,pp2,pd1,pd2,pz1,gz2,kz2,mz2,rd1,rd2,rd3,rpf,rn0,knt,qp,qz,qb,agg,rsin,ks,pmin
+   !real(rk) :: drag,f_graze,zia,ac_ia,ia_0,ia_b,rnit,skno3_0,sknh4_0,sksil_0,ks_no3,ks_sil,maxg,mort,mort2,crit_melt,lcompp,rpp,rpi,t_sens,nu,md_no3,md_sil,chl2n,sil2n
+   REALTYPE:: dic_0, alk_0, dic_sw, alk_sw, dic_ice, alk_ice, ik_diff, ik_on, ice_on, IA_on, tplv, btlv, prop2sw, prop2sw_melt
+   
+
+
+
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
    REALTYPE,allocatable,dimension(:,:) :: ws
@@ -250,7 +268,7 @@
 !
 ! !INPUT PARAMETERS:
    class (type_settings), intent(inout) :: cfg
-   type (type_settings), pointer :: branch
+   type (type_settings), pointer :: branch, twig
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -266,6 +284,8 @@
    ! Initialize all namelist variables to reasonable default values.
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
+   !fabm_calc ??? same as fabm calc 
+   
    call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
                 default=.true.) ! disable to check mass conservation
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
@@ -306,6 +326,154 @@
                 options=(/option(-1, 'auto-detect (prefer fabm.yaml)', 'auto'), option(0, 'fabm.nml', 'nml'), option(1, 'fabm.yaml', 'yaml')/), &
                 default=-1, display=display_advanced)
 
+   
+!mortenson FABM VARS from gotm.yaml
+   
+!fabm.nml
+!uvic_eco
+   branch => cfg%get_child('uvic_eco', 'University of Victoria Ecosystem model')
+   call branch%get(ac, 'ac', 'light attenuation coefficient','m-1', default=0.03_rk)
+   call branch%get(f_seed, 'f_seed', 'fraction of ice algal fux as ph2 seeding','-', default=0.0_rk)
+   call branch%get(ph1_0, 'ph1_0', 'ph1 initial value','umol/L', default=1.0_rk )
+   call branch%get(ph2_0 , 'ph2_0 ', 'ph2 initial value','umol/L', default=0.5_rk)
+   call branch%get(zo1_0, 'zo1_0', 'zo1 initial value','umol/L', default=0.2_rk)
+   call branch%get(zo2_0, 'zo2_0', 'zo2 initial value','umol/L', default=0.1_rk)
+   call branch%get(nh4_0, 'nh4_0', 'nh4 initial value','umol/L', default=10.0_rk)
+   call branch%get(no3_0, 'no3_0', 'no3 initial value','umol/L', default=10.0_rk)
+   call branch%get(de1_0, 'de1_0', 'de1 initial value ','umol/L', default=1.0_rk)
+   call branch%get(de2_0, 'de2_0', 'de2 initial value','umol/L', default=1.0_rk)
+   call branch%get(bsi_0, 'bsi_0', 'bsi initial value','umol/L', default=1.0_rk)
+   call branch%get(sil_0 , 'sil_0 ', 'sil initial value','umol/L', default=5.0_rk)
+   call branch%get(w1 , 'w1 ', 'de1 sinking rate','m/d', default=6.0_rk)
+   call branch%get(w2 , 'w2 ', 'de2 sinking rate','m/d', default=6.0_rk)
+   call branch%get(mu1, 'mu1', 'ph1 maximum growth rate','1/d', default=2.0_rk)
+   call branch%get(mu2 , 'mu2 ', 'ph2 maximum growth rate','1/d', default=2.0_rk)
+   call branch%get(kn, 'kn', ' no3 & nh4 half saturation constant','umol/L', default=0.1_rk)
+   !call branch%get(al1, 'al1', 'initial slope of P-I curve ([time] is same unit as pmax)','m2/W/time', default=0)
+   !call branch%get(al2 , 'al2 ', 'initial slope of P-I curve ([time] is same unit as pmax)','m2/W/time', default=0)
+   call branch%get(rpp1, 'rpp1', 'maximum photosynthetic rate ([time] is same unit as alpha)','1/time', default=0.05_rk)
+   call branch%get(rpp2 , 'rpp2 ', 'maximum photosynthetic rate ([time] is same unit as alpha)','1/time', default=0.05_rk)
+   call branch%get(mp1, 'mp1', 'ph1 excretion rate ','1/d', default=0.05_rk)
+   call branch%get(mp2 , 'mp2 ', 'ph2 excretion rate','1/d', default=0.05_rk)
+   call branch%get(mz1, 'mz1', 'zo1 excretion rate ','1/d', default=0.1_rk)
+   call branch%get(mz2, 'mz2', 'zo2 excretion rate ','1/d', default=0.3_rk)
+   call branch%get(gz1, 'gz1', 'zo1 maximum grazing rate ','1/d', default=1.3_rk)
+   call branch%get(gz2, 'gz2', 'zo2 maximum grazing rate ','1/d', default=0.8_rk)
+   call branch%get(kz1, 'kz1', 'zo1 grazing half saturation constant ','umol/L', default=0.6_rk)
+   call branch%get(kz2, 'kz2', 'zo2 grazing half saturation constant ','umol/L', default=0.75_rk)
+   call branch%get(az1, 'az1', 'zo1 assimilation fraction ','-', default=0.7_rk)
+   call branch%get(az2, 'az2', 'zo2 assimilation fraction ','-', default=0.1_rk)
+   call branch%get(rc, 'rc', 'closure mortality rate','1/d', default=0.003_rk)
+  ! call branch%get(htlnh4, 'htlnh4', 'closure loss fraction to nh4','-', default=0)
+  ! call branch%get(htldet, 'htldet', 'closure loss fraction to det','-', default=0)
+   call branch%get(pp1, 'pp1', 'ph1 fraction as food for zo1','-', default=1.0_rk)
+   call branch%get(pp2, 'pp2', 'ph2 fraction as food for zo2','-', default=1.0_rk)
+   call branch%get(pd1, 'pd1', 'de1 fraction as food for zo1','-', default=0.5_rk)
+   call branch%get(pd2, 'pd2', 'de2 fraction as food for zo2','-', default=0.5_rk)
+   call branch%get(pz1, 'pz1', 'zo1 fraction as food for zo2','-', default=1.0_rk)
+   call branch%get(rd1, 'rd1', ' de1 remineralization rate','1/d', default=0.1_rk)
+   call branch%get(rd2, 'rd2', 'de2 remineralization rate','1/d', default=0.1_rk)
+   call branch%get(rd3, 'rd3', 'bsi remineralization rate','1/d', default=0.1_rk)
+   call branch%get(rpf, 'rpf', 'scale factor for nitrogen preference function','-', default=0.2_rk )
+   call branch%get(rn0, 'rn0', 'nitrification rate at 0 deg.C','1/d', default=0.03_rk)
+   call branch%get(knt, 'knt', 'nitrification temperature coefficient','1/deg.C', default=0.0693_rk)
+   call branch%get(qp, 'qp', 'ph1 & ph2 Q10 factor','-', default=2.0_rk)
+   call branch%get(qz, 'qz', 'zo1 & zo2 Q10 factor','-', default=3.0_rk )
+   call branch%get(qb, 'qb', 'bacteria Q10 factor','-', default=3.0_rk)
+   call branch%get(agg, 'agg', 'ph2 aggregation rate','1/d', default=0.07_rk)
+   call branch%get(rsin , 'rsin ', 'ph2 Si:N ratio','mol-Si/mol-N', default=2.0_rk)
+   call branch%get(ks, 'ks', 'si half saturation constant','umol/L', default=2.0_rk)
+   call branch%get(pmin, 'pmin', 'background plankton concentration','umol-N/L', default=0.01_rk)
+
+!ice_algea
+   branch => cfg%get_child('uvic_icealgae', 'University of Victoria Ice Algae model')
+   call branch%get(r_pond, 'r_pond', 'melt pond drainage rate','', default=0.0175_rk)
+  ! call branch%get(fmethod, 'fmethod', 'method for ice-ocean flux ', '', &
+   !            default=0._rk, pchild=twig)
+   !call twig%get(fmethod_method, 'type', 'method for ice-ocean flux ', &
+    !             options=(/option(0, 'for diffusion', 'diffusion'), option(1, 'for ice growth/melting', 'ice growth/melting'), &
+     !            option(2, 'for both diffusion and growth/melting', 'both diffusion and growth/melting')/), default=0)
+                  !(0 for diffusion; 1 for ice growth/melting; 2 for both diffusion and growth/melting)
+   call branch%get(fmethod, 'fmethod ', 'method for ice-ocean flux','', default=0.0_rk)
+  ! call branch%get(fflush, 'fflush', 'method for flushing', '', &
+   !              default=0._rk, pchild=twig)
+   !call twig%get(fflush , 'fflush ', 'method for flushing', &
+   !              options=(/option(0, 'for no flushing', 'no flushing'), option(1, 'for surface flushing', 'surface flushing'), &
+   !             option(2, 'for surface+internal flushing', 'surface+internal flushing')/), default=0)
+   call branch%get(fflush , 'fflush ', 'method for flushing','', default=0.0_rk)
+   call branch%get(drag , 'drag ', 'drag coefficient at the ice-water interface ','-', default=0.005_rk)
+   call branch%get(f_graze, 'f_graze', 'fraction of ice algal growth lost due to grazing ','-', default=0.1_rk)
+   call branch%get(zia, 'zia', 'ice algal layer thickness ','m', default=0.03_rk)
+   call branch%get(ac_ia, 'ac_ia', 'specific light attenuation coefficient for ice algae','', default=0.03_rk)
+   call branch%get(rnit , 'rnit ', 'nitrification rate ','per day', default=0.1_rk)
+   call branch%get(ia_0 , 'ia_0 ', 'ia initial value ','mmol-N/m3', default=0.16_rk)
+   call branch%get(ia_b , 'ia_b ', 'ia background value ','mmol-N/m3', default=0.01_rk)
+   call branch%get(skno3_0, 'skno3_0', 'no3 initial value ','mmol/m3', default=2.0_rk)
+   call branch%get(sknh4_0, 'sknh4_0', 'nh4 initial value ','mmol/m3', default=0.01_rk)
+   call branch%get(sksil_0, 'sksil_0', 'sil initial value ','mmol/m3', default=5.0_rk)
+   call branch%get(ks_no3, 'ks_no3', 'no3 half-saturation value ','mmol/m3', default=1.0_rk)
+   call branch%get(ks_sil, 'ks_sil', 'sil half-saturation value ','mmol/m3', default=4.0_rk)
+   call branch%get(maxg, 'maxg', 'maximum specific growth rate ','d-1', default=0.8511_rk)
+   call branch%get(mort , 'mort ', 'linear mortality rate','d-1', default=0.05_rk)
+   call branch%get(mort2, 'mort2', 'quadratic mortality rate ','d-1', default=0.05_rk)
+   call branch%get(crit_melt, 'crit_melt', 'critical melt rate [m d-1]','m d-1', default=0.015_rk)
+   call branch%get(lcompp, 'lcompp', '# compensation intensity ','umol m-2 s-1', default=0.4_rk)
+   call branch%get(rpp , 'rpp ', 'ratio of photosynthetic parameters (alpha and pbm) [W m-2]-1','[W m-2]-1', default=0.1_rk)
+   !call branch%get(rpi , 'rpi ', 'ratio of photoinhibition parameters (beta and pbm)', default=0)
+   call branch%get(t_sens , 't_sens ', 'temperature sensitivity ','deg.C-1', default=0.0633_rk)
+   call branch%get(nu , 'nu ', 'kinematic viscosity?','', default=1.86e-6_rk)
+   call branch%get(md_no3, 'md_no3', 'molecular diffusion coefficient for nitrate','', default=0.47e-9_rk)
+   call branch%get(md_sil , 'md_sil ', 'molecular diffusion coefficient for dissolved silica','', default=0.47e-9_rk)
+   call branch%get(chl2n , 'chl2n ', 'chl to nitrogen ratio','', default=2.8_rk)
+   call branch%get(sil2n , 'sil2n ', 'silicon to nitrogen ratio','', default=1.7_rk)
+   
+!  uvic_icedic  
+   branch => cfg%get_child('uvic_icedic', 'University of Victoria Ice DIC model')   
+   call branch%get(dic_0, 'dic_0', 'initial DIC in water column','mmol/m3', default=2190.0_rk)
+   call branch%get(alk_0 , 'alk_0 ', 'initial TA in water column','mmol/m3', default=2100.0_rk)
+   call branch%get(dic_sw, 'dic_sw', 'dic_sw','', default=2100.0_rk)
+   call branch%get(alk_sw, 'alk_sw', 'alk_sw','', default=2200.0_rk)
+   call branch%get(dic_ice, 'dic_ice', '[DIC] for ice','mmol/m3', default=400.0_rk)  !400.0_rk 
+   call branch%get(alk_ice, 'alk_ice', '[TA] for growing ice','mmol/m3', default=500.0_rk)   !500.0_rk
+   call branch%get(ik_diff, 'ik_diff', 'difference (in melting ice) in [DIC] and 2*[TA] for ice with ikaite precipitaion','', default=50.0_rk)
+   call branch%get(ik_on, 'ik_on', '(0 or 1), turns off ikaite pump','0 or 1', default=1.0_rk)
+   call branch%get(ice_on, 'ice_on', '(0 or 1), turns off ice carbon pump','0 or 1', default=1.0_rk)
+   call branch%get(IA_on, 'IA_on', '(0 or 1), turns off ice algae carbon pump (not used now, bc can do same by ia_0=ia_b=0 in uvic_icealgae)','0 or 1', default=1.0_rk)
+   call branch%get(tplv, 'tplv', 'top of brine-associated DIC depth','m', default=40.0_rk)
+   call branch%get(btlv, 'btlv', 'bottom of brine-associated DIC depth','m', default=50.0_rk)
+   call branch%get(prop2sw, 'prop2sw', 'proportion of DIC rejected that is released into the ocean (the remainder presumably into the atmosphere)','', default=0.99_rk)
+   !prop2sw_melt=0.975_rk !SA: 1.0, def., 0.95, 0.9, 0.5  !right now, default = 0.975
+
+!gotm_fabm.nml  ---  jpnote some of these might be already existing settings --------- !but there isnt actually anywhere in the yaml where they are coming in from 
+   branch => cfg%get_child('gotm_fabm_nml', 'setting from the mortenson gotm_fabm.nml')  !jpnote change label/how it's organized in the yaml? 
+   call branch%get(fabm_calc, 'fabm_calc', 'fabm_calc', default=.false.)
+   call branch%get(cnpar, 'cnpar', 'cnpar','', default=1.0_rk)  
+   !call branch%get(w_adv_discr, 'w_adv_discr', 'w_adv_discr','', default=6.0_rk)
+   !call branch%get(ode_method, 'ode_method', 'ode_method','', default=1.0_rk)
+   !call branch%get(split_factor, 'split_factor', 'split_factor','', default=1.0_rk)
+   call branch%get(bioshade_feedback, 'bioshade_feedback', 'bioshade_feedback', default=.true.)
+   call branch%get(bioalbedo_feedback, 'bioalbedo_feedback', 'bioalbedo_feedback', default=.true.)
+   call branch%get(biodrag_feedback, 'biodrag_feedback', 'biodrag_feedback', default=.true.)
+   call branch%get(repair_state, 'repair_state', 'repair_state', default=.false.)
+   call branch%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', 'salinity_relaxation_to_freshwater_flux', default=.false.)
+   call branch%get(no_precipitation_dilution, 'no_precipitation_dilution', 'no_precipitation_dilution', default=.false.)
+   call branch%get(save_inputs, 'save_inputs', 'save_inputs', default=.false.)
+
+
+   !call branch%get(, '', '','', default=_rk)
+
+
+
+
+
+
+!fabm_input.nml 
+   
+
+
+
+
+   
    LEVEL2 'done.'
 
    end subroutine configure_gotm_fabm
