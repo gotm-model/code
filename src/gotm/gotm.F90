@@ -61,9 +61,10 @@
 #ifdef _ICE_
    use ice,         only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
    use stim_variables,  only: Tice_surface,albedo_ice,transmissivity,nilay,ice_uvic_Tice
+#endif
    use stim_variables,  only: ice_hs,ice_hi,ice_uvic_topmelt,ice_uvic_topgrowth,ice_uvic_termelt,ice_uvic_botmelt,ice_uvic_botgrowth,ice_uvic_tb,ice_uvic_ts
    use stim_variables,  only: ice_uvic_Fs,ice_uvic_Ff,ice_uvic_parb,ice_uvic_parui,ice_uvic_Amelt
-#endif
+
 
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,post_init_turbulence,do_turbulence
