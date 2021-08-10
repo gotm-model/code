@@ -401,6 +401,8 @@
 #ifdef _FABM_
    if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
 
+   !jpnote ?? look at gotm_fabm nml and fabm_input.nml .. 
+
    ! Allow FABM to create its model tree. After this we know all biogeochemical variables
    ! This must be done before gotm_fabm_input configuration.
    call gotm_fabm_create_model(namlst)
@@ -571,7 +573,7 @@
 
 
       !ice vars--------- jpnote 
-#if 0
+
       call model_fabm%link_horizontal_data(standard_variables_fabm%sea_ice_thickness,ice_hi)
       call model_fabm%link_horizontal_data(standard_variables_fabm%snow_thickness,ice_hs)
       call model_fabm%link_horizontal_data(standard_variables_fabm%topmelt,ice_uvic_topmelt)
@@ -585,10 +587,10 @@
       call model_fabm%link_horizontal_data(standard_variables_fabm%lowest_ice_layer_PAR,ice_uvic_parb)
       call model_fabm%link_horizontal_data(standard_variables_fabm%under_ice_PAR,ice_uvic_parui)
 
-      call model_fabm%link_bulk_data(standard_variables_fabm%zonal_current,u(1:nlev))
-      call model_fabm%link_bulk_data(standard_variables_fabm%meridional_current,v(1:nlev))
+      call model_fabm%link_interior_data(standard_variables_fabm%zonal_current,u(1:nlev)) !jpnote : changed from bulk data to interior data
+      call model_fabm%link_interior_data(standard_variables_fabm%meridional_current,v(1:nlev)) !jpnote: changed from bulk data to interior data
       !------------------
-#endif
+
 
       if (fluxes_method /= 0) then
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
