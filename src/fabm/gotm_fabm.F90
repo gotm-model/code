@@ -91,7 +91,7 @@
       module procedure register_scalar_observation
    end interface
 
-   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id,pres_id
+   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id,pres_id,nuh_id
    type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id,swr_sf_id
 
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
@@ -113,7 +113,7 @@
    integer,allocatable, dimension(:)   :: posconc
 
    ! Arrays for environmental variables not supplied externally.
-   REALTYPE,allocatable,dimension(:),target :: par,pres,swr,k_par,z
+   REALTYPE,allocatable,dimension(:),target :: par,pres,swr,k_par,z,nuh_ct
 
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
@@ -477,6 +477,7 @@
       par_id  = model%get_bulk_variable_id(standard_variables%downwelling_photosynthetic_radiative_flux)
       swr_id  = model%get_bulk_variable_id(standard_variables%downwelling_shortwave_flux)
       pres_id = model%get_bulk_variable_id(standard_variables%pressure)
+      nuh_id  = model%get_bulk_variable_id(type_interior_standard_variable(name='vertical_tracer_diffusivity', units='m s-1'))
       lon_id       = model%get_horizontal_variable_id(standard_variables%longitude)
       lat_id       = model%get_horizontal_variable_id(standard_variables%latitude)
       windspeed_id = model%get_horizontal_variable_id(standard_variables%wind_speed)
@@ -676,6 +677,15 @@
       if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (pres)'
       pres = _ZERO_
       call model%link_interior_data(pres_id,pres)
+   end if
+
+   ! Allocate array for turbulent diffusivity at centers if necessary.
+   ! This will be calculated from diffusivity at interfaces during each time step.
+   if (model%variable_needs_values(nuh_id)) then
+      allocate(nuh_ct(1:nlev),stat=rc)
+      if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (nuh_ct)'
+      nuh_ct = _ZERO_
+      call model%link_interior_data(nuh_id, nuh_ct)
    end if
 
    ! Allocate array for local depth (below water surface).
@@ -1142,6 +1152,12 @@
          pres(i) = pres(i+1) + (rho(i)*curh(i)+rho(i+1)*curh(i+1))/2
       end do
       pres(1:nlev) = p0 + pres(1:nlev)*gravity/10000
+   end if
+
+   if (allocated(nuh_ct)) then
+      do i=1,nlev
+         nuh_ct(i) = 0.5_gotmrk * (curnuh(i - 1) + curnuh(i))
+      end do
    end if
 
    ! Calculate local depth below surface from layer height
@@ -1669,11 +1685,12 @@
    if (allocated(change_in_total)) deallocate(change_in_total)
 
    ! Deallocate arrays with internally computed environmental variables.
-   if (allocated(par))   deallocate(par)
-   if (allocated(k_par)) deallocate(k_par)
-   if (allocated(swr))   deallocate(swr)
-   if (allocated(pres))  deallocate(pres)
-   if (allocated(z))     deallocate(z)
+   if (allocated(par))    deallocate(par)
+   if (allocated(k_par))  deallocate(k_par)
+   if (allocated(swr))    deallocate(swr)
+   if (allocated(pres))   deallocate(pres)
+   if (allocated(z))      deallocate(z)
+   if (allocated(nuh_ct)) deallocate(nuh_ct)
 
    ! Reset all module-level pointers
    nullify(nuh)
