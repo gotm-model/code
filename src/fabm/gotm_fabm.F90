@@ -111,12 +111,13 @@
    !declare fabm variables here? jpnote 
       !Yaml variables 
       !
-   logical                    :: no_precipitation_dilution
-   REALTYPE                   :: r_pond,fmethod,fflush,drag,f_graze,zia,ac_ia,rnit,skno3_0,sknh4_0, &
-                                 sksil_0,ia_0,ia_b,ks_no3,ks_sil,maxg,mort,mort2,crit_melt,lcompp,rpp, &
-                                 t_sens,nu,md_no3,md_sil,chl2n,sil2n
+!logical :: use_icealgae
+   !logical                    :: no_precipitation_dilution
+   !REALTYPE                   :: r_pond,fmethod,fflush,drag,f_graze,zia,ac_ia,rnit,skno3_0,sknh4_0, &
+    !                             sksil_0,ia_0,ia_b,ks_no3,ks_sil,maxg,mort,mort2,crit_melt,lcompp,rpp, &
+     !                            t_sens,nu,md_no3,md_sil,chl2n,sil2n
 
-   REALTYPE :: ac,f_seed,ph1_0,ph2_0,zo1_0,zo2_0,no3_0,nh4_0,de1_0,de2_0,bsi_0,sil_0,w1,w2,mu1,mu2,kn,rpp1,rpp2,mp1,mp2,gz1,kz1,az1,az2,mz1,rc,pp1,pp2,pd1,pd2,pz1,gz2,kz2,mz2,rd1,rd2,rd3,rpf,rn0,knt,qp,qz,qb,agg,rsin,ks,pmin
+   !REALTYPE :: ac,f_seed,ph1_0,ph2_0,zo1_0,zo2_0,no3_0,nh4_0,de1_0,de2_0,bsi_0,sil_0,w1,w2,mu1,mu2,kn,rpp1,rpp2,mp1,mp2,gz1,kz1,az1,az2,mz1,rc,pp1,pp2,pd1,pd2,pz1,gz2,kz2,mz2,rd1,rd2,rd3,rpf,rn0,knt,qp,qz,qb,agg,rsin,ks,pmin
    !real(rk) :: drag,f_graze,zia,ac_ia,ia_0,ia_b,rnit,skno3_0,sknh4_0,sksil_0,ks_no3,ks_sil,maxg,mort,mort2,crit_melt,lcompp,rpp,rpi,t_sens,nu,md_no3,md_sil,chl2n,sil2n
    REALTYPE:: dic_0, alk_0, dic_sw, alk_sw, dic_ice, alk_ice, ik_diff, ik_on, ice_on, IA_on, tplv, btlv, prop2sw, prop2sw_melt
    
@@ -336,36 +337,22 @@
   
    
 !  uvic_icedic  
-   branch => cfg%get_child('uvic_icedic', 'University of Victoria Ice DIC model')   
-   call branch%get(dic_0, 'dic_0', 'initial DIC in water column','mmol/m3', default=2190.0_rk)
-   call branch%get(alk_0 , 'alk_0 ', 'initial TA in water column','mmol/m3', default=2100.0_rk)
-   call branch%get(dic_sw, 'dic_sw', 'dic_sw','', default=2100.0_rk)
-   call branch%get(alk_sw, 'alk_sw', 'alk_sw','', default=2200.0_rk)
-   call branch%get(dic_ice, 'dic_ice', '[DIC] for ice','mmol/m3', default=400.0_rk)  !400.0_rk 
-   call branch%get(alk_ice, 'alk_ice', '[TA] for growing ice','mmol/m3', default=500.0_rk)   !500.0_rk
-   call branch%get(ik_diff, 'ik_diff', 'difference (in melting ice) in [DIC] and 2*[TA] for ice with ikaite precipitaion','', default=50.0_rk)
-   call branch%get(ik_on, 'ik_on', '(0 or 1), turns off ikaite pump','0 or 1', default=1.0_rk)
-   call branch%get(ice_on, 'ice_on', '(0 or 1), turns off ice carbon pump','0 or 1', default=1.0_rk)
-   call branch%get(IA_on, 'IA_on', '(0 or 1), turns off ice algae carbon pump (not used now, bc can do same by ia_0=ia_b=0 in uvic_icealgae)','0 or 1', default=1.0_rk)
-   call branch%get(tplv, 'tplv', 'top of brine-associated DIC depth','m', default=40.0_rk)
-   call branch%get(btlv, 'btlv', 'bottom of brine-associated DIC depth','m', default=50.0_rk)
-   call branch%get(prop2sw, 'prop2sw', 'proportion of DIC rejected that is released into the ocean (the remainder presumably into the atmosphere)','', default=0.99_rk)
-   !prop2sw_melt=0.975_rk !SA: 1.0, def., 0.95, 0.9, 0.5  !right now, default = 0.975
+
 
 !gotm_fabm.nml  ---  jpnote some of these might be already existing settings --------- !but there isnt actually anywhere in the yaml where they are coming in from 
-   branch => cfg%get_child('gotm_fabm_nml', 'setting from the mortenson gotm_fabm.nml')  !jpnote change label/how it's organized in the yaml? 
-   call branch%get(fabm_calc, 'fabm_calc', 'fabm_calc', default=.false.)
-   call branch%get(cnpar, 'cnpar', 'cnpar','', default=1.0_rk)  
+   !branch => cfg%get_child('gotm_fabm_nml', 'setting from the mortenson gotm_fabm.nml')  !jpnote change label/how it's organized in the yaml? 
+   !call branch%get(fabm_calc, 'fabm_calc', 'fabm_calc', default=.false.)
+   !call branch%get(cnpar, 'cnpar', 'cnpar','', default=1.0_rk)  
    !call branch%get(w_adv_discr, 'w_adv_discr', 'w_adv_discr','', default=6.0_rk)
    !call branch%get(ode_method, 'ode_method', 'ode_method','', default=1.0_rk)
    !call branch%get(split_factor, 'split_factor', 'split_factor','', default=1.0_rk)
-   call branch%get(bioshade_feedback, 'bioshade_feedback', 'bioshade_feedback', default=.true.)
-   call branch%get(bioalbedo_feedback, 'bioalbedo_feedback', 'bioalbedo_feedback', default=.true.)
-   call branch%get(biodrag_feedback, 'biodrag_feedback', 'biodrag_feedback', default=.true.)
-   call branch%get(repair_state, 'repair_state', 'repair_state', default=.false.)
-   call branch%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', 'salinity_relaxation_to_freshwater_flux', default=.false.)
-   call branch%get(no_precipitation_dilution, 'no_precipitation_dilution', 'no_precipitation_dilution', default=.false.)
-   call branch%get(save_inputs, 'save_inputs', 'save_inputs', default=.false.)
+   !call branch%get(bioshade_feedback, 'bioshade_feedback', 'bioshade_feedback', default=.true.)
+  ! call branch%get(bioalbedo_feedback, 'bioalbedo_feedback', 'bioalbedo_feedback', default=.true.)
+   !call branch%get(biodrag_feedback, 'biodrag_feedback', 'biodrag_feedback', default=.true.)
+   !call branch%get(repair_state, 'repair_state', 'repair_state', default=.false.)
+   !call branch%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', 'salinity_relaxation_to_freshwater_flux', default=.false.)
+   !call branch%get(no_precipitation_dilution, 'no_precipitation_dilution', 'no_precipitation_dilution', default=.false.)
+   !call branch%get(save_inputs, 'save_inputs', 'save_inputs', default=.false.)
 
 
    !call branch%get(, '', '','', default=_rk)
@@ -775,6 +762,7 @@
    ! and link it to FABM.
    decimal_yearday = _ZERO_
    call model%link_scalar(standard_variables%number_of_days_since_start_of_the_year,decimal_yearday)
+   call model%link_scalar(standard_variables%timestep,dt) !jpnote added 
 
    allocate(Qsour(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (Qsour)'
