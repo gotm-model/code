@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/gotm-model/code.svg?branch=master)](https://travis-ci.org/gotm-model/code)
 
-# Note - this branch is used to develop the integration of GOTM with the Ensemble and Assimilation Tool (EAT). This is done as part of the EU funded SEAMLESL project.
+# Note - this branch is used to develop the integration of GOTM with the Ensemble and Assimilation Tool (EAT). This is done as part of the EU funded SEAMLESS project.
 
 ## What is GOTM?
 
