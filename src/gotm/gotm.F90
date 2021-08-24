@@ -401,8 +401,6 @@
 #ifdef _FABM_
    if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
 
-   !jpnote ?? look at gotm_fabm nml and fabm_input.nml .. 
-
    ! Allow FABM to create its model tree. After this we know all biogeochemical variables
    ! This must be done before gotm_fabm_input configuration.
    call gotm_fabm_create_model(namlst)
@@ -571,7 +569,6 @@
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_roughness_length,z0b)
 
-
       !ice vars--------- jpnote 
 
       call model_fabm%link_horizontal_data(standard_variables_fabm%sea_ice_thickness,ice_hi)
@@ -621,7 +618,6 @@
    if (fabm_calc) call init_gotm_fabm_state(nlev)
 
 
-   !jpnote call init_gotm_fabm_output? 
 
 #endif
 

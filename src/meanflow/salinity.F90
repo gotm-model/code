@@ -91,7 +91,7 @@
 !
 !
 !  ice-ocean interaction salt and freshwater fluxes
-   REALTYPE, optional, intent(in)                :: Fs,Ff  !jpnote added  !optional - not needed when not running ice? 
+   REALTYPE, optional, intent(in)                :: Fs,Ff  
 
 !
 ! !REVISION HISTORY:

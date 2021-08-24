@@ -119,7 +119,7 @@
 
    !REALTYPE :: ac,f_seed,ph1_0,ph2_0,zo1_0,zo2_0,no3_0,nh4_0,de1_0,de2_0,bsi_0,sil_0,w1,w2,mu1,mu2,kn,rpp1,rpp2,mp1,mp2,gz1,kz1,az1,az2,mz1,rc,pp1,pp2,pd1,pd2,pz1,gz2,kz2,mz2,rd1,rd2,rd3,rpf,rn0,knt,qp,qz,qb,agg,rsin,ks,pmin
    !real(rk) :: drag,f_graze,zia,ac_ia,ia_0,ia_b,rnit,skno3_0,sknh4_0,sksil_0,ks_no3,ks_sil,maxg,mort,mort2,crit_melt,lcompp,rpp,rpi,t_sens,nu,md_no3,md_sil,chl2n,sil2n
-   REALTYPE:: dic_0, alk_0, dic_sw, alk_sw, dic_ice, alk_ice, ik_diff, ik_on, ice_on, IA_on, tplv, btlv, prop2sw, prop2sw_melt
+  ! REALTYPE:: dic_0, alk_0, dic_sw, alk_sw, dic_ice, alk_ice, ik_diff, ik_on, ice_on, IA_on, tplv, btlv, prop2sw, prop2sw_melt
    
 
 
@@ -285,7 +285,6 @@
    ! Initialize all namelist variables to reasonable default values.
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
-   !fabm_calc ??? same as fabm calc 
    
    call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
                 default=.true.) ! disable to check mass conservation
@@ -298,6 +297,7 @@
                 default=.false.)
    call cfg%get(repair_state, 'repair_state', 'clip state to minimum/maximum boundaries', &
                 default=.false.)
+
    branch => cfg%get_child('numerics', display=display_advanced)
    call branch%get(ode_method, 'ode_method', 'time integration scheme applied to source terms', &
                 options=(/ option(1, 'Forward Euler', 'FE'), option(2, 'Runge-Kutta 2', 'RK2'), option(3, 'Runge-Kutta 4', 'RK4'), &
@@ -329,17 +329,8 @@
 
    
 !mortenson FABM VARS from gotm.yaml
-   
-!fabm.nml
 
-
-!ice_algea
-  
-   
-!  uvic_icedic  
-
-
-!gotm_fabm.nml  ---  jpnote some of these might be already existing settings --------- !but there isnt actually anywhere in the yaml where they are coming in from 
+!gotm_fabm.nml  jpnote some of these might be already existing settings --------- !but there isnt actually anywhere in the yaml where they are coming in from 
    !branch => cfg%get_child('gotm_fabm_nml', 'setting from the mortenson gotm_fabm.nml')  !jpnote change label/how it's organized in the yaml? 
    !call branch%get(fabm_calc, 'fabm_calc', 'fabm_calc', default=.false.)
    !call branch%get(cnpar, 'cnpar', 'cnpar','', default=1.0_rk)  
@@ -353,22 +344,7 @@
    !call branch%get(salinity_relaxation_to_freshwater_flux, 'salinity_relaxation_to_freshwater_flux', 'salinity_relaxation_to_freshwater_flux', default=.false.)
    !call branch%get(no_precipitation_dilution, 'no_precipitation_dilution', 'no_precipitation_dilution', default=.false.)
    !call branch%get(save_inputs, 'save_inputs', 'save_inputs', default=.false.)
-
-
-   !call branch%get(, '', '','', default=_rk)
-
-
-
-
-
-
-!fabm_input.nml 
-   
-
-
-
-
-   
+    
    LEVEL2 'done.'
 
    end subroutine configure_gotm_fabm
@@ -762,7 +738,10 @@
    ! and link it to FABM.
    decimal_yearday = _ZERO_
    call model%link_scalar(standard_variables%number_of_days_since_start_of_the_year,decimal_yearday)
-   call model%link_scalar(standard_variables%timestep,dt) !jpnote added 
+   call model%link_scalar(standard_variables%timestep,dt) 
+   
+   
+   !jpnote added 
 
    allocate(Qsour(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (Qsour)'
