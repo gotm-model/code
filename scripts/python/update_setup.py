@@ -60,7 +60,7 @@ def get_node(root, path, default=None):
 
 def del_node(root, path):
     node, name = resolve_node(root, path)
-    del node[name]
+    node.pop(name, None)
 
 def update_node(root, path, value):
     node, name = resolve_node(root, path, create=True)
