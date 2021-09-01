@@ -365,6 +365,7 @@
 !
 ! !USES:
    use meanflow
+   use observations, only: idpdx,idpdy
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -388,6 +389,9 @@
    call fm%register('v', 'm/s', 'y-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=v(1:nlev), category='velocities', part_of_state=.true.)
    call fm%register('vo', 'm/s', 'y-velocity - old time step', standard_name='??', dimensions=(/id_dim_z/), data1d=vo(1:nlev), category='velocities', part_of_state=.true., output_level=output_level_debug)
 !KB   call fm%register('w', 'm/s', 'z-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=w(1:nlev), category='velocities,')
+
+   call fm%register('idpdx', '-', 'internal pressure gradient (x)', standard_name='??', dimensions=(/id_dim_z/), data1d=idpdx(1:nlev), category='mimic_3d')
+   call fm%register('idpdy', '-', 'internal pressure gradient (y)', standard_name='??', dimensions=(/id_dim_z/), data1d=idpdy(1:nlev), category='mimic_3d')
 
    call fm%register('fric', '', 'extra friction coefficient in water column', standard_name='??', dimensions=(/id_dim_z/), data1d=fric(1:nlev),category='turbulence/shear')
    call fm%register('drag', '', 'drag coefficient in water column', standard_name='??', dimensions=(/id_dim_z/), data1d=drag(1:nlev),category='turbulence/shear')

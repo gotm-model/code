@@ -5,7 +5,7 @@
 ! !ROUTINE: The V-momentum equation\label{sec:vequation}
 !
 ! !INTERFACE:
-   subroutine vequation(nlev,dt,cnpar,ty,num,gamv,Method)
+   subroutine vequation(nlev,dt,cnpar,ty,num,gamv,ext_method)
 !
 ! !DESCRIPTION:
 !  This subroutine computes the transport of momentum in
@@ -47,6 +47,8 @@
    use meanflow,     only: drag,SS,runtimev
    use observations, only: w_adv,w_adv_discr
    use observations, only: vprof,vel_relax_tau,vel_relax_ramp
+   use observations, only: int_press_type
+   use observations, only: plume_type
    use observations, only: idpdy,dpdy
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
@@ -76,7 +78,7 @@
 
 !  method to compute external
 !  pressure gradient
-   integer, intent(in)                 :: method
+   integer, intent(in)                 :: ext_method
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, parameter                 :: long=1.0D15
@@ -117,7 +119,7 @@
    AdvVdw         = _ZERO_
 
 !  set external pressure gradient
-   if (method .eq. 0) then
+   if (ext_method .eq. 0) then
       dzetady = dpdy%value
    else
       dzetady = _ZERO_
@@ -158,6 +160,11 @@
 
 !  implement bottom friction as source term
    Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
+
+!  for surface plumes implement surface friction as source term 
+   if (int_press_type == 2 .and. plume_type .eq. 1) then
+      Lsour(nlev) = - drag(nlev)/h(nlev)*sqrt(u(nlev)*u(nlev)+v(nlev)*v(nlev)) 
+   end if
 
 !  do advection step
    if (w_adv%method.ne.0) then

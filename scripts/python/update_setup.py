@@ -60,7 +60,7 @@ def get_node(root, path, default=None):
 
 def del_node(root, path):
     node, name = resolve_node(root, path)
-    del node[name]
+    node.pop(name, None)
 
 def update_node(root, path, value):
     node, name = resolve_node(root, path, create=True)
@@ -126,7 +126,16 @@ def update_yaml(oldroot):
         move_node(root, 'eq_state/p0', 'eq_state/linear/p0')
         move_node(root, 'eq_state/dtr0', 'eq_state/linear/dtr0')
         move_node(root, 'eq_state/dsr0', 'eq_state/linear/dsr0')
-    root['version'] = 6
+        version = 6
+    if version == 6:
+        # Adding the plume feature
+        move_node(root, 'mimic_3d/int_press', 'mimic_3d/int_pressure')
+        move_node(root, 'mimic_3d/int_pressure/dtdx', 'mimic_3d/int_pressure/gradients/dtdx')
+        move_node(root, 'mimic_3d/int_pressure/dtdy', 'mimic_3d/int_pressure/gradients/dtdy')
+        move_node(root, 'mimic_3d/int_pressure/dsdx', 'mimic_3d/int_pressure/gradients/dsdx')
+        move_node(root, 'mimic_3d/int_pressure/dsdy', 'mimic_3d/int_pressure/gradients/dsdy')
+        version = 7
+    root['version'] = version
     root.move_to_end('version', last=False)
     return root
 
@@ -138,7 +147,7 @@ def process_file(infile, outfile=None, gotm=None, detail='default'):
         settings = yaml.safe_load(f)
 
     print('Processing %s...' % infile)
-    print('- Updating configuration to latest version...', end='')
+    print('- Updating configuration to latest version...', end='', flush=True)
     settings = update_yaml(settings)
     print(' Done.')
 
@@ -152,7 +161,7 @@ def process_file(infile, outfile=None, gotm=None, detail='default'):
             shutil.copyfile(fabm_yaml, os.path.join(tmpdir, 'fabm.yaml'))
 
         if gotm is not None:
-            print('- Calling GOTM to clean-up yaml file...', end='')
+            print('- Calling GOTM to clean-up yaml file...', end='', flush=True)
             try:
                 subprocess.check_output([gotm, '--write_yaml', path, '--detail', detail], cwd=tmpdir, stderr=subprocess.STDOUT, universal_newlines=True)
                 print(' Done.')
@@ -160,7 +169,7 @@ def process_file(infile, outfile=None, gotm=None, detail='default'):
                 print('FAILED:\n%s' % e.stdout)
                 return False
 
-        print('- Writing updated %s...' % outfile, end='')
+        print('- Writing updated %s...' % outfile, end='', flush=True)
         shutil.copyfile(path, outfile)
         print(' Done.')
         return True
