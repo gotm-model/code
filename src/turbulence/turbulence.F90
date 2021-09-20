@@ -64,7 +64,7 @@
 
 !  turbulent diffusivities
 !  of momentum, temperature, salinity
-   REALTYPE, public, dimension(:), allocatable         :: num
+   REALTYPE, public, dimension(:), allocatable, target :: num
    REALTYPE, public, dimension(:), allocatable, target :: nuh
    REALTYPE, public, dimension(:), allocatable         :: nus
 
