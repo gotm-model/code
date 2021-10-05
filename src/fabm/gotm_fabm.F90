@@ -1385,9 +1385,11 @@
       valid = valid.and.tmpvalid
    end if
    if (.not. (valid .or. repair_state)) then
-      FATAL 'State variable values are invalid and repair is not allowed.'
-      FATAL location
-      stop 'gotm_fabm::do_repair_state'
+      LEVEL0 'One or more state variables have an invalid value in ' // trim(location)
+      LEVEL0 'To allow GOTM to automatically clip variables to the nearest valid value,'
+      LEVEL0 'set repair_state: true in the fabm section of gotm.yaml'
+      FATAL 'Model state is invalid and repair is not allowed.'
+      stop 1
    end if
 
    end subroutine do_repair_state
