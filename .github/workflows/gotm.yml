@@ -15,7 +15,9 @@ jobs:
       runs-on: ${{ matrix.os }}
       steps:
       - name: Install compiler
-        run: sudo apt-get install gfortran-${{ matrix.version }}
+        run: |
+           sudo apt-get update
+           sudo apt-get install gfortran-${{ matrix.version }}
       - name: Clone gotm
         uses: actions/checkout@v2
         with:

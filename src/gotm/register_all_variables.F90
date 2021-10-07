@@ -229,12 +229,12 @@
    call fm%register('dHis', 'm', 'ice growth (surface)', standard_name='', data0d=dHis, category='ice')
    call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice')
 
-!Flato
-!Vars from ice_uvic.F90
+!  Flato
+!  Vars from ice_uvic.F90
    call fm%register('simass', 'kg/m2"', 'Ice mass per area', standard_name='', data0d=simass, category='ice')
    call fm%register('snmass', 'kg/m2', 'Snow mass per area', standard_name='', data0d=snmass, category='ice')
    call fm%register('meltmass', 'kg/m2', 'meltpond mass per area"', standard_name='', data0d=meltmass, category='ice')
-!public vars from ice.F90 
+!  Public vars from ice.F90 
    call fm%register('ice_hi', 'm', 'Ice thickness', standard_name='', data0d=ice_hi, category='ice')
    call fm%register('ice_hs', 'm', 'Snow thickness', standard_name='', data0d=ice_hs, category='ice')
    call fm%register('ice_hm', 'm', 'Meltpond thickness', standard_name='', data0d=ice_uvic_hm, category='ice')
@@ -258,14 +258,10 @@
    call fm%register('Aice', '', 'fraction of ice area that is bare ice', standard_name='', data0d=ice_uvic_Aice, category='ice')
    call fm%register('Asnow', '', 'fraction of ice area that is snow covered', standard_name='', data0d=ice_uvic_Asnow, category='ice')
    call fm%register('Amelt', '', 'fraction of ice area that is melt pond', standard_name='', data0d=ice_uvic_Amelt, category='ice')  
-  
-   call fm%register('dzi', 'm', 'Ice layer thickness', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_dzi(2:nilay+1), category='ice') !changed from 1:nilay to 2:nilay+1
-   
-   call fm%register('ice_uvic_zi', 'm', 'interface depth', standard_name='', dimensions=(/id_dim_zice/), data1d=ice_uvic_zi(2:nilay+2), category='ice')  ! zi in old code corresponds to ice_uvic_zi in new code
+   call fm%register('dzi', 'm', 'Ice layer thickness', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_dzi(2:nilay+1), category='ice') 
+   call fm%register('ice_uvic_zi', 'm', 'interface depth', standard_name='', dimensions=(/id_dim_zice/), data1d=ice_uvic_zi(2:nilay+2), category='ice') 
    call fm%register('zice', 'm', 'interface depth', standard_name='', dimensions=(/id_dim_zice/),data1d=ice_uvic_zice(1:nilay+1), category='ice')
    call fm%register('dzice', 'm', 'interface depth', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_dzice(1:nilay), category='ice')
-   
-
    call fm%register('Cond', 'W m-1 kg-1', 'Ice conductivity', standard_name='',dimensions=(/id_dim_dzice/),data1d=ice_uvic_Cond(2:nilay+1), category='ice')  
    call fm%register('rhoCp', '10^6 J m-3 K-1', 'volum heat capacity', standard_name='',dimensions=(/id_dim_dzice/), data1d=ice_uvic_rhoCp(2:nilay+1), category='ice') 
    call fm%register('Tice', 'Celsius', 'Ice slab temperature', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Tice(2:nilay+2), category='ice')       
