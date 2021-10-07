@@ -70,6 +70,7 @@
    use meanflow,   only: NN,NNT,NNS
    use meanflow,   only: gravity,rho_0
    use eqstate,    only: eqstate1
+   use gsw_mod_toolbox, only: gsw_nsquared
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -108,7 +109,11 @@
    REALTYPE                  :: pFace,pCenter
    integer,  parameter       :: USEEQSTATE=1
    REALTYPE, parameter       :: oneTenth=_ONE_/10.
-!
+   REALTYPE, allocatable     :: gswNN(:),zc(:),zi(:),lat(:)
+!GSW
+   REALTYPE :: GOTM_start,GOTM_stop,GOTM_total=0.
+   REALTYPE :: TEOS_start,TEOS_stop
+!GSW
 !-----------------------------------------------------------------------
 !BOC
    if (buoy_method .EQ. USEEQSTATE) then
@@ -118,9 +123,21 @@
       zCenter = 0.5*h(nlev)
       pCenter = oneTenth*zCenter
 
+!GSW
+#if 1
+     allocate(lat(1:nlev))
+     allocate(zc(1:nlev))
+     allocate(zi(1:nlev))
+     allocate(gswNN(1:nlev))
+     lat=0.
+     zc(nlev)=zCenter
+#endif
+!GSW
+
       buoy(nlev) = eqstate1(S(nlev),T(nlev),pCenter,gravity)
       rho(nlev)  = rho_0 - rho_0/gravity*buoy(nlev)
 
+      GOTM_total=0.
       do i=nlev-1,1,-1
 
          ! compute distances between centers
@@ -129,11 +146,15 @@
          ! compute local depths
          zFace   = zFace   + h(i+1)
          zCenter = zCenter + dz
+#if 1
+         zc(i)=zCenter
+#endif
 
          ! compute approximate local pressure
          pFace   = oneTenth*zFace
          pCenter = oneTenth*zCenter
 
+call cpu_time(GOTM_start)
          ! interpolate T and S from centers to faces
          Sface  = ( S(i+1)*h(i) + S(i)*h(i+1) ) / ( h(i+1) + h(i) )
          Tface  = ( T(i+1)*h(i) + T(i)*h(i+1) ) / ( h(i+1) + h(i) )
@@ -150,12 +171,28 @@
 
          ! total buoyancy frequency is the sum
          NN(i) = NNT(i) + NNS(i)
+call cpu_time(GOTM_stop)
+GOTM_total=GOTM_total+GOTM_stop-GOTM_start
 
          ! compute buoyancy and density
-!KB         buoy(i) = eqstate1(S(i),T(i),pCenter,gravity)
-         buoy(i) = eqstate1(S(i),T(i),_ZERO_,gravity,rho_0)
+         buoy(i) = eqstate1(S(i),T(i),pCenter,gravity)
          rho(i)  = rho_0 - rho_0/gravity*buoy(i)
       end do
+#if 1
+call cpu_time(TEOS_start)
+call gsw_nsquared(S(0:),T(0:),zc,lat,gswNN,zi)
+call cpu_time(TEOS_stop)
+      do i=nlev-1,1,-1
+!KBwrite(*,*) 'aaa ',i,NN(i),gswNN(i+1),100*(NN(i)-gswNN(i+1))/NN(i)
+!write(*,*) NN(i),gswNN(i+1),zc(i)-zi(i)
+         NN(i) = gswNN(i+1)
+      end do
+#endif
+!KBwrite(10,*) gswNN
+!write(*,*) size(NN),size(gswNN)
+
+!KB write(*,*) 'TIMINGS ',TEOS_stop-TEOS_start,GOTM_total
+!stop
 
    else
 

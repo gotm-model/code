@@ -49,7 +49,6 @@
 !  \end{enumerate}
 
 !USES:
-   use settings
    use gsw_mod_toolbox, only: gsw_rho,gsw_rho_alpha_beta
 !   use gsw_mod_toolbox, only: gsw_rho_alpha_beta_bsq
    IMPLICIT NONE
@@ -60,16 +59,15 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public config_equation_of_state,eqstate1
    integer, public :: eq_state_method
+   REALTYPE, public :: T0,S0,p0,rho0,dtr0,dsr0
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  From JMFWG-06
-!KB   REALTYPE, external        :: rho_from_theta
+   REALTYPE, external        :: rho_from_theta
 !
 ! !LOCAL VARIABLES
-!KB   logical                   :: press
-   REALTYPE                  :: T0,S0,p0,rho0,dtr0,dsr0
    REALTYPE                  :: rho_ref
 !EOP
 !-----------------------------------------------------------------------
@@ -97,35 +95,11 @@
 !
 ! !LOCAL VARIABLES:
    integer, parameter :: rk = kind(_ONE_)
-   class (type_settings), pointer :: branch,twig
-   integer method
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    rho_ref = rho_0
    rho0 = rho_0
-
-   LEVEL1 'init_eqstate_yaml'
-   
-   branch => settings_store%get_child('eq_state', 'equation of state')
-   call branch%get(method, 'method', 'density formulation', &
-                   options=(/option(1, 'linearized at T0, S0, p0', 'linear'), &
-                             option(2, 'linearized at T0, S0, rho0, dtr0, dsr0', 'linear_custom'), &
-                             option(3, 'TEOS-10', 'TEOS-10')/), default=3)
-   eq_state_method=method
-   twig => branch%get_child('linear')
-   call twig%get(T0, 'T0', 'reference temperature', 'Celsius', &
-                 minimum=-2._rk, default=10._rk)
-   call twig%get(S0, 'S0', 'reference salinity', 'psu', &
-                 minimum=0._rk, default=35._rk)
-   call twig%get(p0, 'p0', 'reference pressure', 'Pa', &
-                 default=0._rk)
-   call twig%get(rho0, 'rho0', 'reference density', 'kg/m3', &
-                 default=0._rk)
-   call twig%get(dtr0, 'dtr0', 'thermal expansion coefficient', 'kg/m^3/K', &
-                 default=-0.17_rk)
-   call twig%get(dsr0, 'dsr0', 'saline expansion coefficient', 'kg/m^3/psu', &
-                 default=0.78_rk)
 
    select case (eq_state_method)
       case(1) ! S0, T0, p0 are provided - rho0, dtr0, dsr0 are calculated
@@ -161,7 +135,7 @@
 ! !IROUTINE: Select an equation of state
 !
 ! !INTERFACE:
-!KB   elemental REALTYPE function eqstate1(S,T,p,g)
+!KB   REALTYPE function eqstate1(S,T,p,g)
    elemental REALTYPE function eqstate1(S,T,p,g)
 !
 ! !DESCRIPTION:

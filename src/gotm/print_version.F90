@@ -44,8 +44,8 @@
 !BOC
    LEVEL0 LINE
    LEVEL0 'GOTM:    ',gotm_commit_id,' (',gotm_branch_name,' branch)'
-   LEVEL0 'TEOS-10  ',gsw_version
    LEVEL0 'Config:  ',_CFG_VERSION_
+   LEVEL0 'TEOS-10  ',gsw_version
    LEVEL0 'YAML:    ',yaml_commit_id,' (',yaml_branch_name,' branch)'
    LEVEL0 'flexout: ',flexout_commit_id,' (',flexout_branch_name,' branch)'
 #ifdef _ICE_

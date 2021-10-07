@@ -75,10 +75,8 @@
    use kpp,         only: init_kpp,do_kpp,clean_kpp
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
-!KB   use eqstate,     only: init_eqstate
-   use eqstate, only: eq_state_mode,eq_state_method
-   use eqstate, only: T0,S0,p0,dtr0,dsr0
    use eqstate, only: config_equation_of_state
+   use eqstate, only: eq_state_method,T0,S0,p0,rho0,dtr0,dsr0
 
 #ifdef _CVMIX_
    use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
@@ -376,23 +374,25 @@
    call branch%get(b_obs_sbf, 'obs_sbf', 'constant surface buoyancy flux', 'm^2/s^3', &
                    default=0._rk, display=display_hidden)
 
-   branch => settings_store%get_child('eq_state', 'equation of state')
    LEVEL1 'init_eqstate_yaml'
-   call branch%get(eq_state_mode, 'mode', 'formula', default=3, &
-                   options=(/option(1, 'UNESCO'), option(2, 'Jackett et al. (2005)'), option(3, 'TEOS-10')/))
-   call branch%get(eq_state_method, 'method', 'implementation', &
-                   options=(/option(1, 'full with in-situ temperature/density'), option(2, 'full with potential temperature/density'), &
-                   option(3, 'linearized at T0,S0,p0'), option(4, 'linearized at T0,S0,p0,dtr0,dsr0')/), default=1)
-   call branch%get(T0, 'T0', 'reference temperature', 'Celsius', &
-                   minimum=-2._rk, default=10._rk)
-   call branch%get(S0, 'S0', 'reference salinity', 'psu', &
-                   minimum=0._rk, default=35._rk)
-   call branch%get(p0, 'p0', 'reference pressure', 'Pa', &
-                   default=0._rk)
-   call branch%get(dtr0, 'dtr0', 'thermal expansion coefficient', 'kg/m^3/K', &
-                   default=-0.17_rk)
-   call branch%get(dsr0, 'dsr0', 'saline expansion coefficient', 'kg/m^3/psu', &
-                   default=0.78_rk)
+   branch => settings_store%get_child('eq_state', 'equation of state')
+   call branch%get(eq_state_method, 'method', 'density formulation', &
+                   options=(/option(1, 'linearized at T0, S0, p0', 'linear'), &
+                             option(2, 'linearized at T0, S0, rho0, dtr0, dsr0', 'linear_custom'), &
+                             option(3, 'TEOS-10', 'TEOS-10')/), default=3)
+   twig => branch%get_child('linear')
+   call twig%get(T0, 'T0', 'reference temperature', 'Celsius', &
+                 minimum=-2._rk, default=10._rk)
+   call twig%get(S0, 'S0', 'reference salinity', 'psu', &
+                 minimum=0._rk, default=35._rk)
+   call twig%get(p0, 'p0', 'reference pressure', 'Pa', &
+                 default=0._rk)
+   call twig%get(rho0, 'rho0', 'reference density', 'kg/m3', &
+                 default=0._rk)
+   call twig%get(dtr0, 'dtr0', 'thermal expansion coefficient', 'kg/m^3/K', &
+                 default=-0.17_rk)
+   call twig%get(dsr0, 'dsr0', 'saline expansion coefficient', 'kg/m^3/psu', &
+                 default=0.78_rk)
 
 !  open the namelist file.
    if (read_nml) then
@@ -421,16 +421,6 @@
    end if
    LEVEL1 'config_equation_of_state'
    call config_equation_of_state(rho_0)
-   if(eq_state_method .gt. 2) then
-      LEVEL2 'Linearized'
-      LEVEL3 'S0=    ',S0
-      LEVEL3 'T0=    ',T0
-!KB      LEVEL3 'rho0=  ',rho0
-      LEVEL3 'alpha= ',dtr0
-      LEVEL3 'beta=  ',dsr0
-stop 'kaj'
-   end if
-
 
 #ifdef _FABM_
    if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
@@ -574,18 +564,14 @@ stop 'kaj'
 !  initialise mean fields
    Sp(1:nlev) = sprof%data(1:nlev)
    Ti(1:nlev) = tprof%data(1:nlev)
-   select case (eq_state_mode)
-      case (2)
-         S = Sp
-         do n=1,nlev
-           T(n) = ct_from_t(S(n),Ti(n),-z(1:nlev))
-           Tp(n) = theta_from_t(S(n),Ti(n),-z(1:nlev),_ZERO_)
-         end do
+!GSW
+   select case (eq_state_method)
       case (3)
          S(1:nlev) = gsw_sa_from_sp(Sp(1:nlev),-z(1:nlev),longitude,latitude)
          T(1:nlev) = gsw_ct_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev))
          Tp(1:nlev) = gsw_pt_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev),_ZERO_)
    end select
+!GSW
    u(1:nlev) = uprof%data(1:nlev)
    v(1:nlev) = vprof%data(1:nlev)
 
@@ -837,20 +823,14 @@ stop 'kaj'
       if (tprof%method .ne. 0) then
          call temperature(nlev,dt,cnpar,I_0%value,heat%value,nuh,gamh,rad)
       endif
-!KB
-   select case (eq_state_mode)
-      case (2)
-         Sp = S
-         do k=1,nlev
-           Ti(k) = t_from_ct(Sp(k),T(k),_ZERO_)
-           Tp(k) = theta_from_ct(Sp(k),T(k))
-         end do
+!GSW
+   select case (eq_state_method)
       case (3)
          Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
          Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
          Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
    end select
-!KB
+!GSW
 !     update shear and stratification
       call shear(nlev,cnpar)
       call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
