@@ -65,7 +65,9 @@
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
 ! !USES:
-   use meanflow,     only: avmolt,rho_0,cp
+   use gsw_mod_teos10_constants, only: gsw_cp0
+   use density,      only: rho0
+   use meanflow,     only: avmolt,cp
    use meanflow,     only: h,u,v,w,T,S,avh
    use meanflow,     only: bioshade
 #ifndef _ICE_
@@ -135,14 +137,14 @@
 #ifndef _ICE_
 ! simple sea ice model: surface heat flux switched off for sst < freezing temp
    if (T(nlev) .le. -0.0575*S(nlev)) then
-       DiffTup    = max(_ZERO_,heat/(rho_0*cp))
+       DiffTup    = max(_ZERO_,heat/(rho0*cp))
        Hice = _ONE_
    else
-       DiffTup    = heat/(rho_0*cp)
+       DiffTup    = heat/(rho0*cp)
        Hice = _ZERO_
    end if
 #else
-   DiffTup    = heat/(rho_0*cp)
+   DiffTup    = heat/(rho0*cp)
 #endif
    DiffTdw        = _ZERO_
 
@@ -171,10 +173,10 @@
    Lsour=_ZERO_
    Qsour=_ZERO_
 
-   Qsour(nlev)=(I_0-rad(nlev-1))/(rho_0*cp*h(nlev))
+   Qsour(nlev)=(I_0-rad(nlev-1))/(rho0*cp*h(nlev))
    do i=1,nlev-1
 !     from radiation
-      Qsour(i) = (rad(i)-rad(i-1))/(rho_0*cp*h(i))
+      Qsour(i) = (rad(i)-rad(i-1))/(rho0*cp*h(i))
    enddo
 
    do i=1,nlev

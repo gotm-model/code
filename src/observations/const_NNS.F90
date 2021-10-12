@@ -5,7 +5,7 @@
 ! !IROUTINE: const_NNS
 !
 ! !INTERFACE:
-   subroutine const_NNS(nlev,z,S_top,T_const,NN,gravity,rho_0,S)
+   subroutine const_NNS(nlev,z,S_top,T_const,NN,gravity,rho0,S)
 !
 !
 ! !DESCRIPTION:
@@ -14,14 +14,14 @@
 
 
 ! !USES:
-   use eqstate
+!KB   use density
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)                :: nlev
    REALTYPE, intent(in)                :: z(0:nlev)
    REALTYPE, intent(in)                :: S_top,T_const,NN
-   REALTYPE, intent(in)                :: gravity,rho_0
+   REALTYPE, intent(in)                :: gravity,rho0
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: S(0:nlev)
@@ -44,7 +44,7 @@
    do i=nlev-1,1,-1
 
       pFace    = 0.5/gravity*(z(i+1)+z(i));
-!KB      beta     = eos_beta(S(i+1),T_const,pFace,gravity,rho_0)
+!KB      beta     = eos_beta(S(i+1),T_const,pFace,gravity,rho0)
 
       S(i) = S(i+1) + _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))
 

@@ -42,6 +42,8 @@
    use diagnostics
    use settings
 
+   use density, only: init_density
+   use density, only: density_method,T0,S0,p0,rho0,dtr0,dsr0
    use meanflow
    use input
    use input_netcdf
@@ -75,8 +77,6 @@
    use kpp,         only: init_kpp,do_kpp,clean_kpp
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
-   use eqstate, only: config_equation_of_state
-   use eqstate, only: eq_state_method,T0,S0,p0,rho0,dtr0,dsr0
 
 #ifdef _CVMIX_
    use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
@@ -375,19 +375,19 @@
                    default=0._rk, display=display_hidden)
 
    LEVEL1 'init_eqstate_yaml'
-   branch => settings_store%get_child('eq_state', 'equation of state')
-   call branch%get(eq_state_method, 'method', 'density formulation', &
-                   options=(/option(1, 'linearized at T0, S0, p0', 'linear'), &
-                             option(2, 'linearized at T0, S0, rho0, dtr0, dsr0', 'linear_custom'), &
-                             option(3, 'TEOS-10', 'TEOS-10')/), default=3)
+   branch => settings_store%get_child('equation_of_state', 'equation of state')
+   call branch%get(density_method, 'method', 'density formulation', &
+                   options=(/option(1, 'TEOS-10', 'full_TEOS-10'), &
+                             option(2, 'linearized at T0, S0, p0 (rho0 is calculated)', 'linear_teos-10'), &
+                             option(3, 'linearized at T0, S0, rho0, dtr0, dsr0', 'linear_custom')/), &
+                             default=1)
+   call branch%get(rho0, 'rho0', 'reference density', 'kg/m3', default=1027._rk)
    twig => branch%get_child('linear')
    call twig%get(T0, 'T0', 'reference temperature', 'Celsius', &
                  minimum=-2._rk, default=10._rk)
    call twig%get(S0, 'S0', 'reference salinity', 'psu', &
                  minimum=0._rk, default=35._rk)
    call twig%get(p0, 'p0', 'reference pressure', 'Pa', &
-                 default=0._rk)
-   call twig%get(rho0, 'rho0', 'reference density', 'kg/m3', &
                  default=0._rk)
    call twig%get(dtr0, 'dtr0', 'thermal expansion coefficient', 'kg/m^3/K', &
                  default=-0.17_rk)
@@ -412,15 +412,15 @@
       call init_stokes_drift(namlst,'stokes_drift.nml')
 
       call init_turbulence(namlst,'gotmturb.nml')
-      if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
+      if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho0)
 #ifdef _CVMIX_
       if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
 #endif
 
       call init_airsea(namlst,'airsea.nml')
    end if
-   LEVEL1 'config_equation_of_state'
-   call config_equation_of_state(rho_0)
+   LEVEL1 'init_density()'
+   call init_density()
 
 #ifdef _FABM_
    if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
@@ -540,8 +540,8 @@
       call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
 
-!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
-   call post_init_observations(depth,nlev,z,h,gravity,rho_0)
+!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho0)
+   call post_init_observations(depth,nlev,z,h,gravity,rho0)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
 !  Stokes drift
@@ -557,7 +557,7 @@
 
 #ifdef _CVMIX_
    if (turb_method .eq. 100) then
-      call post_init_cvmix(nlev,depth,gravity,rho_0)
+      call post_init_cvmix(nlev,depth,gravity,rho0)
    endif
 #endif
 
@@ -565,8 +565,8 @@
    Sp(1:nlev) = sprof%data(1:nlev)
    Ti(1:nlev) = tprof%data(1:nlev)
 !GSW
-   select case (eq_state_method)
-      case (3)
+   select case (density_method)
+      case (1)
          S(1:nlev) = gsw_sa_from_sp(Sp(1:nlev),-z(1:nlev),longitude,latitude)
          T(1:nlev) = gsw_ct_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev))
          Tp(1:nlev) = gsw_pt_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev),_ZERO_)
@@ -791,8 +791,8 @@
          I_0%value = transmissivity*I_0%value
       else
 #endif
-         tx = tx/rho_0
-         ty = ty/rho_0
+         tx = tx/rho0
+         ty = ty/rho0
 #ifdef _ICE_
       end if
 #endif
@@ -824,8 +824,8 @@
          call temperature(nlev,dt,cnpar,I_0%value,heat%value,nuh,gamh,rad)
       endif
 !GSW
-   select case (eq_state_method)
-      case (3)
+   select case (density_method)
+      case (1)
          Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
          Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
          Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
@@ -837,7 +837,7 @@
 
 #ifdef SPM
       if (spm_calc) then
-         call set_env_spm(nlev,rho_0,depth,u_taub,h,u,v,nuh, &
+         call set_env_spm(nlev,rho0,depth,u_taub,h,u,v,nuh, &
                           tx,ty,Hs,Tz,Phiw)
          call do_spm(nlev,dt)
       end if
@@ -851,10 +851,10 @@
       case (0)
 !        do convective adjustment
          call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,    &
-                                   buoy_method,gravity,rho_0)
+                                   buoy_method,gravity,rho0)
       case (99)
 !        update KPP model
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
+         call convert_fluxes(nlev,gravity,cp,rho0,heat%value,precip%value+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
@@ -868,7 +868,7 @@
          call langmuir_number(nlev,zi,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
 
 !        use KPP via CVMix
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
+         call convert_fluxes(nlev,gravity,cp,rho0,heat%value,precip%value+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
          select case(kpp_langmuir_method)
          case (0)

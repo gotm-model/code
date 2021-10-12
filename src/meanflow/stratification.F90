@@ -66,10 +66,10 @@
 !  and $S$ and is only recommended for idealized studies.
 !
 ! !USES:
+   use density,    only: calculate_density,rho0
    use meanflow,   only: h,S,T,buoy,rho
    use meanflow,   only: NN,NNT,NNS
-   use meanflow,   only: gravity,rho_0
-   use eqstate,    only: eqstate1
+   use meanflow,   only: gravity
    use gsw_mod_toolbox, only: gsw_nsquared
    IMPLICIT NONE
 !
@@ -134,8 +134,8 @@
 #endif
 !GSW
 
-      buoy(nlev) = eqstate1(S(nlev),T(nlev),pCenter,gravity)
-      rho(nlev)  = rho_0 - rho_0/gravity*buoy(nlev)
+      buoy(nlev) = calculate_density(S(nlev),T(nlev),pCenter,gravity)
+      rho(nlev)  = rho0 - rho0/gravity*buoy(nlev)
 
       GOTM_total=0.
       do i=nlev-1,1,-1
@@ -160,13 +160,13 @@ call cpu_time(GOTM_start)
          Tface  = ( T(i+1)*h(i) + T(i)*h(i+1) ) / ( h(i+1) + h(i) )
 
          ! T contribution to buoyancy frequency
-         buoyp  = eqstate1(Sface,T(i+1),pFace,gravity)
-         buoym  = eqstate1(Sface,T(i  ),pFace,gravity)
+         buoyp  = calculate_density(Sface,T(i+1),pFace,gravity)
+         buoym  = calculate_density(Sface,T(i  ),pFace,gravity)
          NNT(i) = (buoyp-buoym)/dz
 
          ! S contribution to buoyancy frequency
-         buoyp  = eqstate1(S(i+1),Tface,pFace,gravity)
-         buoym  = eqstate1(S(i  ),Tface,pFace,gravity)
+         buoyp  = calculate_density(S(i+1),Tface,pFace,gravity)
+         buoym  = calculate_density(S(i  ),Tface,pFace,gravity)
          NNS(i) = (buoyp-buoym)/dz
 
          ! total buoyancy frequency is the sum
@@ -175,8 +175,8 @@ call cpu_time(GOTM_stop)
 GOTM_total=GOTM_total+GOTM_stop-GOTM_start
 
          ! compute buoyancy and density
-         buoy(i) = eqstate1(S(i),T(i),pCenter,gravity)
-         rho(i)  = rho_0 - rho_0/gravity*buoy(i)
+         buoy(i) = calculate_density(S(i),T(i),pCenter,gravity)
+         rho(i)  = rho0 - rho0/gravity*buoy(i)
       end do
 #if 1
 call cpu_time(TEOS_start)
@@ -201,12 +201,12 @@ call cpu_time(TEOS_stop)
       call buoyancy(nlev,dt,cnpar,nub,gamb)
 
       ! compute density and buoyancy frequency
-      rho(nlev)  = rho_0 - rho_0/gravity*buoy(nlev)
+      rho(nlev)  = rho0 - rho0/gravity*buoy(nlev)
 
       do i=nlev-1,1,-1
          dz     = 0.5*(h(i)+h(i+1))
          NN(i)  = (buoy(i+1)-buoy(i))/dz
-         rho(i) = rho_0 - rho_0/gravity*buoy(i)
+         rho(i) = rho0 - rho0/gravity*buoy(i)
       end do
    end if
 

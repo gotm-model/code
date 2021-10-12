@@ -101,7 +101,6 @@
    REALTYPE, public                    :: dtgrid
    character(LEN=PATH_MAX), public     :: grid_file
    REALTYPE, public                    :: gravity
-   REALTYPE, public                    :: rho_0
    REALTYPE, public                    :: cp
    REALTYPE, public                    :: avmolu
    REALTYPE, public                    :: avmolT
@@ -179,8 +178,6 @@
    branch => settings_store%get_typed_child('physical_constants', display=display_advanced)
    call branch%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
                 minimum=0._rk,default=9.81_rk)
-   call branch%get(rho_0, 'rho_0', 'reference density', 'kg/m^3', &
-                minimum=0._rk,default=1027._rk)
    call branch%get(cp, 'cp', 'specific heat of sea water', 'J/kg/K', &
                 minimum=0._rk,default=3985._rk)
    call branch%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
@@ -223,7 +220,7 @@
 ! !LOCAL VARIABLES:
    namelist /meanflow/  h0b,z0s_min,charnock,charnock_val,ddu,ddl,     &
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
-                        SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
+                        SSnorm,dsurf,dtgrid,grid_file,gravity,cp,&
                         avmolu,avmolT,avmolS,MaxItz0b,no_shear
 !EOP
 !-----------------------------------------------------------------------
@@ -251,7 +248,6 @@
    dtgrid       = 5.
    grid_file    = 'grid.dat'
    gravity      = 9.81
-   rho_0        = 1027.
    cp           = 3985.
    avmolu       = 1.3e-6
    avmolT       = 1.4e-7

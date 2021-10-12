@@ -13,8 +13,7 @@ add_library(util
    convert_fluxes.F90
    diff_center.F90
    diff_face.F90
-#   eqstate.F90
-   equation_of_state.F90
+   density.F90
    gridinterpol.F90
    lagrange.F90
    ode_solvers.F90

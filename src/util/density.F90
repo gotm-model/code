@@ -1,13 +1,11 @@
-!KB gsw_p_from_z
-!KB gsw_stabilise_SA_CT
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: eqstate --- the equation of state \label{sec:eqstate}
+! !MODULE: density --- the equation of state \label{sec:eqstate}
 !
 ! !INTERFACE:
-   MODULE eqstate
+   MODULE density
 !
 ! !DESCRIPTION:
 !  Computes the density, $\mean{\rho}$, and buoyancy from the
@@ -57,18 +55,13 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public config_equation_of_state,eqstate1
-   integer, public :: eq_state_method
+   public init_density,calculate_density
+   integer, public :: density_method
    REALTYPE, public :: T0,S0,p0,rho0,dtr0,dsr0
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  From JMFWG-06
-   REALTYPE, external        :: rho_from_theta
-!
-! !LOCAL VARIABLES
-   REALTYPE                  :: rho_ref
 !EOP
 !-----------------------------------------------------------------------
 
@@ -80,15 +73,12 @@
 ! !IROUTINE: Configuring {\tt eqstate}
 !
 ! !INTERFACE:
-   subroutine config_equation_of_state(rho_0)
+   subroutine init_density()
 !
 ! !DESCRIPTION:
 !
 ! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE,intent(in)                 :: rho_0
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Jorn Bruggeman
@@ -98,11 +88,10 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   rho_ref = rho_0
-   rho0 = rho_0
-
-   select case (eq_state_method)
-      case(1) ! S0, T0, p0 are provided - rho0, dtr0, dsr0 are calculated
+   select case (density_method)
+      case(1) ! use gsw_rho(S,T,p) - default p=0
+         LEVEL3 'rho0=  ',rho0
+      case(2) ! S0, T0, p0 are provided - rho0, dtr0, dsr0 are calculated
 #if 1
          call gsw_rho_alpha_beta(S0,T0,p0,rho0,dtr0,dsr0)
 #else
@@ -115,18 +104,17 @@
          LEVEL3 'rho0=  ',rho0
          LEVEL3 'alpha= ',dtr0
          LEVEL3 'beta=  ',dsr0
-      case(2) ! S0, T0, rho0, alpha, beta are all provided
+      case(3) ! S0, T0, rho0, alpha, beta are all provided
          LEVEL2 'Linearized - custom - using S0, T0, rho0, alpha, beta'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
          LEVEL3 'rho0=  ',rho0
          LEVEL3 'alpha= ',dtr0
          LEVEL3 'beta=  ',dsr0
-      case(3) ! use gsw_rho(S,T,p) - default p=0
       case default
    end select
    LEVEL2 'done.'
-   end subroutine config_equation_of_state
+   end subroutine init_density
 !EOC
 
 !-----------------------------------------------------------------------
@@ -135,8 +123,8 @@
 ! !IROUTINE: Select an equation of state
 !
 ! !INTERFACE:
-!KB   REALTYPE function eqstate1(S,T,p,g)
-   elemental REALTYPE function eqstate1(S,T,p,g)
+!KB   REALTYPE function calculate_density(S,T,p,g)
+   elemental REALTYPE function calculate_density(S,T,p,g)
 !
 ! !DESCRIPTION:
 !  Calculates the in-situ buoyancy according to the selected method.
@@ -144,7 +132,7 @@
 !  potential temperature $\theta$ in $^{\circ}$C (ITS-90), {\tt p} is
 !  gauge pressure (absolute pressure - 10.1325 bar), {\tt g} is the
 !  gravitational acceleration in m\,s$^{-2}$ and {\tt rho\_0} the reference
-!  density in kg\,m$^{-3}$. {\tt eqstate1} is the in-situ-density
+!  density in kg\,m$^{-3}$. {\tt calculate_density} is the in-situ-density
 !  in kg\,m$^{-3}$.
 !  For {\tt eq\_state\_method}=1, the UNESCO equation of state is used,
 !  for {\tt eq\_state\_method}=2, the \cite{JACKETTea05} equation
@@ -189,7 +177,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   select case (eq_state_method)
+   select case (density_method)
       case (1, 2)
          x=rho0+dtr0*(T-T0)+dsr0*(S-S0)
       case(3)
@@ -198,19 +186,16 @@
    end select
 
    if (present(g)) then
-      ! Use rho_ref NOT rho0 from linearized equation
-      eqstate1=-g*(x-rho_ref)/rho_ref
+      calculate_density=-g*(x-rho0)/rho0
    else
-      eqstate1=x
+      calculate_density=x
    end if
-
-   return
-   end function eqstate1
+   end function calculate_density
 !EOC
 
 !-----------------------------------------------------------------------
 
-   end module eqstate
+   end module density
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
