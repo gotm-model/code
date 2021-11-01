@@ -34,7 +34,7 @@
    integer,parameter,public :: maxpathlen=256
 
    type type_input
-      character(len=:), allocatable :: name
+      character(len=128)            :: name
       integer                       :: method = 0     ! 0: constant, 2: from file
       REALTYPE                      :: scale_factor = _ONE_
       character(len=maxpathlen)     :: path = ''
@@ -216,7 +216,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not.allocated(input%name)) &
+   if (input%name == '') &
       call fatal_error('input::register_profile_input', 'input has not had a name assigned')
 
    if (nlev==-1) call fatal_error('input::register_profile_input', 'input module has not been initialized with depth information; &
@@ -286,7 +286,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not.allocated(input%name)) &
+   if (input%name == '') &
       call fatal_error('input::register_scalar_input', 'input has not had a name assigned')
 
    call scalar_inputs%add(input)

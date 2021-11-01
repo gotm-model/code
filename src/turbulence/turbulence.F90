@@ -50,7 +50,7 @@
 
 ! !PUBLIC DATA MEMBERS:
 !  TKE, rate of dissipation, turbulent length-scale
-   REALTYPE, public, dimension(:), allocatable   :: tke,eps,L
+   REALTYPE, public, dimension(:), allocatable, target :: tke,eps,L
 
 !  TKE at old time level
    REALTYPE, public, dimension(:), allocatable   :: tkeo
@@ -64,7 +64,7 @@
 
 !  turbulent diffusivities
 !  of momentum, temperature, salinity
-   REALTYPE, public, dimension(:), allocatable         :: num
+   REALTYPE, public, dimension(:), allocatable, target :: num
    REALTYPE, public, dimension(:), allocatable, target :: nuh
    REALTYPE, public, dimension(:), allocatable         :: nus
 
