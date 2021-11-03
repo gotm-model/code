@@ -58,7 +58,6 @@
    use meanflow,      only: u,v,rho_0,gravity
    use meanflow,      only: u_taub,u_taubo,u_taus,drag,taub
    use meanflow,      only: charnock,charnock_val,z0s_min
-
 !
    IMPLICIT NONE
 !
