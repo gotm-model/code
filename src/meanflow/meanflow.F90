@@ -34,6 +34,9 @@
 !  coordinate z, layer thicknesses
    REALTYPE, public, dimension(:), allocatable, target  :: ga,z,zi,h,ho
 
+!  the sea surface elevation
+   REALTYPE, public, target  :: zeta=_ZERO_
+
 !  the velocity components
    REALTYPE, public, dimension(:), allocatable, target  :: u,v,w
 
