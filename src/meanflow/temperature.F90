@@ -5,7 +5,7 @@
 ! !ROUTINE: The temperature equation \label{sec:temperature}
 !
 ! !INTERFACE:
-   subroutine temperature(nlev,dt,cnpar,I_0,heat,nuh,gamh,rad)
+   subroutine temperature(nlev,dt,cnpar,I_0,wflux,hflux,nuh,gamh,rad)
 !
 ! !DESCRIPTION:
 ! This subroutine computes the balance of heat in the form
@@ -95,16 +95,19 @@
 !  surface short waves radiation  (W/m^2)
    REALTYPE, intent(in)                :: I_0
 
+!  surface water flux (m/s) - e.g. precip-evap or melt rate under ice
+   REALTYPE, intent(in)                :: wflux
+
 !  surface heat flux (W/m^2)
 !  (negative for heat loss)
-   REALTYPE, intent(in)                :: heat
+   REALTYPE, intent(in)                :: hflux
 
 !  diffusivity of heat (m^2/s)
    REALTYPE, intent(in)                :: nuh(0:nlev)
 
 !  non-local heat flux (Km/s)
    REALTYPE, intent(in)                :: gamh(0:nlev)
-!
+
 ! !OUTPUT PARAMETERS:
 !  shortwave radiation profile (W/m^2)
    REALTYPE                            :: rad(0:nlev)
@@ -125,24 +128,30 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: z
-!
 !-----------------------------------------------------------------------
 !BOC
 !
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
+!KB - the logic here needs to be sorted out - for now only works with _ICE_ and likely only with basal_melt.
 #ifndef _ICE_
+!  Note that this is the surface temperature flux for rigid-lid models like GOTM.
+!  For a free surface model the surface temperature flux must be - -hflux/(rho_0*cp)
+!KB   if (plume) then   !HB
+          DiffTup    = -T(nlev)*wflux-hflux/(rho_0*cp)
+!KB   else
 ! simple sea ice model: surface heat flux switched off for sst < freezing temp
-   if (T(nlev) .le. -0.0575*S(nlev)) then
-       DiffTup    = max(_ZERO_,heat/(rho_0*cp))
-       Hice = _ONE_
-   else
-       DiffTup    = heat/(rho_0*cp)
-       Hice = _ZERO_
+      if (T(nlev) .le. -0.0575*S(nlev)) then
+          DiffTup    = max(_ZERO_,heat/(rho_0*cp))
+          Hice = _ONE_
+      else
+          DiffTup    = heat/(rho_0*cp)
+          Hice = _ZERO_
+      end if
    end if
 #else
-   DiffTup    = heat/(rho_0*cp)
+   DiffTup = -T(nlev)*wflux-hflux/(rho_0*cp)
 #endif
    DiffTdw        = _ZERO_
 
