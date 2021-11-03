@@ -71,7 +71,7 @@
    REALTYPE, public, dimension(:), allocatable         :: TRelaxTau
 
 !  sea surface elevation, sea surface gradients and height of velocity obs.
-   type (type_scalar_input), public, target :: zeta,dpdx,dpdy,h_press
+   type (type_scalar_input), public, target :: zeta_input,dpdx,dpdy,h_press
 
 !  vertical advection velocity
    type (type_scalar_input), public, target :: w_adv,w_height
@@ -472,7 +472,7 @@
    call w_adv%configure(method=w_adv_method, path=w_adv_file, index=1, constant_value=w_adv0)
    call w_height%configure(method=max(1, w_adv_method), path=w_adv_file, index=2, constant_value=w_adv_height0)
 
-   call zeta%configure(method=zeta_method, path=zeta_file, index=1, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
+   call zeta_input%configure(method=zeta_method, path=zeta_file, index=1, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
 
    call Hs_%configure(method=wave_method, path=wave_file, index=1, constant_value=Hs)
    call Tz_%configure(method=wave_method, path=wave_file, index=2, constant_value=Tz)
@@ -565,11 +565,11 @@
    call twig%get(z_t1, 'z_s', 'depth where upper layer ends', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(t_1, 't_s', 'upper layer temperature', 'Celsius', &
-                   minimum=0._rk,maximum=40._rk,default=0._rk)
+                   minimum=-2._rk,maximum=40._rk,default=0._rk)
    call twig%get(z_t2, 'z_b', 'depth where lower layer begins', 'm', &
                    minimum=0._rk,default=0._rk)
    call twig%get(t_2, 't_b', 'lower layer temperature', 'Celsius', &
-                   minimum=0._rk,maximum=40._rk,default=0._rk)
+                   minimum=-2._rk,maximum=40._rk,default=0._rk)
    call branch%get(t_obs_NN, 'NN', 'square of buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
    twig => branch%get_typed_child('relax', 'relax model temperature to observed/prescribed value')
@@ -673,7 +673,7 @@
    call twig%get(t_adv, 't_adv', 'horizontally advect temperature', default=.false.)
    call twig%get(s_adv, 's_adv', 'horizontally advect salinity', default=.false.)
 
-   call branch%get(zeta, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents', 'tidal')/), pchild=twig)
+   call branch%get(zeta_input, 'zeta', 'surface elevation', 'm', default=0._rk, extra_options=(/option(ANALYTICAL, 'from tidal constituents', 'tidal')/), pchild=twig)
    leaf => twig%get_typed_child('tidal', 'tidal constituents')
    call leaf%get(period_1, 'period_1', 'period of 1st harmonic (eg. M2-tide)', 's', &
                    default=44714._rk)
@@ -902,7 +902,7 @@
    call register_input(w_adv)
 
 !  The sea surface elevation
-   call register_input(zeta)
+   call register_input(zeta_input)
 
 !  Wind waves
    call register_input(Hs_)
@@ -970,11 +970,11 @@
              + dpdy%constant_value
    end if
 
-   if (zeta%method==ANALYTICAL) then
+   if (zeta_input%method==ANALYTICAL) then
 !     Analytical prescription of tides
-      Zeta%value = amp_1*sin(2*pi*(fsecs-phase_1)/period_1) &
+      zeta_input%value = amp_1*sin(2*pi*(fsecs-phase_1)/period_1) &
             +amp_2*sin(2*pi*(fsecs-phase_2)/period_2) &
-            +zeta%constant_value
+            +zeta_input%constant_value
    end if
 
    end subroutine get_all_obs
