@@ -63,12 +63,13 @@
 ! !PUBLIC DATA MEMBERS:
 !
 !  Meteorological forcing variables
-   integer,  public                    :: hum_method
-   character(len=PATH_MAX)   :: meteo_file
-   type (type_scalar_input), public, target            :: u10,v10
-   type (type_scalar_input), public, target            :: airp,airt
-   type (type_scalar_input), public, target            :: hum
-   type (type_scalar_input), public, target            :: cloud
+   integer,  public :: hum_method
+   character(len=PATH_MAX) :: meteo_file
+   type (type_scalar_input), public, target :: u10_input,v10_input
+   type (type_scalar_input), public, target :: airp_input
+   type (type_scalar_input), public, target :: airt_input
+   type (type_scalar_input), public, target :: hum_input
+   type (type_scalar_input), public, target :: cloud_input
 !
 !  wind speed (m/s)
    REALTYPE, public, target            :: w
@@ -76,18 +77,18 @@
 !  surface shortwave radiation
 !  and surface heat flux (W/m^2)
    type (type_scalar_input), public, target :: I_0, ql
-   REALTYPE, public, target            :: albedo
-   type (type_scalar_input), public, target            :: heat
-   REALTYPE, public                    :: qe,qh
+   REALTYPE, public, target :: albedo
+   type (type_scalar_input), public, target :: heat_input
+   REALTYPE, public :: qe,qh
 
 !  surface stress components (Pa)
    REALTYPE, public, target                 :: tx,ty
-   type (type_scalar_input), public, target :: tx_,ty_
+   type (type_scalar_input), public, target :: tx_input,ty_input
 
 !  precipitation and  evaporation
 !  (m/s)
-   type (type_scalar_input), public, target            :: precip
-   REALTYPE, public, target            :: evap
+   type (type_scalar_input), public, target :: precip_input
+   REALTYPE, public, target :: evap
 
 !  sea surface temperature (degC), sea surface salinity (psu),
 !  sea surface current components (m/s)
@@ -330,20 +331,20 @@
 
    call I_0%configure(method=swr_method, path=swr_file, index=1, constant_value=const_swr, scale_factor=swr_factor)
 
-   call u10%configure(method=2, path=meteo_file, index=1, scale_factor=wind_factor)
-   call v10%configure(method=2, path=meteo_file, index=2, scale_factor=wind_factor)
-   call airp%configure(method=2, path=meteo_file, index=3, scale_factor=100.d0)
-   call airt%configure(method=2, path=meteo_file, index=4)
-   call hum%configure(method=2, path=meteo_file, index=5)
-   call cloud%configure(method=2, path=meteo_file, index=6)
+   call u10_input%configure(method=2, path=meteo_file, index=1, scale_factor=wind_factor)
+   call v10_input%configure(method=2, path=meteo_file, index=2, scale_factor=wind_factor)
+   call airp_input%configure(method=2, path=meteo_file, index=3, scale_factor=100.d0)
+   call airt_input%configure(method=2, path=meteo_file, index=4)
+   call hum_input%configure(method=2, path=meteo_file, index=5)
+   call cloud_input%configure(method=2, path=meteo_file, index=6)
 
-   call tx_%configure(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
-   call ty_%configure(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
-   call heat%configure(method=heat_method, path=heatflux_file, index=1, scale_factor=shf_factor, constant_value=const_heat)
+   call tx_input%configure(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
+   call ty_input%configure(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
+   call heat_input%configure(method=heat_method, path=heatflux_file, index=1, scale_factor=shf_factor, constant_value=const_heat)
    call ql%configure(method=back_radiation_method, path=back_radiation_file, index=1)
    call sst_obs%configure(method=sst_method, path=sst_file, index=1)
    call sss%configure(method=sss_method, path=sss_file, index=1)
-   call precip%configure(method=precip_method, path=precip_file, index=1, scale_factor=precip_factor, constant_value=const_precip)
+   call precip_input%configure(method=precip_method, path=precip_file, index=1, scale_factor=precip_factor, constant_value=const_precip)
 
    if (.not. calc_fluxes) fluxes_method = 0
 
@@ -459,31 +460,31 @@
    twig => branch%get_typed_child('fluxes', 'heat and momentum fluxes')
    call twig%get(fluxes_method, 'method', 'method to calculate fluxes from meteorological conditions', &
                 options=(/option(0, 'use prescribed fluxes', 'off'), option(1, 'Kondo (1975)', 'kondo'), option(2, 'Fairall et al. (1996)', 'fairall')/), default=0)
-   call twig%get(heat, 'heat', 'prescribed total heat flux (sensible, latent and net back-radiation)', 'W/m^2', &
+   call twig%get(heat_input, 'heat', 'prescribed total heat flux (sensible, latent and net back-radiation)', 'W/m^2', &
                 default=0._rk)
-   call twig%get(tx_, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
+   call twig%get(tx_input, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
                 default=0._rk)
-   call twig%get(ty_, 'ty', 'prescribed momentum flux in South-North direction', 'Pa', &
+   call twig%get(ty_input, 'ty', 'prescribed momentum flux in South-North direction', 'Pa', &
                 default=0._rk)
 
-   call branch%get(u10, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
+   call branch%get(u10_input, 'u10', 'wind speed in West-East direction @ 10 m', 'm/s', &
                 default=0._rk)
-   call branch%get(v10, 'v10', 'wind speed in South-North direction @ 10 m', 'm/s', &
+   call branch%get(v10_input, 'v10', 'wind speed in South-North direction @ 10 m', 'm/s', &
                 default=0._rk)
    call branch%get(ssuv_method, 'ssuv_method', 'wind treatment', &
                 options=(/option(0, 'use absolute wind speed', 'absolute'), option(1, 'use wind speed relative to current velocity', 'relative')/), default=1, display=display_advanced)
-   call branch%get(airp, 'airp', 'air pressure', 'Pa', &
+   call branch%get(airp_input, 'airp', 'air pressure', 'Pa', &
                 default=0._rk)
-   call branch%get(airt, 'airt', 'air temperature @ 2 m', 'Celsius or K', &
+   call branch%get(airt_input, 'airt', 'air temperature @ 2 m', 'Celsius or K', &
                 default=0._rk)
-   call branch%get(hum, 'hum', 'humidity @ 2 m', '', &
+   call branch%get(hum_input, 'hum', 'humidity @ 2 m', '', &
                 default=0._rk, pchild=leaf)
    call leaf%get(hum_method, 'type', 'humidity metric', &
                 options=(/option(1, 'relative humidity (%)', 'relative'), option(2, 'wet-bulb temperature', 'wet_bulb'), &
                 option(3, 'dew point temperature', 'dew_point'), option(4 ,'specific humidity (kg/kg)', 'specific')/), default=1)
-   call branch%get(cloud, 'cloud', 'cloud cover', '1', &
+   call branch%get(cloud_input, 'cloud', 'cloud cover', '1', &
                 minimum=0._rk, maximum=1._rk, default=0._rk)
-   call branch%get(precip, 'precip', 'precipitation', 'm/s', &
+   call branch%get(precip_input, 'precip', 'precipitation', 'm/s', &
                 default=0._rk, pchild=leaf)
    call leaf%get(rain_impact, 'flux_impact', 'include effect on fluxes of sensible heat and momentum', &
                 default=.false.)
@@ -669,12 +670,12 @@
 #ifndef INTERPOLATE_METEO
       open(meteo_unit,file=meteo_file,action='read',status='old',err=93)
 #else
-      call register_input(u10)
-      call register_input(v10)
-      call register_input(airp)
-      call register_input(airt)
-      call register_input(hum)
-      call register_input(cloud)
+      call register_input(u10_input)
+      call register_input(v10_input)
+      call register_input(airp_input)
+      call register_input(airt_input)
+      call register_input(hum_input)
+      call register_input(cloud_input)
 #endif
       LEVEL2 'Air-sea exchanges will be calculated'
 
@@ -708,16 +709,16 @@
    else
 
 !     The heat fluxes
-      call register_input(heat)
+      call register_input(heat_input)
 
 !     The momentum fluxes
-      call register_input(tx_)
-      call register_input(ty_)
+      call register_input(tx_input)
+      call register_input(ty_input)
 
    end if
 
 !  The fresh water fluxes (used with prescribed and calculated fluxes of heat/momentum)
-   call register_input(precip)
+   call register_input(precip_input)
    LEVEL2 'rain_impact=      ',rain_impact
    LEVEL2 'calc_evaporation= ',calc_evaporation
 
@@ -812,9 +813,9 @@
          hh = secs*(_ONE_/3600)
          zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
          have_zenith_angle = .true.
-         I_0%value = I_0%scale_factor*shortwave_radiation(zenith_angle,yearday,dlon,dlat,cloud%value)
+         I_0%value = I_0%scale_factor*shortwave_radiation(zenith_angle,yearday,dlon,dlat,cloud_input%value)
       end if
-      heat%value = heat%scale_factor*heat%value
+      heat_input%value = heat_input%scale_factor*heat_input%value
    end if
 
    if (I_0%method .ne. CONSTVAL) then
@@ -829,8 +830,8 @@
       end if
    end if
 
-   tx = tx_%value*bio_drag_scale
-   ty = ty_%value*bio_drag_scale
+   tx = tx_input%value*bio_drag_scale
+   ty = ty_input%value*bio_drag_scale
 
 !  If reading SST from file, overwrite current (model) SST with observed value,
 !  to be used in output.
@@ -952,11 +953,11 @@
          meteo_secs2 = hh*3600 + min*60 + ss
          if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .gt. 0) EXIT
       end do
-      u10%value   = obs(1)*u10%scale_factor
-      v10%value   = obs(2)*v10%scale_factor
-      airp%value  = obs(3)*100. !kbk mbar/hPa --> Pa
-      airt%value  = obs(4)
-      hum%value   = obs(5)
+      u10_input%value   = obs(1)*u10_input%scale_factor
+      v10_input%value   = obs(2)*v10_input%scale_factor
+      airp_input%value  = obs(3)*100. !kbk mbar/hPa --> Pa
+      airt_input%value  = obs(4)
+      hum_input%value   = obs(5)
       cloud%value = obs(6)
 
       if (sst .lt. 100.) then
@@ -967,12 +968,12 @@
          tw_k= sst
       end if
 
-      if (airt%value .lt. 100.) then
-         ta_k  = airt%value + KELVIN
-         ta = airt%value
+      if (airt_input%value .lt. 100.) then
+         ta_k  = airt_input%value + KELVIN
+         ta = airt_input%value
       else
-         ta  = airt%value - KELVIN
-         ta_k = airt%value
+         ta  = airt_input%value - KELVIN
+         ta_k = airt_input%value
       end if
 
       h1     = h2
@@ -980,17 +981,17 @@
       ty1    = ty2
       cloud1 = cloud2
 
-      call humidity(hum_method,hum,airp,tw,ta)
+      call humidity(hum_method,hum_input,airp_input,tw,ta)
       if (ql%method .gt. 0) then
          call longwave_radiation(ql%method, &
                                  dlat,tw_k,ta_k,cloud,ql)
       end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
-                         tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)
+                         tw,ta,u10_input%value-ssu,v10_input%value-ssv,precip_input%value,evap,tx2,ty2,qe,qh)
 #else
       call airsea_fluxes(fluxes_method, &
-                         tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)
+                         tw,ta,u10_input%value-ssu,v10_input%value-ssv,precip_input%value,evap,tx2,ty2,qe,qh)
 #endif
       h2     = ql%value+qe+qh
       cloud2 = cloud%value
@@ -1011,9 +1012,9 @@
 
 !  Do the time interpolation
    t  = time_diff(jul,secs,meteo_jul1,meteo_secs1)
-   heat%value  = h1  + t*alpha(2)
-   tx_%value    = tx1 + t*alpha(3)
-   ty_%value    = ty1 + t*alpha(4)
+   heat_input%value  = h1  + t*alpha(2)
+   tx_input%value    = tx1 + t*alpha(3)
+   ty_input%value    = ty1 + t*alpha(4)
    cloud%value = cloud1 + t*alpha(5)
 #else
    if (sst .lt. 100.) then
@@ -1024,25 +1025,25 @@
       tw_k= sst
    end if
 
-   if (airt%value .lt. 100.) then
-      ta_k  = airt%value + KELVIN
-      ta = airt%value
+   if (airt_input%value .lt. 100.) then
+      ta_k  = airt_input%value + KELVIN
+      ta = airt_input%value
    else
-      ta  = airt%value - KELVIN
-      ta_k = airt%value
+      ta  = airt_input%value - KELVIN
+      ta_k = airt_input%value
    end if
 
-   call humidity(hum_method,hum%value,airp%value,tw,ta)
+   call humidity(hum_method,hum_input%value,airp_input%value,tw,ta)
    if (ql%method .gt. 0) then
       call longwave_radiation(ql%method, &
-                          dlat,tw_k,ta_k,cloud%value,ql%value)
+                          dlat,tw_k,ta_k,cloud_input%value,ql%value)
    endif
    call airsea_fluxes(fluxes_method, &
-                      tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx_%value,ty_%value,qe,qh)
-   heat%value = (ql%value+qe+qh)
+                      tw,ta,u10_input%value-ssu,v10_input%value-ssv,precip_input%value,evap,tx_input%value,ty_input%value,qe,qh)
+   heat_input%value = (ql%value+qe+qh)
 #endif
 
-   w = sqrt((u10%value-ssu)*(u10%value-ssu)+(v10%value-ssv)*(v10%value-ssv))
+   w = sqrt((u10_input%value-ssu)*(u10_input%value-ssu)+(v10_input%value-ssv)*(v10_input%value-ssv))
 
    end subroutine flux_from_meteo
 !EOC
@@ -1071,11 +1072,11 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   int_precip= int_precip + dt*precip%value
+   int_precip= int_precip + dt*precip_input%value
    int_evap  = int_evap   + dt*evap
    int_fwf   = int_precip + int_evap
    int_swr   = int_swr    + dt*I_0%value
-   int_heat  = int_heat   + dt*heat%value
+   int_heat  = int_heat   + dt*heat_input%value
    int_total = int_swr    + int_heat
    return
    end subroutine integrated_fluxes
