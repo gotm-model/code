@@ -49,6 +49,7 @@
    public                              :: set_sst
    public                              :: set_ssuv
    public                              :: surface_fluxes
+   public                              :: surface_fluxes_uvic !jpnote added
    public                              :: integrated_fluxes
 #ifdef _PRINTSTATE_
    public                              :: print_state_airsea
@@ -735,6 +736,41 @@
    end subroutine post_init_airsea
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+   !jpnote added 
+   subroutine surface_fluxes_uvic(surface_temp,sensible,latent,longwave_radiation_value)
+   !
+   ! !USES:
+      IMPLICIT NONE
+   !
+   ! !INPUT PARAMETERS:
+      REALTYPE, intent(in)                :: surface_temp
+   ! !OUTPUT PARAMETERS:
+      REALTYPE, intent(out)               :: sensible,latent,longwave_radiation_value
+   !
+   ! LOCAL VARIABLES:    
+      REALTYPE :: tw,tw_k,ta_k
+ !EOP
+   !-----------------------------------------------------------------------
+   !BOC
+
+      tw  = surface_temp-KELVIN
+      tw_k= surface_temp
+      ta_k  = airt%value + KELVIN
+
+   ! call humidity(hum_method,rh,airp,TTss-kelvin,airt) 
+      call humidity(hum_method,hum%value,airp%value,tw,airt%value)
+   ! call longwave_radiation(longwave_radiation_method, &
+                     !    lat,TTss,airt+kelvin,cloud,qb)    
+      call longwave_radiation(ql%method, &
+                        dlat,tw_k,ta_k,cloud%value,longwave_radiation_value)  
+      !call airsea_fluxes(fluxes_method, &
+                     !TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh) 
+      call airsea_fluxes(fluxes_method, &
+                     tw,airt%value,u10%value,v10%value,precip%value,evap,tx_%value,ty_%value,latent,sensible)
+
+   end subroutine surface_fluxes_uvic
 !-----------------------------------------------------------------------
 !BOP
    subroutine surface_fluxes(surface_temp,sensible,latent,longwave_radiation)
