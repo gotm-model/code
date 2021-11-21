@@ -33,7 +33,7 @@
 !  For details of this method, see \cite{Burchard99}.
 !
 ! !USES:
-   use meanflow,     only: u,v,h
+   use meanflow,     only: u,v,h,z
    use observations, only: dpdx,dpdy,h_press
 !
    IMPLICIT NONE
@@ -54,7 +54,6 @@
 !
 ! !LOCAL VARIABLES:
    integer                             :: i
-   REALTYPE                            :: z(0:nlev)
    REALTYPE                            :: rat,uint,vint,hint
 !
 !-----------------------------------------------------------------------
@@ -62,14 +61,20 @@
    select case (method)
       case (1)
 !        current measurement at h_press above bed
-         z(1)=0.5*h(1)
-         i   =0
-222      i=i+1
-         z(i+1)=z(i)+0.5*(h(i)+h(i+1))
-         if ((z(i+1).lt.h_press%value).and.(i.lt.nlev)) goto 222
-         rat=(h_press%value-z(i))/(z(i+1)-z(i))
-         uint=rat*u(i+1)+(1-rat)*u(i)
-         vint=rat*v(i+1)+(1-rat)*v(i)
+         do i=1,nlev
+            if ( h_press%value .lt. z(i) ) exit
+         end do
+         if (i .eq. 1) then
+            uint = u(1)
+            vint = v(1)
+         else if ( i .eq. nlev+1 ) then
+            uint = u(nlev)
+            vint = v(nlev)
+         else
+            rat = (h_press%value-z(i-1))/(z(i)-z(i-1))
+            uint = rat*u(i) + (1-rat)*u(i-1)
+            vint = rat*v(i) + (1-rat)*v(i-1)
+         end if
          do i=1,nlev
             u(i)=u(i)+dpdx%value-uint
             v(i)=v(i)+dpdy%value-vint
