@@ -127,6 +127,7 @@
    REALTYPE,target           :: latitude,longitude
    logical                   :: restart
 
+   character(len=1024), public :: restart_file = 'restart'
    character(len=1024), public :: yaml_file = 'gotm.yaml'
    character(len=1024), public :: write_yaml_path = ''
    character(len=1024), public :: write_schema_path = ''
@@ -1006,7 +1007,7 @@
       type (type_output_item),  pointer :: item
 
       allocate(file)
-      file%path = 'restart'
+      file%path = trim(restart_file)
       file%time_unit = time_unit_day
       file%time_step = 1
       file%first_julian = jul2
@@ -1033,7 +1034,7 @@
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
 
-      call open_restart()
+      call open_restart(trim(restart_file))
 
       if (.not. restart_allow_perpetual) then
          call check_restart_time('time')
