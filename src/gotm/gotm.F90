@@ -1007,7 +1007,8 @@
       type (type_output_item),  pointer :: item
 
       allocate(file)
-      file%path = trim(restart_file)
+      file%path = 'restart'
+      file%postfix = output_id
       file%time_unit = time_unit_day
       file%time_step = 1
       file%first_julian = jul2
