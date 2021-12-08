@@ -53,7 +53,7 @@
    REALTYPE, public, dimension(:), allocatable, target :: tke,eps,L
 
 !  TKE at old time level
-   REALTYPE, public, dimension(:), allocatable   :: tkeo
+   REALTYPE, public, dimension(:), allocatable, target   :: tkeo
 
 !  buoyancy variance and its destruction
    REALTYPE, public, dimension(:), allocatable   :: kb,epsb

@@ -77,9 +77,12 @@
 ! !IROUTINE:
 !
 ! !INTERFACE:
-   subroutine open_restart()
+   subroutine open_restart(fn)
 !
 ! !DESCRIPTION:
+
+! !INPUT PARAMETERS:
+   character(len=*), intent(in) :: fn
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding and Jorn Bruggeman
@@ -89,7 +92,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   ierr = nf90_open('restart.nc',NF90_NOWRITE,ncid)
+   ierr = nf90_open(trim(fn) // '.nc',NF90_NOWRITE,ncid)
    if (ierr /= NF90_NOERR) call handle_err(ierr)
 
    end subroutine open_restart
