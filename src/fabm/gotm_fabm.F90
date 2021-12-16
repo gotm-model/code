@@ -477,7 +477,7 @@
       par_id  = model%get_bulk_variable_id(standard_variables%downwelling_photosynthetic_radiative_flux)
       swr_id  = model%get_bulk_variable_id(standard_variables%downwelling_shortwave_flux)
       pres_id = model%get_bulk_variable_id(standard_variables%pressure)
-      nuh_id  = model%get_bulk_variable_id(type_interior_standard_variable(name='vertical_tracer_diffusivity', units='m s-1'))
+      nuh_id  = model%get_bulk_variable_id(type_interior_standard_variable(name='vertical_tracer_diffusivity', units='m2 s-1'))
       lon_id       = model%get_horizontal_variable_id(standard_variables%longitude)
       lat_id       = model%get_horizontal_variable_id(standard_variables%latitude)
       windspeed_id = model%get_horizontal_variable_id(standard_variables%wind_speed)
