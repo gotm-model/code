@@ -775,9 +775,11 @@
    ! call humidity(hum_method,rh,airp,TTss-kelvin,airt) 
       call humidity(hum_method,hum%value,airp%value,tw,airt%value)
    ! call longwave_radiation(longwave_radiation_method, &
-                     !    lat,TTss,airt+kelvin,cloud,qb)    
-      call longwave_radiation(ql%method, &
-                        dlat,tw_k,ta_k,cloud%value,longwave_radiation_value)  
+                     !    lat,TTss,airt+kelvin,cloud,qb)   
+      call longwave_radiation(ql_%method,longwave_type, &
+                        dlat,tw_k,ta_k,cloud%value,ql_%value,longwave_radiation_value) 
+      !call longwave_radiation(ql%method, &
+                       ! dlat,tw_k,ta_k,cloud%value,longwave_radiation_value)  
       !call airsea_fluxes(fluxes_method, &
                      !TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh) 
       call airsea_fluxes(fluxes_method, &

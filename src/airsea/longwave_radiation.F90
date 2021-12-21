@@ -24,7 +24,7 @@
 ! !USES:
    use airsea_variables, only: emiss,bolz
    use airsea_variables, only: ea,qa
-   use airsea_variables, only: CLARK, HASTENRATH_LAMB, BIGNAMI, BERLIAND_BERLIAND, JOSEY1, JOSEY2
+   use airsea_variables, only: FILE, CLARK, HASTENRATH_LAMB, BIGNAMI, BERLIAND_BERLIAND, JOSEY1, JOSEY2
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -80,14 +80,14 @@
       !before
       !case(CLARK)
       !after
-      case(from_file)
+      case(FILE)
          select case(type)
             case(1)
                ql=qlobs
             case(2)
                ql = qlobs-bolz*emiss*(tw**4)
          end select
-      case(clark)
+      case(CLARK)
 !        Clark et al. (1974) formula.
 !        unit of ea is Pascal, must hPa
 !        Black body defect term, clouds, water vapor correction
