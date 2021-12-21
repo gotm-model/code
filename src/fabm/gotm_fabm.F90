@@ -105,6 +105,8 @@
                                 bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
                                 freshwater_impact,salinity_relaxation_to_freshwater_flux, &
                                 save_inputs, no_surface
+   
+
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
    REALTYPE,allocatable,dimension(:,:) :: ws
@@ -250,7 +252,7 @@
 !
 ! !INPUT PARAMETERS:
    class (type_settings), intent(inout) :: cfg
-   type (type_settings), pointer :: branch
+   type (type_settings), pointer :: branch, twig
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -266,6 +268,7 @@
    ! Initialize all namelist variables to reasonable default values.
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
+   
    call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
                 default=.true.) ! disable to check mass conservation
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
@@ -277,6 +280,7 @@
                 default=.false.)
    call cfg%get(repair_state, 'repair_state', 'clip state to minimum/maximum boundaries', &
                 default=.false.)
+
    branch => cfg%get_child('numerics', display=display_advanced)
    call branch%get(ode_method, 'ode_method', 'time integration scheme applied to source terms', &
                 options=(/ option(1, 'Forward Euler', 'FE'), option(2, 'Runge-Kutta 2', 'RK2'), option(3, 'Runge-Kutta 4', 'RK4'), &
@@ -306,6 +310,8 @@
                 options=(/option(-1, 'auto-detect (prefer fabm.yaml)', 'auto'), option(0, 'fabm.nml', 'nml'), option(1, 'fabm.yaml', 'yaml')/), &
                 default=-1, display=display_advanced)
 
+   
+    
    LEVEL2 'done.'
 
    end subroutine configure_gotm_fabm
@@ -699,6 +705,8 @@
    ! and link it to FABM.
    decimal_yearday = _ZERO_
    call model%link_scalar(standard_variables%number_of_days_since_start_of_the_year,decimal_yearday)
+   call model%link_scalar(standard_variables%timestep,dt)  !jpnote added 
+   
 
    allocate(Qsour(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (Qsour)'
