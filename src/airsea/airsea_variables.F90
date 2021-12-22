@@ -23,7 +23,8 @@
    REALTYPE, public, parameter         :: emiss=0.97
    REALTYPE, public, parameter         :: bolz=5.67e-8
    REALTYPE, public, parameter         :: kelvin=273.15
-   REALTYPE, public, parameter         :: const06=0.62198
+   REALTYPE, public, parameter         :: const06=0.62198 ! molecular weight ratio between water and dry air
+                                                          ! 18.01528 g/mol H2O, 28.97 g/mol dry air
    REALTYPE, public, parameter         :: rgas = 287.1    !
    REALTYPE, public, parameter         :: g = 9.81        ! [m/s2]
    REALTYPE, public, parameter         :: rho_0 = 1025.   ! [kg/m3]
@@ -46,6 +47,7 @@
    integer, public,  parameter         :: COGLEY=2
 
    ! Longwave radiation
+   integer, public,  parameter         :: FILE = 0                ! From file
    integer, public,  parameter         :: CLARK = 1               ! Clark et al, 1974
    integer, public,  parameter         :: HASTENRATH_LAMB = 2     ! Hastenrath and Lamb, 1978
    integer, public,  parameter         :: BIGNAMI = 3             ! Bignami et al., 1995 - Medsea
