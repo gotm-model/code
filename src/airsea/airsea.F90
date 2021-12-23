@@ -356,6 +356,8 @@
    stop 'init_airsea'
 91 FATAL 'I could not read airsea namelist'
    stop 'init_airsea'
+93 FATAL 'I could not open ',trim(meteo_file)
+   stop 'init_airsea'
 
    end subroutine init_airsea_nml
 !EOC
@@ -492,20 +494,11 @@
    call branch%get(calc_evaporation, 'calc_evaporation', 'calculate evaporation from meteorological conditions', &
                 default=.false.)
 
- !jpnote: before cherry pick 
    call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
                 minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
-   !call branch%get(ql, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
-               ! default=0._rk, method_file=0, method_constant=method_unsupported, &
-               !extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
-!jpnote: after cherry pick 1
-   !call branch%get(ql, 'longwave_radiation', 'longwave radiation', 'W/m^2', &
-   !call twig%get(ssuv_method, 'ssuv_method', 'wind treatment', &
-                !options=(/option(0, 'use absolute wind speed'), option(1, 'use wind speed relative to current velocity')/), default=1, display=display_advanced)
-!jpnote: after cherry pick 2
    call branch%get(ql_, 'longwave_radiation', 'longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-               extra_options=(/option(1, 'Clark'), option(2, 'Hastenrath'), option(3, 'Bignami'), option(4, 'Berliand'), option(5, 'Josey-1'), option(6, 'Josey-2')/), default_method=1, pchild=leaf)
+              extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK, pchild=leaf)
    call leaf%get(longwave_type, 'type', 'longwave type from file', &
                  options=(/option(1, 'net longwave radiation'), option(2, 'incoming longwave radiation')/), default=1)
 
@@ -703,8 +696,8 @@
       LEVEL3 'longwave radiation:'
       select case (ql_%method)
          case(0) ! Read from file instead of calculating
-            call register_input(ql_) !jpnote commmit 2 change
-         case(1)
+            call register_input(ql_) 
+         case(CLARK)
             LEVEL4 'using Clark formulation'
          case(HASTENRATH_LAMB)
             LEVEL4 'using Hastenrath formulation'
@@ -772,16 +765,9 @@
       tw_k= surface_temp
       ta_k  = airt%value + KELVIN
 
-   ! call humidity(hum_method,rh,airp,TTss-kelvin,airt) 
       call humidity(hum_method,hum%value,airp%value,tw,airt%value)
-   ! call longwave_radiation(longwave_radiation_method, &
-                     !    lat,TTss,airt+kelvin,cloud,qb)   
       call longwave_radiation(ql_%method,longwave_type, &
                         dlat,tw_k,ta_k,cloud%value,ql_%value,longwave_radiation_value) 
-      !call longwave_radiation(ql%method, &
-                       ! dlat,tw_k,ta_k,cloud%value,longwave_radiation_value)  
-      !call airsea_fluxes(fluxes_method, &
-                     !TTss-kelvin,airt,u10,v10,precip,evap,tx,ty,qe,qh) 
       call airsea_fluxes(fluxes_method, &
                      tw,airt%value,u10%value,v10%value,precip%value,evap,tx_%value,ty_%value,latent,sensible)
 
@@ -1034,7 +1020,7 @@
       call humidity(hum_method,hum,airp,tw,ta)
       call longwave_radiation(ql_%method,longwave_type, &
                               dlat,tw_k,ta_k,cloud,ql_%value,ql)
-      end if
+     ! end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
                          tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)

@@ -38,15 +38,6 @@
 !  Original author(s): Adolf Stips, Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-!cherry pick -- > jpnote to get rid of and add to airseavariables
-   !integer, parameter   :: from_file=0
-   !integer, parameter   :: clark=1      ! Clark et al, 1974
-   !integer, parameter   :: hastenrath=2 ! Hastenrath and Lamb, 1978
-   !integer, parameter   :: bignami=3    ! Bignami et al., 1995 - Medsea
-   !integer, parameter   :: berliand=4   ! Berliand and Berliand, 1952 - ROMS
-   !integer, parameter   :: josey1=5     ! Josey 2003, (J1,9)
-   !integer, parameter   :: josey2=6     ! Josey 2003, (J2,14)
-
    REALTYPE, parameter, dimension(91)  :: cloud_correction_factor = (/ &
      0.497202,     0.501885,     0.506568,     0.511250,     0.515933, &
      0.520616,     0.525299,     0.529982,     0.534665,     0.539348, &
@@ -77,9 +68,6 @@
    ccf= cloud_correction_factor(nint(abs(dlat))+1)
 
    select case(method)
-      !before
-      !case(CLARK)
-      !after
       case(FILE)
          select case(type)
             case(1)
