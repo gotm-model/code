@@ -5,13 +5,14 @@
 ! !ROUTINE: Calculate the net longwave radiation \label{sec:back-rad}
 !
 ! !INTERFACE:
-   subroutine longwave_radiation(method,dlat,tw,ta,cloud,ql)
+   subroutine longwave_radiation(method,type,dlat,tw,ta,cloud,qlobs,ql)
 !
 ! !DESCRIPTION:
 !
 ! Here, the net longwave radiation is calculated by means of one out
 ! of six methods, which depend on the value given to the parameter
 ! {\tt method}:
+! {\tt method}=0: read observations from a file
 ! {\tt method}=1: \cite{Clarketal74},
 ! {\tt method}=2: \cite{HastenrathLamb78},
 ! {\tt method}=3: \cite{Bignamietal95},
@@ -23,15 +24,15 @@
 ! !USES:
    use airsea_variables, only: emiss,bolz
    use airsea_variables, only: ea,qa
-   use airsea_variables, only: CLARK, HASTENRATH_LAMB, BIGNAMI, BERLIAND_BERLIAND, JOSEY1, JOSEY2
+   use airsea_variables, only: FILE, CLARK, HASTENRATH_LAMB, BIGNAMI, BERLIAND_BERLIAND, JOSEY1, JOSEY2
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: method
-   REALTYPE, intent(in)                :: dlat,tw,ta,cloud
+   integer, intent(in)                 :: method,type
+   REALTYPE, intent(in)                :: dlat,tw,ta,cloud,qlobs
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: ql
+   REALTYPE, intent(inout)               :: ql
 !
 ! !REVISION HISTORY:
 !  Original author(s): Adolf Stips, Hans Burchard & Karsten Bolding
@@ -60,7 +61,6 @@
 
    REALTYPE                  :: ccf
    REALTYPE                  :: x1,x2,x3
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -68,6 +68,13 @@
    ccf= cloud_correction_factor(nint(abs(dlat))+1)
 
    select case(method)
+      case(FILE)
+         select case(type)
+            case(1)
+               ql=qlobs
+            case(2)
+               ql = qlobs-bolz*emiss*(tw**4)
+         end select
       case(CLARK)
 !        Clark et al. (1974) formula.
 !        unit of ea is Pascal, must hPa
