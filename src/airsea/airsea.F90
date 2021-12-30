@@ -264,7 +264,7 @@
    REALTYPE                  :: const_tx,const_ty
    REALTYPE                  :: const_precip
    REALTYPE                  :: precip_factor
-   integer                  :: back_radiation_method 
+   integer                   :: back_radiation_method 
    integer                   :: heat_method
 
    namelist /airsea/ calc_fluxes, &
@@ -498,9 +498,9 @@
                 minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
    call branch%get(ql_, 'longwave_radiation', 'longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
-              extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK, pchild=leaf)
+               extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK, pchild=leaf)
    call leaf%get(longwave_type, 'type', 'longwave type from file', &
-                 options=(/option(1, 'net longwave radiation'), option(2, 'incoming longwave radiation')/), default=1)
+               options=(/option(1, 'net longwave radiation'), option(2, 'incoming longwave radiation')/), default=1)
 
          
    twig => branch%get_typed_child('albedo')
@@ -696,7 +696,7 @@
       LEVEL3 'longwave radiation:'
       select case (ql_%method)
          case(0) ! Read from file instead of calculating
-            call register_input(ql_) 
+            call register_input(ql_)
          case(CLARK)
             LEVEL4 'using Clark formulation'
          case(HASTENRATH_LAMB)
@@ -767,7 +767,7 @@
 
       call humidity(hum_method,hum%value,airp%value,tw,airt%value)
       call longwave_radiation(ql_%method,longwave_type, &
-                        dlat,tw_k,ta_k,cloud%value,ql_%value,longwave_radiation_value) 
+                        dlat,tw_k,ta_k,cloud%value,ql_%value,longwave_radiation_value)
       call airsea_fluxes(fluxes_method, &
                      tw,airt%value,u10%value,v10%value,precip%value,evap,tx_%value,ty_%value,latent,sensible)
 
@@ -1020,7 +1020,7 @@
       call humidity(hum_method,hum,airp,tw,ta)
       call longwave_radiation(ql_%method,longwave_type, &
                               dlat,tw_k,ta_k,cloud,ql_%value,ql)
-     ! end if
+
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
                          tw,ta,u10%value-ssu,v10%value-ssv,precip%value,evap,tx2,ty2,qe,qh)
