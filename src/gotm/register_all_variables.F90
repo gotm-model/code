@@ -162,7 +162,8 @@
    call fm%register('I_0', 'W/m2', 'incoming short wave radiation', standard_name='', data0d=I_0%value, category='surface/heat_fluxes')
    call fm%register('qh', 'W/m2', 'sensible heat flux', standard_name='', data0d=qh, category='surface/heat_fluxes')
    call fm%register('qe', 'W/m2', 'latent heat flux', standard_name='', data0d=qe, category='surface/heat_fluxes')
-   call fm%register('ql', 'W/m2', 'net longwave radiation', standard_name='', data0d=ql%value, category='surface/heat_fluxes')
+   call fm%register('ql', 'W/m2', 'net longwave radiation', standard_name='', data0d=ql, category='surface/heat_fluxes')
+   call fm%register('qlobs', 'W/m2', 'longwave radiation (obs)', standard_name='', data0d=ql_%value, category='surface/heat_fluxes')
    call fm%register('heat', 'W/m2', 'net surface heat flux', standard_name='', data0d=heat%value, category='surface/heat_fluxes')
    call fm%register('tx', 'm2/s2', 'wind stress (x)', standard_name='', data0d=tx, category='surface')
    call fm%register('ty', 'm2/s2', 'wind stress (y)', standard_name='', data0d=ty, category='surface')
@@ -189,7 +190,17 @@
    use stim_variables, only: Tice_surface,Tice,Tf
    use stim_variables, only: Hice, Hfrazil, dHis, dHib
    use stim_variables, only: surface_ice_energy,bottom_ice_energy
+  
+   use stim_variables, only: ice_hi,ice_hs,ice_uvic_hm,ice_uvic_ts,ice_uvic_tb,ice_uvic_swr_0,ice_uvic_precip_i,ice_uvic_sfall_i,ice_uvic_parb,ice_uvic_parui
+   use stim_variables, only: ice_uvic_Fh,ice_uvic_Fs,ice_uvic_Ff,ice_uvic_Sicebulk
+   use stim_variables, only: ice_uvic_topmelt,ice_uvic_botmelt,ice_uvic_termelt,ice_uvic_topgrowth,ice_uvic_botgrowth
+   use stim_variables, only: ice_uvic_Hmix,ice_uvic_Aice,ice_uvic_asnow,ice_uvic_Amelt,ice_uvic_dzi,ice_uvic_Cond,ice_uvic_rhoCp,ice_uvic_zi,ice_uvic_zice,ice_uvic_dzice,ice_uvic_Tice,ice_uvic_Sint,ice_uvic_Pari
+   use stim_variables, only: nilay
    use stim_variables, only: ocean_ice_flux
+  
+
+   use stim_flato, only: simass,snmass,meltmass,qb
+   
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -206,6 +217,10 @@
       call fm%register('T1', 'celsius', 'ice temperature (upper)', standard_name='', data0d=Tice(1), category='ice')
       call fm%register('T2', 'celsius', 'ice temperature (lower)', standard_name='', data0d=Tice(2), category='ice')
    end if
+   if (ice_model .eq. 4) then
+      call fm%register('T1', 'celsius', 'ice temperature (upper)', standard_name='', data0d=Tice(1), category='ice')
+      call fm%register('T2', 'celsius', 'ice temperature (lower)', standard_name='', data0d=Tice(2), category='ice')
+   end if
    call fm%register('Tf', 'celsius', 'ice freezing temperature', standard_name='', data0d=Tf, category='ice')
    call fm%register('Hice', 'm', 'ice thickness', standard_name='', data0d=Hice, category='ice')
    call fm%register('surface_ice_energy', 'J/m2', 'ice energy (surface)', standard_name='', data0d=surface_ice_energy, category='ice')
@@ -214,6 +229,45 @@
    call fm%register('Hfrazil', 'm', 'ice thickness (frazil)', standard_name='', data0d=Hfrazil, category='ice')
    call fm%register('dHis', 'm', 'ice growth (surface)', standard_name='', data0d=dHis, category='ice')
    call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice')
+
+!  Flato
+!  Vars from ice_uvic.F90
+   call fm%register('simass', 'kg/m2"', 'Ice mass per area', standard_name='', data0d=simass, category='ice')
+   call fm%register('snmass', 'kg/m2', 'Snow mass per area', standard_name='', data0d=snmass, category='ice')
+   call fm%register('meltmass', 'kg/m2', 'meltpond mass per area"', standard_name='', data0d=meltmass, category='ice')
+!  Public vars from ice.F90 
+   call fm%register('ice_hi', 'm', 'Ice thickness', standard_name='', data0d=ice_hi, category='ice')
+   call fm%register('ice_hs', 'm', 'Snow thickness', standard_name='', data0d=ice_hs, category='ice')
+   call fm%register('ice_hm', 'm', 'Meltpond thickness', standard_name='', data0d=ice_uvic_hm, category='ice')
+   call fm%register('ice_ts', 'K', 'ice/snow surface temperature', standard_name='', data0d=ice_uvic_ts, category='ice')
+   call fm%register('ice_tb', 'K', 'lowest ice layer temperature', standard_name='', data0d=ice_uvic_tb, category='ice')
+   call fm%register('swr_0', 'W/m^2', 'incidental shortwave radiation', standard_name='', data0d=ice_uvic_swr_0, category='ice')
+   call fm%register('precip_i', 'm/s', 'precipitation rate', standard_name='', data0d=ice_uvic_precip_i, category='ice')
+   call fm%register('sfall_i', 'm/s', 'snowfall rate', standard_name='', data0d=ice_uvic_sfall_i, category='ice')
+   call fm%register('ice_parb', 'W/m^2', 'lowest ice layer PAR', standard_name='', data0d=ice_uvic_parb, category='ice')
+   call fm%register('ice_parui', 'W/m^2', 'under ice PAR', standard_name='', data0d=ice_uvic_parui, category='ice')
+   call fm%register('Fh', 'W/m2', 'Heat flux at the interface', standard_name='', data0d=ice_uvic_fh, category='ice')
+   call fm%register('Fs', 'ppt m/s', 'Salt flux at the interface', standard_name='', data0d=ice_uvic_Fs, category='ice')
+   call fm%register('Ff', 'm/s', 'Freshwater flux at the interface', standard_name='', data0d=ice_uvic_Ff, category='ice')
+   call fm%register('Sice_bulk', 'ppt', 'Bulk sea ice salinity', standard_name='', data0d=ice_uvic_Sicebulk, category='ice')
+   call fm%register('topmelt', 'W/m2', 'Surface ice melt', standard_name='', data0d=ice_uvic_topmelt, category='ice')
+   call fm%register('botmelt', 'W/m2', 'Bottom ice melt', standard_name='', data0d=ice_uvic_botmelt, category='ice')
+   call fm%register('termelt', 'W/m2', 'Internal ice melt', standard_name='', data0d=ice_uvic_termelt, category='ice')
+   call fm%register('topgrowth', '', 'Surface ice growth (via submersion)', standard_name='', data0d=ice_uvic_topgrowth, category='ice')
+   call fm%register('botgrowth', '', 'Bottom ice growth', standard_name='', data0d=ice_uvic_botgrowth, category='ice')
+   call fm%register('Hmix', '', 'mixed layer heat storage', standard_name='', data0d=ice_uvic_Hmix, category='ice')
+   call fm%register('Aice', '', 'fraction of ice area that is bare ice', standard_name='', data0d=ice_uvic_Aice, category='ice')
+   call fm%register('Asnow', '', 'fraction of ice area that is snow covered', standard_name='', data0d=ice_uvic_Asnow, category='ice')
+   call fm%register('Amelt', '', 'fraction of ice area that is melt pond', standard_name='', data0d=ice_uvic_Amelt, category='ice')  
+   call fm%register('dzi', 'm', 'Ice layer thickness', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_dzi(2:nilay+1), category='ice') 
+   call fm%register('ice_uvic_zi', 'm', 'interface depth', standard_name='', dimensions=(/id_dim_zice/), data1d=ice_uvic_zi(2:nilay+2), category='ice') 
+   call fm%register('zice', 'm', 'interface depth', standard_name='', dimensions=(/id_dim_zice/),data1d=ice_uvic_zice(1:nilay+1), category='ice')
+   call fm%register('dzice', 'm', 'interface depth', standard_name='', dimensions=(/id_dim_dzice/), data1d=ice_uvic_dzice(1:nilay), category='ice')
+   call fm%register('Cond', 'W m-1 kg-1', 'Ice conductivity', standard_name='',dimensions=(/id_dim_dzice/),data1d=ice_uvic_Cond(2:nilay+1), category='ice')  
+   call fm%register('rhoCp', '10^6 J m-3 K-1', 'volum heat capacity', standard_name='',dimensions=(/id_dim_dzice/), data1d=ice_uvic_rhoCp(2:nilay+1), category='ice') 
+   call fm%register('Tice', 'Celsius', 'Ice slab temperature', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Tice(2:nilay+2), category='ice')       
+   call fm%register('Sint', 'W m-3', 'Ice SW internal heat', standard_name='',dimensions=(/id_dim_zice/),data1d=ice_uvic_Sint(2:nilay+2), category='ice')    
+   call fm%register('Pari', 'W m-2', 'PAR radiation in ice', standard_name='',dimensions=(/id_dim_zice/), data1d=ice_uvic_Pari(2:nilay+2), category='ice')  
 
    return
    end subroutine register_stim_variables

@@ -5,7 +5,7 @@
 ! !ROUTINE: The salinity equation \label{sec:salinity}
 !
 ! !INTERFACE:
-   subroutine salinity(nlev,dt,cnpar,nus,gams)
+   subroutine salinity(nlev,dt,cnpar,nus,gams,Fs,Ff) !jpnote passing in Fs and Ff from ice 
 !
 ! !DESCRIPTION:
 ! This subroutine computes the balance of salinity in the form
@@ -89,6 +89,11 @@
 !  non-local salinity flux (psu m/s)
    REALTYPE, intent(in)                :: gams(0:nlev)
 !
+!
+!  ice-ocean interaction salt and freshwater fluxes
+   REALTYPE, optional, intent(in)                :: Fs,Ff  
+
+!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
@@ -111,7 +116,10 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*(precip%value+evap)
+   DiffSup        = -S(nlev)*(precip%value+evap+Ff)-Fs !NSnote, check signs
+
+  !DiffSup        = -S(nlev)*(precip%value+evap) 
+
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided
