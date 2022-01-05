@@ -68,14 +68,14 @@
    ccf= cloud_correction_factor(nint(abs(dlat))+1)
 
    select case(method)
-      case(FILE)
-         select case(type)
-            case(1)
-               ql=qlobs
-            case(2)
-               ql = qlobs-bolz*emiss*(tw**4)
-         end select
-      case(CLARK)
+   case(FILE)
+      select case(type)
+         case(1)
+            ql=qlobs
+         case(2)
+            ql = qlobs-bolz*emiss*(tw**4)
+      end select
+   case(CLARK)
 !        Clark et al. (1974) formula.
 !        unit of ea is Pascal, must hPa
 !        Black body defect term, clouds, water vapor correction

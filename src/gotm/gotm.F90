@@ -776,15 +776,9 @@
 #ifdef _ICE_
       Qsw = I_0%value
 
-  !jpnote
       call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw, &  
                   surface_fluxes,surface_fluxes_uvic,julianday,secondsofday, &
                   I_0%value,airt%value,rho(nlev),rho_0,albedo,heat%value)
-     ! call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw, &  
-                !  surface_fluxes,surface_fluxes_uvic,julianday,secondsofday,longitude, &
-                !  latitude,I_0%value,airt%value,airp%value,hum%value, &
-                !  u10%value,v10%value,cloud%value,rho(nlev),rho_0,ql%method, &  
-                !  hum_method,fluxes_method,albedo,heat%value)
 
 #endif
 
