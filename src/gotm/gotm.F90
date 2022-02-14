@@ -491,7 +491,7 @@
 !  will be set by init_observations.
 !  However, before that happens, it is already used in updategrid.
 !  therefore, we set to to a reasonable default here.
-   w_adv%method = 0
+   w_adv_input%method = 0
 
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.
@@ -552,10 +552,10 @@
 #endif
 
 !  initialise mean fields
-   s(1:nlev) = sprof%data(1:nlev)
-   t(1:nlev) = tprof%data(1:nlev)
-   u(1:nlev) = uprof%data(1:nlev)
-   v(1:nlev) = vprof%data(1:nlev)
+   s(1:nlev) = sprof_input%data(1:nlev)
+   t(1:nlev) = tprof_input%data(1:nlev)
+   u(1:nlev) = uprof_input%data(1:nlev)
+   v(1:nlev) = vprof_input%data(1:nlev)
 
    call post_init_airsea(latitude,longitude)
 #if 0
@@ -586,9 +586,9 @@
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp_input%value)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
       end if
-      call set_env_gotm_fabm(latitude,longitude,dt,w_adv%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
+      call set_env_gotm_fabm(latitude,longitude,dt,w_adv_input%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                              nuh,h,w,bioshade(1:nlev),I_0%value,cloud_input%value,taub,wind,precip_input%value,evap,z(1:nlev), &
-                             A_%value,g1_%value,g2_%value,yearday,secondsofday,SRelaxTau(1:nlev),sProf%data(1:nlev), &
+                             A_%value,g1_%value,g2_%value,yearday,secondsofday,SRelaxTau(1:nlev),sprof_input%data(1:nlev), &
                              bio_albedo,bio_drag_scale)
 
       ! Initialize FABM input (data files with observations)
@@ -806,11 +806,11 @@
 #endif
 
 !     update temperature and salinity
-      if (sprof%method .ne. 0) then
+      if (sprof_input%method .ne. 0) then
          call salinity(nlev,dt,cnpar,swf,ssf,nus,gams)
       endif
 
-      if (tprof%method .ne. 0) then
+      if (tprof_input%method .ne. 0) then
          call temperature(nlev,dt,cnpar,I_0%value,swf,shf,nuh,gamh,rad)
       endif
 

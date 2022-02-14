@@ -162,13 +162,13 @@
    call fm%register('I_0', 'W/m2', 'incoming short wave radiation', standard_name='', data0d=I_0%value, category='surface/heat_fluxes')
    call fm%register('qh', 'W/m2', 'sensible heat flux', standard_name='', data0d=qh, category='surface/heat_fluxes')
    call fm%register('qe', 'W/m2', 'latent heat flux', standard_name='', data0d=qe, category='surface/heat_fluxes')
-   call fm%register('ql', 'W/m2', 'net longwave radiation', standard_name='', data0d=ql%value, category='surface/heat_fluxes')
+   call fm%register('ql', 'W/m2', 'net longwave radiation', standard_name='', data0d=ql_input%value, category='surface/heat_fluxes')
    call fm%register('heat', 'W/m2', 'net surface heat flux', standard_name='', data0d=heat_input%value, category='surface/heat_fluxes')
    call fm%register('tx', 'm2/s2', 'wind stress (x)', standard_name='', data0d=tx, category='surface')
    call fm%register('ty', 'm2/s2', 'wind stress (y)', standard_name='', data0d=ty, category='surface')
    call fm%register('sst', 'Celsius', 'sea surface temperature', standard_name='sea_surface_temperature', data0d=sst, category='surface')
-   call fm%register('sst_obs', 'Celsius', 'observed sea surface temperature', standard_name='sea_surface_temperature', data0d=sst_obs%value, category='surface')
-   call fm%register('sss', '1e-3', 'sea surface salinity', standard_name='sea_surface_salinity', data0d=sss%value, category='surface')
+   call fm%register('sst_obs', 'Celsius', 'observed sea surface temperature', standard_name='sea_surface_temperature', data0d=sst_obs_input%value, category='surface')
+   call fm%register('sss', '1e-3', 'sea surface salinity', standard_name='sea_surface_salinity', data0d=sss_input%value, category='surface')
 
    end subroutine register_airsea_variables
 !EOC
@@ -251,13 +251,13 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_observation_variables()'
-   call fm%register('temp_obs', 'Celsius', 'observed temperature', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof%data(1:nlev),category='temperature_and_salinity')
-   call fm%register('salt_obs', 'psu', 'observed salinity', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof%data(1:nlev),category='temperature_and_salinity')
-   call fm%register('u_obs', 'm/s', 'observed x-velocity', dimensions=(/id_dim_z/), data1d=uprof%data(1:nlev), category='velocities')
-   call fm%register('v_obs', 'm/s', 'observed y-velocity', dimensions=(/id_dim_z/), data1d=vprof%data(1:nlev), category='velocities')
+   call fm%register('temp_obs', 'Celsius', 'observed temperature', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof_input%data(1:nlev),category='temperature_and_salinity')
+   call fm%register('salt_obs', 'psu', 'observed salinity', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof_input%data(1:nlev),category='temperature_and_salinity')
+   call fm%register('u_obs', 'm/s', 'observed x-velocity', dimensions=(/id_dim_z/), data1d=uprof_input%data(1:nlev), category='velocities')
+   call fm%register('v_obs', 'm/s', 'observed y-velocity', dimensions=(/id_dim_z/), data1d=vprof_input%data(1:nlev), category='velocities')
 !KB   call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta,category='surface')
-   if (epsprof%method /= 0) then
-      call fm%register('eps_obs', 'm2/s3', 'observed dissipation', dimensions=(/id_dim_z/), data1d=epsprof%data(1:nlev), category='turbulence')
+   if (epsprof_input%method /= 0) then
+      call fm%register('eps_obs', 'm2/s3', 'observed dissipation', dimensions=(/id_dim_z/), data1d=epsprof_input%data(1:nlev), category='turbulence')
    end if
 
    return

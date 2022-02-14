@@ -72,10 +72,10 @@
    use meanflow,     only: Hice
 #endif
    use meanflow,     only: bioshade
-   use observations, only: dtdx,dtdy,t_adv
-   use observations, only: w_adv_discr,w_adv
-   use observations, only: tprof,TRelaxTau
-   use observations, only: A_,g1_,g2_
+   use observations, only: dtdx_input,dtdy_input,t_adv
+   use observations, only: w_adv_discr,w_adv_input
+   use observations, only: tprof_input,TRelaxTau
+   use observations, only: A_input,g1_input,g2_input
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -169,7 +169,7 @@
       z=z+h(i+1)
 
 !     compute short wave radiation
-      rad(i)=I_0*(A_%value*exp(-z/g1_%value)+(1.-A_%value)*exp(-z/g2_%value)*bioshade(i+1))
+      rad(i)=I_0*(A_input%value*exp(-z/g1_input%value)+(1.-A_input%value)*exp(-z/g2_input%value)*bioshade(i+1))
 
 !     compute total diffusivity
       avh(i)=nuh(i)+avmolT
@@ -196,19 +196,19 @@
 !  ... and from lateral advection
    if (t_adv) then
       do i=1,nlev
-         Qsour(i) = Qsour(i) - u(i)*dtdx%data(i) - v(i)*dtdy%data(i)
+         Qsour(i) = Qsour(i) - u(i)*dtdx_input%data(i) - v(i)*dtdy_input%data(i)
       end do
    end if
 
 !  do advection step
-   if (w_adv%method.ne.0) then
+   if (w_adv_input%method.ne.0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
    end if
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf%data,T)
+                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tprof_input%data,T)
    return
    end subroutine temperature
 !EOC

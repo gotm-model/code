@@ -76,7 +76,7 @@
 !
 !  surface shortwave radiation
 !  and surface heat flux (W/m^2)
-   type (type_scalar_input), public, target :: I_0, ql
+   type (type_scalar_input), public, target :: I_0, ql_input
    REALTYPE, public, target :: albedo
    type (type_scalar_input), public, target :: heat_input
    REALTYPE, public :: qe,qh
@@ -93,8 +93,8 @@
 !  sea surface temperature (degC), sea surface salinity (psu),
 !  sea surface current components (m/s)
    REALTYPE, public                    :: sst
-   type (type_scalar_input), public, target            :: sst_obs
-   type (type_scalar_input), public, target            :: sss
+   type (type_scalar_input), public, target            :: sst_obs_input
+   type (type_scalar_input), public, target            :: sss_input
    REALTYPE, public                    :: ssu
    REALTYPE, public                    :: ssv
 
@@ -341,9 +341,9 @@
    call tx_input%configure(method=momentum_method, path=momentumflux_file, index=1, constant_value=const_tx)
    call ty_input%configure(method=momentum_method, path=momentumflux_file, index=2, constant_value=const_ty)
    call heat_input%configure(method=heat_method, path=heatflux_file, index=1, scale_factor=shf_factor, constant_value=const_heat)
-   call ql%configure(method=back_radiation_method, path=back_radiation_file, index=1)
-   call sst_obs%configure(method=sst_method, path=sst_file, index=1)
-   call sss%configure(method=sss_method, path=sss_file, index=1)
+   call ql_input%configure(method=back_radiation_method, path=back_radiation_file, index=1)
+   call sst_obs_input%configure(method=sst_method, path=sst_file, index=1)
+   call sss_input%configure(method=sss_method, path=sss_file, index=1)
    call precip_input%configure(method=precip_method, path=precip_file, index=1, scale_factor=precip_factor, constant_value=const_precip)
 
    if (.not. calc_fluxes) fluxes_method = 0
@@ -493,7 +493,7 @@
 
    call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
                 minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
-   call branch%get(ql, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
+   call branch%get(ql_input, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
                extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
 
@@ -503,9 +503,9 @@
    call twig%get(const_albedo, 'constant_value', 'constant value to use throughout the simulation', '1', &
                 minimum=0._rk,maximum=1._rk,default=0._rk)
 
-   call branch%get(sst_obs, 'sst', 'observed surface temperature', 'Celsius', &
+   call branch%get(sst_obs_input, 'sst', 'observed surface temperature', 'Celsius', &
                 default=0._rk, display=display_advanced)
-   call branch%get(sss, 'sss', 'observed surface salinity', 'psu', &
+   call branch%get(sss_input, 'sss', 'observed surface salinity', 'psu', &
                 default=0._rk, display=display_advanced)
    LEVEL2 'done'
    return
@@ -688,9 +688,9 @@
          case default
       end select
       LEVEL3 'net longwave radiation:'
-      select case (ql%method)
+      select case (ql_input%method)
          case(0) ! Read from file instead of calculating
-            call register_input(ql)
+            call register_input(ql_input)
          case(CLARK)
             LEVEL4 'using Clark formulation'
          case(HASTENRATH_LAMB)
@@ -723,10 +723,10 @@
    LEVEL2 'calc_evaporation= ',calc_evaporation
 
 !  The observed sea surface temperature
-   call register_input(sst_obs)
+   call register_input(sst_obs_input)
 
 !  The observed sea surface salinity
-   call register_input(sss)
+   call register_input(sss_input)
    LEVEL2 'done'
    return
 
@@ -760,7 +760,7 @@
       STDERR 'Stefan# ',qh/qe
    end if
 #endif
-   longwave_radiation = ql%value
+   longwave_radiation = ql_input%value
    return
    end subroutine surface_fluxes
 !EOC
@@ -835,7 +835,7 @@
 
 !  If reading SST from file, overwrite current (model) SST with observed value,
 !  to be used in output.
-   if (sst_obs%method==FROMFILE) sst = sst_obs%value
+   if (sst_obs_input%method==FROMFILE) sst = sst_obs_input%value
 
 #ifndef INTERPOLATE_METEO
    if (init_saved_vars) init_saved_vars = .false.
@@ -982,9 +982,9 @@
       cloud1 = cloud2
 
       call humidity(hum_method,hum_input,airp_input,tw,ta)
-      if (ql%method .gt. 0) then
-         call longwave_radiation(ql%method, &
-                                 dlat,tw_k,ta_k,cloud,ql)
+      if (ql_input%method .gt. 0) then
+         call longwave_radiation(ql_input%method, &
+                                 dlat,tw_k,ta_k,cloud,ql_input)
       end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
@@ -993,7 +993,7 @@
       call airsea_fluxes(fluxes_method, &
                          tw,ta,u10_input%value-ssu,v10_input%value-ssv,precip_input%value,evap,tx2,ty2,qe,qh)
 #endif
-      h2     = ql%value+qe+qh
+      h2     = ql_input%value+qe+qh
       cloud2 = cloud%value
 
       if (init_saved_vars) then
@@ -1034,13 +1034,13 @@
    end if
 
    call humidity(hum_method,hum_input%value,airp_input%value,tw,ta)
-   if (ql%method .gt. 0) then
-      call longwave_radiation(ql%method, &
-                          dlat,tw_k,ta_k,cloud_input%value,ql%value)
+   if (ql_input%method .gt. 0) then
+      call longwave_radiation(ql_input%method, &
+                          dlat,tw_k,ta_k,cloud_input%value,ql_input%value)
    endif
    call airsea_fluxes(fluxes_method, &
                       tw,ta,u10_input%value-ssu,v10_input%value-ssv,precip_input%value,evap,tx_input%value,ty_input%value,qe,qh)
-   heat_input%value = (ql%value+qe+qh)
+   heat_input%value = (ql_input%value+qe+qh)
 #endif
 
    w = sqrt((u10_input%value-ssu)*(u10_input%value-ssu)+(v10_input%value-ssv)*(v10_input%value-ssv))

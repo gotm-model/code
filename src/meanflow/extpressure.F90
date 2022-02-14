@@ -34,7 +34,7 @@
 !
 ! !USES:
    use meanflow,     only: u,v,h
-   use observations, only: dpdx,dpdy,h_press
+   use observations, only: dpdx_input,dpdy_input,h_press_input
 !
    IMPLICIT NONE
 !
@@ -66,13 +66,13 @@
          i   =0
 222      i=i+1
          z(i+1)=z(i)+0.5*(h(i)+h(i+1))
-         if ((z(i+1).lt.h_press%value).and.(i.lt.nlev)) goto 222
-         rat=(h_press%value-z(i))/(z(i+1)-z(i))
+         if ((z(i+1).lt.h_press_input%value).and.(i.lt.nlev)) goto 222
+         rat=(h_press_input%value-z(i))/(z(i+1)-z(i))
          uint=rat*u(i+1)+(1-rat)*u(i)
          vint=rat*v(i+1)+(1-rat)*v(i)
          do i=1,nlev
-            u(i)=u(i)+dpdx%value-uint
-            v(i)=v(i)+dpdy%value-vint
+            u(i)=u(i)+dpdx_input%value-uint
+            v(i)=v(i)+dpdy_input%value-vint
          end do
       case (2)
 !     vertical mean of current prescribed
@@ -87,8 +87,8 @@
          uint=uint/hint
          vint=vint/hint
          do i=1,nlev
-            u(i)=u(i)+dpdx%value-uint
-            v(i)=v(i)+dpdy%value-vint
+            u(i)=u(i)+dpdx_input%value-uint
+            v(i)=v(i)+dpdy_input%value-vint
          end do
       case default
 !     do nothing if method=0, because then

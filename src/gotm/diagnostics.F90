@@ -95,7 +95,7 @@
    use turbulence,   only: kappa
    use turbulence,   only: num
    use turbulence,   only: tke
-   use observations, only: tprof,b_obs_sbf
+   use observations, only: tprof_input,b_obs_sbf
    use eqstate,      only: eqstate1
    IMPLICIT NONE
 !
@@ -205,7 +205,7 @@
    heat_obs=0
    do i=1,nlev
       heat_sim=heat_sim+T(i)*h(i)*rho_0*cp
-      heat_obs=heat_obs+tprof%data(i)*h(i)*rho_0*cp
+      heat_obs=heat_obs+tprof_input%data(i)*h(i)*rho_0*cp
    end do
    if (init_diagnostics) then
       heat_sim0=heat_sim
