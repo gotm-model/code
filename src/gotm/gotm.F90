@@ -58,8 +58,8 @@
    use airsea_variables, only: qa,ta
 
 #ifdef _ICE_
-   use ice, only: ice_model
-   use ice, only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
+   use gotm_stim_driver, only: ice_model
+   use gotm_stim_driver, only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
    use stim_variables, only: Hice, rho_ice
    use stim_variables, only: Tice_surface,albedo_ice,transmissivity
    use stim_variables, only: melt_rate,T_melt,S_melt
@@ -147,8 +147,6 @@
       procedure :: calendar_date => gotm_host_calendar_date
    end type
 
-!KB   REALTYPE :: tx=_ZERO_
-!KB   REALTYPE :: ty=_ZERO_
    REALTYPE :: swf=_ZERO_ ! surface water flux
    REALTYPE :: shf=_ZERO_ ! surface heat flux
    REALTYPE :: ssf=_ZERO_ ! surface salinity flux
@@ -588,7 +586,7 @@
       end if
       call set_env_gotm_fabm(latitude,longitude,dt,w_adv_input%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                              nuh,h,w,bioshade(1:nlev),I_0%value,cloud_input%value,taub,wind,precip_input%value,evap,z(1:nlev), &
-                             A_%value,g1_%value,g2_%value,yearday,secondsofday,SRelaxTau(1:nlev),sprof_input%data(1:nlev), &
+                             A_input%value,g1_input%value,g2_input%value,yearday,secondsofday,SRelaxTau(1:nlev),sprof_input%data(1:nlev), &
                              bio_albedo,bio_drag_scale)
 
       ! Initialize FABM input (data files with observations)

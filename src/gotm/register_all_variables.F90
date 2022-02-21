@@ -185,7 +185,7 @@
 ! !DESCRIPTION:
 !
 ! !USES:
-   use ice, only: ice_model
+   use gotm_stim_driver, only: ice_model
    use stim_variables, only: Tice_surface,Tice,Tf
    use stim_variables, only: Hice, Hfrazil, dHis, dHib
    use stim_variables, only: surface_ice_energy,bottom_ice_energy

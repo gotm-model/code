@@ -736,7 +736,6 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
-!KB   subroutine post_init_observations(julday,secs,depth,nlev,z,h,gravity,rho_0)
    subroutine post_init_observations(depth,nlev,z,h,gravity,rho_0)
 !
 ! !DESCRIPTION:
@@ -752,7 +751,6 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-!KB   integer, intent(in)                 :: julday,secs
    REALTYPE, intent(in)                :: depth
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)

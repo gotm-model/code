@@ -180,8 +180,6 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-
-!KB   if (dsdx%method .ne. 0 .or. dsdy%method .ne. 0 .or. dtdx%method .ne. 0 .or. dtdy%method .ne. 0) then
    if (int_press_type == 1) then ! T and S gradients
 
 !     initialize local depth
@@ -251,8 +249,6 @@
       end if
 
    endif
-
-   return
    end subroutine intpressure
 
 !EOC
