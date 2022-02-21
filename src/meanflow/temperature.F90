@@ -134,24 +134,16 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-!KB - the logic here needs to be sorted out - for now only works with _ICE_ and likely only with basal_melt.
-#ifndef _ICE_
+
+!  HB:
 !  Note that this is the surface temperature flux for rigid-lid models like GOTM.
 !  For a free surface model the surface temperature flux must be - -hflux/(rho_0*cp)
-!KB   if (plume) then   !HB
-          DiffTup    = -T(nlev)*wflux-hflux/(rho_0*cp)
-!KB   else
-! simple sea ice model: surface heat flux switched off for sst < freezing temp
-      if (T(nlev) .le. -0.0575*S(nlev)) then
-          DiffTup    = max(_ZERO_,heat/(rho_0*cp))
-          Hice = _ONE_
-      else
-          DiffTup    = heat/(rho_0*cp)
-          Hice = _ZERO_
-      end if
-   end if
-#else
    DiffTup = -T(nlev)*wflux-hflux/(rho_0*cp)
+#ifndef _ICE_
+   ! simple sea ice model: surface heat flux switched off for sst < freezing temp
+   if (T(nlev) .le. -0.0575*S(nlev)) then
+       DiffTup    = min(_ZERO_,DiffTup)
+   end if
 #endif
    DiffTdw        = _ZERO_
 

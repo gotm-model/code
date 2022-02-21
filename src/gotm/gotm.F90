@@ -774,11 +774,10 @@
          ssf=ocean_ice_salt_flux
          tx = _ZERO_
          ty = _ZERO_
-!KB         heat_input%value = _ZERO_
       else
 #endif
          swf=precip_input%value+evap
-         shf=heat_input%value
+         shf=-heat_input%value !KB must be updated in next release version where fluxes will follow positive -z-coordinate
          tx = tx/rho_0
          ty = ty/rho_0
 #ifdef _ICE_
