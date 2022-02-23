@@ -128,28 +128,28 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_airsea_variables()'
-   call fm%register('u10', 'm/s', '10m wind (x)', standard_name='', data0d=u10%value, category='surface')
-   call fm%register('v10', 'm/s', '10m wind (y)', standard_name='', data0d=v10%value, category='surface')
-   call fm%register('airt', 'Celsius', '2m air temperature', standard_name='', data0d=airt%value, category='surface')
-   call fm%register('airp', 'Pa', 'air pressure', standard_name='', data0d=airp%value, category='surface')
+   call fm%register('u10', 'm/s', '10m wind (x)', standard_name='', data0d=u10_input%value, category='surface')
+   call fm%register('v10', 'm/s', '10m wind (y)', standard_name='', data0d=v10_input%value, category='surface')
+   call fm%register('airt', 'Celsius', '2m air temperature', standard_name='', data0d=airt_input%value, category='surface')
+   call fm%register('airp', 'Pa', 'air pressure', standard_name='', data0d=airp_input%value, category='surface')
    select case (hum_method)
       case (1) ! relative humidity in % given
-         call fm%register('hum', '%', 'relative humidity', standard_name='', data0d=hum%value, category='surface')
+         call fm%register('hum', '%', 'relative humidity', standard_name='', data0d=hum_input%value, category='surface')
       case (2)  ! Specific humidity from wet bulb temperature
-         call fm%register('hum', 'Celsius', 'wet bulb temperature', standard_name='', data0d=hum%value, category='surface')
+         call fm%register('hum', 'Celsius', 'wet bulb temperature', standard_name='', data0d=hum_input%value, category='surface')
       case (3)  ! Specific humidity from dew point temperature
-         call fm%register('hum', 'Celsius', 'dew point temperature', standard_name='', data0d=hum%value, category='surface')
+         call fm%register('hum', 'Celsius', 'dew point temperature', standard_name='', data0d=hum_input%value, category='surface')
       case (4)  ! Specific humidity given
-         call fm%register('hum', 'kg/kg', 'specific humidity', standard_name='', data0d=hum%value, category='surface')
+         call fm%register('hum', 'kg/kg', 'specific humidity', standard_name='', data0d=hum_input%value, category='surface')
    end select
    call fm%register('es', 'Pa', 'saturation water vapor pressure', standard_name='', data0d=es, category='surface')
    call fm%register('ea', 'Pa', 'actual water vapor presure', standard_name='', data0d=ea, category='surface')
    call fm%register('qs', 'kg/kg', 'saturation specific humidity', standard_name='', data0d=qs, category='surface')
    call fm%register('qa', 'kg/kg', 'specific humidity', standard_name='', data0d=qa, category='surface')
    call fm%register('rhoa', 'kg/m3', 'air density', standard_name='', data0d=rhoa, category='surface')
-   call fm%register('cloud', '', 'cloud cover', standard_name='', data0d=cloud%value, category='surface')
+   call fm%register('cloud', '', 'cloud cover', standard_name='', data0d=cloud_input%value, category='surface')
    call fm%register('albedo', '', 'albedo', standard_name='', data0d=albedo, category='surface')
-   call fm%register('precip', 'm/s', 'precipitation', standard_name='', data0d=precip%value, category='surface')
+   call fm%register('precip', 'm/s', 'precipitation', standard_name='', data0d=precip_input%value, category='surface')
    call fm%register('evap', 'm/s', 'evaporation', standard_name='', data0d=evap, category='surface')
 
    call fm%register('int_precip', 'm', 'integrated precipitation', standard_name='', data0d=int_precip, category='surface')
@@ -162,13 +162,13 @@
    call fm%register('I_0', 'W/m2', 'incoming short wave radiation', standard_name='', data0d=I_0%value, category='surface/heat_fluxes')
    call fm%register('qh', 'W/m2', 'sensible heat flux', standard_name='', data0d=qh, category='surface/heat_fluxes')
    call fm%register('qe', 'W/m2', 'latent heat flux', standard_name='', data0d=qe, category='surface/heat_fluxes')
-   call fm%register('ql', 'W/m2', 'net longwave radiation', standard_name='', data0d=ql%value, category='surface/heat_fluxes')
-   call fm%register('heat', 'W/m2', 'net surface heat flux', standard_name='', data0d=heat%value, category='surface/heat_fluxes')
+   call fm%register('ql', 'W/m2', 'net longwave radiation', standard_name='', data0d=ql_input%value, category='surface/heat_fluxes')
+   call fm%register('heat', 'W/m2', 'net surface heat flux', standard_name='', data0d=heat_input%value, category='surface/heat_fluxes')
    call fm%register('tx', 'm2/s2', 'wind stress (x)', standard_name='', data0d=tx, category='surface')
    call fm%register('ty', 'm2/s2', 'wind stress (y)', standard_name='', data0d=ty, category='surface')
    call fm%register('sst', 'Celsius', 'sea surface temperature', standard_name='sea_surface_temperature', data0d=sst, category='surface')
-   call fm%register('sst_obs', 'Celsius', 'observed sea surface temperature', standard_name='sea_surface_temperature', data0d=sst_obs%value, category='surface')
-   call fm%register('sss', '1e-3', 'sea surface salinity', standard_name='sea_surface_salinity', data0d=sss%value, category='surface')
+   call fm%register('sst_obs', 'Celsius', 'observed sea surface temperature', standard_name='sea_surface_temperature', data0d=sst_obs_input%value, category='surface')
+   call fm%register('sss', '1e-3', 'sea surface salinity', standard_name='sea_surface_salinity', data0d=sss_input%value, category='surface')
 
    end subroutine register_airsea_variables
 !EOC
@@ -185,11 +185,15 @@
 ! !DESCRIPTION:
 !
 ! !USES:
-   use ice, only: ice_model
+   use gotm_stim_driver, only: ice_model
    use stim_variables, only: Tice_surface,Tice,Tf
    use stim_variables, only: Hice, Hfrazil, dHis, dHib
    use stim_variables, only: surface_ice_energy,bottom_ice_energy
    use stim_variables, only: ocean_ice_flux
+   use stim_variables, only: melt_rate
+   use stim_variables, only: T_melt,S_melt
+   use stim_variables, only: ocean_ice_heat_flux
+   use stim_variables, only: ocean_ice_salt_flux
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -214,6 +218,11 @@
    call fm%register('Hfrazil', 'm', 'ice thickness (frazil)', standard_name='', data0d=Hfrazil, category='ice')
    call fm%register('dHis', 'm', 'ice growth (surface)', standard_name='', data0d=dHis, category='ice')
    call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice')
+   call fm%register('melt_rate', 'm/s', 'ice melt rate', standard_name='', data0d=melt_rate, category='ice')
+   call fm%register('Tmelt', 'C', 'melt layer temperature', standard_name='', data0d=T_melt, category='ice')
+   call fm%register('Smelt', 'PSU', 'melt layer salinity', standard_name='', data0d=S_melt, category='ice')
+   call fm%register('ocean_ice_salt_flux', 'PSU', 'ocean/ice salt flux', standard_name='', data0d=ocean_ice_salt_flux, category='ice')
+   call fm%register('ocean_ice_heat_flux', 'W/m2', 'ocean/ice heat flux', standard_name='', data0d=ocean_ice_heat_flux, category='ice')
 
    return
    end subroutine register_stim_variables
@@ -242,13 +251,13 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_observation_variables()'
-   call fm%register('temp_obs', 'Celsius', 'temperature (observed)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof%data(1:nlev),category='temperature_and_salinity')
-   call fm%register('salt_obs', 'psu', 'salinity (observed)', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof%data(1:nlev),category='temperature_and_salinity')
-   call fm%register('u_obs', 'm/s', 'observed x-velocity', dimensions=(/id_dim_z/), data1d=uprof%data(1:nlev), category='velocities')
-   call fm%register('v_obs', 'm/s', 'observed y-velocity', dimensions=(/id_dim_z/), data1d=vprof%data(1:nlev), category='velocities')
-   call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta%value,category='surface')
-   if (epsprof%method /= 0) then
-      call fm%register('eps_obs', 'm2/s3', 'observed dissipation', dimensions=(/id_dim_z/), data1d=epsprof%data(1:nlev), category='turbulence')
+   call fm%register('temp_obs', 'Celsius', 'temperature (observed)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof_input%data(1:nlev),category='temperature_and_salinity')
+   call fm%register('salt_obs', 'psu', 'salinity (observed)', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof_input%data(1:nlev),category='temperature_and_salinity')
+   call fm%register('u_obs', 'm/s', 'x-velocity (observed)', dimensions=(/id_dim_z/), data1d=uprof_input%data(1:nlev), category='velocities')
+   call fm%register('v_obs', 'm/s', 'y-velocity (observed)', dimensions=(/id_dim_z/), data1d=vprof_input%data(1:nlev), category='velocities')
+!KB   call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta%value,category='surface')
+   if (epsprof_input%method /= 0) then
+      call fm%register('eps_obs', 'm2/s3', 'observed dissipation', dimensions=(/id_dim_z/), data1d=epsprof_input%data(1:nlev), category='turbulence')
    end if
 
    return
@@ -377,6 +386,7 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'register_meanflow_variables()'
+   call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta,category='surface')
    call fm%register('temp', 'Celsius', 'temperature (conservative)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=T(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
    call fm%register('temp_p', 'Celsius', 'temperature (potential)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Tp(1:nlev),category='temperature_and_salinity')
    call fm%register('temp_i', 'Celsius', 'temperature (in-situ)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Ti(1:nlev),category='temperature_and_salinity')
@@ -417,10 +427,10 @@
       call fm%register('Af', 'm^2', 'hypsograph at grid interfaces', standard_name='??', dimensions=(/id_dim_z/), data1d=Af(1:nlev), category='column_structure')
    end if
 #endif
-   call fm%register('z', 'm', 'depth', standard_name='??', dimensions=(/id_dim_z/), data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='column_structure',field=field)
+   call fm%register('z', 'm', 'depth (center)', standard_name='??', dimensions=(/id_dim_z/), data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='column_structure',field=field)
    call field%attributes%set('positive', 'up')
    call field%attributes%set('axis', 'Z')
-   call fm%register('zi', 'm', 'interface depth', standard_name='??', dimensions=(/id_dim_zi/), data1d=zi(0:nlev), coordinate_dimension=id_dim_zi,category='column_structure',field=field)
+   call fm%register('zi', 'm', 'depth (interface)', standard_name='??', dimensions=(/id_dim_zi/), data1d=zi(0:nlev), coordinate_dimension=id_dim_zi,category='column_structure',field=field)
    call field%attributes%set('positive', 'up')
    call field%attributes%set('axis', 'Z')
    call fm%register('h', 'm', 'layer thickness', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='column_structure',part_of_state=.true.)

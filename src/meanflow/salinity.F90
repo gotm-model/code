@@ -5,7 +5,7 @@
 ! !ROUTINE: The salinity equation \label{sec:salinity}
 !
 ! !INTERFACE:
-   subroutine salinity(nlev,dt,cnpar,nus,gams)
+   subroutine salinity(nlev,dt,cnpar,wflux,sflux,nus,gams)
 !
 ! !DESCRIPTION:
 ! This subroutine computes the balance of salinity in the form
@@ -63,10 +63,9 @@
 ! !USES:
    use meanflow,     only: avmols
    use meanflow,     only: h,u,v,w,S,avh
-   use observations, only: dsdx,dsdy,s_adv
-   use observations, only: w_adv_discr,w_adv
-   use observations, only: sprof,SRelaxTau
-   use airsea_driver,only: precip,evap
+   use observations, only: dsdx_input,dsdy_input,s_adv
+   use observations, only: w_adv_discr,w_adv_input
+   use observations, only: sprof_input,SRelaxTau
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -77,11 +76,17 @@
 !  number of vertical layers
    integer, intent(in)                 :: nlev
 
-!   time step (s)
+!  time step (s)
    REALTYPE, intent(in)                :: dt
 
 !  numerical "implicitness" parameter
    REALTYPE, intent(in)                :: cnpar
+
+!  precip-evap - or - melt rate under glacial ice (m/s)
+   REALTYPE, intent(in)                :: wflux
+
+!  upward surface salinity flux under glacial ice (psu m/s)
+   REALTYPE, intent(in)                :: sflux
 
 !  diffusivity of salinity (m^2/s)
    REALTYPE, intent(in)                :: nus(0:nlev)
@@ -104,14 +109,13 @@
    REALTYPE                  :: AdvSup,AdvSdw
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
-!
 !-----------------------------------------------------------------------
 !BOC
 !
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*(precip%value+evap)
+   DiffSup        = -S(nlev)*wflux-sflux  
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided
@@ -138,20 +142,20 @@
 !  ... and from lateral advection
    if (s_adv) then
       do i=1,nlev
-         Qsour(i) = Qsour(i) - u(i)*dsdx%data(i) - v(i)*dsdy%data(i)
+         Qsour(i) = Qsour(i) - u(i)*dsdx_input%data(i) - v(i)*dsdy_input%data(i)
       end do
    end if
 
 
 !  do advection step
-   if (w_adv%method .ne. 0) then
+   if (w_adv_input%method .ne. 0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvSup,AdvSdw,w_adv_discr,adv_mode,S)
    end if
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf%data,S)
+                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sprof_input%data,S)
 
    return
    end subroutine salinity
