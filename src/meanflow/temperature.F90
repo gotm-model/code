@@ -5,7 +5,7 @@
 ! !ROUTINE: The temperature equation \label{sec:temperature}
 !
 ! !INTERFACE:
-   subroutine temperature(nlev,dt,cnpar,I_0,heat,nuh,gamh,rad)
+   subroutine temperature(nlev,dt,cnpar,I_0,wflux,hflux,nuh,gamh,rad)
 !
 ! !DESCRIPTION:
 ! This subroutine computes the balance of heat in the form
@@ -72,10 +72,10 @@
    use meanflow,     only: Hice
 #endif
    use meanflow,     only: bioshade
-   use observations, only: dtdx,dtdy,t_adv
-   use observations, only: w_adv_discr,w_adv
-   use observations, only: tprof,TRelaxTau
-   use observations, only: A_,g1_,g2_
+   use observations, only: dtdx_input,dtdy_input,t_adv
+   use observations, only: w_adv_discr,w_adv_input
+   use observations, only: tprof_input,TRelaxTau
+   use observations, only: A_input,g1_input,g2_input
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -95,16 +95,19 @@
 !  surface short waves radiation  (W/m^2)
    REALTYPE, intent(in)                :: I_0
 
+!  surface water flux (m/s) - e.g. precip-evap or melt rate under ice
+   REALTYPE, intent(in)                :: wflux
+
 !  surface heat flux (W/m^2)
 !  (negative for heat loss)
-   REALTYPE, intent(in)                :: heat
+   REALTYPE, intent(in)                :: hflux
 
 !  diffusivity of heat (m^2/s)
    REALTYPE, intent(in)                :: nuh(0:nlev)
 
 !  non-local heat flux (Km/s)
    REALTYPE, intent(in)                :: gamh(0:nlev)
-!
+
 ! !OUTPUT PARAMETERS:
 !  shortwave radiation profile (W/m^2)
    REALTYPE                            :: rad(0:nlev)
@@ -125,24 +128,22 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: z
-!
 !-----------------------------------------------------------------------
 !BOC
 !
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
+
+!  HB:
+!  Note that this is the surface temperature flux for rigid-lid models like GOTM.
+!  For a free surface model the surface temperature flux must be - -hflux/(rho_0*cp)
+   DiffTup = -T(nlev)*wflux-hflux/(rho_0*cp)
 #ifndef _ICE_
-! simple sea ice model: surface heat flux switched off for sst < freezing temp
+   ! simple sea ice model: surface heat flux switched off for sst < freezing temp
    if (T(nlev) .le. -0.0575*S(nlev)) then
-       DiffTup    = max(_ZERO_,heat/(rho_0*cp))
-       Hice = _ONE_
-   else
-       DiffTup    = heat/(rho_0*cp)
-       Hice = _ZERO_
+       DiffTup    = min(_ZERO_,DiffTup)
    end if
-#else
-   DiffTup    = heat/(rho_0*cp)
 #endif
    DiffTdw        = _ZERO_
 
@@ -160,7 +161,7 @@
       z=z+h(i+1)
 
 !     compute short wave radiation
-      rad(i)=I_0*(A_%value*exp(-z/g1_%value)+(1.-A_%value)*exp(-z/g2_%value)*bioshade(i+1))
+      rad(i)=I_0*(A_input%value*exp(-z/g1_input%value)+(1.-A_input%value)*exp(-z/g2_input%value)*bioshade(i+1))
 
 !     compute total diffusivity
       avh(i)=nuh(i)+avmolT
@@ -187,19 +188,19 @@
 !  ... and from lateral advection
    if (t_adv) then
       do i=1,nlev
-         Qsour(i) = Qsour(i) - u(i)*dtdx%data(i) - v(i)*dtdy%data(i)
+         Qsour(i) = Qsour(i) - u(i)*dtdx_input%data(i) - v(i)*dtdy_input%data(i)
       end do
    end if
 
 !  do advection step
-   if (w_adv%method.ne.0) then
+   if (w_adv_input%method.ne.0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
    end if
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf%data,T)
+                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tprof_input%data,T)
    return
    end subroutine temperature
 !EOC

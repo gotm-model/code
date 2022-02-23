@@ -48,15 +48,15 @@
    end if
 
    do i=nlev,1,-1
-      if(-1.*z(i) .le. z1) then
+      if(-1.*z(i) .le. z1-z(nlev)) then
          prof(i) = v1
       end if
       if (alpha.le.1.e15) then
-         if(-1.*z(i) .gt. z1 .and. -1.*z(i) .le. z2) then
-            prof(i) = v1 + alpha*(-1.*z(i)-z1)
+         if(-1.*z(i) .gt. z1-z(nlev) .and. -1.*z(i) .le. z2-z(nlev)) then
+            prof(i) = v1 + alpha*(-1.*z(i)-(z1-z(nlev)))
          end if
       end if
-      if(-1.*z(i) .gt. z2) then
+      if(-1.*z(i) .gt. z2-z(nlev)) then
          prof(i) = v2
       end if
    end do

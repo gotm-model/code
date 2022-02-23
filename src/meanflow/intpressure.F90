@@ -156,7 +156,7 @@
    use meanflow,      only: gravity,rho_0,h
    use meanflow,      only: buoy
    use observations,  only: int_press_type
-   use observations,  only: dsdx,dsdy,dtdx,dtdy
+   use observations,  only: dsdx_input,dsdy_input,dtdx_input,dtdy_input
    use observations,  only: plume_type,plume_slope_x,plume_slope_y
    use observations,  only: idpdx,idpdy
    use eqstate,       only: eqstate1
@@ -180,8 +180,6 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-
-!KB   if (dsdx%method .ne. 0 .or. dsdy%method .ne. 0 .or. dtdx%method .ne. 0 .or. dtdy%method .ne. 0) then
    if (int_press_type == 1) then ! T and S gradients
 
 !     initialize local depth
@@ -198,15 +196,15 @@
          z=z+0.5*h(i)
 
 !        buoyancy gradient in x direction
-         dSS=dx*dsdx%data(i)
-         dTT=dx*dtdx%data(i)
+         dSS=dx*dsdx_input%data(i)
+         dTT=dx*dtdx_input%data(i)
          Bl=eqstate1(S(i),T(i),z/10.,gravity,rho_0)
          Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity,rho_0)
          dxB(i)=(Br-Bl)/dx
 
 !        buoyancy gradient in y direction
-         dSS=dy*dsdy%data(i)
-         dTT=dy*dtdy%data(i)
+         dSS=dy*dsdy_input%data(i)
+         dTT=dy*dtdy_input%data(i)
          Bl=eqstate1(S(i),T(i),z/10.,gravity,rho_0)
          Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity,rho_0)
          dyB(i)=(Br-Bl)/dy
@@ -251,8 +249,6 @@
       end if
 
    endif
-
-   return
    end subroutine intpressure
 
 !EOC
