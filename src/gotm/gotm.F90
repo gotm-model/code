@@ -845,10 +845,10 @@
       case (100)
 
 !        update Langmuir number
-         call langmuir_number(nlev,zi,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
+         call langmuir_number(nlev,zi,Hs_input%value,u_taus,zi(nlev)-zsbl,u10_input%value,v10_input%value)
 
 !        use KPP via CVMix
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip_input%value+evap,    &
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat_input%value,precip_input%value+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
          select case(kpp_langmuir_method)
          case (0)
