@@ -153,6 +153,8 @@
 
    procedure(calendar_date_interface), pointer :: fabm_calendar_date
 
+   character(len=256), public :: yaml_file = 'fabm.yaml'
+
 !-----------------------------------------------------------------------
 
    contains
@@ -266,6 +268,8 @@
    ! Initialize all namelist variables to reasonable default values.
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
+   call cfg%get(yaml_file, 'yaml_file', 'FABM configuration file', &
+                default='fabm.yaml')
    call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
                 default=.true.) ! disable to check mass conservation
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
@@ -306,6 +310,10 @@
                 options=(/option(-1, 'auto-detect (prefer fabm.yaml)', 'auto'), option(0, 'fabm.nml', 'nml'), option(1, 'fabm.yaml', 'yaml')/), &
                 default=-1, display=display_advanced)
 
+   if (fabm_calc) then
+      LEVEL2 'Reading configuration from:'
+      LEVEL3 trim(yaml_file)
+   end if
    LEVEL2 'done.'
 
    end subroutine configure_gotm_fabm
@@ -335,12 +343,12 @@
 
 #if _FABM_API_VERSION_ > 0
    allocate(model)
-   call fabm_create_model_from_yaml_file(model)
+   call fabm_create_model_from_yaml_file(model,trim(yaml_file))
 #else
    ! Create model tree
    if (configuration_method==-1) then
       configuration_method = 1
-      inquire(file='fabm.yaml',exist=file_exists)
+      inquire(file=trim(yaml_file),exist=file_exists)
       if (.not.file_exists) then
          inquire(file='fabm.nml',exist=file_exists)
          if (file_exists) configuration_method = 0
@@ -353,7 +361,7 @@
    case (1)
       ! From YAML file fabm.yaml
       allocate(model)
-      call fabm_create_model_from_yaml_file(model)
+      call fabm_create_model_from_yaml_file(model,path=trim(yaml_file))
    end select   
 #endif
 
