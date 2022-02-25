@@ -857,8 +857,7 @@
 
 #ifdef SPM
       if (spm_calc) then
-         call set_env_spm(nlev,rho0,depth,u_taub,h,u,v,nuh, &
-                          tx,ty,Hs,Tz,Phiw)
+         call set_env_spm(nlev,rho0,depth,u_taub,h,u,v,nuh,tx,ty,Hs,Tz,Phiw)
          call do_spm(nlev,dt)
       end if
 #endif
@@ -870,8 +869,7 @@
       select case (turb_method)
       case (0)
 !        do convective adjustment
-         call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,    &
-                                   buoy_method,gravity,rho0)
+         call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,buoy_method,gravity,rho0)
       case (99)
 !        update KPP model
          call convert_fluxes(nlev,gravity,cp,rho0,heat_input%value,precip_input%value+evap,    &
