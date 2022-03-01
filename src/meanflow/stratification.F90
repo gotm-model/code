@@ -109,10 +109,17 @@
    REALTYPE                  :: pFace,pCenter
    integer,  parameter       :: USEEQSTATE=1
    REALTYPE, parameter       :: oneTenth=_ONE_/10.
-   REALTYPE, allocatable     :: gswNN(:),zc(:),zi(:),lat(:)
-!GSW
+#define _GOTM_
+!KB#define _TEOS_
+
+#ifdef _GOTM_
    REALTYPE :: GOTM_start,GOTM_stop,GOTM_total=0.
+#endif
+#ifdef _TEOS_
+   REALTYPE                  :: lat(0:nlev)
+   REALTYPE                  :: gswNN(0:nlev),zc(0:nlev),zi(nlev)
    REALTYPE :: TEOS_start,TEOS_stop
+#endif
 !GSW
 !-----------------------------------------------------------------------
 !BOC
@@ -120,20 +127,19 @@
 
 !     initialize parameters for uppermost grid box
       zFace   = _ZERO_
-      zCenter = 0.5*h(nlev)
+      zCenter = _HALF_*h(nlev)
       pCenter = oneTenth*zCenter
 
-!GSW
-#if 1
-     allocate(lat(1:nlev))
-     allocate(zc(1:nlev))
-     allocate(zi(1:nlev))
-     allocate(gswNN(1:nlev))
-     lat=0.
+#ifdef _TEOS_
+!KB     allocate(lat(1:nlev))
+!KB     allocate(zc(1:nlev))
+!KB     allocate(zi(1:nlev))
+!KB     allocate(gswNN(1:nlev))
+     lat=_ZERO_
      zc(nlev)=zCenter
 #endif
-!GSW
 
+#ifdef _GOTM_
       buoy(nlev) = calculate_density(S(nlev),T(nlev),pCenter,gravity)
       rho(nlev)  = rho0 - rho0/gravity*buoy(nlev)
 
@@ -141,18 +147,23 @@
       do i=nlev-1,1,-1
 
          ! compute distances between centers
-         dz     = 0.5*(h(i)+h(i+1))
+         dz     = _HALF_*(h(i)+h(i+1))
 
          ! compute local depths
          zFace   = zFace   + h(i+1)
          zCenter = zCenter + dz
-#if 1
+#ifdef _TEOS_
          zc(i)=zCenter
 #endif
 
          ! compute approximate local pressure
+#if 0
          pFace   = oneTenth*zFace
          pCenter = oneTenth*zCenter
+#else
+         pFace   = zFace
+         pCenter = zCenter
+#endif
 
 call cpu_time(GOTM_start)
          ! interpolate T and S from centers to faces
@@ -178,21 +189,24 @@ GOTM_total=GOTM_total+GOTM_stop-GOTM_start
          buoy(i) = calculate_density(S(i),T(i),pCenter,gravity)
          rho(i)  = rho0 - rho0/gravity*buoy(i)
       end do
-#if 1
-call cpu_time(TEOS_start)
-call gsw_nsquared(S(0:),T(0:),zc,lat,gswNN,zi)
-call cpu_time(TEOS_stop)
-      do i=nlev-1,1,-1
-!KBwrite(*,*) 'aaa ',i,NN(i),gswNN(i+1),100*(NN(i)-gswNN(i+1))/NN(i)
-!write(*,*) NN(i),gswNN(i+1),zc(i)-zi(i)
-         NN(i) = gswNN(i+1)
-      end do
 #endif
-!KBwrite(10,*) gswNN
-!write(*,*) size(NN),size(gswNN)
 
-!KB write(*,*) 'TIMINGS ',TEOS_stop-TEOS_start,GOTM_total
-!stop
+#ifdef _TEOS_
+      gswNN(nlev)=_ZERO_
+      gswNN(0)=_ZERO_
+call cpu_time(TEOS_start)
+      call gsw_Nsquared(S(1:),T(1:),zc(1:),lat(1:),gswNN(1:),zi(1:))
+call cpu_time(TEOS_stop)
+do i=nlev-1,1,-1
+   write(98,*) 'aaa ',i,NN(i),gswNN(i),100*(NN(i)-gswNN(i))/NN(i)
+end do
+do i=nlev,1,-1
+   write(99,*) 'bbb',i,zc(i),zi(i),zc(i)-zi(i)
+end do
+      NN=gswNN
+write(100,*) 'TIMINGS ',TEOS_stop-TEOS_start,GOTM_total
+!stop 'kaj'
+#endif
 
    else
 
@@ -211,8 +225,8 @@ call cpu_time(TEOS_stop)
    end if
 
    ! update boundary values
-   NN(0)    = _ZERO_
    NN(nlev) = _ZERO_
+   NN(0)    = _ZERO_
 
    return
    end subroutine stratification
