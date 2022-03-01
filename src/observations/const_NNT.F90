@@ -12,7 +12,7 @@
 ! {\tt v1}
 !
 ! !USES:
-!KB   use gsw_mod_toolbox, only: gsw_rho_alpha_beta_bsq
+!KB   use gsw_mod_toolbox, only: gsw_specvol_alpha_beta
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -29,7 +29,8 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: rho,alpha,pFace
+   REALTYPE                  :: pFace
+   REALTYPE                  :: alpha
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -40,7 +41,7 @@
 
       pFace    = 0.5/gravity*(z(i+1)+z(i));
 #if 1
-      call gsw_rho_alpha_beta_bsq(S_const,T(i+1),pFace,rho,alpha=alpha)
+!KB      call gsw_specvol_alpha_beta(S_const,T(i+1),pFace,alpha=alpha)
 #else
       alpha     = eos_alpha(S_const,T(i+1),pFace,gravity,rho_0)
 #endif
