@@ -1,5 +1,5 @@
 add_library(meanflow
-   buoyancy.F90
+   prognostic_buoyancy.F90
    convectiveadjustment.F90
    coriolis.F90
    extpressure.F90

@@ -67,8 +67,13 @@
       hint=h(nlev)
       i=nlev
 111   i=i-1
+#if 0
       buoyupp=calculate_density(Sint,Tint,hint/10.,g)
       buoylow=calculate_density(S(i),T(i),hint/10.,g)
+#else
+      buoyupp=calculate_density(Sint,Tint,hint,g)
+      buoylow=calculate_density(S(i),T(i),hint,g)
+#endif
       if (buoyupp.lt.buoylow) then     ! instable stratification
          NN(i)=0.
          Tint=(Tint*hint+T(i)*h(i))/(hint+h(i))

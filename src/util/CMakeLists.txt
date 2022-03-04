@@ -14,6 +14,7 @@ add_library(util
    diff_center.F90
    diff_face.F90
    density.F90
+   gsw_nsquared_noneq.f90
    gridinterpol.F90
    lagrange.F90
    ode_solvers.F90

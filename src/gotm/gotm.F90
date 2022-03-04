@@ -664,7 +664,12 @@
    ! Call stratification to make sure density has sensible value.
    ! This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
-   call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+   select case (buoy_method)
+      case (1)
+         call stratification(nlev)
+      case (2)
+         call prognostic_buoyancy(nlev,dt,cnpar,nuh,gamh)
+   end select
 
 #ifdef _FABM_
 !  Accept the current biogeochemical state and used it to compute derived diagnostics.
@@ -851,9 +856,14 @@
          Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
    end select
 !GSW
-!     update shear and stratification
-      call shear(nlev,cnpar)
-      call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+!  update shear and stratification
+   call shear(nlev,cnpar)
+   select case (buoy_method)
+      case (1)
+         call stratification(nlev)
+      case (2)
+         call prognostic_buoyancy(nlev,dt,cnpar,nuh,gamh)
+   end select
 
 #ifdef SPM
       if (spm_calc) then

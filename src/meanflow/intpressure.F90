@@ -198,15 +198,25 @@
 !        buoyancy gradient in x direction
          dSS=dx*dsdx_input%data(i)
          dTT=dx*dtdx_input%data(i)
+#if 0
          Bl=calculate_density(S(i),T(i),z/10.,gravity)
          Br=calculate_density(S(i)+dSS,T(i)+dTT,z/10.,gravity)
+#else
+         Bl=calculate_density(S(i),T(i),z,gravity)
+         Br=calculate_density(S(i)+dSS,T(i)+dTT,z,gravity)
+#endif
          dxB(i)=(Br-Bl)/dx
 
 !        buoyancy gradient in y direction
          dSS=dy*dsdy_input%data(i)
          dTT=dy*dtdy_input%data(i)
+#if 0
          Bl=calculate_density(S(i),T(i),z/10.,gravity)
          Br=calculate_density(S(i)+dSS,T(i)+dTT,z/10.,gravity)
+#else
+         Bl=calculate_density(S(i),T(i),z,gravity)
+         Br=calculate_density(S(i)+dSS,T(i)+dTT,z,gravity)
+#endif
          dyB(i)=(Br-Bl)/dy
 
          z=z+0.5*h(i)

@@ -5,7 +5,7 @@
 ! !ROUTINE: Calculation of the stratification\label{sec:stratification}
 !
 ! !INTERFACE:
-   subroutine stratification(nlev,buoy_method,dt,cnpar,nub,gamB)
+   subroutine stratification(nlev)
 !
 ! !DESCRIPTION:
 ! This routine computes the mean potential density, $\mean{\rho}$, the mean
@@ -70,7 +70,7 @@
    use meanflow,   only: h,S,T,buoy,rho
    use meanflow,   only: NN,NNT,NNS
    use meanflow,   only: gravity
-   use gsw_mod_toolbox, only: gsw_nsquared
+   use gsw_mod_toolbox, only: gsw_nsquared, gsw_rho
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -78,24 +78,7 @@
 !  number of vertical layers
    integer,  intent(in)                :: nlev
 
-!  method to compute buoyancy
-   integer,  intent(in)                :: buoy_method
-
-!   time step (s)
-   REALTYPE, intent(in)                :: dt
-
-!  numerical "implicitness" parameter
-   REALTYPE, intent(in)                :: cnpar
-
-!  diffusivity of buoyancy (m^2/s)
-   REALTYPE, intent(in)                :: nub(0:nlev)
-
-!  non-local buoyancy flux (m^2/s^3)
-   REALTYPE, intent(in)                :: gamb(0:nlev)
-
-!
 ! !OUTPUT PARAMETERS:
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -103,135 +86,125 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+#define _GOTM_
+#define _TEOS_
+
+#ifdef _GOTM_
    integer                   :: i
    REALTYPE                  :: buoyp,buoym,Sface,Tface
    REALTYPE                  :: zCenter,zFace,dz
    REALTYPE                  :: pFace,pCenter
-   integer,  parameter       :: USEEQSTATE=1
    REALTYPE, parameter       :: oneTenth=_ONE_/10.
-#define _GOTM_
-!KB#define _TEOS_
-
-#ifdef _GOTM_
    REALTYPE :: GOTM_start,GOTM_stop,GOTM_total=0.
 #endif
 #ifdef _TEOS_
-   REALTYPE                  :: lat(0:nlev)
-   REALTYPE                  :: gswNN(0:nlev),zc(0:nlev),zi(nlev)
+   integer :: n
+   REALTYPE :: lat(0:nlev)
+   REALTYPE :: gswNN(0:nlev),zc(0:nlev),zi(nlev)
    REALTYPE :: TEOS_start,TEOS_stop
 #endif
 !GSW
 !-----------------------------------------------------------------------
 !BOC
-   if (buoy_method .EQ. USEEQSTATE) then
-
-!     initialize parameters for uppermost grid box
-      zFace   = _ZERO_
-      zCenter = _HALF_*h(nlev)
-      pCenter = oneTenth*zCenter
-
-#ifdef _TEOS_
-!KB     allocate(lat(1:nlev))
-!KB     allocate(zc(1:nlev))
-!KB     allocate(zi(1:nlev))
-!KB     allocate(gswNN(1:nlev))
-     lat=_ZERO_
-     zc(nlev)=zCenter
-#endif
+!KBwrite(*,*) gsw_rho(_ONE_*35.,_ONE_*25.,_ONE_*10000.)
+!KBstop 'kurt'
 
 #ifdef _GOTM_
-      buoy(nlev) = calculate_density(S(nlev),T(nlev),pCenter,gravity)
-      rho(nlev)  = rho0 - rho0/gravity*buoy(nlev)
 
-      GOTM_total=0.
-      do i=nlev-1,1,-1
+!  initialize parameters for uppermost grid box
+   zFace   = _ZERO_
+   zCenter = _HALF_*h(nlev)
+   pCenter = oneTenth*zCenter
 
-         ! compute distances between centers
-         dz     = _HALF_*(h(i)+h(i+1))
+   buoy(nlev) = calculate_density(S(nlev),T(nlev),pCenter,gravity)
+   rho(nlev)  = rho0 - rho0/gravity*buoy(nlev)
 
-         ! compute local depths
-         zFace   = zFace   + h(i+1)
-         zCenter = zCenter + dz
-#ifdef _TEOS_
-         zc(i)=zCenter
-#endif
+   GOTM_total=0.
+   do i=nlev-1,1,-1
 
-         ! compute approximate local pressure
+      ! compute distances between centers
+      dz     = _HALF_*(h(i)+h(i+1))
+
+      ! compute local depths
+      zFace   = zFace   + h(i+1)
+      zCenter = zCenter + dz
+
+      ! compute approximate local pressure
 #if 0
-         pFace   = oneTenth*zFace
-         pCenter = oneTenth*zCenter
+! old UNESCO used bar as pressure unit
+      pFace   = oneTenth*zFace
+      pCenter = oneTenth*zCenter
 #else
-         pFace   = zFace
-         pCenter = zCenter
+      pFace   = zFace
+      pCenter = zCenter
 #endif
 
 call cpu_time(GOTM_start)
-         ! interpolate T and S from centers to faces
-         Sface  = ( S(i+1)*h(i) + S(i)*h(i+1) ) / ( h(i+1) + h(i) )
-         Tface  = ( T(i+1)*h(i) + T(i)*h(i+1) ) / ( h(i+1) + h(i) )
+      ! interpolate T and S from centers to faces
+      Sface  = ( S(i+1)*h(i) + S(i)*h(i+1) ) / ( h(i+1) + h(i) )
+      Tface  = ( T(i+1)*h(i) + T(i)*h(i+1) ) / ( h(i+1) + h(i) )
 
-         ! T contribution to buoyancy frequency
-         buoyp  = calculate_density(Sface,T(i+1),pFace,gravity)
-         buoym  = calculate_density(Sface,T(i  ),pFace,gravity)
-         NNT(i) = (buoyp-buoym)/dz
+      ! T contribution to buoyancy frequency
+      buoyp  = calculate_density(Sface,T(i+1),pFace,gravity)
+      buoym  = calculate_density(Sface,T(i  ),pFace,gravity)
+      NNT(i) = (buoyp-buoym)/dz
 
-         ! S contribution to buoyancy frequency
-         buoyp  = calculate_density(S(i+1),Tface,pFace,gravity)
-         buoym  = calculate_density(S(i  ),Tface,pFace,gravity)
-         NNS(i) = (buoyp-buoym)/dz
+      ! S contribution to buoyancy frequency
+      buoyp  = calculate_density(S(i+1),Tface,pFace,gravity)
+      buoym  = calculate_density(S(i  ),Tface,pFace,gravity)
+      NNS(i) = (buoyp-buoym)/dz
 
-         ! total buoyancy frequency is the sum
-         NN(i) = NNT(i) + NNS(i)
+      ! total buoyancy frequency is the sum
+      NN(i) = NNT(i) + NNS(i)
+
+      ! compute buoyancy and density
+      buoy(i) = calculate_density(S(i),T(i),pCenter,gravity)
+      rho(i)  = rho0 - rho0/gravity*buoy(i)
+
 call cpu_time(GOTM_stop)
 GOTM_total=GOTM_total+GOTM_stop-GOTM_start
 
-         ! compute buoyancy and density
-         buoy(i) = calculate_density(S(i),T(i),pCenter,gravity)
-         rho(i)  = rho0 - rho0/gravity*buoy(i)
-      end do
+   end do
 #endif
 
 #ifdef _TEOS_
-      gswNN(nlev)=_ZERO_
-      gswNN(0)=_ZERO_
 call cpu_time(TEOS_start)
-      call gsw_Nsquared(S(1:),T(1:),zc(1:),lat(1:),gswNN(1:),zi(1:))
+   lat=_ZERO_
+   zi(nlev)=_ZERO_
+   zc(nlev)=_HALF_*h(nlev)
+   do n=nlev-1,1,-1
+      zc(n) = zc(n+1)+_HALF_*(h(n)+h(n+1))
+   end do
+   rho(1:) = gsw_rho(S(1:),T(1:),zc(1:)) 
+   buoy(1:) = -gravity*(rho(1:)-rho0)/rho0
+#ifndef _GOTM_
+   call gsw_Nsquared(S(1:),T(1:),zc(1:),lat(1:),NN(1:),zi(1:))
+!KB      call gsw_Nsquared_noneq(S(1:),T(1:),zc(1:),lat(1:),NN(1:),zi(1:))
+#else
+   call gsw_Nsquared(S(1:),T(1:),zc(1:),lat(1:),gswNN(1:),zi(1:))
+!KB      call gsw_Nsquared_noneq(S(1:),T(1:),zc(1:),lat(1:),gswNN(1:),zi(1:))
+#endif
 call cpu_time(TEOS_stop)
-do i=nlev-1,1,-1
-   write(98,*) 'aaa ',i,NN(i),gswNN(i),100*(NN(i)-gswNN(i))/NN(i)
+#endif
+
+#if (defined _GOTM_ && defined _TEOS_)
+do n=nlev-1,1,-1
+   write(98,*) 'aaa ',n,NN(n),gswNN(n),100*(NN(n)-gswNN(n))/NN(n)
 end do
-do i=nlev,1,-1
-   write(99,*) 'bbb',i,zc(i),zi(i),zc(i)-zi(i)
+do n=nlev,1,-1
+   write(99,*) 'bbb',n,zc(n),zi(n),zc(n)-zi(n)
 end do
-      NN=gswNN
+   NN=gswNN
 write(100,*) 'TIMINGS ',TEOS_stop-TEOS_start,GOTM_total
 !stop 'kaj'
 #endif
 
-   else
-
-      ! for some idealized cases, compute buoyancy from
-      ! prognostic equation
-      call buoyancy(nlev,dt,cnpar,nub,gamb)
-
-      ! compute density and buoyancy frequency
-      rho(nlev)  = rho0 - rho0/gravity*buoy(nlev)
-
-      do i=nlev-1,1,-1
-         dz     = 0.5*(h(i)+h(i+1))
-         NN(i)  = (buoy(i+1)-buoy(i))/dz
-         rho(i) = rho0 - rho0/gravity*buoy(i)
-      end do
-   end if
-
-   ! update boundary values
+   ! set boundary values
    NN(nlev) = _ZERO_
    NN(0)    = _ZERO_
-
-   return
    end subroutine stratification
 !EOC
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!-----------------------------------------------------------------------
+
