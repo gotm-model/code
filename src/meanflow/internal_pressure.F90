@@ -5,7 +5,7 @@
 ! !ROUTINE: The internal pressure-gradient \label{sec:intpressure}
 !
 ! !INTERFACE:
-   subroutine intpressure(nlev)
+   subroutine internal_pressure(nlev)
 !
 ! !DESCRIPTION:
 !   With the hydrostatic assumption
@@ -259,7 +259,7 @@
       end if
 
    endif
-   end subroutine intpressure
+   end subroutine internal_pressure
 
 !EOC
 

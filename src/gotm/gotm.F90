@@ -832,8 +832,8 @@
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
       call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
-      call extpressure(ext_press_mode,nlev)
-      call intpressure(nlev)
+      call external_pressure(ext_press_mode,nlev)
+      call internal_pressure(nlev)
       call friction(nlev,kappa,avmolu,tx,ty,plume_type)
 
 #ifdef SEAGRASS

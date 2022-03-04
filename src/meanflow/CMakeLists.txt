@@ -2,9 +2,9 @@ add_library(meanflow
    prognostic_buoyancy.F90
    convectiveadjustment.F90
    coriolis.F90
-   extpressure.F90
+   external_pressure.F90
    friction.F90
-   intpressure.F90
+   internal_pressure.F90
    meanflow.F90
    salinity.F90
    shear.F90
