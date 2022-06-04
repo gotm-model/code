@@ -96,6 +96,7 @@
    use gotm_fabm,only:configure_gotm_fabm,configure_gotm_fabm_from_nml,gotm_fabm_create_model,init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm, only: fabm_airp, fabm_calendar_date, fabm_julianday
+   use gotm_fabm, only: fabm_rho_corr
    use gotm_fabm_input,only: configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
 #endif
 
@@ -637,6 +638,7 @@
 #ifdef _FABM_
 !  Accept the current biogeochemical state and used it to compute derived diagnostics.
    if (fabm_calc) call start_gotm_fabm(nlev, fm)
+   if (associated(fabm_rho_corr)) call density_correction(nlev, fabm_rho_corr)
 #endif
 
    if (list_fields) then
@@ -824,6 +826,7 @@
 #endif
 #ifdef _FABM_
       call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
+      if (associated(fabm_rho_corr)) call density_correction(nlev, fabm_rho_corr)
 #endif
 
 !     compute turbulent mixing

@@ -67,6 +67,9 @@
    REALTYPE,allocatable,dimension(:,:),public        :: cc_diag
    REALTYPE,allocatable,dimension(:),  public        :: cc_diag_hz
 
+!  Optional feedback to host (allocated by FABM)
+   REALTYPE, pointer, public :: fabm_rho_corr(:)=>NULL() ! density correction
+
 !  Arrays for observations, relaxation times and FABM variable identifiers associated with the observations.
    type type_1d_state_info
       REALTYPE, pointer, dimension(:) :: obs       => null()
@@ -94,6 +97,8 @@
    type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id,pres_id,nuh_id
    type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id,swr_sf_id
 
+   type (type_bulk_variable_id), save      :: rho_corr_id
+
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
    integer(8) :: clock_adv,clock_diff,clock_source
 !
@@ -105,6 +110,7 @@
                                 bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
                                 freshwater_impact,salinity_relaxation_to_freshwater_flux, &
                                 save_inputs, no_surface
+   logical                   :: biodensity_feedback=.false.
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
    REALTYPE,allocatable,dimension(:,:) :: ws
@@ -187,6 +193,7 @@
    logical :: no_precipitation_dilution
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
+                            biodensity_feedback,                                     &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
                             repair_state,no_precipitation_dilution,                  &
                             salinity_relaxation_to_freshwater_flux,save_inputs, &
@@ -273,6 +280,8 @@
    call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
                 default=.true.) ! disable to check mass conservation
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
+   call branch%get(biodensity_feedback, 'density', 'interior density correction', &
+                default=biodensity_feedback)
    call branch%get(bioshade_feedback, 'shade', 'interior light absorption', &
                 default=.false.)
    call branch%get(bioalbedo_feedback, 'albedo', 'surface albedo', &
@@ -493,6 +502,26 @@
       swr_sf_id    = model%get_horizontal_variable_id(standard_variables%surface_downwelling_shortwave_flux)
       cloud_id     = model%get_horizontal_variable_id(standard_variables%cloud_area_fraction)
       taub_id      = model%get_horizontal_variable_id(standard_variables%bottom_stress)
+
+      if (biodensity_feedback) then
+!        check whether used FABM version provides density_correction
+         rho_corr_id = model%get_bulk_variable_id("density_correction")
+         if (associated(rho_corr_id%variable)) then
+#if _FABM_API_VERSION_ > 0
+            !call model%require_data(standard_variables%density_correction)
+            call model%require_data(type_interior_standard_variable(name="density_correction", units="kg m-3", aggregate_variable=.true.))
+#else
+!           Note: For old FABM get_data() returns null pointer.
+!                 Maybe because require_data() was not called, but this then
+!                 must be done BEFORE fabm_initialize(), called by default
+!                 during create_model().
+!                 Note that new FABM accepts the call to require_data()
+!                 only AFTER initialize()!
+            STDERR "WARNING: Density feedback from used FABM version not supported! Reset biodensity_feedback=F ..."
+            biodensity_feedback = .false.
+#endif
+         end if
+      end if
 
       ! Initialize optional forcings to "off"
       fabm_airp => null()
@@ -1017,6 +1046,14 @@
    do i=1,size(model%conserved_quantities)
       if (total0(i) == huge(_ZERO_)) total0(i) = total(i)
    end do
+
+   if (biodensity_feedback .and. associated(rho_corr_id%variable)) then
+      fabm_rho_corr => model%get_data(rho_corr_id)
+      !if (associated(fabm_rho_corr,model%get_data(model%get_bulk_variable_id('zero')))) then
+      !   LEVEL2 "biodensity_feedback: no contribution to density_correction"
+      !   nullify(fabm_rho_corr)
+      !end if
+   end if
 
    end subroutine start_gotm_fabm
 !EOC
