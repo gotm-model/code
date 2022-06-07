@@ -157,6 +157,7 @@
    REALTYPE, public                              :: cpsi2
    REALTYPE, public                              :: cpsi3minus
    REALTYPE, public                              :: cpsi3plus
+   REALTYPE, public                              :: cpsi4   
    REALTYPE                                      :: sig_kpsi
    REALTYPE, public                              :: sig_psi
    REALTYPE                                      :: gen_d
@@ -168,6 +169,7 @@
    REALTYPE, public                              :: ce2
    REALTYPE, public                              :: ce3minus
    REALTYPE, public                              :: ce3plus
+   REALTYPE, public                              :: ce4   
    REALTYPE, public                              :: sig_k
    REALTYPE, public                              :: sig_e
    logical,  public                              :: sig_peps
@@ -345,10 +347,10 @@
                             sig_kpsi,sig_psi,                  &
                             gen_d,gen_alpha,gen_l
 
-   namelist /keps/          ce1,ce2,ce3minus,ce3plus,sig_k,    &
-                            sig_e,sig_peps
+   namelist /keps/          ce1,ce2,ce3minus,ce3plus,ce4,      &
+                            sig_k,sig_e,sig_peps
 
-   namelist /my/            e1,e2,e3, e6, sq,sl,my_length,new_constr
+   namelist /my/            e1,e2,e3,e6,sq,sl,my_length,new_constr
 
    namelist /scnd/          scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
@@ -429,6 +431,7 @@
    cpsi2=1.92
    cpsi3minus=0.0
    cpsi3plus=1.0
+   cpsi4=0   
    sig_kpsi=1.0
    sig_psi=1.3
    gen_d=-1.2
@@ -440,6 +443,7 @@
    ce2=1.92
    ce3minus=0.0
    ce3plus=1.0
+   ce4=5      
    sig_k=1.0
    sig_e=1.3
    sig_peps=.false.
@@ -645,6 +649,8 @@
                    default=0.0_rk)
    call twig%get(cpsi3plus, 'cpsi3plus', 'cpsi3 for unstable stratification', '-', &
                    default=1._rk)
+   call twig%get(cpsi2, 'cpsi4', 'empirical coefficient cpsi4 in psi equation', '-', &
+                   default=0.00_rk)   
    call twig%get(sig_kpsi, 'sig_kpsi', 'Schmidt number for TKE diffusivity', '-', &
                    default=1._rk)
    call twig%get(sig_psi, 'sig_psi', 'Schmidt number for psi diffusivity', '-', &
@@ -665,6 +671,8 @@
                    default=0._rk)
    call twig%get(ce3plus, 'ce3plus', 'ce3 for unstable stratification', '-', &
                    default=1.0_rk)
+   call twig%get(ce4, 'ce4', 'empirical coefficient ce4 in dissipation equation', '-', &
+                   default=4.00_rk)   
    call twig%get(sig_k, 'sig_k', 'Schmidt number for TKE diffusivity', '-', &
                    default=1._rk)
    call twig%get(sig_e, 'sig_e', 'Schmidt number for dissipation diffusivity', '-', &
@@ -2225,6 +2233,7 @@
          LEVEL3 'ce2                                  =', ce2
          LEVEL3 'ce3minus                             =', ce3minus
          LEVEL3 'ce3plus                              =', ce3plus
+         LEVEL3 'ce4                                  =', ce4         
          LEVEL3 'sig_k                                =', sig_k
          LEVEL3 'sig_e                                =', sig_e
          LEVEL2 ' '
@@ -2279,6 +2288,7 @@
          LEVEL3 'cpsi2                                =', cpsi2
          LEVEL3 'cpsi3minus                           =', cpsi3minus
          LEVEL3 'cpsi3plus                            =', cpsi3plus
+         LEVEL3 'cpsi4                                =', cpsi4         
          LEVEL3 'sig_k                                =', sig_kpsi
          LEVEL3 'sig_psi                              =', sig_psi
          LEVEL2 ' '
@@ -3805,19 +3815,19 @@
                             psi_ubc,psi_lbc,                   &
                             ubc_type,lbc_type
 
-   LEVEL2 'turb_param namelist', cm0_fix,Prandtl0_fix,cw,           &
+   LEVEL2 'turb_param namelist', cm0_fix,Prandtl0_fix,cw,      &
                             compute_kappa,kappa,               &
                             compute_c3,ri_st,length_lim,galp,  &
                             const_num,const_nuh,k_min,eps_min, &
                             kb_min,epsb_min
 
-   LEVEL2 'generic namelist', compute_param,gen_m,gen_n,gen_p,   &
+   LEVEL2 'generic namelist', compute_param,gen_m,gen_n,gen_p, &
                             cpsi1,cpsi2,cpsi3minus,cpsi3plus,  &
-                            sig_kpsi,sig_psi,                  &
+                            cpsi4,sig_kpsi,sig_psi,            &
                             gen_d,gen_alpha,gen_l
 
-   LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,sig_k,    &
-                            sig_e,sig_peps
+   LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,ce4,      &
+                            sig_k,sig_e,sig_peps
 
    LEVEL2 'my namelist',    e1,e2,e3, e6, sq,sl,my_length,new_constr
 

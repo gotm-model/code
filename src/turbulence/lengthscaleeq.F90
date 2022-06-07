@@ -69,7 +69,7 @@
 ! !USES:
    use turbulence, only: P,B, PSTK
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: kappa,e1,e2,e3,b1, e6
+   use turbulence, only: kappa,e1,e2,e3,e6,b1
    use turbulence, only: MY_length,cm0,cde,galp,length_lim
    use turbulence, only: q2l_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
    use turbulence, only: sl
@@ -135,11 +135,7 @@
 !  some quantities in Mellor-Yamada notation
    do i=1,nlev-1
       q2l(i)=2.*tkeo(i)*L(i)
-#ifdef _HARCOURT_QINGLI_
       q3 (i)=sqrt(8.*tkeo(i)*tkeo(i)*tkeo(i))
-#else
-      q3 (i)=sqrt(8.*tke(i)*tke(i)*tke(i))
-#endif
    end do
 
 !  diagnostic length scale for wall function
@@ -160,12 +156,7 @@
    do i=1,nlev-1
 
 !     compute diffusivity
-
-#ifdef _HARCOURT_QINGLI_
       avh(i)      =  sl*sqrt(2.*tkeo(i))*L(i)
-#else
-      avh(i)      =  sl*sqrt(2.*tke(i))*L(i)
-#endif
 
 !     compute production terms in q^2 l - equation
       prod        =  e1*L(i)*P(i) + e6*L(i)*PSTK(i)
