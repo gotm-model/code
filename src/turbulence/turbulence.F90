@@ -649,7 +649,7 @@
                    default=0.0_rk)
    call twig%get(cpsi3plus, 'cpsi3plus', 'cpsi3 for unstable stratification', '-', &
                    default=1._rk)
-   call twig%get(cpsi2, 'cpsi4', 'empirical coefficient cpsi4 in psi equation', '-', &
+   call twig%get(cpsi4, 'cpsi4', 'empirical coefficient cpsi4 in psi equation', '-', &
                    default=0.00_rk)   
    call twig%get(sig_kpsi, 'sig_kpsi', 'Schmidt number for TKE diffusivity', '-', &
                    default=1._rk)
