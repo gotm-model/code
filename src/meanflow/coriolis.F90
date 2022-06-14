@@ -14,6 +14,7 @@
 !
 ! !USES:
    USE meanflow, only: u,v,cori
+   USE stokes_drift, only: usprof, vsprof
 !
    IMPLICIT NONE
 !
@@ -29,6 +30,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: i
    REALTYPE                  :: ua,omega,cosomega,sinomega
+   REALTYPE                  :: ul(0:nlev), vl(0:nlev)
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -37,10 +39,23 @@
    cosomega=cos(omega)
    sinomega=sin(omega)
 
+!  KK-TODO: move calculation of Lagrangian velocities to a more central
+!           place.
    do i=1,nlev
-      ua=u(i)
-      u(i)= u(i) *cosomega+v(i)*sinomega
-      v(i)=-ua   *sinomega+v(i)*cosomega
+      ul(i) = u(i) + usprof%data(i)
+      vl(i) = v(i) + vsprof%data(i)
+   end do
+
+   do i=1,nlev
+      ua = ul(i)
+      ul(i) =  ul(i)*cosomega + vl(i)*sinomega
+      vl(i) = -ua   *sinomega + vl(i)*cosomega
+   end do
+
+!  KK-TODO: In GETM we distinguish between old and new Stokes drift.
+   do i=1,nlev
+      u(i) = ul(i) - usprof%data(i)
+      v(i) = vl(i) - vsprof%data(i)
    end do
 
    return
