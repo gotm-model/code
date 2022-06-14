@@ -30,7 +30,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: i
    REALTYPE                  :: ua,omega,cosomega,sinomega
-   REALTYPE                  :: ul(0:nlev), vl(0:nlev)
+   REALTYPE                  :: ul, vl
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -39,23 +39,19 @@
    cosomega=cos(omega)
    sinomega=sin(omega)
 
-!  KK-TODO: move calculation of Lagrangian velocities to a more central
-!           place.
    do i=1,nlev
-      ul(i) = u(i) + usprof%data(i)
-      vl(i) = v(i) + vsprof%data(i)
-   end do
+!     KK-TODO: move calculation of Lagrangian velocities to a more
+!              central place.
+      ul = u(i) + usprof%data(i)
+      vl = v(i) + vsprof%data(i)
 
-   do i=1,nlev
-      ua = ul(i)
-      ul(i) =  ul(i)*cosomega + vl(i)*sinomega
-      vl(i) = -ua   *sinomega + vl(i)*cosomega
-   end do
+      ua = ul
+      ul =  ul*cosomega + vl*sinomega
+      vl = -ua*sinomega + vl*cosomega
 
-!  KK-TODO: In GETM we distinguish between old and new Stokes drift.
-   do i=1,nlev
-      u(i) = ul(i) - usprof%data(i)
-      v(i) = vl(i) - vsprof%data(i)
+!     KK-TODO: In GETM we distinguish between old and new Stokes drift.
+      u(i) = ul - usprof%data(i)
+      v(i) = vl - vsprof%data(i)
    end do
 
    return
