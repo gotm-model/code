@@ -135,11 +135,7 @@
 !  some quantities in Mellor-Yamada notation
    do i=1,nlev-1
       q2l(i)=2.*tkeo(i)*L(i)
-#ifdef _HARCOURT_QINGLI_
       q3 (i)=sqrt(8.*tkeo(i)*tkeo(i)*tkeo(i))
-#else
-      q3 (i)=sqrt(8.*tke(i)*tke(i)*tke(i))
-#endif
    end do
 
 !  diagnostic length scale for wall function
@@ -160,12 +156,7 @@
    do i=1,nlev-1
 
 !     compute diffusivity
-
-#ifdef _HARCOURT_QINGLI_
       avh(i)      =  sl*sqrt(2.*tkeo(i))*L(i)
-#else
-      avh(i)      =  sl*sqrt(2.*tke(i))*L(i)
-#endif
 
 !     compute production terms in q^2 l - equation
       prod        =  e1*L(i)*P(i)
