@@ -234,11 +234,11 @@
         if (L(i).gt.Lcrit) L(i)=Lcrit
      end if
 
-!    compute dissipation rate
-     eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
-
 !    check for very small lengh scale
      if (L(i).lt.l_min) L(i)=l_min
+
+!    compute dissipation rate
+     eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
 
 !    substitute minimum value
      if (eps(i).lt.eps_min) then
