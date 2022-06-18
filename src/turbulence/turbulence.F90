@@ -443,7 +443,7 @@
    ce2=1.92
    ce3minus=0.0
    ce3plus=1.0
-   ce4=5      
+   ce4=_ZERO_
    sig_k=1.0
    sig_e=1.3
    sig_peps=.false.
@@ -672,7 +672,7 @@
    call twig%get(ce3plus, 'ce3plus', 'ce3 for unstable stratification', '-', &
                    default=1.0_rk)
    call twig%get(ce4, 'ce4', 'empirical coefficient ce4 in dissipation equation', '-', &
-                   default=4.00_rk)   
+                   default=0._rk)
    call twig%get(sig_k, 'sig_k', 'Schmidt number for TKE diffusivity', '-', &
                    default=1._rk)
    call twig%get(sig_e, 'sig_e', 'Schmidt number for dissipation diffusivity', '-', &
