@@ -267,9 +267,6 @@
 
 !     clip at eps_min
       eps(i) = max(eps(i),eps_min)
-
-!     compute dissipative scale
-      L(i)=cde*sqrt(tke(i)*tke(i)*tke(i))/eps(i)
    enddo
 
 !  limit dissipation rate under stable stratification,
@@ -286,11 +283,14 @@
 !        clip at limit
          eps(i) = max(eps(i),epslim)
 
-!        re-compute dissipative scale
-         L(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/eps(i)
-
       end do
    endif
+
+   do i=0,nlev
+!     compute dissipative scale
+      L(i) = cde * sqrt( tke(i) * tke(i) * tke(i) ) / eps(i)
+   end do
+
 
    return
    end subroutine genericeq
