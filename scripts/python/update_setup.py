@@ -134,6 +134,7 @@ def update_yaml(oldroot):
         move_node(root, 'mimic_3d/int_pressure/dtdy', 'mimic_3d/int_pressure/gradients/dtdy')
         move_node(root, 'mimic_3d/int_pressure/dsdx', 'mimic_3d/int_pressure/gradients/dsdx')
         move_node(root, 'mimic_3d/int_pressure/dsdy', 'mimic_3d/int_pressure/gradients/dsdy')
+        del_node(root, 'turbulence/my/new_constr')
         version = 7
     root['version'] = version
     root.move_to_end('version', last=False)
