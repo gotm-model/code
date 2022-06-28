@@ -182,6 +182,7 @@
    REALTYPE, public                              :: sq
    REALTYPE, public                              :: sl
    integer,  public                              :: my_length
+   logical,  public                              :: new_constr
 
 !  the 'scnd' namelist
    integer                                       ::  scnd_method
@@ -349,7 +350,7 @@
    namelist /keps/          ce1,ce2,ce3minus,ce3plus,ce4,      &
                             sig_k,sig_e,sig_peps
 
-   namelist /my/            e1,e2,e3,e6,sq,sl,my_length
+   namelist /my/            e1,e2,e3,e6,sq,sl,my_length, new_constr
 
    namelist /scnd/          scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
