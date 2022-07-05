@@ -117,6 +117,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   REALTYPE                  :: tmp
    integer                   :: i
 !
 !-----------------------------------------------------------------------
@@ -124,12 +125,11 @@
    ru(lt)=au(lt)/bu(lt)
    qu(lt)=du(lt)/bu(lt)
 
-   do i=lt-1,fi+1,-1
-      ru(i)=au(i)/(bu(i)-cu(i)*ru(i+1))
-      qu(i)=(du(i)-cu(i)*qu(i+1))/(bu(i)-cu(i)*ru(i+1))
+   do i=lt-1,fi,-1
+      tmp = _ONE_ / (bu(i)-cu(i)*ru(i+1))
+      ru(i)=au(i) * tmp
+      qu(i)=(du(i)-cu(i)*qu(i+1)) * tmp
    end do
-
-   qu(fi)=(du(fi)-cu(fi)*qu(fi+1))/(bu(fi)-cu(fi)*ru(fi+1))
 
    value(fi)=qu(fi)
    do i=fi+1,lt
