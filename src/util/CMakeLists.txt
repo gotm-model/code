@@ -9,6 +9,7 @@ configure_file(gotm_version.F90.in gotm_version.F90)
 add_library(util
    adv_center.F90
    convert_fluxes.F90
+   diffusion.F90
    diff_center.F90
    diff_face.F90
    eqstate.F90
