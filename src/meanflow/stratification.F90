@@ -66,9 +66,11 @@
 !  and $S$ and is only recommended for idealized studies.
 !
 ! !USES:
-   use density,    only: calculate_density,rho0
+!GSW_KB   use density,    only: calculate_density,rho0
+   use density,    only: rho0
    use meanflow,   only: h,S,T,buoy,rho
-   use meanflow,   only: NN,NNT,NNS
+!GSW_KB   use meanflow,   only: NN,NNT,NNS
+   use meanflow,   only: NN
    use meanflow,   only: gravity
    use gsw_mod_toolbox, only: gsw_nsquared, gsw_rho
    IMPLICIT NONE
@@ -89,7 +91,6 @@
    integer :: n
    REALTYPE :: lat(0:nlev)
    REALTYPE :: zc(0:nlev),zi(nlev)
-!GSW
 !-----------------------------------------------------------------------
 !BOC
    lat=_ZERO_ !GSW_KB - need to pass in lat
