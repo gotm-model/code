@@ -574,16 +574,41 @@
 #endif
 
 !  initialise mean fields
-   Sp(1:nlev) = sprof_input%data(1:nlev)
-   Ti(1:nlev) = tprof_input%data(1:nlev)
-!GSW
+!GSW_KB
+   select case (initial_salinity_type)
+      case(1) ! Practical
+         Sp(1:nlev) = sprof_input%data(1:nlev)
+      case(2) ! Absolute
+         S(1:nlev) = sprof_input%data(1:nlev)
+   end select
+   select case (initial_temperature_type)
+      case(1) ! In-situ
+         Ti(1:nlev) = tprof_input%data(1:nlev)
+      case(2) ! Potential
+         Tp(1:nlev) = tprof_input%data(1:nlev)
+      case(3) ! Conservative
+         T(1:nlev) = tprof_input%data(1:nlev)
+   end select
+
    select case (density_method)
       case (1)
-         S(1:nlev) = gsw_sa_from_sp(Sp(1:nlev),-z(1:nlev),longitude,latitude)
-         T(1:nlev) = gsw_ct_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev))
-         Tp(1:nlev) = gsw_pt_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev),_ZERO_)
+         select case (initial_salinity_type)
+            case(1) ! Practical
+               S(1:nlev) = gsw_sa_from_sp(Sp(1:nlev),-z(1:nlev),longitude,latitude)
+         end select
+         select case (initial_temperature_type)
+            case(1) ! In-situ
+               T(1:nlev) = gsw_ct_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev))
+               Tp(1:nlev) = gsw_pt_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev),_ZERO_)
+            case(2) ! Potential
+               T(1:nlev) = gsw_ct_from_pt(S(1:nlev),Tp(1:nlev))
+               Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+            case(3) ! Conservative
+               Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),Ti(1:nlev))
+               Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+         end select
    end select
-!GSW
+!GSW_KB
    u(1:nlev) = uprof_input%data(1:nlev)
    v(1:nlev) = vprof_input%data(1:nlev)
 
@@ -780,11 +805,11 @@
 #ifdef _ICE_
          if(ice_cover .eq. 0) then
 #endif
-         call set_sst(T(nlev))
+         call set_sst(gsw_t_from_ct(S(nlev), T(nlev), _ZERO_)) !GSW_KB maybe use sea surface elevation as pressure
          call set_ssuv(u(nlev),v(nlev))
 #ifdef _ICE_
          else
-            call set_sst(Tice_surface)
+            call set_sst(Tice_surface) !GSW_KB - check for GSW alternative 
             call set_ssuv(_ZERO_,_ZERO_)
          end if
 #endif
@@ -921,10 +946,10 @@
 !        update one-point models
 # ifdef SEAGRASS
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP)
+                            NN,SS,xP, SSCSTK=SSCSTK)
 # else
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS)
+                            NN,SS, SSCSTK=SSCSTK)
 # endif
       end select
 

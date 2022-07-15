@@ -166,7 +166,7 @@
    call fm%register('heat', 'W/m2', 'net surface heat flux', standard_name='', data0d=heat_input%value, category='surface/heat_fluxes')
    call fm%register('tx', 'm2/s2', 'wind stress (x)', standard_name='', data0d=tx, category='surface')
    call fm%register('ty', 'm2/s2', 'wind stress (y)', standard_name='', data0d=ty, category='surface')
-   call fm%register('sst', 'Celsius', 'sea surface temperature', standard_name='sea_surface_temperature', data0d=sst, category='surface')
+   call fm%register('sst', 'Celsius', 'sea surface temperature - in-situ', standard_name='sea_surface_temperature', data0d=sst, category='surface')
    call fm%register('sst_obs', 'Celsius', 'observed sea surface temperature', standard_name='sea_surface_temperature', data0d=sst_obs_input%value, category='surface')
    call fm%register('sss', '1e-3', 'sea surface salinity', standard_name='sea_surface_salinity', data0d=sss_input%value, category='surface')
 
@@ -495,6 +495,7 @@
    call fm%register('P', 'm2/s3', 'shear production', standard_name='??', dimensions=(/id_dim_zi/), data1d=P(0:nlev),category='turbulence/shear')
    call fm%register('G', 'm2/s3', 'buoyancy production', standard_name='??', dimensions=(/id_dim_zi/), data1d=B(0:nlev),category='turbulence/buoyancy')
    call fm%register('Pb', 'm2/s5', 'production of buoyancy variance', standard_name='??', dimensions=(/id_dim_zi/), data1d=Pb(0:nlev),category='turbulence/buoyancy')
+   call fm%register('PSTK', 'm2/s3', 'Stokes production', standard_name='??', dimensions=(/id_dim_zi/), data1d=PSTK(0:nlev),category='turbulence')
    call fm%register('gamb', 'm2/s3', 'non-local  buoyancy flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamb(0:nlev),category='turbulence')
    call fm%register('cmue1', '', 'stability function for momentum diffusivity', standard_name='??', dimensions=(/id_dim_zi/), data1d=cmue1(0:nlev),category='turbulence')
    call fm%register('cmue2', '', 'stability function for scalar diffusivity', standard_name='??', dimensions=(/id_dim_zi/), data1d=cmue2(0:nlev),category='turbulence')

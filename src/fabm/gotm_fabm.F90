@@ -269,7 +269,7 @@
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
    call cfg%get(yaml_file, 'yaml_file', 'FABM configuration file', &
-                default='fabm.yaml')
+                default='fabm.yaml', display=display_advanced)
    call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
                 default=.true.) ! disable to check mass conservation
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')

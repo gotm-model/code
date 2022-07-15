@@ -5,7 +5,7 @@
 ! !ROUTINE: Update turbulence production\label{sec:production}
 !
 ! !INTERFACE:
-   subroutine production(nlev,NN,SS,xP)
+   subroutine production(nlev,NN,SS,xP, SSCSTK)
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the production terms of turbulent kinetic
@@ -51,7 +51,7 @@
 !  kinetic and potential energy in \eq{tkeA} and \eq{kbeq}, respectively.
 !
 ! !USES:
-   use turbulence, only: P,B,Pb
+   use turbulence, only: P,B,Pb, PSTK
    use turbulence, only: num,nuh
    use turbulence, only: alpha,iw_model
    IMPLICIT NONE
@@ -70,6 +70,9 @@
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
    REALTYPE, intent(in), optional      :: xP(0:nlev)
+
+!  Stokes-Eulerian cross-shear (1/s^2)
+   REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
@@ -99,6 +102,12 @@
          Pb(i)   = -  B(i)*NN(i)
       enddo
    endif
+
+   if ( PRESENT(SSCSTK) ) then
+      do i=0,nlev
+         PSTK(i) =         num (i)*SSCSTK(i)
+      end do
+   end if
 
    return
    end subroutine production
