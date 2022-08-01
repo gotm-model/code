@@ -579,10 +579,9 @@
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth,depth)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_roughness_length,z0b)
-      if (fluxes_method /= 0) then
-         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
-         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp_input%value)
-         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp_input%value)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
       end if
       call set_env_gotm_fabm(latitude,longitude,dt,w_adv_input%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                              nuh,h,w,bioshade(1:nlev),I_0%value,cloud_input%value,taub,wind,precip_input%value,evap,z(1:nlev), &
@@ -593,7 +592,7 @@
       call init_gotm_fabm_input(nlev,h(1:nlev))
 
       ! Transfer optional dependencies to FABM coupler
-      if (fluxes_method /= 0) fabm_airp => airp_input%value
+      fabm_airp => airp_input%value
       fabm_calendar_date => calendar_date
       fabm_julianday => julianday
    end if
