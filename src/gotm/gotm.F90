@@ -582,7 +582,6 @@
       call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
       call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp_input%value)
       call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
-      end if
       call set_env_gotm_fabm(latitude,longitude,dt,w_adv_input%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                              nuh,h,w,bioshade(1:nlev),I_0%value,cloud_input%value,taub,wind,precip_input%value,evap,z(1:nlev), &
                              A_input%value,g1_input%value,g2_input%value,yearday,secondsofday,SRelaxTau(1:nlev),sprof_input%data(1:nlev), &
