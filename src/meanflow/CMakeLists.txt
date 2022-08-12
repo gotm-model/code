@@ -16,5 +16,4 @@ add_library(meanflow
    wequation.F90
 )
 target_link_libraries(meanflow PRIVATE gsw_static stokes_drift observations airsea_driver config)
-#KBtarget_link_libraries(meanflow PRIVATE stokes_drift observations airsea_driver config)
 set_property(TARGET meanflow PROPERTY FOLDER gotm)
