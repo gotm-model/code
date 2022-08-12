@@ -43,9 +43,11 @@
 ! !PUBLIC DATA MEMBERS:
 !
 !  'observed' salinity profile
+   integer, public :: initial_salinity_type
    type (type_profile_input), public, target :: sprof_input
 
 !  'observed' temperature profile
+   integer, public :: initial_temperature_type
    type (type_profile_input), public, target :: tprof_input
 
 !  'observed' oxygen profile
@@ -561,6 +563,8 @@
 
    call settings_store%get(tprof_input, 'temperature', 'temperature profile used for initialization and optionally relaxation', 'Celsius', &
                    extra_options=(/option(ANALYTICAL_OFFSET + TWO_LAYERS, 'two layers with linear gradient in between', 'two_layer'), option(ANALYTICAL_OFFSET + CONST_NN, 'from salinity and buoyancy frequency', 'buoyancy')/), default=0._rk, method_off=NOTHING, method_constant=ANALYTICAL_OFFSET + CONST_PROF, pchild=branch)
+   call branch%get(initial_temperature_type, 'type', 'temperature measure', &
+                   options=(/option(1, 'In-situ','in-situ'), option(2, 'Potential','potential'), option(3, 'Conservative','conservative')/), default=1)
    twig => branch%get_typed_child('two_layer')
    call twig%get(z_t1, 'z_s', 'depth where upper layer ends', 'm', &
                    minimum=0._rk,default=0._rk)
@@ -586,6 +590,8 @@
 
    call settings_store%get(sprof_input, 'salinity', 'salinity profile used for initialization and optionally relaxation', 'psu', minimum=0._rk, &
                    extra_options=(/option(ANALYTICAL_OFFSET + TWO_LAYERS, 'two layers with linear gradient in between', 'two_layer'), option(ANALYTICAL_OFFSET + CONST_NN, 'from temperature and buoyancy frequency', 'buoyancy')/), default=0._rk, method_off=NOTHING, method_constant=ANALYTICAL_OFFSET + CONST_PROF, pchild=branch)
+   call branch%get(initial_salinity_type, 'type', 'salinity measure', &
+                   options=(/option(1, 'practical','practical'), option(2, 'Absolute','absolute')/), default=1)
    twig => branch%get_typed_child('two_layer')
    call twig%get(z_s1, 'z_s', 'depth where upper layer ends', 'm', &
                    minimum=0._rk,default=0._rk)

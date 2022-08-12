@@ -134,7 +134,27 @@ def update_yaml(oldroot):
         move_node(root, 'mimic_3d/int_pressure/dtdy', 'mimic_3d/int_pressure/gradients/dtdy')
         move_node(root, 'mimic_3d/int_pressure/dsdx', 'mimic_3d/int_pressure/gradients/dsdx')
         move_node(root, 'mimic_3d/int_pressure/dsdy', 'mimic_3d/int_pressure/gradients/dsdy')
-        del_node(root, 'turbulence/my/new_constr')
+    if version == 7:
+        # Adding GSW support
+        old_method = get_node(root, 'eq_state/method')
+        old_form = get_node(root, 'eq_state/form')
+        del_node(root, 'eq_state/method')
+        del_node(root, 'eq_state/form')
+        del_node(root, 'eq_state/linear/rho0')
+        move_node(root, 'eq_state', 'equation_of_state')
+        if old_form == 'linear':
+            update_node(root, 'equation_of_state/method', 'linear_teos-10')
+        elif old_form == 'linear_custom':
+            update_node(root, 'equation_of_state/method', 'linear_custom')
+        else:
+            update_node(root, 'equation_of_state/method', 'full_teos-10')
+        move_node(root, 'physical_constants/rho_0', 'equation_of_state/rho0')
+        move_node(root, 'eq_state/T0', 'equation_of_state/T0')
+        move_node(root, 'eq_state/S0', 'equation_of_state/S0')
+        move_node(root, 'eq_state/p0', 'equation_of_state/p0')
+        move_node(root, 'eq_state/dtr0', 'equation_of_state/dtr0')
+        move_node(root, 'eq_state/dsr0', 'equation_of_state/dsr0')
+
         version = 7
     root['version'] = version
     root.move_to_end('version', last=False)

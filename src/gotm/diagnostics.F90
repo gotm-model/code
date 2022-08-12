@@ -89,14 +89,14 @@
 !
 ! !USES:
    use airsea_driver,only: sst,tx,ty
-   use meanflow,     only: gravity,rho_0,cp,drag
+   use density,      only: rho0, calculate_density
+   use meanflow,     only: gravity,cp,drag
    use meanflow,     only: h,u,v,s,t,rho,NN,SS,buoy,rad
    use turbulence,   only: turb_method
    use turbulence,   only: kappa
    use turbulence,   only: num
    use turbulence,   only: tke
    use observations, only: tprof_input,b_obs_sbf
-   use eqstate,      only: eqstate1
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -161,9 +161,9 @@
    if (BuoyMeth .eq. 1) then
       dtt=0.01
       x=0.5*h(nlev)/10.
-      dTb=(eqstate1(S(nlev),T(nlev)+0.5*dtt,x,gravity,rho_0)         &
-          -eqstate1(S(nlev),T(nlev)-0.5*dtt,x,gravity,rho_0))/dtt
-      sbf=-heat/cp/rho_0*dTb
+      dTb=(calculate_density(S(nlev),T(nlev)+0.5*dtt,x,gravity,rho0)         &
+          -calculate_density(S(nlev),T(nlev)-0.5*dtt,x,gravity,rho0))/dtt
+      sbf=-heat/cp/rho0*dTb
 !     Correction of surface buoyancy and temperature flux
 !     for solar radiation penetration
       if (rad_corr) then
@@ -230,9 +230,9 @@
       z=z-_HALF_*h(i)
    end do
    epot=epot-epot0
-   ekin=ekin*rho_0
-   epot=epot*rho_0
-   eturb=eturb*rho_0
+   ekin=ekin*rho0
+   epot=epot*rho0
+   eturb=eturb*rho0
 
    return
    end subroutine do_diagnostics

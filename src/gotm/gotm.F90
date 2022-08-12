@@ -34,6 +34,7 @@
 !
 ! !USES:
    use field_manager
+   use gsw_mod_toolbox
    use register_all_variables, only: do_register_all_variables, fm
 !KB   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,time_unit_second,type_output_category
    use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
@@ -41,6 +42,8 @@
    use diagnostics
    use settings
 
+   use density, only: init_density
+   use density, only: density_method,T0,S0,p0,rho0,dtr0,dsr0
    use meanflow
    use input
    use input_netcdf
@@ -78,7 +81,6 @@
    use kpp,         only: init_kpp,do_kpp,clean_kpp
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
-   use eqstate,     only: init_eqstate
 
 #ifdef _CVMIX_
    use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
@@ -196,10 +198,13 @@
                           restart_allow_perpetual,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
+!KB   namelist /eqstate/     eq_state_mode,eq_state_method,T0,S0,p0,dtr0,dsr0
+!KB   logical          ::    list_fields=.false.
    logical          ::    restart_online=.false.
    integer          ::    rc
    logical          ::    file_exists
    logical          ::    config_only=.false.
+   integer          ::    n
    integer          ::    configuration_version=_CFG_VERSION_
    integer          ::    cfg_version
    type (type_header) :: yaml_header
@@ -365,7 +370,7 @@
 #endif
    call init_meanflow()
 #ifdef _ICE_
-   if (ice_model > 0 .and. Hice > _ZERO_) zeta = -Hice*rho_ice/rho_0
+   if (ice_model > 0 .and. Hice > _ZERO_) zeta = -Hice*rho_ice/rho0
 #endif
 
    branch => settings_store%get_child('buoyancy', display=display_advanced)
@@ -378,8 +383,25 @@
    call branch%get(b_obs_sbf, 'obs_sbf', 'constant surface buoyancy flux', 'm^2/s^3', &
                    default=0._rk, display=display_hidden)
 
-   branch => settings_store%get_child('eq_state', 'equation of state')
-   call init_eqstate(branch)
+   LEVEL1 'init_eqstate_yaml'
+   branch => settings_store%get_child('equation_of_state', 'equation of state')
+   call branch%get(density_method, 'method', 'density formulation', &
+                   options=(/option(1, 'TEOS-10', 'full_TEOS-10'), &
+                             option(2, 'linearized at T0, S0, p0 (rho0 is calculated)', 'linear_teos-10'), &
+                             option(3, 'linearized at T0, S0, rho0, dtr0, dsr0', 'linear_custom')/), &
+                             default=1)
+   call branch%get(rho0, 'rho0', 'reference density', 'kg/m3', default=1027._rk)
+   twig => branch%get_child('linear')
+   call twig%get(T0, 'T0', 'reference temperature', 'Celsius', &
+                 minimum=-2._rk, default=10._rk)
+   call twig%get(S0, 'S0', 'reference salinity', 'psu', &
+                 minimum=0._rk, default=35._rk)
+   call twig%get(p0, 'p0', 'reference pressure', 'Pa', &
+                 default=0._rk)
+   call twig%get(dtr0, 'dtr0', 'thermal expansion coefficient', 'kg/m^3/K', &
+                 default=-0.17_rk)
+   call twig%get(dsr0, 'dsr0', 'saline expansion coefficient', 'kg/m^3/psu', &
+                 default=0.78_rk)
 
 !  open the namelist file.
    if (read_nml) then
@@ -389,7 +411,7 @@
       read(namlst,nml=model_setup,err=91)
       read(namlst,nml=station,err=92)
       read(namlst,nml=time,err=93)
-      call init_eqstate(namlst)
+!KB      read(namlst,nml=eqstate,err=93)
       close (namlst)
 
       call init_meanflow(namlst,'gotmmean.nml')
@@ -399,13 +421,15 @@
       call init_stokes_drift(namlst,'stokes_drift.nml')
 
       call init_turbulence(namlst,'gotmturb.nml')
-      if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
+      if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho0)
 #ifdef _CVMIX_
       if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
 #endif
 
       call init_airsea(namlst,'airsea.nml')
    end if
+   LEVEL1 'init_density()'
+   call init_density()
 
 #ifdef _FABM_
    if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
@@ -526,8 +550,8 @@
       call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
 
-!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
-   call post_init_observations(depth,nlev,z,h,gravity,rho_0)
+!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho0)
+   call post_init_observations(depth,nlev,z,h,gravity,rho0)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
 !  Stokes drift
@@ -545,13 +569,46 @@
 
 #ifdef _CVMIX_
    if (turb_method .eq. 100) then
-      call post_init_cvmix(nlev,depth,gravity,rho_0)
+      call post_init_cvmix(nlev,depth,gravity,rho0)
    endif
 #endif
 
 !  initialise mean fields
-   s(1:nlev) = sprof_input%data(1:nlev)
-   t(1:nlev) = tprof_input%data(1:nlev)
+!GSW_KB
+   select case (initial_salinity_type)
+      case(1) ! Practical
+         Sp(1:nlev) = sprof_input%data(1:nlev)
+      case(2) ! Absolute
+         S(1:nlev) = sprof_input%data(1:nlev)
+   end select
+   select case (initial_temperature_type)
+      case(1) ! In-situ
+         Ti(1:nlev) = tprof_input%data(1:nlev)
+      case(2) ! Potential
+         Tp(1:nlev) = tprof_input%data(1:nlev)
+      case(3) ! Conservative
+         T(1:nlev) = tprof_input%data(1:nlev)
+   end select
+
+   select case (density_method)
+      case (1)
+         select case (initial_salinity_type)
+            case(1) ! Practical
+               S(1:nlev) = gsw_sa_from_sp(Sp(1:nlev),-z(1:nlev),longitude,latitude)
+         end select
+         select case (initial_temperature_type)
+            case(1) ! In-situ
+               T(1:nlev) = gsw_ct_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev))
+               Tp(1:nlev) = gsw_pt_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev),_ZERO_)
+            case(2) ! Potential
+               T(1:nlev) = gsw_ct_from_pt(S(1:nlev),Tp(1:nlev))
+               Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+            case(3) ! Conservative
+               Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),Ti(1:nlev))
+               Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+         end select
+   end select
+!GSW_KB
    u(1:nlev) = uprof_input%data(1:nlev)
    v(1:nlev) = vprof_input%data(1:nlev)
 
@@ -632,7 +689,12 @@
    ! Call stratification to make sure density has sensible value.
    ! This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
-   call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+   select case (buoy_method)
+      case (1)
+         call stratification(nlev)
+      case (2)
+         call prognostic_buoyancy(nlev,dt,cnpar,nuh,gamh)
+   end select
 
 #ifdef _FABM_
 !  Accept the current biogeochemical state and used it to compute derived diagnostics.
@@ -710,6 +772,7 @@
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
 
    REALTYPE                  :: Qsw, Qflux
+   integer                   :: k
    REALTYPE                  :: La, EFactor
 !-----------------------------------------------------------------------
 !BOC
@@ -742,11 +805,11 @@
 #ifdef _ICE_
          if(ice_cover .eq. 0) then
 #endif
-         call set_sst(T(nlev))
+         call set_sst(gsw_t_from_ct(S(nlev), T(nlev), _ZERO_)) !GSW_KB maybe use sea surface elevation as pressure
          call set_ssuv(u(nlev),v(nlev))
 #ifdef _ICE_
          else
-            call set_sst(Tice_surface)
+            call set_sst(Tice_surface) !GSW_KB - check for GSW alternative 
             call set_ssuv(_ZERO_,_ZERO_)
          end if
 #endif
@@ -778,8 +841,13 @@
 #endif
          swf=precip_input%value+evap
          shf=-heat_input%value !KB must be updated in next release version where fluxes will follow positive -z-coordinate
+<<<<<<< HEAD
+         tx = tx/rho0
+         ty = ty/rho0
+=======
          tx = tx/rho_0
          ty = ty/rho_0
+>>>>>>> master
 #ifdef _ICE_
       end if
 #endif
@@ -794,8 +862,8 @@
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
       call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
-      call extpressure(ext_press_mode,nlev)
-      call intpressure(nlev)
+      call external_pressure(ext_press_mode,nlev)
+      call internal_pressure(nlev)
       call friction(nlev,kappa,avmolu,tx,ty,plume_type)
 
 #ifdef SEAGRASS
@@ -810,15 +878,26 @@
       if (tprof_input%method .ne. 0) then
          call temperature(nlev,dt,cnpar,I_0%value,swf,shf,nuh,gamh,rad)
       endif
-
-!     update shear and stratification
-      call shear(nlev,cnpar)
-      call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+!GSW
+   select case (density_method)
+      case (1)
+         Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
+         Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+         Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
+   end select
+!GSW
+!  update shear and stratification
+   call shear(nlev,cnpar)
+   select case (buoy_method)
+      case (1)
+         call stratification(nlev)
+      case (2)
+         call prognostic_buoyancy(nlev,dt,cnpar,nuh,gamh)
+   end select
 
 #ifdef SPM
       if (spm_calc) then
-         call set_env_spm(nlev,rho_0,depth,u_taub,h,u,v,nuh, &
-                          tx,ty,Hs,Tz,Phiw)
+         call set_env_spm(nlev,rho0,depth,u_taub,h,u,v,nuh,tx,ty,Hs,Tz,Phiw)
          call do_spm(nlev,dt)
       end if
 #endif
@@ -830,11 +909,14 @@
       select case (turb_method)
       case (0)
 !        do convective adjustment
-         call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,    &
-                                   buoy_method,gravity,rho_0)
+         call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,buoy_method,gravity,rho0)
       case (99)
 !        update KPP model
+<<<<<<< HEAD
+         call convert_fluxes(nlev,gravity,cp,rho0,heat_input%value,precip_input%value+evap,    &
+=======
          call convert_fluxes(nlev,gravity,cp,rho_0,heat_input%value,precip_input%value+evap,    &
+>>>>>>> master
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
@@ -848,7 +930,11 @@
          call langmuir_number(nlev,zi,Hs_input%value,u_taus,zi(nlev)-zsbl,u10_input%value,v10_input%value)
 
 !        use KPP via CVMix
+<<<<<<< HEAD
+         call convert_fluxes(nlev,gravity,cp,rho0,heat_input%value,precip_input%value+evap,    &
+=======
          call convert_fluxes(nlev,gravity,cp,rho_0,heat_input%value,precip_input%value+evap,    &
+>>>>>>> master
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
          select case(kpp_langmuir_method)
          case (0)

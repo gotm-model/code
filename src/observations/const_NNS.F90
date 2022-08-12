@@ -5,7 +5,7 @@
 ! !IROUTINE: const_NNS
 !
 ! !INTERFACE:
-   subroutine const_NNS(nlev,z,S_top,T_const,NN,gravity,rho_0,S)
+   subroutine const_NNS(nlev,z,S_top,T_const,NN,gravity,rho0,S)
 !
 !
 ! !DESCRIPTION:
@@ -14,14 +14,14 @@
 
 
 ! !USES:
-   use eqstate
+!KB   use gsw_mod_toolbox, only: gsw_specvol_alpha_beta
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)                :: nlev
    REALTYPE, intent(in)                :: z(0:nlev)
    REALTYPE, intent(in)                :: S_top,T_const,NN
-   REALTYPE, intent(in)                :: gravity,rho_0
+   REALTYPE, intent(in)                :: gravity,rho0
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: S(0:nlev)
@@ -33,8 +33,8 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: beta
    REALTYPE                  :: pFace
+   REALTYPE                  :: beta
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -44,7 +44,11 @@
    do i=nlev-1,1,-1
 
       pFace    = 0.5/gravity*(z(i+1)+z(i));
-      beta     = eos_beta(S(i+1),T_const,pFace,gravity,rho_0)
+#if 1
+!KB      call gsw_specvol_alpha_beta(S(i+1),T_const,pFace,beta=beta)
+#else
+      beta     = eos_beta(S(i+1),T_const,pFace,gravity,rho0)
+#endif
 
       S(i) = S(i+1) + _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))
 

@@ -5,7 +5,7 @@
 ! !ROUTINE: The internal pressure-gradient \label{sec:intpressure}
 !
 ! !INTERFACE:
-   subroutine intpressure(nlev)
+   subroutine internal_pressure(nlev)
 !
 ! !DESCRIPTION:
 !   With the hydrostatic assumption
@@ -152,14 +152,14 @@
 ! into the plume.
 !
 ! !USES:
+   use density,       only: calculate_density
    use meanflow,      only: T,S
-   use meanflow,      only: gravity,rho_0,h
+   use meanflow,      only: gravity,h
    use meanflow,      only: buoy
    use observations,  only: int_press_type
    use observations,  only: dsdx_input,dsdy_input,dtdx_input,dtdy_input
    use observations,  only: plume_type,plume_slope_x,plume_slope_y
    use observations,  only: idpdx,idpdy
-   use eqstate,       only: eqstate1
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -198,15 +198,15 @@
 !        buoyancy gradient in x direction
          dSS=dx*dsdx_input%data(i)
          dTT=dx*dtdx_input%data(i)
-         Bl=eqstate1(S(i),T(i),z/10.,gravity,rho_0)
-         Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity,rho_0)
+         Bl=calculate_density(S(i),T(i),z,gravity)
+         Br=calculate_density(S(i)+dSS,T(i)+dTT,z,gravity)
          dxB(i)=(Br-Bl)/dx
 
 !        buoyancy gradient in y direction
          dSS=dy*dsdy_input%data(i)
          dTT=dy*dtdy_input%data(i)
-         Bl=eqstate1(S(i),T(i),z/10.,gravity,rho_0)
-         Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity,rho_0)
+         Bl=calculate_density(S(i),T(i),z,gravity)
+         Br=calculate_density(S(i)+dSS,T(i)+dTT,z,gravity)
          dyB(i)=(Br-Bl)/dy
 
          z=z+0.5*h(i)
@@ -249,7 +249,7 @@
       end if
 
    endif
-   end subroutine intpressure
+   end subroutine internal_pressure
 
 !EOC
 

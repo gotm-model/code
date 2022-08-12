@@ -3826,7 +3826,7 @@
    LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,ce4,      &
                             sig_k,sig_e,sig_peps
 
-   LEVEL2 'my namelist',    e1,e2,e3, e6, sq,sl,my_length
+   LEVEL2 'my namelist',    e1,e2,e3, e6, sq,sl,my_length,new_constr
 
    LEVEL2 'scnd namelist',  scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
