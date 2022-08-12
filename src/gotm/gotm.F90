@@ -841,8 +841,13 @@
 #endif
          swf=precip_input%value+evap
          shf=-heat_input%value !KB must be updated in next release version where fluxes will follow positive -z-coordinate
+<<<<<<< HEAD
          tx = tx/rho0
          ty = ty/rho0
+=======
+         tx = tx/rho_0
+         ty = ty/rho_0
+>>>>>>> master
 #ifdef _ICE_
       end if
 #endif
@@ -907,7 +912,11 @@
          call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,buoy_method,gravity,rho0)
       case (99)
 !        update KPP model
+<<<<<<< HEAD
          call convert_fluxes(nlev,gravity,cp,rho0,heat_input%value,precip_input%value+evap,    &
+=======
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat_input%value,precip_input%value+evap,    &
+>>>>>>> master
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
@@ -921,7 +930,11 @@
          call langmuir_number(nlev,zi,Hs_input%value,u_taus,zi(nlev)-zsbl,u10_input%value,v10_input%value)
 
 !        use KPP via CVMix
+<<<<<<< HEAD
          call convert_fluxes(nlev,gravity,cp,rho0,heat_input%value,precip_input%value+evap,    &
+=======
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat_input%value,precip_input%value+evap,    &
+>>>>>>> master
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
          select case(kpp_langmuir_method)
          case (0)
