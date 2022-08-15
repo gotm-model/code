@@ -28,7 +28,7 @@
 ! they have to be consistent with the equation of state used in your model.
 !
 ! !USES:
-!KB  use gsw_mod_toolbox, only: gsw_rho_alpha_beta_bsq
+  use gsw_mod_toolbox, only: gsw_rho_alpha_beta_bsq
   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
