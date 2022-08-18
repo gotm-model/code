@@ -742,7 +742,7 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
-   subroutine post_init_observations(depth,nlev,z,h,gravity,rho_0)
+   subroutine post_init_observations(depth,nlev,z,zi,h,gravity)
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -759,8 +759,8 @@
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)                :: depth
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
-   REALTYPE, intent(in)                :: gravity,rho_0
+   REALTYPE, intent(in)                :: z(0:nlev),zi(0:nlev),h(0:nlev)
+   REALTYPE, intent(in)                :: gravity
 !
 !
 ! !REVISION HISTORY:
@@ -845,7 +845,7 @@
             stop 'init_observations'
          endif
 
-         call const_NNS(nlev,z,s_1,t_1,s_obs_NN,gravity,rho_0,sprof_input%data)
+         call const_NNS(nlev,z,s_1,t_1,s_obs_NN,gravity,sprof_input%data)
    end select
 
 !  The temperature profile
@@ -867,7 +867,7 @@
             stop 'init_observations'
          endif
 
-         call const_NNT(nlev,z,t_1,s_1,t_obs_NN,gravity,rho_0,tprof_input%data)
+         call const_NNT(nlev,z,z,t_1,s_1,t_obs_NN,gravity,tprof_input%data)
    end select
 
 !  The external pressure

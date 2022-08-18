@@ -551,7 +551,7 @@
 #endif
 
 !KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho0)
-   call post_init_observations(depth,nlev,z,h,gravity,rho0)
+   call post_init_observations(depth,nlev,z,zi,h,gravity)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
 !  Stokes drift
