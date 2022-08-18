@@ -92,11 +92,7 @@
       case(1) ! use gsw_rho(S,T,p) - default p=0
          LEVEL3 'rho0=  ',rho0
       case(2) ! S0, T0, p0 are provided - rho0, dtr0, dsr0 are calculated
-#if 1
          call gsw_rho_alpha_beta(S0,T0,p0,rho0,dtr0,dsr0)
-#else
-         call gsw_rho_alpha_beta_bsq(S0,T0,p0,rho0,dtr0,dsr0,.true.)
-#endif
          LEVEL2 'Linearized - using gsw_rho_alpha_beta()'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
@@ -178,10 +174,10 @@
 !-----------------------------------------------------------------------
 !BOC
    select case (density_method)
-      case (1, 2)
+      case(1)
+         x=gsw_rho(S,T,p0) ! should not be p0 - KB?
+      case (2, 3)
          x=rho0+dtr0*(T-T0)+dsr0*(S-S0)
-      case(3)
-         x=gsw_rho(S,T,p0)
       case default
    end select
 
