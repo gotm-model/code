@@ -350,7 +350,7 @@
    namelist /keps/          ce1,ce2,ce3minus,ce3plus,ce4,      &
                             sig_k,sig_e,sig_peps
 
-   namelist /my/            e1,e2,e3,e6,sq,sl,my_length,new_constr
+   namelist /my/            e1,e2,e3,e6,sq,sl,my_length, new_constr
 
    namelist /scnd/          scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
@@ -456,7 +456,6 @@
    sq=0.2
    sl=0.2
    my_length=1
-   new_constr=.false.
 
 !  the 'scnd' namelist
    scnd_method = 0
@@ -695,8 +694,6 @@
                    default=0.2_rk)
    call twig%get(my_length, 'length', 'barotropic length scale in q^2 l equation', &
                    options=(/option(1, 'parabolic', 'parabolic'), option(2, 'triangular', 'triangular'), option(3, 'linear from surface', 'linear')/),default=1)
-   call twig%get(new_constr, 'new_constr', 'stabilize stability functions', &
-                   default=.false.)
 
    twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
    call twig%get(scnd_method, 'method', 'method', &
@@ -3829,7 +3826,7 @@
    LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,ce4,      &
                             sig_k,sig_e,sig_peps
 
-   LEVEL2 'my namelist',    e1,e2,e3, e6, sq,sl,my_length,new_constr
+   LEVEL2 'my namelist',    e1,e2,e3, e6, sq,sl,my_length
 
    LEVEL2 'scnd namelist',  scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
