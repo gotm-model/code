@@ -591,10 +591,12 @@
    end select
 
    select case (density_method)
-      case (1)
+      case (1,2,3)
          select case (initial_salinity_type)
-            case(1) ! Practical
+            case(1) ! Practical --> Absolute
                S(1:nlev) = gsw_sa_from_sp(Sp(1:nlev),-z(1:nlev),longitude,latitude)
+            case(2) ! Absolute --> Practical
+               Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
          end select
          select case (initial_temperature_type)
             case(1) ! In-situ
@@ -604,7 +606,7 @@
                T(1:nlev) = gsw_ct_from_pt(S(1:nlev),Tp(1:nlev))
                Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
             case(3) ! Conservative
-               Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),Ti(1:nlev))
+               Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
                Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
          end select
    end select
@@ -875,7 +877,7 @@
       endif
 !GSW
    select case (density_method)
-      case (1)
+      case (1,2,3)
          Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
          Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
          Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
