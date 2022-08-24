@@ -119,7 +119,6 @@
 ! !IROUTINE: Select an equation of state
 !
 ! !INTERFACE:
-!KB   REALTYPE function calculate_density(S,T,p,g)
    elemental REALTYPE function calculate_density(S,T,p,g)
 !
 ! !DESCRIPTION:
@@ -175,9 +174,9 @@
 !BOC
    select case (density_method)
       case(1)
-         x=gsw_rho(S,T,p0) ! should not be p0 - KB?
+         x=gsw_rho(S,T,p)
       case (2, 3)
-         x=rho0+dtr0*(T-T0)+dsr0*(S-S0)
+         x=rho0*(_ONE_-dtr0*(T-T0)+dsr0*(S-S0))
       case default
    end select
 

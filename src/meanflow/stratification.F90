@@ -66,13 +66,12 @@
 !  and $S$ and is only recommended for idealized studies.
 !
 ! !USES:
-!GSW_KB   use density,    only: calculate_density,rho0
-   use density,    only: rho0
-   use meanflow,   only: h,S,T,buoy,rho
-!GSW_KB   use meanflow,   only: NN,NNT,NNS
-   use meanflow,   only: NN
+   use density,    only: density_method,calculate_density
+   use density,    only: rho0,dtr0,dsr0
+   use meanflow,   only: z,zi,h,S,T,buoy,rho
+   use meanflow,   only: NN,NNT,NNS
    use meanflow,   only: gravity
-   use gsw_mod_toolbox, only: gsw_nsquared, gsw_rho
+   use gsw_mod_toolbox, only: gsw_nsquared
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -90,18 +89,34 @@
 ! !LOCAL VARIABLES:
    integer :: n
    REALTYPE :: lat(0:nlev)
-   REALTYPE :: zc(0:nlev),zi(nlev)
+   REALTYPE :: zi_local(nlev)
+   REALTYPE :: dz,Si,Ti,buoyp,buoym
 !-----------------------------------------------------------------------
 !BOC
    lat=_ZERO_ !GSW_KB - need to pass in lat
-   zi(nlev)=_ZERO_
-   zc(nlev)=_HALF_*h(nlev)
-   do n=nlev-1,1,-1
-      zc(n) = zc(n+1)+_HALF_*(h(n)+h(n+1))
-   end do
-   rho(1:) = gsw_rho(S(1:),T(1:),zc(1:)) 
+   select case (density_method)
+      case (1)
+         call gsw_Nsquared(S(1:),T(1:),-z(1:),lat(1:),NN(1:),zi_local(1:))
+      case (2,3)
+         do n=nlev-1,1,-1
+            dz=0.5*(h(n+1)+h(n))
+
+            Si=(S(n+1)*h(n)+S(n)*h(n+1))/(h(n+1)+h(n))
+            Ti=(T(n+1)*h(n)+T(n)*h(n+1))/(h(n+1)+h(n))
+
+            buoyp=calculate_density(Si,T(n+1),-zi(n),gravity)
+            buoym=calculate_density(Si,T(n  ),-zi(n),gravity)
+            NNT(n)=(buoyp-buoym)/dz
+
+            buoyp=calculate_density(S(n+1),Ti,-zi(n),gravity)
+            buoym=calculate_density(S(n  ),Ti,-zi(n),gravity)
+            NNS(n)=(buoyp-buoym)/dz
+             
+            NN(n)=NNT(n)+NNS(n)
+         end do
+   end select
+   rho(1:)=calculate_density(S(1:),T(1:),-z(1:))
    buoy(1:) = -gravity*(rho(1:)-rho0)/rho0
-   call gsw_Nsquared(S(1:),T(1:),zc(1:),lat(1:),NN(1:),zi(1:))
 
    ! set boundary values
    NN(nlev) = _ZERO_
