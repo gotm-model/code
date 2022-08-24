@@ -16,6 +16,7 @@
 !
 ! !USES:
    use field_manager
+   use gsw_mod_toolbox
    use register_all_variables, only: do_register_all_variables, fm
 !KB   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,time_unit_second,type_output_category
    use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
@@ -23,6 +24,8 @@
    use diagnostics
    use settings
 
+   use density, only: init_density
+   use density, only: density_method,T0,S0,p0,rho0,dtr0,dsr0
    use meanflow
    use input
    use input_netcdf
@@ -34,14 +37,18 @@
    use airsea_driver, only: surface_fluxes
    use airsea_driver, only: set_sst,set_ssuv,integrated_fluxes
    use airsea_driver, only: fluxes_method
-   use airsea_driver, only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
+   use airsea_driver, only: wind=>w,tx,ty,I_0,cloud_input,heat_input,precip_input,evap,airp_input,albedo
    use airsea_driver, only: bio_albedo,bio_drag_scale
-   use airsea_driver, only: u10, v10
+   use airsea_driver, only: u10_input, v10_input
    use airsea_variables, only: qa,ta
 
 #ifdef _ICE_
-   use ice,         only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
+   use gotm_stim_driver, only: ice_model
+   use gotm_stim_driver, only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
+   use stim_variables, only: Hice, rho_ice
    use stim_variables, only: Tice_surface,albedo_ice,transmissivity
+   use stim_variables, only: melt_rate,T_melt,S_melt
+   use stim_variables, only: ocean_ice_heat_flux,ocean_ice_salt_flux
 #endif
 
    use turbulence,  only: turb_method
@@ -56,7 +63,6 @@
    use kpp,         only: init_kpp,do_kpp,clean_kpp
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
-   use eqstate,     only: init_eqstate
 
 #ifdef _CVMIX_
    use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
@@ -81,7 +87,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm, time_loop, clean_up
+   public initialize_gotm, integrate_gotm, finalize_gotm
 
 !
 ! !DEFINED PARAMETERS:
@@ -109,6 +115,7 @@
    REALTYPE,target           :: latitude,longitude
    logical                   :: restart
 
+   character(len=1024), public :: restart_file = 'restart'
    character(len=1024), public :: yaml_file = 'gotm.yaml'
    character(len=1024), public :: write_yaml_path = ''
    character(len=1024), public :: write_schema_path = ''
@@ -122,7 +129,12 @@
       procedure :: julian_day => gotm_host_julian_day
       procedure :: calendar_date => gotm_host_calendar_date
    end type
-!
+
+   REALTYPE :: swf=_ZERO_ ! surface water flux
+   REALTYPE :: shf=_ZERO_ ! surface heat flux
+   REALTYPE :: ssf=_ZERO_ ! surface salinity flux
+
+   integer(kind=timestepkind):: progress
 !-----------------------------------------------------------------------
 
    contains
@@ -133,8 +145,7 @@
 ! !IROUTINE: Initialise the model \label{initGOTM}
 !
 ! !INTERFACE:
-!KB   subroutine init_gotm(t1,t2)
-   subroutine init_gotm()
+   subroutine initialize_gotm()
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
@@ -153,7 +164,6 @@
   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-!KB   character(len=*), intent(in), optional  :: t1,t2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -161,21 +171,21 @@
 ! !LOCAL VARIABLES:
    class (type_settings), pointer :: branch, twig
    integer, parameter :: rk = kind(_ONE_)
-
-   logical          ::    restart_online=.false.
-   logical          ::    restart_offline = .false.
    logical          ::    restart_allow_missing_variable = .false.
    logical          ::    restart_allow_perpetual = .true.
+   logical          ::    restart_offline = .false.
+   logical          ::    restart_online=.false.
    integer          ::    rc
    logical          ::    file_exists
    logical          ::    config_only=.false.
+   integer          ::    n
    integer          ::    configuration_version=_CFG_VERSION_
    integer          ::    cfg_version
    type (type_header) :: yaml_header
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_gotm'
+   LEVEL1 'initialize_gotm'
 #if 0
    if (present(t1)) then
       restart_online = .true.
@@ -329,6 +339,9 @@
    end if
 #endif
    call init_meanflow()
+#ifdef _ICE_
+   if (ice_model > 0 .and. Hice > _ZERO_) zeta = -Hice*rho_ice/rho0
+#endif
 
    branch => settings_store%get_child('buoyancy', display=display_advanced)
    call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
@@ -340,8 +353,25 @@
    call branch%get(b_obs_sbf, 'obs_sbf', 'constant surface buoyancy flux', 'm^2/s^3', &
                    default=0._rk, display=display_hidden)
 
-   branch => settings_store%get_child('eq_state', 'equation of state')
-   call init_eqstate(branch)
+   LEVEL1 'init_eqstate_yaml'
+   branch => settings_store%get_child('equation_of_state', 'equation of state')
+   call branch%get(density_method, 'method', 'density formulation', &
+                   options=(/option(1, 'TEOS-10', 'full_TEOS-10'), &
+                             option(2, 'linearized at T0, S0, p0 (rho0 is calculated)', 'linear_teos-10'), &
+                             option(3, 'linearized at T0, S0, rho0, dtr0, dsr0', 'linear_custom')/), &
+                             default=1)
+   call branch%get(rho0, 'rho0', 'reference density', 'kg/m3', default=1027._rk)
+   twig => branch%get_child('linear')
+   call twig%get(T0, 'T0', 'reference temperature', 'Celsius', &
+                 minimum=-2._rk, default=10._rk)
+   call twig%get(S0, 'S0', 'reference salinity', 'psu', &
+                 minimum=0._rk, default=35._rk)
+   call twig%get(p0, 'p0', 'reference pressure', 'Pa', &
+                 default=0._rk)
+   call twig%get(dtr0, 'dtr0', 'thermal expansion coefficient', 'kg/m^3/K', &
+                 default=-0.17_rk)
+   call twig%get(dsr0, 'dsr0', 'saline expansion coefficient', 'kg/m^3/psu', &
+                 default=0.78_rk)
 
 #ifdef _FABM_
    ! Allow FABM to create its model tree. After this we know all biogeochemical variables
@@ -414,12 +444,13 @@
       LEVEL4 'updated: ',start,' -> ',stop
    end if
 
+!KB - rephrase
+!  zeta is initialized to 0 - but might have been over written by the ice module.
 !  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
 !  will be set by init_observations.
 !  However, before that happens, it is already used in updategrid.
 !  therefore, we set to to a reasonable default here.
-   zeta%value = _ZERO_
-   w_adv%method = 0
+   w_adv_input%method = 0
 
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.
@@ -447,7 +478,7 @@
 !  namlst - unit.
    call post_init_meanflow(nlev,latitude)
    call init_tridiagonal(nlev)
-   call updategrid(nlev,dt,zeta%value)
+   call updategrid(nlev,dt,zeta)
 
 #ifdef SEAGRASS
       call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
@@ -456,8 +487,8 @@
       call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
 
-!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
-   call post_init_observations(depth,nlev,z,h,gravity,rho_0)
+!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho0)
+   call post_init_observations(depth,nlev,z,zi,h,gravity)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
 !  Stokes drift
@@ -465,28 +496,68 @@
 
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
+!KB need some check to find out if this should be done:  zeta = zeta_input%value
+   
 
    ! Update the grid based on true initial zeta (possibly read from file by do_input).
-   call updategrid(nlev,dt,zeta%value)
+   call updategrid(nlev,dt,zeta)
 
    call post_init_turbulence(nlev)
 
 #ifdef _CVMIX_
    if (turb_method .eq. 100) then
-      call post_init_cvmix(nlev,depth,gravity,rho_0)
+      call post_init_cvmix(nlev,depth,gravity,rho0)
    endif
 #endif
 
 !  initialise mean fields
-   s(1:nlev) = sprof%data(1:nlev)
-   t(1:nlev) = tprof%data(1:nlev)
-   u(1:nlev) = uprof%data(1:nlev)
-   v(1:nlev) = vprof%data(1:nlev)
+!GSW_KB
+   select case (initial_salinity_type)
+      case(1) ! Practical
+         Sp(1:nlev) = sprof_input%data(1:nlev)
+      case(2) ! Absolute
+         S(1:nlev) = sprof_input%data(1:nlev)
+   end select
+   select case (initial_temperature_type)
+      case(1) ! In-situ
+         Ti(1:nlev) = tprof_input%data(1:nlev)
+      case(2) ! Potential
+         Tp(1:nlev) = tprof_input%data(1:nlev)
+      case(3) ! Conservative
+         T(1:nlev) = tprof_input%data(1:nlev)
+   end select
+
+   select case (density_method)
+      case (1,2,3)
+         select case (initial_salinity_type)
+            case(1) ! Practical --> Absolute
+               S(1:nlev) = gsw_sa_from_sp(Sp(1:nlev),-z(1:nlev),longitude,latitude)
+            case(2) ! Absolute --> Practical
+               Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
+         end select
+         select case (initial_temperature_type)
+            case(1) ! In-situ
+               T(1:nlev) = gsw_ct_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev))
+               Tp(1:nlev) = gsw_pt_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev),_ZERO_)
+            case(2) ! Potential
+               T(1:nlev) = gsw_ct_from_pt(S(1:nlev),Tp(1:nlev))
+               Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+            case(3) ! Conservative
+               Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
+               Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+         end select
+   end select
+!GSW_KB
+   u(1:nlev) = uprof_input%data(1:nlev)
+   v(1:nlev) = vprof_input%data(1:nlev)
 
    call post_init_airsea(latitude,longitude)
 #if 0
 #ifdef _ICE_
    call post_init_ice(ta,S(nlev))
+   if(ice_cover .eq. 2) then
+      z0s = z0i
+   end if
 #endif
 #endif
    call init_diagnostics(nlev)
@@ -506,19 +577,19 @@
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_roughness_length,z0b)
       if (fluxes_method /= 0) then
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
-         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp%value)
+         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp_input%value)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
       end if
-      call set_env_gotm_fabm(latitude,longitude,dt,w_adv%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
-                             nuh,h,w,bioshade(1:nlev),I_0%value,cloud%value,taub,wind,precip%value,evap,z(1:nlev), &
-                             A_%value,g1_%value,g2_%value,yearday,secondsofday,SRelaxTau(1:nlev),sProf%data(1:nlev), &
+      call set_env_gotm_fabm(latitude,longitude,dt,w_adv_input%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
+                             nuh,h,w,bioshade(1:nlev),I_0%value,cloud_input%value,taub,wind,precip_input%value,evap,z(1:nlev), &
+                             A_input%value,g1_input%value,g2_input%value,yearday,secondsofday,SRelaxTau(1:nlev),sprof_input%data(1:nlev), &
                              bio_albedo,bio_drag_scale)
 
       ! Initialize FABM input (data files with observations)
       call init_gotm_fabm_input(nlev,h(1:nlev))
 
       ! Transfer optional dependencies to FABM coupler
-      if (fluxes_method /= 0) fabm_airp => airp%value
+      if (fluxes_method /= 0) fabm_airp => airp_input%value
       fabm_calendar_date => calendar_date
       fabm_julianday => julianday
    end if
@@ -526,6 +597,7 @@
 
    ! Now that all inputs have been registered (FABM added some), update them all by reading from file.
    call do_input(julianday,secondsofday,nlev,z)
+!KB need some check to find out if this should be done:  zeta = zeta_input%value
 
 #ifdef _FABM_
 !  Initialize FABM initial state (this is done after the first call to do_input,
@@ -556,7 +628,12 @@
    ! Call stratification to make sure density has sensible value.
    ! This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
-   call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+   select case (buoy_method)
+      case (1)
+         call stratification(nlev)
+      case (2)
+         call prognostic_buoyancy(nlev,dt,cnpar,nuh,gamh)
+   end select
 
 #ifdef _FABM_
 !  Accept the current biogeochemical state and used it to compute derived diagnostics.
@@ -571,10 +648,12 @@
    LEVEL2 'done.'
    STDERR LINE
 
+   progress = (MaxN-MinN+1)/10
+
 #ifdef _PRINTSTATE_
    call print_state
 #endif
-   end subroutine init_gotm
+   end subroutine initialize_gotm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -583,7 +662,7 @@
 ! !IROUTINE: Manage global time--stepping \label{timeLoop}
 !
 ! !INTERFACE:
-   subroutine time_loop()
+   subroutine integrate_gotm()
 !
 ! !DESCRIPTION:
 ! This internal routine is the heart of the code. It contains
@@ -615,36 +694,28 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer(kind=timestepkind):: n,progress
-   integer                   :: i
+   integer(kind=timestepkind):: n
+   integer                   :: i=0
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
-   character(8)              :: d_
-   character(10)             :: t_
 
    REALTYPE                  :: Qsw, Qflux
+   integer                   :: k
    REALTYPE                  :: La, EFactor
-!
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. restart) then
+   if (i == 0 .and. .not. restart) then
       LEVEL1 'saving initial conditions'
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
+      STDERR LINE
+      LEVEL1 'integrate_gotm'
+      STDERR LINE
    end if
-   STDERR LINE
-   LEVEL1 'time_loop'
-   progress = (MaxN-MinN+1)/10
-   i=0
    do n=MinN,MaxN
 
-      if(mod(n,progress) .eq. 0 .or. n .eq. MinN) then
-#if 0
-         call date_and_time(date=d_,time=t_)
-         LEVEL0 i,'%: ',t_(1:2),':',t_(3:4),':',t_(5:10)
-#else
+      if(mod(n,progress) .eq. 0 .or. i == 0) then
          LEVEL0 i,'%'
-#endif
          i = i +10
       end if
 
@@ -655,18 +726,19 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
-      call do_stokes_drift(nlev,z,zi,gravity,u10%value,v10%value)
+!KB need some check to find out if this should be done:  zeta = zeta_input%value
+      call do_stokes_drift(nlev,z,zi,gravity,u10_input%value,v10_input%value)
 
 !     external forcing
       if(fluxes_method /= 0) then
 #ifdef _ICE_
          if(ice_cover .eq. 0) then
 #endif
-         call set_sst(T(nlev))
+         call set_sst(gsw_t_from_ct(S(nlev), T(nlev), _ZERO_)) !GSW_KB maybe use sea surface elevation as pressure
          call set_ssuv(u(nlev),v(nlev))
 #ifdef _ICE_
          else
-            call set_sst(Tice_surface)
+            call set_sst(Tice_surface) !GSW_KB - check for GSW alternative 
             call set_ssuv(_ZERO_,_ZERO_)
          end if
 #endif
@@ -682,20 +754,24 @@
 
 #ifdef _ICE_
       Qsw = I_0%value
-      call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw,surface_fluxes)
+      call do_ice(h(nlev),dt,u_taus,T(nlev),S(nlev),ta,precip_input%value,Qsw,surface_fluxes)
 #endif
 
 !     reset some quantities
 #ifdef _ICE_
       if(ice_cover .gt. 0) then
+         I_0%value = transmissivity*I_0%value
+         swf=melt_rate
+         shf=ocean_ice_heat_flux
+         ssf=ocean_ice_salt_flux
          tx = _ZERO_
          ty = _ZERO_
-         heat%value = _ZERO_
-         I_0%value = transmissivity*I_0%value
       else
 #endif
-         tx = tx/rho_0
-         ty = ty/rho_0
+         swf=precip_input%value+evap
+         shf=-heat_input%value !KB must be updated in next release version where fluxes will follow positive -z-coordinate
+         tx = tx/rho0
+         ty = ty/rho0
 #ifdef _ICE_
       end if
 #endif
@@ -703,15 +779,15 @@
       call integrated_fluxes(dt)
 
 !     meanflow integration starts
-      call updategrid(nlev,dt,zeta%value)
+      call updategrid(nlev,dt,zeta)
       call wequation(nlev,dt)
       call coriolis(nlev,dt)
 
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
       call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
-      call extpressure(ext_press_mode,nlev)
-      call intpressure(nlev)
+      call external_pressure(ext_press_mode,nlev)
+      call internal_pressure(nlev)
       call friction(nlev,kappa,avmolu,tx,ty,plume_type)
 
 #ifdef SEAGRASS
@@ -719,22 +795,33 @@
 #endif
 
 !     update temperature and salinity
-      if (sprof%method .ne. 0) then
-         call salinity(nlev,dt,cnpar,nus,gams)
+      if (sprof_input%method .ne. 0) then
+         call salinity(nlev,dt,cnpar,swf,ssf,nus,gams)
       endif
 
-      if (tprof%method .ne. 0) then
-         call temperature(nlev,dt,cnpar,I_0%value,heat%value,nuh,gamh,rad)
+      if (tprof_input%method .ne. 0) then
+         call temperature(nlev,dt,cnpar,I_0%value,swf,shf,nuh,gamh,rad)
       endif
-
-!     update shear and stratification
-      call shear(nlev,cnpar)
-      call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+!GSW
+   select case (density_method)
+      case (1,2,3)
+         Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
+         Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+         Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
+   end select
+!GSW
+!  update shear and stratification
+   call shear(nlev,cnpar)
+   select case (buoy_method)
+      case (1)
+         call stratification(nlev)
+      case (2)
+         call prognostic_buoyancy(nlev,dt,cnpar,nuh,gamh)
+   end select
 
 #ifdef SPM
       if (spm_calc) then
-         call set_env_spm(nlev,rho_0,depth,u_taub,h,u,v,nuh, &
-                          tx,ty,Hs,Tz,Phiw)
+         call set_env_spm(nlev,rho0,depth,u_taub,h,u,v,nuh,tx,ty,Hs,Tz,Phiw)
          call do_spm(nlev,dt)
       end if
 #endif
@@ -746,11 +833,10 @@
       select case (turb_method)
       case (0)
 !        do convective adjustment
-         call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,    &
-                                   buoy_method,gravity,rho_0)
+         call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,buoy_method,gravity,rho0)
       case (99)
 !        update KPP model
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
+         call convert_fluxes(nlev,gravity,cp,rho0,heat_input%value,precip_input%value+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
@@ -761,10 +847,10 @@
       case (100)
 
 !        update Langmuir number
-         call langmuir_number(nlev,zi,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
+         call langmuir_number(nlev,zi,Hs_input%value,u_taus,zi(nlev)-zsbl,u10_input%value,v10_input%value)
 
 !        use KPP via CVMix
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
+         call convert_fluxes(nlev,gravity,cp,rho0,heat_input%value,precip_input%value+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
          select case(kpp_langmuir_method)
          case (0)
@@ -789,10 +875,10 @@
 !        update one-point models
 # ifdef SEAGRASS
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP)
+                            NN,SS,xP, SSCSTK=SSCSTK)
 # else
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS)
+                            NN,SS, SSCSTK=SSCSTK)
 # endif
       end select
 
@@ -803,7 +889,7 @@
    STDERR LINE
 
    return
-   end subroutine time_loop
+   end subroutine integrate_gotm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -812,7 +898,7 @@
 ! !IROUTINE: The run is over --- now clean up.
 !
 ! !INTERFACE:
-   subroutine clean_up()
+   subroutine finalize_gotm()
 !
 ! !DESCRIPTION:
 ! This function is just a wrapper for the external routine
@@ -832,7 +918,7 @@
    call print_state
 #endif
 
-   LEVEL1 'clean_up'
+   LEVEL1 'finalize_gotm'
 
    call clean_airsea()
 
@@ -865,13 +951,16 @@
    call close_input()
 
    call output_manager_clean()
+   if (associated(output_manager_host)) deallocate(output_manager_host)
 
    call clean_diagnostics()
 
    call fm%finalize()
 
+   call settings_store%finalize()
+
    return
-   end subroutine clean_up
+   end subroutine finalize_gotm
 !EOC
 
 #ifdef _PRINTSTATE_
@@ -943,6 +1032,7 @@
 
       allocate(file)
       file%path = 'restart'
+      file%postfix = output_id
       file%time_unit = time_unit_day
       file%time_step = 1
       file%first_julian = jul2
@@ -969,7 +1059,7 @@
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
 
-      call open_restart()
+      call open_restart(trim(restart_file))
 
       if (.not. restart_allow_perpetual) then
          call check_restart_time('time')
@@ -1002,6 +1092,7 @@
       stop 1
 #endif
    end subroutine read_restart
+
 !-----------------------------------------------------------------------
 
    end module gotm

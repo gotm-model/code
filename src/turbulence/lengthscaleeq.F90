@@ -67,9 +67,9 @@
 ! by setting {\tt length\_lim = .true.} in {\tt gotmturb.nml}.
 !
 ! !USES:
-   use turbulence, only: P,B
+   use turbulence, only: P,B, PSTK
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: kappa,e1,e2,e3,b1
+   use turbulence, only: kappa,e1,e2,e3,e6,b1
    use turbulence, only: MY_length,cm0,cde,galp,length_lim
    use turbulence, only: q2l_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
    use turbulence, only: sl
@@ -135,11 +135,7 @@
 !  some quantities in Mellor-Yamada notation
    do i=1,nlev-1
       q2l(i)=2.*tkeo(i)*L(i)
-#ifdef _HARCOURT_QINGLI_
       q3 (i)=sqrt(8.*tkeo(i)*tkeo(i)*tkeo(i))
-#else
-      q3 (i)=sqrt(8.*tke(i)*tke(i)*tke(i))
-#endif
    end do
 
 !  diagnostic length scale for wall function
@@ -160,15 +156,10 @@
    do i=1,nlev-1
 
 !     compute diffusivity
-
-#ifdef _HARCOURT_QINGLI_
       avh(i)      =  sl*sqrt(2.*tkeo(i))*L(i)
-#else
-      avh(i)      =  sl*sqrt(2.*tke(i))*L(i)
-#endif
 
 !     compute production terms in q^2 l - equation
-      prod        =  e1*L(i)*P(i)
+      prod        =  e1*L(i)*P(i) + e6*L(i)*PSTK(i)
       buoyan      =  e3*L(i)*B(i)
       diss        =  q3(i)/b1*(1.+e2*(L(i)/Lz(i))*(L(i)/Lz(i)))
 
@@ -243,11 +234,11 @@
         if (L(i).gt.Lcrit) L(i)=Lcrit
      end if
 
-!    compute dissipation rate
-     eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
-
 !    check for very small lengh scale
      if (L(i).lt.l_min) L(i)=l_min
+
+!    compute dissipation rate
+     eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
 
 !    substitute minimum value
      if (eps(i).lt.eps_min) then

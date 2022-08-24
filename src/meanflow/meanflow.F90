@@ -33,6 +33,9 @@
 !  coordinate z, layer thicknesses
    REALTYPE, public, dimension(:), allocatable, target  :: ga,z,zi,h,ho
 
+!  the sea surface elevation
+   REALTYPE, public, target  :: zeta=_ZERO_
+
 !  the velocity components
    REALTYPE, public, dimension(:), allocatable, target  :: u,v,w
 
@@ -40,7 +43,12 @@
    REALTYPE, public, dimension(:), allocatable  :: uo,vo
 
 !  potential temperature, salinity
+!  T -> Tc - conservative temperature, S -> Sa - absolute salinity
    REALTYPE, public, dimension(:), allocatable, target  :: T,S,rho
+!  Tp - potential temperature, Sp - practical salinity
+   REALTYPE, public, dimension(:), allocatable, target  :: Tp,Sp
+!  Ti - in-situ temperature
+   REALTYPE, public, dimension(:), allocatable, target  :: Ti
 
 !  boyancy frequency squared
 !  (total, from temperature only, from salinity only)
@@ -49,6 +57,9 @@
 !  shear-frequency squared
 !  (total, from u only, from v only)
    REALTYPE, public, dimension(:), allocatable  :: SS,SSU,SSV
+
+!  Stokes-Eulerian cross-shear and Stokes shear squared
+   REALTYPE, public, dimension(:), allocatable  :: SSCSTK
 
 !  buoyancy, short-wave radiation,
 !  extra production of tke by see-grass etc
@@ -95,7 +106,6 @@
    REALTYPE, public                    :: dtgrid
    character(LEN=PATH_MAX), public     :: grid_file
    REALTYPE, public                    :: gravity
-   REALTYPE, public                    :: rho_0
    REALTYPE, public                    :: cp
    REALTYPE, public                    :: avmolu
    REALTYPE, public                    :: avmolT
@@ -173,8 +183,6 @@
    branch => settings_store%get_typed_child('physical_constants', display=display_advanced)
    call branch%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
                 minimum=0._rk,default=9.81_rk)
-   call branch%get(rho_0, 'rho_0', 'reference density', 'kg/m^3', &
-                minimum=0._rk,default=1027._rk)
    call branch%get(cp, 'cp', 'specific heat of sea water', 'J/kg/K', &
                 minimum=0._rk,default=3985._rk)
    call branch%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
@@ -307,9 +315,21 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (T)'
    T = _ZERO_
 
+   allocate(Tp(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Tp)'
+   Tp = _ZERO_
+
+   allocate(Ti(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Ti)'
+   Ti = _ZERO_
+
    allocate(S(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (S)'
    S = _ZERO_
+
+   allocate(Sp(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Sp)'
+   Sp = _ZERO_
 
    allocate(rho(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (rho)'
@@ -338,6 +358,10 @@
    allocate(SSV(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (SSV)'
    SSV = _ZERO_
+
+   allocate(SSCSTK(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (SSCSTK)'
+   SSCSTK = _ZERO_
 
    allocate(xP(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (xP)'
@@ -428,7 +452,10 @@
    if (allocated(fric)) deallocate(fric)
    if (allocated(drag)) deallocate(drag)
    if (allocated(T)) deallocate(T)
+   if (allocated(Tp)) deallocate(Tp)
+   if (allocated(Ti)) deallocate(Ti)
    if (allocated(S)) deallocate(S)
+   if (allocated(Sp)) deallocate(Sp)
    if (allocated(rho)) deallocate(rho)
    if (allocated(NN)) deallocate(NN)
    if (allocated(NNT)) deallocate(NNT)
@@ -436,6 +463,7 @@
    if (allocated(SS)) deallocate(SS)
    if (allocated(SSU)) deallocate(SSU)
    if (allocated(SSV)) deallocate(SSV)
+   if (allocated(SSCSTK)) deallocate(SSCSTK)
    if (allocated(xP)) deallocate(xP)
    if (allocated(buoy)) deallocate(buoy)
    if (allocated(rad)) deallocate(rad)
@@ -496,6 +524,7 @@
    if (allocated(SS))  LEVEL2 'SS',SS
    if (allocated(SSU)) LEVEL2 'SSU',SSU
    if (allocated(SSV)) LEVEL2 'SSV',SSV
+   if (allocated(SSCSTK)) LEVEL2 'SSCSTK',SSCSTK
    if (allocated(buoy)) LEVEL2 'buoy',buoy
    if (allocated(rad)) LEVEL2 'rad',rad
    if (allocated(xp))  LEVEL2 'xP',xP

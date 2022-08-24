@@ -28,7 +28,7 @@
 ! they have to be consistent with the equation of state used in your model.
 !
 ! !USES:
-  use eqstate, only: eos_alpha, eos_beta
+  use gsw_mod_toolbox, only: gsw_rho_alpha_beta_bsq
   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -52,14 +52,18 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: alpha,beta
+   REALTYPE                  :: rho,alpha,beta
 !
 !-----------------------------------------------------------------------
 !BOC
+#if 0
 
+#if 1
+   call gsw_rho_alpha_beta_bsq(S(nlev),T(nlev),_ZERO_,rho,alpha=alpha,beta=beta)
+#else
    alpha   = eos_alpha(S(nlev),T(nlev),_ZERO_,g,rho_0)
    beta    = eos_beta (S(nlev),T(nlev),_ZERO_,g,rho_0)
-
+#endif
 
    tFlux   =  heat/(rho_0*cp)
    btFlux  =  g*alpha*tFlux
@@ -67,15 +71,24 @@
    sFlux   =  -S(nlev)*p_e
    bsFlux  =  -g*beta*sFlux
 
+#if 1
+   call gsw_rho_alpha_beta_bsq(S(1),T(1),_ZERO_,rho,alpha=alpha)
+#else
    alpha   = eos_alpha(S(1),T(1),_ZERO_,g,rho_0)
+#endif
    tRad(0) = rad(0)/(rho_0*cp)
    bRad(0) = g*alpha*tRad(0)
 
    do i=1,nlev
+#if 1
+   call gsw_rho_alpha_beta_bsq(S(i),T(i),_ZERO_,rho,alpha=alpha)
+#else
       alpha   = eos_alpha(S(i),T(i),_ZERO_,g,rho_0)
+#endif
       tRad(i) = rad(i)/(rho_0*cp)
       bRad(i) = g*alpha*tRad(i)
    enddo
+#endif
 
    return
    end subroutine convert_fluxes

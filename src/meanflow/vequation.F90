@@ -45,11 +45,11 @@
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,v,vo,u,w,avh
    use meanflow,     only: drag,SS,runtimev
-   use observations, only: w_adv,w_adv_discr
-   use observations, only: vprof,vel_relax_tau,vel_relax_ramp
+   use observations, only: w_adv_input,w_adv_discr
+   use observations, only: vprof_input,vel_relax_tau,vel_relax_ramp
    use observations, only: int_press_type
    use observations, only: plume_type
-   use observations, only: idpdy,dpdy
+   use observations, only: idpdy,dpdy_input
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -120,7 +120,7 @@
 
 !  set external pressure gradient
    if (ext_method .eq. 0) then
-      dzetady = dpdy%value
+      dzetady = dpdy_input%value
    else
       dzetady = _ZERO_
    endif
@@ -167,14 +167,14 @@
    end if
 
 !  do advection step
-   if (w_adv%method.ne.0) then
+   if (w_adv_input%method.ne.0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                       AdvVup,AdvVdw,w_adv_discr,adv_mode,V)
    end if
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vprof%data,V)
+                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vprof_input%data,V)
 
    return
    end subroutine vequation

@@ -6,12 +6,15 @@ set(GIT_COMMIT_ID ${gotm_VERSION})
 set(GIT_BRANCH_NAME unknown)
 configure_file(gotm_version.F90.in gotm_version.F90)
 
+include("jmfwg06/CMakeLists.txt")
+
 add_library(util
    adv_center.F90
    convert_fluxes.F90
    diff_center.F90
    diff_face.F90
-   eqstate.F90
+   density.F90
+   gsw_nsquared_noneq.f90
    gridinterpol.F90
    lagrange.F90
    ode_solvers.F90
@@ -22,7 +25,7 @@ add_library(util
    ${CMAKE_CURRENT_BINARY_DIR}/gotm_version.F90
    ${CMAKE_CURRENT_BINARY_DIR}/compilation.F90
 )
-target_link_libraries(util PRIVATE yaml)
+target_link_libraries(util PRIVATE yaml jmfwg06 gsw_static)
 target_include_directories(util PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:util,Fortran_MODULE_DIRECTORY>> $<INSTALL_INTERFACE:include>)
 add_library(gotm::util ALIAS util)
 set_property(TARGET util PROPERTY FOLDER gotm)
@@ -40,7 +43,7 @@ if(GOTM_EMBED_VERSION)
    set_property(TARGET version PROPERTY FOLDER gotm)
 endif()
 
-install(TARGETS util 
+install(TARGETS util jmfwg06
    EXPORT gotmConfig
    LIBRARY DESTINATION lib 
    ARCHIVE DESTINATION lib

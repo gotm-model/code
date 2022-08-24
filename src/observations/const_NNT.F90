@@ -5,52 +5,45 @@
 ! !IROUTINE: const_NNT
 !
 ! !INTERFACE:
-   subroutine const_NNT(nlev,z,T_top,S_const,NN,gravity,rho_0,T)
-!
+   subroutine const_NNT(nlev,z,zi,T_top,S_const,NN,gravity,T)
 !
 ! !DESCRIPTION:
 ! This routine creates a vertical profile {\tt prof} with value
 ! {\tt v1}
-
-
+!
 ! !USES:
-   use eqstate
+   use gsw_mod_toolbox, only: gsw_alpha
+   use density, only: density_method,dtr0
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)                :: nlev
    REALTYPE, intent(in)                :: z(0:nlev)
+   REALTYPE, intent(in)                :: zi(0:nlev)
    REALTYPE, intent(in)                :: T_top,S_const,NN
-   REALTYPE, intent(in)                :: gravity,rho_0
+   REALTYPE, intent(in)                :: gravity
 !
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: T(0:nlev)
+! !INOUT PARAMETERS:
+   REALTYPE, intent(inout)             :: T(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
    integer                   :: i
    REALTYPE                  :: alpha
-   REALTYPE                  :: pFace
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
+   alpha=dtr0 ! density_method=2,3
+
    T(nlev) = T_top
-
    do i=nlev-1,1,-1
-
-      pFace    = 0.5/gravity*(z(i+1)+z(i));
-      alpha     = eos_alpha(S_const,T(i+1),pFace,gravity,rho_0)
-
+      if (density_method == 1) then
+         alpha=gsw_alpha(S_const,T(i+1),-zi(i))
+      end if
       T(i) = T(i+1) - _ONE_/(gravity*alpha)*NN*(z(i+1)-z(i))
-
-   enddo
-
-
-   return
+   end do
    end subroutine const_NNT
 !EOC
 

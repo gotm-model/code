@@ -91,7 +91,7 @@
       module procedure register_scalar_observation
    end interface
 
-   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id,pres_id
+   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id,pres_id,nuh_id
    type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id,swr_sf_id
 
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
@@ -112,7 +112,7 @@
    integer,allocatable, dimension(:)   :: posconc
 
    ! Arrays for environmental variables not supplied externally.
-   REALTYPE,allocatable,dimension(:),target :: par,pres,swr,k_par,z
+   REALTYPE,allocatable,dimension(:),target :: par,pres,swr,k_par,z,nuh_ct
 
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
@@ -151,6 +151,8 @@
    end interface   
 
    procedure(calendar_date_interface), pointer :: fabm_calendar_date
+
+   character(len=256), public :: yaml_file = 'fabm.yaml'
 
 !-----------------------------------------------------------------------
 
@@ -193,6 +195,8 @@
    ! Initialize all namelist variables to reasonable default values.
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
+   call cfg%get(yaml_file, 'yaml_file', 'FABM configuration file', &
+                default='fabm.yaml', display=display_advanced)
    call cfg%get(freshwater_impact, 'freshwater_impact', 'enable dilution/concentration by precipitation/evaporation', &
                 default=.true.) ! disable to check mass conservation
    branch => cfg%get_child('feedbacks', 'feedbacks to physics')
@@ -233,6 +237,10 @@
                 options=(/option(-1, 'auto-detect (prefer fabm.yaml)', 'auto'), option(0, 'fabm.nml', 'nml'), option(1, 'fabm.yaml', 'yaml')/), &
                 default=-1, display=display_advanced)
 
+   if (fabm_calc) then
+      LEVEL2 'Reading configuration from:'
+      LEVEL3 trim(yaml_file)
+   end if
    LEVEL2 'done.'
 
    end subroutine configure_gotm_fabm
@@ -253,21 +261,21 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. fabm_calc) return
-
    ! Provide FABM with an object for communication with host
    allocate(type_gotm_driver::driver)
+
+   if (.not. fabm_calc) return
 
    fabm_ready = .false.
 
 #if _FABM_API_VERSION_ > 0
    allocate(model)
-   call fabm_create_model_from_yaml_file(model)
+   call fabm_create_model_from_yaml_file(model,trim(yaml_file))
 #else
    ! Create model tree
    if (configuration_method==-1) then
       configuration_method = 1
-      inquire(file='fabm.yaml',exist=file_exists)
+      inquire(file=trim(yaml_file),exist=file_exists)
       if (.not.file_exists) then
          inquire(file='fabm.nml',exist=file_exists)
          if (file_exists) configuration_method = 0
@@ -280,7 +288,7 @@
    case (1)
       ! From YAML file fabm.yaml
       allocate(model)
-      call fabm_create_model_from_yaml_file(model)
+      call fabm_create_model_from_yaml_file(model,path=trim(yaml_file))
    end select   
 #endif
 
@@ -404,6 +412,7 @@
       par_id  = model%get_bulk_variable_id(standard_variables%downwelling_photosynthetic_radiative_flux)
       swr_id  = model%get_bulk_variable_id(standard_variables%downwelling_shortwave_flux)
       pres_id = model%get_bulk_variable_id(standard_variables%pressure)
+      nuh_id  = model%get_bulk_variable_id(type_interior_standard_variable(name='vertical_tracer_diffusivity', units='m2 s-1'))
       lon_id       = model%get_horizontal_variable_id(standard_variables%longitude)
       lat_id       = model%get_horizontal_variable_id(standard_variables%latitude)
       windspeed_id = model%get_horizontal_variable_id(standard_variables%wind_speed)
@@ -603,6 +612,15 @@
       if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (pres)'
       pres = _ZERO_
       call model%link_interior_data(pres_id,pres)
+   end if
+
+   ! Allocate array for turbulent diffusivity at centers if necessary.
+   ! This will be calculated from diffusivity at interfaces during each time step.
+   if (model%variable_needs_values(nuh_id)) then
+      allocate(nuh_ct(1:nlev),stat=rc)
+      if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (nuh_ct)'
+      nuh_ct = _ZERO_
+      call model%link_interior_data(nuh_id, nuh_ct)
    end if
 
    ! Allocate array for local depth (below water surface).
@@ -1071,6 +1089,12 @@
       pres(1:nlev) = p0 + pres(1:nlev)*gravity/10000
    end if
 
+   if (allocated(nuh_ct)) then
+      do i=1,nlev
+         nuh_ct(i) = 0.5_gotmrk * (curnuh(i - 1) + curnuh(i))
+      end do
+   end if
+
    ! Calculate local depth below surface from layer height
    ! Used internally to compute light field, and may be used by
    ! biogeochemical models as well.
@@ -1296,9 +1320,11 @@
       valid = valid.and.tmpvalid
    end if
    if (.not. (valid .or. repair_state)) then
-      FATAL 'State variable values are invalid and repair is not allowed.'
-      FATAL location
-      stop 'gotm_fabm::do_repair_state'
+      LEVEL0 'One or more state variables have an invalid value in ' // trim(location)
+      LEVEL0 'To allow GOTM to automatically clip variables to the nearest valid value,'
+      LEVEL0 'set repair_state: true in the fabm section of gotm.yaml'
+      FATAL 'Model state is invalid and repair is not allowed.'
+      stop 1
    end if
 
    end subroutine do_repair_state
@@ -1565,6 +1591,11 @@
    LEVEL1 'Time spent on diffusion of FABM variables:',clock_diff*tick_rate
    LEVEL1 'Time spent on sink/source terms of FABM variables:',clock_source*tick_rate
 
+   if (associated(model)) then
+      call model%finalize()
+      deallocate(model)
+   end if
+
    ! Deallocate internal arrays
    if (allocated(cc))          deallocate(cc)
    if (allocated(cc_info))     deallocate(cc_info)
@@ -1584,17 +1615,19 @@
    if (allocated(curnuh))          deallocate(curnuh)
    if (allocated(cc_old))          deallocate(cc_old)
    if (allocated(cc_transport))    deallocate(cc_transport)
+   if (allocated(iweights))        deallocate(iweights)
    if (allocated(posconc))         deallocate(posconc)
    if (allocated(local))           deallocate(local)
    if (allocated(total0))          deallocate(total0)
    if (allocated(change_in_total)) deallocate(change_in_total)
 
    ! Deallocate arrays with internally computed environmental variables.
-   if (allocated(par))   deallocate(par)
-   if (allocated(k_par)) deallocate(k_par)
-   if (allocated(swr))   deallocate(swr)
-   if (allocated(pres))  deallocate(pres)
-   if (allocated(z))     deallocate(z)
+   if (allocated(par))    deallocate(par)
+   if (allocated(k_par))  deallocate(k_par)
+   if (allocated(swr))    deallocate(swr)
+   if (allocated(pres))   deallocate(pres)
+   if (allocated(z))      deallocate(z)
+   if (allocated(nuh_ct)) deallocate(nuh_ct)
 
    ! Reset all module-level pointers
    nullify(nuh)
@@ -1615,7 +1648,6 @@
    nullify(g2)
    nullify(yearday)
    nullify(secondsofday)
-   nullify(model)
 
    LEVEL1 'done.'
 

@@ -118,9 +118,9 @@
 ! implemented in GOTM and are described in \sect{sec:generate}.
 !
 ! !USES:
-   use turbulence, only: P,B,num
+   use turbulence, only: P,B,PSTK,num
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,sig_psi
+   use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,cpsi4,sig_psi
    use turbulence, only: gen_m,gen_n,gen_p
    use turbulence, only: cm0,cde,galp,length_lim
    use turbulence, only: psi_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
@@ -199,7 +199,7 @@
 
 !     compute production terms in psi-equation
       PsiOverTke  = psi(i)/tkeo(i)
-      prod        = cpsi1*PsiOverTke*P(i)
+      prod        = cpsi1*PsiOverTke*P(i) + cpsi4*PsiOverTke*PSTK(i)
       buoyan      = cpsi3*PsiOverTke*B(i)
       diss        = cpsi2*PsiOverTke*eps(i)
 
@@ -267,9 +267,6 @@
 
 !     clip at eps_min
       eps(i) = max(eps(i),eps_min)
-
-!     compute dissipative scale
-      L(i)=cde*sqrt(tke(i)*tke(i)*tke(i))/eps(i)
    enddo
 
 !  limit dissipation rate under stable stratification,
@@ -286,11 +283,14 @@
 !        clip at limit
          eps(i) = max(eps(i),epslim)
 
-!        re-compute dissipative scale
-         L(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/eps(i)
-
       end do
    endif
+
+   do i=0,nlev
+!     compute dissipative scale
+      L(i) = cde * sqrt( tke(i) * tke(i) * tke(i) ) / eps(i)
+   end do
+
 
    return
    end subroutine genericeq

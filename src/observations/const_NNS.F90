@@ -5,7 +5,7 @@
 ! !IROUTINE: const_NNS
 !
 ! !INTERFACE:
-   subroutine const_NNS(nlev,z,S_top,T_const,NN,gravity,rho_0,S)
+   subroutine const_NNS(nlev,z,zi,S_top,T_const,NN,gravity,S)
 !
 !
 ! !DESCRIPTION:
@@ -14,44 +14,38 @@
 
 
 ! !USES:
-   use eqstate
+   use gsw_mod_toolbox, only: gsw_beta
+   use density, only: density_method,dsr0
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)                :: nlev
    REALTYPE, intent(in)                :: z(0:nlev)
+   REALTYPE, intent(in)                :: zi(0:nlev)
    REALTYPE, intent(in)                :: S_top,T_const,NN
-   REALTYPE, intent(in)                :: gravity,rho_0
+   REALTYPE, intent(in)                :: gravity
 !
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: S(0:nlev)
+! !INOUT PARAMETERS:
+   REALTYPE, intent(inout)             :: S(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
    integer                   :: i
    REALTYPE                  :: beta
-   REALTYPE                  :: pFace
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
+   beta=dsr0 ! density_method=2,3
 
    S(nlev) = S_top
-
    do i=nlev-1,1,-1
-
-      pFace    = 0.5/gravity*(z(i+1)+z(i));
-      beta     = eos_beta(S(i+1),T_const,pFace,gravity,rho_0)
-
+      if (density_method == 1) then
+         beta = gsw_beta(S(i+1),T_const,-zi(i))
+      end if
       S(i) = S(i+1) + _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))
-
-   enddo
-
-
-   return
+   end do
    end subroutine const_NNS
 !EOC
 

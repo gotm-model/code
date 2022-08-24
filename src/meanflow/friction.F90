@@ -54,11 +54,11 @@
 !  the {\tt gotm.yaml}.
 !
 ! !USES:
+   use density,       only: rho0
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
-   use meanflow,      only: u,v,rho_0,gravity
+   use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taubo,u_taus,drag,taub
    use meanflow,      only: charnock,charnock_val,z0s_min
-
 !
    IMPLICIT NONE
 !
@@ -122,7 +122,7 @@
    if (plume_type .eq. 1) rr_s=kappa/(log((z0s+h(nlev)/2)/z0s))
 
 !  calculate bottom stress, which is used by sediment resuspension models
-   taub = u_taub*u_taub*rho_0
+   taub = u_taub*u_taub*rho0
 
 !  add bottom friction as source term for the momentum equation
    drag(1) = drag(1) +  rr_b*rr_b

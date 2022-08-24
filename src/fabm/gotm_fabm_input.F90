@@ -73,7 +73,7 @@
    contains
       procedure :: create => fabm_input_create
    end type
-   class (type_fabm_input_populator), pointer :: fabm_input_populator => null()
+   type (type_fabm_input_populator) :: fabm_input_populator
 
    contains
 
@@ -87,7 +87,6 @@
 
       class (type_settings), pointer :: cfg
 
-      allocate(fabm_input_populator)
       cfg => settings_store%get_child('fabm/input', populator=fabm_input_populator)
    end subroutine configure_gotm_fabm_input
 !EOC

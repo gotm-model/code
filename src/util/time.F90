@@ -44,6 +44,7 @@
    integer,           public           :: timefmt
    integer,parameter, public           :: timestepkind = selected_int_kind(12)
    integer(kind=timestepkind), public  :: MinN,MaxN
+   integer, public                     :: jul1,secs1
    integer, public                     :: jul2,secs2
 !
 ! !REVISION HISTORY:
@@ -81,7 +82,6 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                    :: jul1,secs1
    integer(kind=timestepkind) :: nsecs
    integer                    :: ndays
 !

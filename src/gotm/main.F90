@@ -18,6 +18,10 @@
 ! !USES:
    use time
    use gotm
+#ifdef _FABM_
+   use fabm, only: fabm_finalize_library
+   use fabm_driver, only: driver
+#endif
 !
    IMPLICIT NONE
 !
@@ -57,13 +61,9 @@
 #endif
 
 !  run the model
-#if 1
-   call init_gotm()
-#else
-   call init_gotm(t1='1998-02-01 00:00:00',t2='1998-07-01 00:00:00')
-#endif
-   call time_loop()
-   call clean_up()
+   call initialize_gotm()
+   call integrate_gotm()
+   call finalize_gotm()
 
 !  report system date and time at end of run
 #ifdef FORTRAN95
@@ -92,6 +92,12 @@
 #endif
 
    call print_version()
+
+#ifdef _FABM_
+   ! Final FABM clean-up that can happen only after print_version
+   call fabm_finalize_library()
+   if (associated(driver)) deallocate(driver)
+#endif
 
    contains
 

@@ -5,7 +5,7 @@
 ! !ROUTINE: The buoyancy equation
 !
 ! !INTERFACE:
-   subroutine buoyancy(nlev,dt,cnpar,nub,gamb)
+   subroutine prognostic_buoyancy(nlev,dt,cnpar,nub,gamb)
 !
 ! !DESCRIPTION:
 !  This subroutine solves a transport equation for the mean
@@ -51,10 +51,12 @@
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
 ! !USES:
+   use density,       only: rho0
+   use meanflow,      only: gravity,rho,NN
    use meanflow,      only: h,w,buoy,T,avh,init_buoyancy
    use meanflow,      only: grid_method
    use observations,  only: b_obs_NN,b_obs_surf,b_obs_sbf
-   use observations,  only: w_adv_discr,w_adv
+   use observations,  only: w_adv_discr,w_adv_input
    use util,          only: Dirichlet,Neumann
    use util,          only: oneSided,zeroDivergence
 !
@@ -93,7 +95,7 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: BRelaxTau(0:nlev)
-   REALTYPE                  :: zz
+   REALTYPE                  :: dz,zz
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -137,7 +139,7 @@
    BRelaxTau = 1.e15
 
 !  do advection step
-   if (w_adv%method .ne. 0) then
+   if (w_adv_input%method .ne. 0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                       AdvBup,AdvBdw,w_adv_discr,adv_mode,buoy)
    end if
@@ -149,8 +151,15 @@
 
 !   T = buoy
 
-   return
-   end subroutine buoyancy
+   ! compute density and buoyancy frequency
+   rho(nlev)  = rho0 - rho0/gravity*buoy(nlev)
+
+   do i=nlev-1,1,-1
+      dz     = 0.5*(h(i)+h(i+1))
+      NN(i)  = (buoy(i+1)-buoy(i))/dz
+      rho(i) = rho0 - rho0/gravity*buoy(i)
+   end do
+   end subroutine prognostic_buoyancy
 !EOC
 
 !-----------------------------------------------------------------------

@@ -50,10 +50,10 @@
 
 ! !PUBLIC DATA MEMBERS:
 !  TKE, rate of dissipation, turbulent length-scale
-   REALTYPE, public, dimension(:), allocatable   :: tke,eps,L
+   REALTYPE, public, dimension(:), allocatable, target :: tke,eps,L
 
 !  TKE at old time level
-   REALTYPE, public, dimension(:), allocatable   :: tkeo
+   REALTYPE, public, dimension(:), allocatable, target   :: tkeo
 
 !  buoyancy variance and its destruction
    REALTYPE, public, dimension(:), allocatable   :: kb,epsb
@@ -62,9 +62,12 @@
 !  of tke and buoyancy variance
    REALTYPE, public, dimension(:), allocatable   :: P,B,Pb
 
+!  Stokes production
+   REALTYPE, public, dimension(:), allocatable   :: PSTK
+
 !  turbulent diffusivities
 !  of momentum, temperature, salinity
-   REALTYPE, public, dimension(:), allocatable         :: num
+   REALTYPE, public, dimension(:), allocatable, target :: num
    REALTYPE, public, dimension(:), allocatable, target :: nuh
    REALTYPE, public, dimension(:), allocatable         :: nus
 
@@ -154,6 +157,7 @@
    REALTYPE, public                              :: cpsi2
    REALTYPE, public                              :: cpsi3minus
    REALTYPE, public                              :: cpsi3plus
+   REALTYPE, public                              :: cpsi4   
    REALTYPE                                      :: sig_kpsi
    REALTYPE, public                              :: sig_psi
    REALTYPE                                      :: gen_d
@@ -165,6 +169,7 @@
    REALTYPE, public                              :: ce2
    REALTYPE, public                              :: ce3minus
    REALTYPE, public                              :: ce3plus
+   REALTYPE, public                              :: ce4   
    REALTYPE, public                              :: sig_k
    REALTYPE, public                              :: sig_e
    logical,  public                              :: sig_peps
@@ -173,6 +178,7 @@
    REALTYPE, public                              :: e1
    REALTYPE, public                              :: e2
    REALTYPE, public                              :: e3
+   REALTYPE, public                              :: e6
    REALTYPE, public                              :: sq
    REALTYPE, public                              :: sl
    integer,  public                              :: my_length
@@ -341,10 +347,10 @@
                             sig_kpsi,sig_psi,                  &
                             gen_d,gen_alpha,gen_l
 
-   namelist /keps/          ce1,ce2,ce3minus,ce3plus,sig_k,    &
-                            sig_e,sig_peps
+   namelist /keps/          ce1,ce2,ce3minus,ce3plus,ce4,      &
+                            sig_k,sig_e,sig_peps
 
-   namelist /my/            e1,e2,e3,sq,sl,my_length,new_constr
+   namelist /my/            e1,e2,e3,e6,sq,sl,my_length, new_constr
 
    namelist /scnd/          scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
@@ -425,6 +431,7 @@
    cpsi2=1.92
    cpsi3minus=0.0
    cpsi3plus=1.0
+   cpsi4=0   
    sig_kpsi=1.0
    sig_psi=1.3
    gen_d=-1.2
@@ -436,6 +443,7 @@
    ce2=1.92
    ce3minus=0.0
    ce3plus=1.0
+   ce4=_ZERO_
    sig_k=1.0
    sig_e=1.3
    sig_peps=.false.
@@ -444,10 +452,10 @@
    e1=1.8
    e2=1.33
    e3=1.8
+   e6=4.0
    sq=0.2
    sl=0.2
    my_length=1
-   new_constr=.false.
 
 !  the 'scnd' namelist
    scnd_method = 0
@@ -640,6 +648,8 @@
                    default=0.0_rk)
    call twig%get(cpsi3plus, 'cpsi3plus', 'cpsi3 for unstable stratification', '-', &
                    default=1._rk)
+   call twig%get(cpsi4, 'cpsi4', 'empirical coefficient cpsi4 in psi equation', '-', &
+                   default=0.00_rk)   
    call twig%get(sig_kpsi, 'sig_kpsi', 'Schmidt number for TKE diffusivity', '-', &
                    default=1._rk)
    call twig%get(sig_psi, 'sig_psi', 'Schmidt number for psi diffusivity', '-', &
@@ -660,6 +670,8 @@
                    default=0._rk)
    call twig%get(ce3plus, 'ce3plus', 'ce3 for unstable stratification', '-', &
                    default=1.0_rk)
+   call twig%get(ce4, 'ce4', 'empirical coefficient ce4 in dissipation equation', '-', &
+                   default=0._rk)
    call twig%get(sig_k, 'sig_k', 'Schmidt number for TKE diffusivity', '-', &
                    default=1._rk)
    call twig%get(sig_e, 'sig_e', 'Schmidt number for dissipation diffusivity', '-', &
@@ -674,14 +686,14 @@
                    default=1.33_rk)
    call twig%get(e3, 'e3', 'coefficient e3 in q^2 l equation', '-', &
                    default=1.8_rk)
+   call twig%get(e6, 'e6', 'coefficient e6 in q^2 l equation', '-', &
+                   default=4.0_rk)
    call twig%get(sq, 'sq', 'turbulent diffusivities of q^2 (= 2k)', '-', &
                    default=0.2_rk)
    call twig%get(sl, 'sl', 'turbulent diffusivities of q^2 l', '-', &
                    default=0.2_rk)
    call twig%get(my_length, 'length', 'barotropic length scale in q^2 l equation', &
                    options=(/option(1, 'parabolic', 'parabolic'), option(2, 'triangular', 'triangular'), option(3, 'linear from surface', 'linear')/),default=1)
-   call twig%get(new_constr, 'new_constr', 'stabilize stability functions', &
-                   default=.false.)
 
    twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
    call twig%get(scnd_method, 'method', 'method', &
@@ -853,6 +865,11 @@
    allocate(Pb(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (Pb)'
    Pb = _ZERO_
+
+   ! Stokes production
+   allocate(PSTK(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (PSTK)'
+   PSTK = _ZERO_
 
    allocate(num(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (num)'
@@ -2213,6 +2230,7 @@
          LEVEL3 'ce2                                  =', ce2
          LEVEL3 'ce3minus                             =', ce3minus
          LEVEL3 'ce3plus                              =', ce3plus
+         LEVEL3 'ce4                                  =', ce4         
          LEVEL3 'sig_k                                =', sig_k
          LEVEL3 'sig_e                                =', sig_e
          LEVEL2 ' '
@@ -2237,6 +2255,7 @@
          LEVEL3 'E1                                   =', e1
          LEVEL3 'E2                                   =', e2
          LEVEL3 'E3                                   =', e3
+         LEVEL3 'E6                                   =', e6
          LEVEL3 'Sq                                   =', sq
          LEVEL3 'Sl                                   =', sl
          LEVEL2 ' '
@@ -2266,6 +2285,7 @@
          LEVEL3 'cpsi2                                =', cpsi2
          LEVEL3 'cpsi3minus                           =', cpsi3minus
          LEVEL3 'cpsi3plus                            =', cpsi3plus
+         LEVEL3 'cpsi4                                =', cpsi4         
          LEVEL3 'sig_k                                =', sig_kpsi
          LEVEL3 'sig_psi                              =', sig_psi
          LEVEL2 ' '
@@ -2294,7 +2314,7 @@
 !
 ! !INTERFACE:
    subroutine do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP)
+                            NN,SS,xP, SSCSTK)
 !
 ! !DESCRIPTION: This routine is the central point of the
 ! turbulence scheme. It determines the order, in which
@@ -2354,11 +2374,12 @@
    IMPLICIT NONE
 
    interface
-      subroutine production(nlev,NN,SS,xP)
+      subroutine production(nlev,NN,SS,xP, SSCSTK)
         integer,  intent(in)                :: nlev
         REALTYPE, intent(in)                :: NN(0:nlev)
         REALTYPE, intent(in)                :: SS(0:nlev)
         REALTYPE, intent(in), optional      :: xP(0:nlev)
+        REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
       end subroutine production
    end interface
 
@@ -2395,6 +2416,9 @@
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
    REALTYPE, intent(in), optional      :: xP(0:nlev)
+
+!  Stokes-Eulerian cross-shear (1/s^2)
+   REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -2421,10 +2445,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,xP)
+         call production(nlev,NN,SS,xP, SSCSTK=SSCSTK)
       else
 !        without
-         call production(nlev,NN,SS)
+         call production(nlev,NN,SS, SSCSTK=SSCSTK)
       end if
 
       call alpha_mnb(nlev,NN,SS)
@@ -2442,10 +2466,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,xP)
+         call production(nlev,NN,SS,xP, SSCSTK=SSCSTK)
       else
 !        without
-         call production(nlev,NN,SS)
+         call production(nlev,NN,SS, SSCSTK=SSCSTK)
       end if
 
       select case(scnd_method)
@@ -3697,6 +3721,7 @@
    if (allocated(P)) deallocate(P)
    if (allocated(B)) deallocate(B)
    if (allocated(Pb)) deallocate(Pb)
+   if (allocated(PSTK)) deallocate(PSTK)
    if (allocated(num)) deallocate(num)
    if (allocated(nuh)) deallocate(nuh)
    if (allocated(nus)) deallocate(nus)
@@ -3756,7 +3781,7 @@
    LEVEL2 'tke,eps,L',tke,eps,L
    LEVEL2 'tkeo',tkeo
    LEVEL2 'kb,epsb',kb,epsb
-   LEVEL2 'P,B,Pb',P,B,Pb
+   LEVEL2 'P,B,Pb,PSTK',P,B,Pb, PSTK
    LEVEL2 'num,nuh,nus',num,nuh,nus
    LEVEL2 'gamu,gamv',gamu,gamv
    LEVEL2 'gamb,gamh,gams',gamb,gamh,gams
@@ -3787,21 +3812,21 @@
                             psi_ubc,psi_lbc,                   &
                             ubc_type,lbc_type
 
-   LEVEL2 'turb_param namelist', cm0_fix,Prandtl0_fix,cw,           &
+   LEVEL2 'turb_param namelist', cm0_fix,Prandtl0_fix,cw,      &
                             compute_kappa,kappa,               &
                             compute_c3,ri_st,length_lim,galp,  &
                             const_num,const_nuh,k_min,eps_min, &
                             kb_min,epsb_min
 
-   LEVEL2 'generic namelist', compute_param,gen_m,gen_n,gen_p,   &
+   LEVEL2 'generic namelist', compute_param,gen_m,gen_n,gen_p, &
                             cpsi1,cpsi2,cpsi3minus,cpsi3plus,  &
-                            sig_kpsi,sig_psi,                  &
+                            cpsi4,sig_kpsi,sig_psi,            &
                             gen_d,gen_alpha,gen_l
 
-   LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,sig_k,    &
-                            sig_e,sig_peps
+   LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,ce4,      &
+                            sig_k,sig_e,sig_peps
 
-   LEVEL2 'my namelist',    e1,e2,e3,sq,sl,my_length,new_constr
+   LEVEL2 'my namelist',    e1,e2,e3, e6, sq,sl,my_length,new_constr
 
    LEVEL2 'scnd namelist',  scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
