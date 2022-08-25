@@ -89,8 +89,8 @@
 ! !LOCAL VARIABLES:
    integer :: n
    REALTYPE :: lat(0:nlev)
+   REALTYPE :: dz
    REALTYPE :: zi_local(nlev)
-   REALTYPE :: dz,Si,Ti,buoyp,buoym
 !-----------------------------------------------------------------------
 !BOC
    lat=_ZERO_ !GSW_KB - need to pass in lat
@@ -101,17 +101,8 @@
          do n=nlev-1,1,-1
             dz=0.5*(h(n+1)+h(n))
 
-            Si=(S(n+1)*h(n)+S(n)*h(n+1))/(h(n+1)+h(n))
-            Ti=(T(n+1)*h(n)+T(n)*h(n+1))/(h(n+1)+h(n))
-
-            buoyp=calculate_density(Si,T(n+1),-zi(n),gravity)
-            buoym=calculate_density(Si,T(n  ),-zi(n),gravity)
-            NNT(n)=(buoyp-buoym)/dz
-
-            buoyp=calculate_density(S(n+1),Ti,-zi(n),gravity)
-            buoym=calculate_density(S(n  ),Ti,-zi(n),gravity)
-            NNS(n)=(buoyp-buoym)/dz
-             
+            NNT(n)=dtr0*gravity*(T(n+1)-T(n))/dz
+            NNS(n)=dsr0*gravity*(S(n+1)-S(n))/dz
             NN(n)=NNT(n)+NNS(n)
          end do
    end select
