@@ -11,6 +11,7 @@ include("jmfwg06/CMakeLists.txt")
 add_library(util
    adv_center.F90
    convert_fluxes.F90
+   diffusion.F90
    diff_center.F90
    diff_face.F90
    density.F90

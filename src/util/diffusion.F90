@@ -5,8 +5,8 @@
 ! !ROUTINE: Diffusion schemes --- grid centers\label{sec:diffusionMean}
 !
 ! !INTERFACE:
-   subroutine diff_center(N,dt,cnpar,posconc,h,Bcup,Bcdw, &
-                          Yup,Ydw,nuY,Lsour,Qsour,Taur,Yobs,Y)
+   subroutine diffusion(N, dt, cnpar, posconc, h, Vc, Af, Bcup, Bcdw,  &
+                        Yup, Ydw, nuY, Lsour, Qsour, Taur, Yobs, Y)
 !
 ! !DESCRIPTION:
 ! This subroutine solves the one-dimensional diffusion equation
@@ -74,6 +74,12 @@
 !  layer thickness (m)
    REALTYPE, intent(in)                :: h(0:N)
 
+!  cell volume
+   REALTYPE, intent(in)                :: Vc(0:N)
+
+!  interface area
+   REALTYPE, intent(in)                :: Af(0:N)
+
 !  type of upper BC
    integer,  intent(in)                :: Bcup
 
@@ -113,93 +119,92 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: a,c,l
-   REALTYPE                  :: Af(0:N)
+   REALTYPE                  :: dV(0:N), dY(0:N)
+   REALTYPE                  :: fac, wup, wdw
 !
 !-----------------------------------------------------------------------
 !BOC
-#if 1
-   Af = _ONE_
-   call diffusion(N, dt, cnpar, posconc, h, h, Af, Bcup, Bcdw,         &
-                  Yup, Ydw, nuY, Lsour, Qsour, Taur, Yobs, Y)
-#else
+!
 !  set up matrix
-   do i=2,N-1
-      c     = 2.0d0*dt*nuY(i)  /(h(i)+h(i+1))/h(i)
-      a     = 2.0d0*dt*nuY(i-1)/(h(i)+h(i-1))/h(i)
-      l     =     dt*Lsour(i)
-
-      cu(i) =-cnpar*c
-      au(i) =-cnpar*a
-      bu(i) = _ONE_ + cnpar*(a + c) - l
-      du(i) = (_ONE_ - (_ONE_-cnpar)*(a + c))*Y(i)                  &
-            + (_ONE_ - cnpar)*( a*Y(i-1) + c*Y(i+1) ) + dt*Qsour(i)
+   dV(0) = _ZERO_
+   dY(0) = _ZERO_
+   dV(N) = _ZERO_
+   dY(N) = _ZERO_
+   do concurrent ( i = 1 : N-1 )
+      dV(i) = dt * Af(i) * nuY(i) / ( _HALF_ * ( h(i) + h(i+1) ) )
+      dY (i) = Y(i+1) - Y(i)
    end do
 
-!   set up upper boundary condition
+   do concurrent ( i = 1 : N )
+      cu(i) = - cnpar * dV(i  )
+      au(i) = - cnpar * dV(i-1)
+      bu(i) = Vc(i) * ( _ONE_ - dt*Lsour(i) )                          &
+              + cnpar * ( dV(i-1) + dV(i) )
+      du(i) = Vc(i) * ( Y(i) + dt*Qsour(i) )                           &
+              + ( _ONE_ - cnpar ) * ( dV(i)*dY(i) - dV(i-1)*dY(i-1) )
+   end do
+
+!  set up upper boundary condition
+   wup = _ZERO_
    select case(Bcup)
    case(Neumann)
-      a     = 2.0d0*dt*nuY(N-1)/(h(N)+h(N-1))/h(N)
-      l     = dt*Lsour(N)
-
-      au(N) =-cnpar*a
-      if (posconc .eq. 1 .and. Yup.lt._ZERO_) then ! Patankar (1980) trick
-         bu(N) =  _ONE_ - au(N) - l  - dt*Yup/Y(N)/h(N)
-         du(N) = Y(N) + dt*Qsour(N)   &
-               + (_ONE_ - cnpar)*a*(Y(N-1)-Y(N))
+      if (posconc.eq.1 .and. Yup.lt._ZERO_) then ! Patankar (1980) trick
+         fac = -Y(N) / ( dt * Af(N) * Yup )
+         if ( fac.gt.TINY(_ONE_) ) bu(N) = bu(N) + _ONE_/fac
       else
-         bu(N) =  _ONE_ - au(N) - l
-         du(N) = Y(N) + dt*(Qsour(N)+Yup/h(N))   &
-               + (_ONE_ - cnpar)*a*(Y(N-1)-Y(N))
+         du(N) = du(N) + dt * Af(N) * Yup
       end if
    case(Dirichlet)
       au(N) = _ZERO_
-      bu(N) = _ONE_
-      du(N) = Yup
+      bu(N) = Vc(N)
+      du(N) = Vc(N) * Yup
+      wup = _ONE_
    case default
       FATAL 'invalid boundary condition type for upper boundary'
-      stop  'diff_center.F90'
+      stop  'diffusion.F90'
    end select
 
-!   set up lower boundary condition
+!  set up lower boundary condition
+   wdw = _ZERO_
    select case(Bcdw)
    case(Neumann)
-      c     = 2.0d0*dt*nuY(1)/(h(1)+h(2))/h(1)
-      l     = dt*Lsour(1)
-
-      cu(1) =-cnpar*c
       if (posconc.eq.1 .and. Ydw.lt._ZERO_) then ! Patankar (1980) trick
-         bu(1) = _ONE_ - cu(1) - l - dt*Ydw/Y(1)/h(1)
-         du(1) = Y(1) + dt*(Qsour(1))   &
-               + (_ONE_ - cnpar)*c*(Y(2)-Y(1))
+         fac = -Y(1) / ( dt * Af(1) * Ydw )
+         if ( fac.gt.TINY(_ONE_) ) bu(1) = bu(1) + _ONE_/fac
       else
-         bu(1) = _ONE_ - cu(1) - l
-         du(1) = Y(1) + dt*(Qsour(1)+Ydw/h(1))   &
-               + (_ONE_ - cnpar)*c*(Y(2)-Y(1))
+         du(1) = du(1) + dt * Af(1) * Ydw
       end if
    case(Dirichlet)
       cu(1) = _ZERO_
-      bu(1) = _ONE_
-      du(1) = Ydw
+      bu(1) = Vc(1)
+      du(1) = Vc(1) * Ydw
+      wdw = _ONE_
    case default
       FATAL 'invalid boundary condition type for lower boundary'
-      stop  'diff_center.F90'
+      stop  'diffusion.F90'
    end select
+
+   if (N .eq. 1) then
+      if (Bcup.eq.Dirichlet .or. Bcdw.eq.Dirichlet) then
+!        overwrite all earlier assignments
+         bu(1) = Vc(1)
+         du(1) = Vc(1) * ( wup*Yup + wdw*Ydw ) / ( wup + wdw )
+      end if
+   end if
 
 !  relaxation to observed value
    if (minval(Taur).lt.1.d10) then
-      do i=1,N
-         bu(i)=bu(i)+dt/Taur(i)
-         du(i)=du(i)+dt/Taur(i)*Yobs(i)
+      do concurrent ( i = 1 : N )
+         bu(i) = bu(i) + dt / Taur(i) * Vc(i)
+         du(i) = du(i) + dt / Taur(i) * Vc(i) * Yobs(i)
       end do
    end if
 
 !  solve linear system
-   call tridiagonal(N,1,N,Y)
-#endif
+   call tridiagonal(N, 1, N, Y)
 
    return
-   end subroutine diff_center
+   end subroutine diffusion
 !EOC
 
 !-----------------------------------------------------------------------

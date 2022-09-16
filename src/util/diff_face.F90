@@ -64,10 +64,27 @@
 ! !LOCAL VARIABLES:
    integer                   :: i
    REALTYPE                  :: a,c,l
+#ifdef _NEW_DIFF_FACE_
+   REALTYPE                  :: hf(0:N-1)
+   REALTYPE                  :: nuYc(0:N-1)
+   REALTYPE                  :: Taur(0:N-1)
+   REALTYPE                  :: Yobs(0:N-1)
+   REALTYPE                  :: Ac(0:N-1)
+#endif
 !
 !-----------------------------------------------------------------------
 !BOC
-!
+
+   if (N .eq. 1) return
+
+#ifdef _NEW_DIFF_FACE_
+   hf  (1:N-1) = _HALF_ * ( h  (1:N-1) + h  (2:N  ) )
+   nuYc(1:N-2) = _HALF_ * ( nuY(1:N-2) + nuY(2:N-1) )
+   Taur = 1.0d15
+   Ac = _ONE_
+   call diffusion(N-1, dt, cnpar, 0, hf, hf, Ac, Bcup, Bcdw,           &
+                  Yup, Ydw, nuYc, Lsour, Qsour, Taur, Yobs, Y(0:N-1))
+#else
 !  set up matrix
    do i=2,N-2
       c     = dt*( nuY(i+1) + nuY(i  ) )  / ( h(i)+h(i+1) ) / h(i+1)
@@ -124,6 +141,7 @@
 
 !  solve linear system
    call tridiagonal(N,1,N-1,Y)
+#endif
 
    return
    end subroutine diff_face
