@@ -713,7 +713,7 @@
 
    twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
    call twig%get(scnd_method, 'method', 'method', &
-                   options=(/option(quasi_eq, 'quasi-equilibrium', 'quasi_eq'), option(weak_eq_kb_eq, 'weak equilibrium with algebraic buoyancy variance', 'weak_eq_kb_eq')/), default=weak_eq_kb_eq)
+                   options=(/option(quasi_eq, 'quasi-equilibrium', 'quasi_eq'), option(weak_eq_kb_eq, 'weak equilibrium with algebraic buoyancy variance', 'weak_eq_kb_eq'),option(quasi_eq_h15, 'quasi-equilibrium with Langmuir (Harcourt, 2015)', 'quasi_eq_h15')/), default=weak_eq_kb_eq)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
                    options=(/option(kb_algebraic, 'algebraic', 'algebraic'), option(kb_dynamic, 'prognostic', 'prognostic')/), default=1)
    call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
