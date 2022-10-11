@@ -68,7 +68,7 @@
 
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,post_init_turbulence,do_turbulence
-   use turbulence,  only: num,nuh,nus
+   use turbulence,  only: num,nuh,nus, nucl
    use turbulence,  only: const_num,const_nuh
    use turbulence,  only: gamu,gamv,gamh,gams
    use turbulence,  only: Rig
@@ -792,8 +792,8 @@
       call coriolis(nlev,dt)
 
 !     update velocity
-      call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
-      call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
+      call uequation(nlev,dt,cnpar,tx,num, nucl, gamu,ext_press_mode)
+      call vequation(nlev,dt,cnpar,ty,num, nucl, gamv,ext_press_mode)
       call extpressure(ext_press_mode,nlev)
       call intpressure(nlev)
       call friction(nlev,kappa,avmolu,tx,ty,plume_type)

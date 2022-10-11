@@ -72,7 +72,7 @@
    use turbulence, only: kappa,e1,e2,e3,e6,b1
    use turbulence, only: MY_length,cm0,cde,galp,length_lim
    use turbulence, only: q2l_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
-   use turbulence, only: sl
+   use turbulence, only: sl_var
    use util,       only: Dirichlet,Neumann
 
    IMPLICIT NONE
@@ -156,7 +156,7 @@
    do i=1,nlev-1
 
 !     compute diffusivity
-      avh(i)      =  sl*sqrt(2.*tkeo(i))*L(i)
+      avh(i)      =  sl_var(i) * sqrt(2.*tkeo(i))*L(i)
 
 !     compute production terms in q^2 l - equation
       prod        =  e1*L(i)*P(i) + e6*L(i)*PSTK(i)

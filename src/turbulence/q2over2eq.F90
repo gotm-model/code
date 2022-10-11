@@ -47,7 +47,7 @@
    use turbulence,   only: P,B, PSTK
    use turbulence,   only: tke,tkeo,k_min,eps,L
    use turbulence,   only: q2over2_bc, k_ubc, k_lbc, ubc_type, lbc_type
-   use turbulence,   only: sq
+   use turbulence,   only: sq_var
    use util,         only: Dirichlet,Neumann
 
    IMPLICIT NONE
@@ -100,7 +100,7 @@
    do i=1,nlev-1
 
 !     compute diffusivity
-      avh(i) = sq*sqrt( 2.*tke(i) )*L(i)
+      avh(i) = sq_var(i) * sqrt( 2.*tke(i) )*L(i)
 
 !     compute production terms in q^2/2-equation
       prod     = P(i) + PSTK(i)

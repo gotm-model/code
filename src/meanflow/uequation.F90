@@ -5,7 +5,7 @@
 ! !ROUTINE: The U-momentum equation\label{sec:uequation}
 !
 ! !INTERFACE:
-   subroutine uequation(nlev,dt,cnpar,tx,num,gamu,ext_method)
+   subroutine uequation(nlev,dt,cnpar,tx,num, nucl, gamu,ext_method)
 !
 ! !DESCRIPTION:
 !  This subroutine computes the transport of momentum in
@@ -66,6 +66,7 @@
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,u,uo,v,w,avh
    use meanflow,     only: drag,SS,runtimeu
+   use stokes_drift, only: dusdz
    use observations, only: w_adv_input,w_adv_discr
    use observations, only: uprof_input,vel_relax_tau,vel_relax_ramp
    use observations, only: int_press_type
@@ -93,6 +94,9 @@
 
 !  diffusivity of momentum (m^2/s)
    REALTYPE, intent(in)                :: num(0:nlev)
+
+!  eddy coefficient of momentum flux down the Stokes gradient (m^2/s)
+   REALTYPE, intent(in)                :: nucl(0:nlev)
 
 !  non-local flux of momentum (m^2/s^2)
    REALTYPE, intent(in)                :: gamu(0:nlev)
@@ -176,6 +180,10 @@
 #ifdef NONLOCAL
 !      Qsour(i) = Qsour(i) - ( gamu(i) - gamu(i-1) )/h(i)
 #endif
+
+!     add down Stokes gradient fluxes
+      Qsour(i) = Qsour(i) + ( nucl(i  )*dusdz%data(i  )                 &
+                             -nucl(i-1)*dusdz%data(i-1) )/h(i)
 
    end do
 
