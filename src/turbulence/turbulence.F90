@@ -2564,8 +2564,8 @@
          ! SMC model of Langmuir turbulence (Harcourt, 2015)
 !        KK-TODO: test whether SSCSTK and SSSTK are present?
 
-         call surface_proximity_function(nlev,depth,h)
          call alpha_mnb(nlev,NN,SS, SSCSTK=SSCSTK, SSSTK=SSSTK)
+         call surface_proximity_function(nlev,depth,h)
          call cmue_d_h15(nlev)
          call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_kb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
