@@ -738,6 +738,10 @@
 
 !-----------------------------------------------------------------------
 !BOP
+!
+! !IROUTINE: surface_fluxes
+!
+! !INTERFACE:
    subroutine surface_fluxes(surface_temp,sensible,latent,longwave_radiation)
 !
 ! !USES:
