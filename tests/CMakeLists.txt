@@ -15,10 +15,10 @@ add_executable(test_bulk EXCLUDE_FROM_ALL
               )
 target_link_libraries(test_bulk PRIVATE util airsea input_manager)
 
-add_executable(test_eqstate EXCLUDE_FROM_ALL
-               test_eqstate.F90
-              )
-target_link_libraries(test_eqstate PRIVATE util)
+#add_executable(test_eqstate EXCLUDE_FROM_ALL
+#               test_eqstate.F90
+#              )
+#target_link_libraries(test_eqstate PRIVATE util)
 
 add_executable(test_time EXCLUDE_FROM_ALL
                test_time.F90
