@@ -116,7 +116,7 @@
 #ifdef SPM
    integer, parameter                  :: unit_spm=64
 #endif
-#ifndef ICE
+#ifndef _ICE_
    integer, parameter :: ice_model=0
 #endif
 !
