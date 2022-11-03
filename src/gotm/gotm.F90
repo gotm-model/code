@@ -116,6 +116,9 @@
 #ifdef SPM
    integer, parameter                  :: unit_spm=64
 #endif
+#ifndef ICE
+   integer, parameter :: ice_model=0
+#endif
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -559,9 +562,7 @@
 
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
-!KB need some check to find out if this should be done:  zeta = zeta_input%value
-   zeta = zeta_input%value
-   
+   if (ice_model == 0) zeta = zeta_input%value
 
    ! Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta)
@@ -661,8 +662,7 @@
 
    ! Now that all inputs have been registered (FABM added some), update them all by reading from file.
    call do_input(julianday,secondsofday,nlev,z)
-!KB need some check to find out if this should be done:  zeta = zeta_input%value
-   zeta = zeta_input%value
+   if (ice_model == 0) zeta = zeta_input%value
 
 #ifdef _FABM_
 !  Initialize FABM initial state (this is done after the first call to do_input,
@@ -801,8 +801,7 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
-!KB need some check to find out if this should be done:  zeta = zeta_input%value
-      zeta = zeta_input%value
+      if (ice_model == 0) zeta = zeta_input%value
       call do_stokes_drift(nlev,z,zi,gravity,u10_input%value,v10_input%value)
 
 !     external forcing
