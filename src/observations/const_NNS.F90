@@ -42,6 +42,7 @@
    S(nlev) = S_top
    do i=nlev-1,1,-1
       if (density_method == 1) then
+stop 'Constant NN configuration has been disabled for full TEOS-10 - for the time being'
          beta = gsw_beta(S(i+1),T_const,-zi(i))
       end if
       S(i) = S(i+1) + _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))

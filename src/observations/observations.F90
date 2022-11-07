@@ -847,7 +847,7 @@
             stop 'init_observations'
          endif
 
-         call const_NNS(nlev,z,s_1,t_1,s_obs_NN,gravity,sprof_input%data)
+         call const_NNS(nlev,z,z,s_1,t_1,s_obs_NN,gravity,sprof_input%data)
    end select
 
 !  The temperature profile
