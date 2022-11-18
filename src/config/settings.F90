@@ -129,19 +129,19 @@ contains
             setting%backing_store => yaml_node
          class is (type_yaml_scalar)
             if (target%method_constant == method_unsupported) then
-               call report_error(setting%path//' must be a dictionary (constant values are not supported).')
+               call setting%report_error(setting%path//' must be a dictionary (constant values are not supported).')
                return
             end if
             constant_value = yaml_node%to_real(default, success)
             if (.not. success) then
-               call report_error(setting%path//' is set to a single value "'//trim(yaml_node%string)//'" that cannot be interpreted as a real number.')
+               call setting%report_error(setting%path//' is set to a single value "'//trim(yaml_node%string)//'" that cannot be interpreted as a real number.')
                return
             end if
             has_constant_value = .true.
          class is (type_yaml_null)
-            call report_error(setting%path//' must be a constant or a dictionary with further information. It cannot be null.')
+            call setting%report_error(setting%path//' must be a constant or a dictionary with further information. It cannot be null.')
          class is (type_yaml_list)
-            call report_error(setting%path//' must be a constant or a dictionary with further information. It cannot be a list.')
+            call setting%report_error(setting%path//' must be a constant or a dictionary with further information. It cannot be a list.')
          end select
       end if
 
