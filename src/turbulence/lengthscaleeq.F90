@@ -67,9 +67,9 @@
 ! by setting {\tt length\_lim = .true.} in {\tt gotmturb.nml}.
 !
 ! !USES:
-   use turbulence, only: P,B, PSTK
+   use turbulence, only: P,B,Px,PSTK
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: kappa,e1,e2,e3,e6,b1
+   use turbulence, only: kappa,e1,e2,e3,ex,e6,b1
    use turbulence, only: MY_length,cm0,cde,galp,length_lim
    use turbulence, only: q2l_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
    use turbulence, only: sl
@@ -159,7 +159,7 @@
       avh(i)      =  sl*sqrt(2.*tkeo(i))*L(i)
 
 !     compute production terms in q^2 l - equation
-      prod        =  e1*L(i)*P(i) + e6*L(i)*PSTK(i)
+      prod        =  L(i) * ( e1*P(i) + ex*Px(i) + e6*PSTK(i) )
       buoyan      =  e3*L(i)*B(i)
       diss        =  q3(i)/b1*(1.+e2*(L(i)/Lz(i))*(L(i)/Lz(i)))
 

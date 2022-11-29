@@ -58,7 +58,7 @@
 ! where $c_\mu^0$ is a constant of the model.
 !
 ! !USES:
-   use turbulence,   only: P,B,PSTK,num
+   use turbulence,   only: P,B,Px,PSTK,num
    use turbulence,   only: tke,tkeo,k_min,eps
    use turbulence,   only: k_bc, k_ubc, k_lbc, ubc_type, lbc_type
    use turbulence,   only: sig_k
@@ -118,7 +118,7 @@
       avh(i) = num(i)/sig_k
 
 !     compute production terms in k-equation
-      prod     = P(i) + PSTK(i)
+      prod     = P(i) + Px(i) + PSTK(i)
       buoyan   = B(i)
       diss     = eps(i)
 

@@ -51,7 +51,7 @@
 !  kinetic and potential energy in \eq{tkeA} and \eq{kbeq}, respectively.
 !
 ! !USES:
-   use turbulence, only: P,B,Pb, PSTK
+   use turbulence, only: P,B,Pb,Px,PSTK
    use turbulence, only: num,nuh
    use turbulence, only: alpha,iw_model
    IMPLICIT NONE
@@ -89,19 +89,17 @@
       alpha_eff=alpha
    end if
 
+   do i=0,nlev
+      P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) )
+      B(i)    = -nuh(i)*NN(i)
+      Pb(i)   = -  B(i)*NN(i)
+   end do
+
    if ( PRESENT(xP) ) then
       do i=0,nlev
-         P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) ) + xP(i)
-         B(i)    = -nuh(i)*NN(i)
-         Pb(i)   = -  B(i)*NN(i)
-      enddo
-   else
-      do i=0,nlev
-         P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) )
-         B(i)    = -nuh(i)*NN(i)
-         Pb(i)   = -  B(i)*NN(i)
-      enddo
-   endif
+         Px(i) = xP(i)
+      end do
+   end if
 
    if ( PRESENT(SSCSTK) ) then
       do i=0,nlev

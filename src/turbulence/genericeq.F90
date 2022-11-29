@@ -118,9 +118,9 @@
 ! implemented in GOTM and are described in \sect{sec:generate}.
 !
 ! !USES:
-   use turbulence, only: P,B,PSTK,num
+   use turbulence, only: P,B,Px,PSTK,num
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,cpsi4,sig_psi
+   use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,cpsix,cpsi4,sig_psi
    use turbulence, only: gen_m,gen_n,gen_p
    use turbulence, only: cm0,cde,galp,length_lim
    use turbulence, only: psi_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
@@ -199,7 +199,7 @@
 
 !     compute production terms in psi-equation
       PsiOverTke  = psi(i)/tkeo(i)
-      prod        = cpsi1*PsiOverTke*P(i) + cpsi4*PsiOverTke*PSTK(i)
+      prod        = PsiOverTke * ( cpsi1*P(i) + cpsix*Px(i) + cpsi4*PSTK(i) )
       buoyan      = cpsi3*PsiOverTke*B(i)
       diss        = cpsi2*PsiOverTke*eps(i)
 

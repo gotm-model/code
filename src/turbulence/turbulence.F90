@@ -62,6 +62,9 @@
 !  of tke and buoyancy variance
    REALTYPE, public, dimension(:), allocatable   :: P,B,Pb
 
+!  extra production term
+   REALTYPE, public, dimension(:), allocatable   :: Px
+
 !  Stokes production
    REALTYPE, public, dimension(:), allocatable   :: PSTK
 
@@ -157,7 +160,8 @@
    REALTYPE, public                              :: cpsi2
    REALTYPE, public                              :: cpsi3minus
    REALTYPE, public                              :: cpsi3plus
-   REALTYPE, public                              :: cpsi4   
+   REALTYPE, public                              :: cpsix
+   REALTYPE, public                              :: cpsi4
    REALTYPE                                      :: sig_kpsi
    REALTYPE, public                              :: sig_psi
    REALTYPE                                      :: gen_d
@@ -169,7 +173,8 @@
    REALTYPE, public                              :: ce2
    REALTYPE, public                              :: ce3minus
    REALTYPE, public                              :: ce3plus
-   REALTYPE, public                              :: ce4   
+   REALTYPE, public                              :: cex
+   REALTYPE, public                              :: ce4
    REALTYPE, public                              :: sig_k
    REALTYPE, public                              :: sig_e
    logical,  public                              :: sig_peps
@@ -178,6 +183,7 @@
    REALTYPE, public                              :: e1
    REALTYPE, public                              :: e2
    REALTYPE, public                              :: e3
+   REALTYPE, public                              :: ex
    REALTYPE, public                              :: e6
    REALTYPE, public                              :: sq
    REALTYPE, public                              :: sl
@@ -343,14 +349,14 @@
                             kb_min,epsb_min
 
    namelist /generic/       compute_param,gen_m,gen_n,gen_p,   &
-                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,cpsi4, &
+                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,cpsix,cpsi4, &
                             sig_kpsi,sig_psi,                  &
                             gen_d,gen_alpha,gen_l
 
-   namelist /keps/          ce1,ce2,ce3minus,ce3plus,ce4,      &
+   namelist /keps/          ce1,ce2,ce3minus,ce3plus,cex,ce4,  &
                             sig_k,sig_e,sig_peps
 
-   namelist /my/            e1,e2,e3,e6,sq,sl,my_length, new_constr
+   namelist /my/            e1,e2,e3,ex,e6,sq,sl,my_length, new_constr
 
    namelist /scnd/          scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
@@ -431,6 +437,7 @@
    cpsi2=1.92
    cpsi3minus=0.0
    cpsi3plus=1.0
+   cpsix=cpsi1
    cpsi4=_ZERO_
    sig_kpsi=1.0
    sig_psi=1.3
@@ -443,6 +450,7 @@
    ce2=1.92
    ce3minus=0.0
    ce3plus=1.0
+   cex=ce1
    ce4=_ZERO_
    sig_k=1.0
    sig_e=1.3
@@ -452,6 +460,7 @@
    e1=1.8
    e2=1.33
    e3=1.8
+   ex=e1
    e6=4.0
    sq=0.2
    sl=0.2
@@ -648,6 +657,8 @@
                    default=0.0_rk)
    call twig%get(cpsi3plus, 'cpsi3plus', 'cpsi3 for unstable stratification', '-', &
                    default=1._rk)
+   call twig%get(cpsix, 'cpsix', 'empirical coefficient cpsix in psi equation', '-', &
+                   default=cpsi1)
    call twig%get(cpsi4, 'cpsi4', 'empirical coefficient cpsi4 in psi equation', '-', &
                    default=0.00_rk)   
    call twig%get(sig_kpsi, 'sig_kpsi', 'Schmidt number for TKE diffusivity', '-', &
@@ -670,6 +681,8 @@
                    default=0._rk)
    call twig%get(ce3plus, 'ce3plus', 'ce3 for unstable stratification', '-', &
                    default=1.0_rk)
+   call twig%get(cex, 'cex', 'empirical coefficient cex in dissipation equation', '-', &
+                   default=ce1)
    call twig%get(ce4, 'ce4', 'empirical coefficient ce4 in dissipation equation', '-', &
                    default=0._rk)
    call twig%get(sig_k, 'sig_k', 'Schmidt number for TKE diffusivity', '-', &
@@ -686,6 +699,8 @@
                    default=1.33_rk)
    call twig%get(e3, 'e3', 'coefficient e3 in q^2 l equation', '-', &
                    default=1.8_rk)
+   call twig%get(ex, 'ex', 'coefficient ex in q^2 l equation', '-', &
+                   default=e1)
    call twig%get(e6, 'e6', 'coefficient e6 in q^2 l equation', '-', &
                    default=4.0_rk)
    call twig%get(sq, 'sq', 'turbulent diffusivities of q^2 (= 2k)', '-', &
@@ -865,6 +880,10 @@
    allocate(Pb(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (Pb)'
    Pb = _ZERO_
+
+   allocate(Px(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (Px)'
+   Px = _ZERO_
 
    ! Stokes production
    allocate(PSTK(0:nlev),stat=rc)
@@ -2230,7 +2249,8 @@
          LEVEL3 'ce2                                  =', ce2
          LEVEL3 'ce3minus                             =', ce3minus
          LEVEL3 'ce3plus                              =', ce3plus
-         LEVEL3 'ce4                                  =', ce4         
+         LEVEL3 'cex                                  =', cex
+         LEVEL3 'ce4                                  =', ce4
          LEVEL3 'sig_k                                =', sig_k
          LEVEL3 'sig_e                                =', sig_e
          LEVEL2 ' '
@@ -2255,6 +2275,7 @@
          LEVEL3 'E1                                   =', e1
          LEVEL3 'E2                                   =', e2
          LEVEL3 'E3                                   =', e3
+         LEVEL3 'Ex                                   =', ex
          LEVEL3 'E6                                   =', e6
          LEVEL3 'Sq                                   =', sq
          LEVEL3 'Sl                                   =', sl
@@ -2285,7 +2306,8 @@
          LEVEL3 'cpsi2                                =', cpsi2
          LEVEL3 'cpsi3minus                           =', cpsi3minus
          LEVEL3 'cpsi3plus                            =', cpsi3plus
-         LEVEL3 'cpsi4                                =', cpsi4         
+         LEVEL3 'cpsix                                =', cpsix
+         LEVEL3 'cpsi4                                =', cpsi4
          LEVEL3 'sig_k                                =', sig_kpsi
          LEVEL3 'sig_psi                              =', sig_psi
          LEVEL2 ' '
@@ -3721,6 +3743,7 @@
    if (allocated(P)) deallocate(P)
    if (allocated(B)) deallocate(B)
    if (allocated(Pb)) deallocate(Pb)
+   if (allocated(Px)) deallocate(Px)
    if (allocated(PSTK)) deallocate(PSTK)
    if (allocated(num)) deallocate(num)
    if (allocated(nuh)) deallocate(nuh)
@@ -3781,7 +3804,9 @@
    LEVEL2 'tke,eps,L',tke,eps,L
    LEVEL2 'tkeo',tkeo
    LEVEL2 'kb,epsb',kb,epsb
-   LEVEL2 'P,B,Pb,PSTK',P,B,Pb, PSTK
+   LEVEL2 'P,B,Pb',P,B,Pb
+   LEVEL2 'Px', Px
+   LEVEL2 'PSTK', PSTK
    LEVEL2 'num,nuh,nus',num,nuh,nus
    LEVEL2 'gamu,gamv',gamu,gamv
    LEVEL2 'gamb,gamh,gams',gamb,gamh,gams
@@ -3819,14 +3844,14 @@
                             kb_min,epsb_min
 
    LEVEL2 'generic namelist', compute_param,gen_m,gen_n,gen_p, &
-                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,  &
-                            cpsi4,sig_kpsi,sig_psi,            &
+                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,cpsix,cpsi4, &
+                            sig_kpsi,sig_psi,                  &
                             gen_d,gen_alpha,gen_l
 
-   LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,ce4,      &
+   LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,cex,ce4,  &
                             sig_k,sig_e,sig_peps
 
-   LEVEL2 'my namelist',    e1,e2,e3, e6, sq,sl,my_length,new_constr
+   LEVEL2 'my namelist',    e1,e2,e3,ex,e6,sq,sl,my_length,new_constr
 
    LEVEL2 'scnd namelist',  scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
