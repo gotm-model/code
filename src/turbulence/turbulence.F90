@@ -343,7 +343,7 @@
                             kb_min,epsb_min
 
    namelist /generic/       compute_param,gen_m,gen_n,gen_p,   &
-                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,  &
+                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,cpsi4, &
                             sig_kpsi,sig_psi,                  &
                             gen_d,gen_alpha,gen_l
 
@@ -431,7 +431,7 @@
    cpsi2=1.92
    cpsi3minus=0.0
    cpsi3plus=1.0
-   cpsi4=0   
+   cpsi4=_ZERO_
    sig_kpsi=1.0
    sig_psi=1.3
    gen_d=-1.2
