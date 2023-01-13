@@ -137,6 +137,7 @@
    logical, public             :: list_fields = .false.
    logical, public             :: ignore_unknown_config = .false.
    logical, public             :: generate_restart_file = .false.
+   logical, public             :: force_restart_offline = .false.
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -320,6 +321,7 @@
    call branch%get(restart_offline, 'load', &
                    'initialize simulation with state stored in restart.nc', &
                    default=.false.)
+   if (force_restart_offline) restart_offline = .true.
    call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
                    'warn but not abort if a variable is missing from restart file', &
                    default=.false., display=display_advanced)
