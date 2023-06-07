@@ -1774,7 +1774,7 @@
 !EOP
 !-----------------------------------------------------------------------!
 !BOC
-   write (*,*) trim(message)
+   STDOUT trim(message)
    end subroutine gotm_driver_log_message
 !EOC
 
