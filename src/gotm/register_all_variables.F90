@@ -289,8 +289,8 @@
    LEVEL2 'register_stokes_drift_variables()'
    call fm%register('us', 'm/s', 'Stokes drift x-component', dimensions=(/id_dim_z/), data1d=usprof%data(1:nlev),category='stokes_drift')
    call fm%register('vs', 'm/s', 'Stokes drift y-component', dimensions=(/id_dim_z/), data1d=vsprof%data(1:nlev),category='stokes_drift')
-   call fm%register('dusdz', '1/s', 'Stokes drift shear x-component', dimensions=(/id_dim_z/), data1d=dusdz%data(1:nlev),category='stokes_drift')
-   call fm%register('dvsdz', '1/s', 'Stokes drift shear y-component', dimensions=(/id_dim_z/), data1d=dvsdz%data(1:nlev),category='stokes_drift')
+   call fm%register('dusdz', '1/s', 'Stokes drift shear x-component', dimensions=(/id_dim_zi/), data1d=dusdz%data(0:nlev),category='stokes_drift')
+   call fm%register('dvsdz', '1/s', 'Stokes drift shear y-component', dimensions=(/id_dim_zi/), data1d=dvsdz%data(0:nlev),category='stokes_drift')
    call fm%register('us0', 'm/s', 'surface Stokes drift x-component', data0d=us0%value, category='stokes_drift')
    call fm%register('vs0', 'm/s', 'surface Stokes drift y-component', data0d=vs0%value, category='stokes_drift')
    call fm%register('ds', 'm', 'Stokes drift penetration depth', data0d=ds%value, category='stokes_drift')
