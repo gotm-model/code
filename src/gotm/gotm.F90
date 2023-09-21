@@ -583,18 +583,24 @@
 !GSW_KB
    select case (initial_salinity_type)
       case(1) ! Practical
+         LEVEL1 "Initial salinity: practical"
          Sp(1:nlev) = sprof_input%data(1:nlev)
       case(2) ! Absolute
+         LEVEL1 "Initial salinity: absolute"
          S(1:nlev) = sprof_input%data(1:nlev)
    end select
    select case (initial_temperature_type)
       case(1) ! In-situ
+         LEVEL1 "Initial temperature: in-situ"
          Ti(1:nlev) = tprof_input%data(1:nlev)
       case(2) ! Potential
+         LEVEL1 "Initial temperature: potential"
          Tp(1:nlev) = tprof_input%data(1:nlev)
       case(3) ! Conservative
+         LEVEL1 "Initial temperature: conservative"
          T(1:nlev) = tprof_input%data(1:nlev)
    end select
+   LEVEL1 ""
 
    select case (density_method)
       case (1,2,3)
