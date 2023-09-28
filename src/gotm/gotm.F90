@@ -174,15 +174,16 @@
    class (type_settings), pointer :: branch, twig
    integer, parameter :: rk = kind(_ONE_)
 
+   logical          ::    restart_online=.false.
+   logical          ::    restart_offline = .false.
+   logical          ::    restart_allow_missing_variable = .false.
+   logical          ::    restart_allow_perpetual = .true.
+
    namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
                           restart_allow_perpetual,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
    logical          ::    list_fields=.false.
-   logical          ::    restart_online=.false.
-   logical          ::    restart_offline = .false.
-   logical          ::    restart_allow_missing_variable = .false.
-   logical          ::    restart_allow_perpetual = .true.
    integer          ::    rc
    logical          ::    file_exists
    logical          ::    config_only=.false.
