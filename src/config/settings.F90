@@ -191,7 +191,7 @@ contains
          if (present(minimum)) target%minimum = minimum
          if (present(maximum)) target%maximum = maximum
       end if
-      target%name = setting%path(2:)
+      target%name = setting%path(2:len(setting%path))
       if (present(pchild)) pchild => setting
 
    end subroutine type_input_create
