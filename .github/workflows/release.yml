@@ -19,21 +19,9 @@ jobs:
         run: |
           git-archive-all code.tar.gz
           git-archive-all code.zip
-      - name: Upload tar.gz
-        uses: actions/upload-release-asset@v1
+      - name: Upload
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }} 
-          asset_path: ./code.tar.gz
-          asset_name: Source code including submodules (tar.gz)
-          asset_content_type: application/gzip
-      - name: Upload zip
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }} 
-          asset_path: ./code.zip
-          asset_name: Source code including submodules (zip)
-          asset_content_type: application/zip
+        run: |
+          gh release upload ${{ github.ref }} code.tar.gz#"Source code including submodules (tar.gz)"
+          gh release upload ${{ github.ref }} code.zip#"Source code including submodules (zip)"
