@@ -23,5 +23,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ github.ref }} code.tar.gz#"Source code including submodules (tar.gz)"
-          gh release upload ${{ github.ref }} code.zip#"Source code including submodules (zip)"
+          gh release upload ${{ github.ref_name }} code.tar.gz#"Source code including submodules (tar.gz)"
+          gh release upload ${{ github.ref_name }} code.zip#"Source code including submodules (zip)"
