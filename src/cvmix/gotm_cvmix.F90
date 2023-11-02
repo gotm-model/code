@@ -82,7 +82,8 @@
 
 !  compute surface boundary layer mixing and internal mixing
    logical                               ::    use_surface_layer,      &
-                                               use_interior
+                                               use_interior,           &
+                                               use_bottom_layer
 
 !  flags for different components of CVMix
    logical                               ::    use_kpp,                &
@@ -275,6 +276,10 @@
       option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
       option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic'),                    &
       option(CVMIX_INTERP_LMD94, 'Large et al. (1994)', 'LMD94')/))
+
+   twig => branch%get_child('bottom_layer', 'bottom layer mixing')
+   call twig%get(use_bottom_layer, 'use',                              &
+      'compute bottom layer mixing coefficients', default=.false.)
 
    twig => branch%get_child('interior', 'interior mixing')
    call twig%get(use_interior, 'use',                                  &
@@ -611,6 +616,12 @@
       LEVEL3 'Surface layer mixing algorithm         - not active -'
    endif
 
+   if (use_bottom_layer) then
+      LEVEL3 'Bottom layer mixing algorithm              - active -'
+   else
+      LEVEL3 'Bottom layer mixing algorithm          - not active -'
+   endif
+
    LEVEL2 '--------------------------------------------------------'
    LEVEL2 ' '
 
@@ -830,6 +841,15 @@
       call surface_layer(nlev,h,rho,u,v,NN,u_taus,                   &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,      &
                          EFactor, LaSL)
+   endif
+
+!-----------------------------------------------------------------------
+! compute bottom boundary layer mixing
+!-----------------------------------------------------------------------
+
+   if (use_bottom_layer) then
+      call bottom_layer(nlev,h,rho,u,v,NN,u_taus,                    &
+                         tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
    endif
 
 !-----------------------------------------------------------------------
@@ -1332,6 +1352,72 @@
    return
 
  end subroutine surface_layer
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute turbulence in the bottom layer with CVMix
+!
+! !INTERFACE:
+   subroutine bottom_layer(nlev,h,rho,u,v,NN,u_taus,                   &
+                            tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+!
+! !DESCRIPTION:
+! In this routine all computations related to turbulence in the bottom layer
+! are performed. CVMix library is used.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!  number of grid cells
+   integer, intent(in)                           :: nlev
+
+!  thickness of grid cells (m)
+   REALTYPE, intent(in)                          :: h(0:nlev)
+
+!  potential density at grid centers (kg/m^3)
+   REALTYPE, intent(in)                          :: rho(0:nlev)
+
+!  velocity components at grid centers (m/s)
+   REALTYPE, intent(in)                          :: u(0:nlev),v(0:nlev)
+
+!  square of buoyancy frequency (1/s^2)
+   REALTYPE, intent(in)                          :: NN(0:nlev)
+
+!  surface friction velocities (m/s)
+   REALTYPE, intent(in)                          :: u_taus
+
+!  surface temperature flux (K m/s) and
+!  salinity flux (sal m/s) (negative for loss)
+   REALTYPE, intent(in)                          :: tFlux,sFlux
+
+!  surface buoyancy fluxes (m^2/s^3) due to
+!  heat and salinity fluxes
+   REALTYPE, intent(in)                          :: btFlux,bsFlux
+
+!  radiative flux [ I(z)/(rho Cp) ] (K m/s)
+!  and associated buoyancy flux (m^2/s^3)
+   REALTYPE, intent(in)                          :: tRad(0:nlev),bRad(0:nlev)
+
+!  Coriolis parameter (rad/s)
+   REALTYPE, intent(in)                          :: f
+
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf
+!   Adapted for CVMix: Qing Li
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer                      :: k,ksbl
+   integer                      :: kk,kref,kp1
+
+   return
+
+ end subroutine bottom_layer
 !EOC
 
 !-----------------------------------------------------------------------
