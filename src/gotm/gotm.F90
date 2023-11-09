@@ -377,7 +377,7 @@
 #endif
    call init_meanflow()
 #ifdef _ICE_
-   if (ice_model > 0 .and. Hice > _ZERO_) zeta = -Hice*rho_ice/rho0
+   if (ice_model > 0 .and. Hice > _ZERO_) zeta_input%value = -Hice*rho_ice/rho0
 #endif
 
    branch => settings_store%get_child('buoyancy', display=display_advanced)
