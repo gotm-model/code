@@ -40,7 +40,6 @@
    T(nlev) = T_top
    do i=nlev-1,1,-1
       if (density_method == 1) then
-stop 'Constant NN configuration has been disabled for full TEOS-10 - for the time being'
          alpha=gsw_alpha(S_const,T(i+1),-zi(i))
       end if
       T(i) = T(i+1) - _ONE_/(gravity*alpha)*NN*(z(i+1)-z(i))
