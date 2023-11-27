@@ -57,7 +57,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_density,calculate_density
    integer, public :: density_method
-   REALTYPE, public :: T0,S0,p0,rho0,dtr0,dsr0
+   REALTYPE, public :: T0,S0,p0,rho0=1027.,dtr0,dsr0
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding

@@ -118,6 +118,7 @@
 #endif
 #ifndef _ICE_
    integer, parameter :: ice_model=0
+   integer, parameter :: ice_cover=0
 #endif
 !
 ! !REVISION HISTORY:
@@ -601,6 +602,8 @@
          T(1:nlev) = tprof_input%data(1:nlev)
    end select
    LEVEL1 ""
+   Sobs = S
+   Tobs = T
 
    select case (density_method)
       case (1,2,3)
@@ -816,11 +819,9 @@
 
 !     external forcing
       if(fluxes_method /= 0) then
-#ifdef _ICE_
          if(ice_cover .eq. 0) then
-#endif
-         call set_sst(gsw_t_from_ct(S(nlev), T(nlev), _ZERO_)) !GSW_KB maybe use sea surface elevation as pressure
-         call set_ssuv(u(nlev),v(nlev))
+            call set_sst(gsw_t_from_ct(S(nlev), T(nlev), _ZERO_)) !GSW_KB maybe use sea surface elevation as pressure
+            call set_ssuv(u(nlev),v(nlev))
 #ifdef _ICE_
          else
             call set_sst(Tice_surface) !GSW_KB - check for GSW alternative 
@@ -830,11 +831,9 @@
       end if
       call do_airsea(julianday,secondsofday)
 
-#ifdef _ICE_
       if(ice_cover .eq. 2) then
          albedo = albedo_ice
       end if
-#endif
       I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
 
 #ifdef _ICE_
@@ -843,23 +842,22 @@
 #endif
 
 !     reset some quantities
-#ifdef _ICE_
       if(ice_cover .gt. 0) then
          I_0%value = transmissivity*I_0%value
          swf=melt_rate
-         shf=ocean_ice_heat_flux
+         !shf=ocean_ice_heat_flux
+         !write(100,*) shf
+         shf = _ZERO_
          ssf=ocean_ice_salt_flux
+         heat_input%value = _ZERO_
          tx = _ZERO_
          ty = _ZERO_
       else
-#endif
          swf=precip_input%value+evap
          shf=-heat_input%value !KB must be updated in next release version where fluxes will follow positive -z-coordinate
          tx = tx/rho0
          ty = ty/rho0
-#ifdef _ICE_
       end if
-#endif
 
       call integrated_fluxes(dt)
 
@@ -893,6 +891,25 @@
          Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
          Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
          Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
+         ! convert obs to conservative and absolute - for proper nudging
+         if (sprof_input%method .ne. 0) then
+            select case (initial_salinity_type)
+               case(1) ! Practical --> Absolute
+                  Sobs(1:nlev) = gsw_sa_from_sp(sprof_input%data(1:nlev),-z(1:nlev),longitude,latitude)
+               case(2) ! Absolute
+                  Sobs(1:nlev) = sprof_input%data(1:nlev)
+            end select
+         end if
+         if (tprof_input%method .ne. 0) then
+            select case (initial_temperature_type)
+               case(1) ! In-situ
+                  Tobs(1:nlev) = gsw_ct_from_t(Sobs(1:nlev),tprof_input%data(1:nlev),-z(1:nlev))
+               case(2) ! Potential
+                  Tobs(1:nlev) = gsw_ct_from_pt(Sobs(1:nlev),tprof_input%data(1:nlev))
+               case(3) ! Conservative
+                  Tobs(1:nlev) = tprof_input%data(1:nlev)
+         end select
+         end if
    end select
 !GSW
 !  update shear and stratification
