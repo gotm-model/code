@@ -53,7 +53,11 @@
                               systemdate(7:8),      &
                       ' at ', systemtime(1:2), ':', &
                               systemtime(3:4), ':', &
+#ifdef DEBUG
+                              systemtime(5:6), ' - DEBUG compilation'
+#else
                               systemtime(5:6)
+#endif
    STDERR LINE
 #else
    STDERR LINE

@@ -727,6 +727,7 @@
    STDERR LINE
 
    progress = (MaxN-MinN+1)/10
+   if (progress < 1) progress = 1
 
 #ifdef _PRINTSTATE_
    call print_state
@@ -820,7 +821,7 @@
 !     external forcing
       if(fluxes_method /= 0) then
          if(ice_cover .eq. 0) then
-            call set_sst(gsw_t_from_ct(S(nlev), T(nlev), _ZERO_)) !GSW_KB maybe use sea surface elevation as pressure
+            call set_sst(gsw_t_from_ct(S(nlev), T(nlev), _ZERO_))
             call set_ssuv(u(nlev),v(nlev))
 #ifdef _ICE_
          else
@@ -854,7 +855,7 @@
          ty = _ZERO_
       else
          swf=precip_input%value+evap
-         shf=-heat_input%value !KB must be updated in next release version where fluxes will follow positive -z-coordinate
+         shf=-heat_input%value ! temperature() changed to positive heat flux upwards (v7)
          tx = tx/rho0
          ty = ty/rho0
       end if

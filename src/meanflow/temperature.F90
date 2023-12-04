@@ -69,6 +69,7 @@
    use density,      only: rho0
    use meanflow,     only: avmolt,cp
    use meanflow,     only: h,u,v,w,T,S,avh
+   use meanflow,     only: Tobs
    use meanflow,     only: bioshade
 #ifndef _ICE_
    use meanflow,     only: Hice
@@ -202,8 +203,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tprof_input%data,T)
-   return
+                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,Tobs,T)
    end subroutine temperature
 !EOC
 

@@ -203,10 +203,13 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+
+   if (ice_model > 0) then
+
    LEVEL2 'register_stim_variables()'
 
    call fm%register('Tice_surface', 'celsius', 'ice temperature (surface)', standard_name='', data0d=Tice_surface, category='ice')
-   if (ice_model .eq. 3) then
+   if (ice_model .eq. 5) then
       call fm%register('T1', 'celsius', 'ice temperature (upper)', standard_name='', data0d=Tice(1), category='ice')
       call fm%register('T2', 'celsius', 'ice temperature (lower)', standard_name='', data0d=Tice(2), category='ice')
    end if
@@ -214,17 +217,17 @@
    call fm%register('Hice', 'm', 'ice thickness', standard_name='', data0d=Hice, category='ice')
    call fm%register('surface_ice_energy', 'J/m2', 'ice energy (surface)', standard_name='', data0d=surface_ice_energy, category='ice')
    call fm%register('bottom_ice_energy', 'J/m2', 'ice energy (bottom)', standard_name='', data0d=bottom_ice_energy, category='ice')
-   call fm%register('ocean_ice_flux', 'W/m2', 'ocean-ice heat flux', standard_name='', data0d=ocean_ice_flux, category='ice')
    call fm%register('Hfrazil', 'm', 'ice thickness (frazil)', standard_name='', data0d=Hfrazil, category='ice')
-   call fm%register('dHis', 'm', 'ice growth (surface)', standard_name='', data0d=dHis, category='ice')
-   call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice')
-   call fm%register('melt_rate', 'm/s', 'ice melt rate', standard_name='', data0d=melt_rate, category='ice')
-   call fm%register('Tmelt', 'C', 'melt layer temperature', standard_name='', data0d=T_melt, category='ice')
-   call fm%register('Smelt', 'PSU', 'melt layer salinity', standard_name='', data0d=S_melt, category='ice')
-   call fm%register('ocean_ice_salt_flux', 'PSU', 'ocean/ice salt flux', standard_name='', data0d=ocean_ice_salt_flux, category='ice')
-   call fm%register('ocean_ice_heat_flux', 'W/m2', 'ocean/ice heat flux', standard_name='', data0d=ocean_ice_heat_flux, category='ice')
-
-   return
+   call fm%register('dHis', 'm', 'ice growth (surface)', standard_name='', data0d=dHis, category='ice', output_level=output_level_debug)
+   call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice', output_level=output_level_debug)
+   call fm%register('melt_rate', 'm/s', 'ice melt rate', standard_name='', data0d=melt_rate, category='ice', output_level=output_level_debug)
+   call fm%register('Tmelt', 'C', 'melt layer temperature', standard_name='', data0d=T_melt, category='ice', output_level=output_level_debug)
+   call fm%register('Smelt', 'PSU', 'melt layer salinity', standard_name='', data0d=S_melt, category='ice', output_level=output_level_debug)
+   call fm%register('ocean_ice_flux', 'kg/m2', 'ocean-ice water flux', standard_name='', data0d=ocean_ice_flux, category='ice')
+   call fm%register('ocean_ice_salt_flux', 'PSU', 'ocean/ice salt flux', standard_name='', data0d=ocean_ice_salt_flux, category='ice', output_level=output_level_debug)
+   call fm%register('ocean_ice_heat_flux', 'W/m2', 'ocean-ice heat flux', standard_name='', data0d=ocean_ice_heat_flux, category='ice')
+!   call fm%register('ocean_ice_heat_flux', 'W/m2', 'ocean/ice heat flux', standard_name='', data0d=ocean_ice_heat_flux, category='ice', output_level=output_level_debug)
+   end if
    end subroutine register_stim_variables
 !EOC
 #endif
