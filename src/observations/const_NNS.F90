@@ -15,7 +15,7 @@
 
 ! !USES:
    use gsw_mod_toolbox, only: gsw_beta
-   use density, only: density_method,dsr0
+   use density, only: density_method,beta
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -33,18 +33,18 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: beta
+   REALTYPE                  :: lbeta
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   beta=dsr0 ! density_method=2,3
+   lbeta=beta ! density_method=2,3
 
    S(nlev) = S_top
    do i=nlev-1,1,-1
       if (density_method == 1) then
-         beta = gsw_beta(S(i+1),T_const,-zi(i))
+         lbeta = gsw_beta(S(i+1),T_const,-zi(i))
       end if
-      S(i) = S(i+1) + _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))
+      S(i) = S(i+1) + _ONE_/(gravity*lbeta)*NN*(z(i+1)-z(i))
    end do
    end subroutine const_NNS
 !EOC

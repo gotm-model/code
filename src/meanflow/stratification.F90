@@ -67,7 +67,7 @@
 !
 ! !USES:
    use density,    only: density_method,calculate_density
-   use density,    only: rho0,dtr0,dsr0
+   use density,    only: rho0,alpha,beta
    use meanflow,   only: z,zi,h,S,T,buoy,rho
    use meanflow,   only: NN,NNT,NNS
    use meanflow,   only: gravity
@@ -101,8 +101,8 @@
          do n=nlev-1,1,-1
             dz=0.5*(h(n+1)+h(n))
 
-            NNT(n)=dtr0*gravity*(T(n+1)-T(n))/dz
-            NNS(n)=dsr0*gravity*(S(n+1)-S(n))/dz
+            NNT(n)=alpha*gravity*(T(n+1)-T(n))/dz
+            NNS(n)=beta*gravity*(S(n+1)-S(n))/dz
             NN(n)=NNT(n)+NNS(n)
          end do
    end select

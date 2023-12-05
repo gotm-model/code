@@ -57,7 +57,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_density,calculate_density
    integer, public :: density_method
-   REALTYPE, public :: T0,S0,p0,rho0=1027.,dtr0,dsr0
+   REALTYPE, public :: T0,S0,p0,rho0=1027.,alpha,beta
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -91,22 +91,24 @@
    select case (density_method)
       case(1) ! use gsw_rho(S,T,p) - default p=0
          LEVEL3 'rho0=  ',rho0
-      case(2) ! S0, T0, p0 are provided - rho0, dtr0, dsr0 are calculated
-         call gsw_rho_alpha_beta(S0,T0,p0,rho0,dtr0,dsr0)
+      case(2) ! S0, T0, p0 are provided - rho0, alpha, beta are calculated
+         call gsw_rho_alpha_beta(S0,T0,p0,rho0,alpha,beta)
          LEVEL2 'Linearized - using gsw_rho_alpha_beta()'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
          LEVEL3 'p0=    ',p0
          LEVEL3 'rho0=  ',rho0
-         LEVEL3 'alpha= ',dtr0
-         LEVEL3 'beta=  ',dsr0
+         LEVEL3 'alpha= ',alpha
+         LEVEL3 'beta=  ',beta
       case(3) ! S0, T0, rho0, alpha, beta are all provided
          LEVEL2 'Linearized - custom - using S0, T0, rho0, alpha, beta'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
          LEVEL3 'rho0=  ',rho0
-         LEVEL3 'alpha= ',dtr0
-         LEVEL3 'beta=  ',dsr0
+         LEVEL3 'alpha= ',alpha
+         LEVEL3 'beta=  ',beta
+         alpha = -alpha/rho0
+         beta = beta/rho0
       case default
    end select
    LEVEL2 'done.'
@@ -148,11 +150,11 @@
 !           The parameters {\tt T0},
 !           {\tt S0} and {\tt p0} have to be specified in the namelist.
 !     \item a linear equation of state with prescribed {\tt rho0}, {\tt T0},
-!           {\tt S0}, {\tt dtr0}, {\tt dsr0} according to
+!           {\tt S0}, {\tt alpha}, {\tt beta} according to
 !           \begin{equation}
 !              \label{eosLinear}
-!              \rho = \rho_0 + \text{\tt dtr0} (T - T_0)
-!                            + \text{\tt dsr0} (S - S_0)
+!              \rho = \rho_0 + \text{\tt alpha} (T - T_0)
+!                            + \text{\tt beta} (S - S_0)
 !               \point
 !           \end{equation}
 !   \end{enumerate}
@@ -176,7 +178,7 @@
       case(1)
          x=gsw_rho(S,T,p)
       case (2, 3)
-         x=rho0*(_ONE_-dtr0*(T-T0)+dsr0*(S-S0))
+         x=rho0*(_ONE_+alpha*(T-T0)+beta*(S-S0))
       case default
    end select
 

@@ -43,7 +43,7 @@
    use settings
 
    use density, only: init_density
-   use density, only: density_method,T0,S0,p0,rho0,dtr0,dsr0
+   use density, only: density_method,T0,S0,p0,rho0,alpha,beta
    use meanflow
    use input
    use input_netcdf
@@ -204,7 +204,7 @@
                           restart_allow_perpetual,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
-!KB   namelist /eqstate/     eq_state_mode,eq_state_method,T0,S0,p0,dtr0,dsr0
+!KB   namelist /eqstate/     eq_state_mode,eq_state_method,T0,S0,p0,alpha,beta
 !KB   logical          ::    list_fields=.false.
    logical          ::    restart_online=.false.
    integer          ::    rc
@@ -396,7 +396,7 @@
    call branch%get(density_method, 'method', 'density formulation', &
                    options=(/option(1, 'TEOS-10', 'full_TEOS-10'), &
                              option(2, 'linearized at T0, S0, p0 (rho0 is calculated)', 'linear_teos-10'), &
-                             option(3, 'linearized at T0, S0, rho0, dtr0, dsr0', 'linear_custom')/), &
+                             option(3, 'linearized at T0, S0, rho0, alpha, beta', 'linear_custom')/), &
                              default=1)
    call branch%get(rho0, 'rho0', 'reference density', 'kg/m3', default=1027._rk)
    twig => branch%get_child('linear')
@@ -406,9 +406,9 @@
                  minimum=0._rk, default=35._rk)
    call twig%get(p0, 'p0', 'reference pressure', 'Pa', &
                  default=0._rk)
-   call twig%get(dtr0, 'dtr0', 'thermal expansion coefficient', 'kg/m^3/K', &
+   call twig%get(alpha, 'alpha', 'thermal expansion coefficient', 'kg/m^3/K', &
                  default=-0.17_rk)
-   call twig%get(dsr0, 'dsr0', 'saline expansion coefficient', 'kg/m^3/psu', &
+   call twig%get(beta, 'beta', 'saline expansion coefficient', 'kg/m^3/psu', &
                  default=0.78_rk)
 
 !  open the namelist file.

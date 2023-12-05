@@ -13,7 +13,7 @@
 !
 ! !USES:
    use gsw_mod_toolbox, only: gsw_alpha
-   use density, only: density_method,dtr0
+   use density, only: density_method,alpha
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -31,18 +31,18 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: alpha
+   REALTYPE                  :: lalpha
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   alpha=dtr0 ! density_method=2,3
+   lalpha=alpha ! density_method=2,3
 
    T(nlev) = T_top
    do i=nlev-1,1,-1
       if (density_method == 1) then
-         alpha=gsw_alpha(S_const,T(i+1),-zi(i))
+         lalpha=gsw_alpha(S_const,T(i+1),-zi(i))
       end if
-      T(i) = T(i+1) - _ONE_/(gravity*alpha)*NN*(z(i+1)-z(i))
+      T(i) = T(i+1) - _ONE_/(gravity*lalpha)*NN*(z(i+1)-z(i))
    end do
    end subroutine const_NNT
 !EOC
