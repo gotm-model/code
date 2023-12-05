@@ -827,14 +827,16 @@
          else
             call set_sst(Tice_surface) !GSW_KB - check for GSW alternative 
             call set_ssuv(_ZERO_,_ZERO_)
-         end if
 #endif
+         end if
       end if
       call do_airsea(julianday,secondsofday)
 
+#ifdef _ICE_
       if(ice_cover .eq. 2) then
          albedo = albedo_ice
       end if
+#endif
       I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
 
 #ifdef _ICE_
@@ -844,15 +846,15 @@
 
 !     reset some quantities
       if(ice_cover .gt. 0) then
-         I_0%value = transmissivity*I_0%value
-         swf=melt_rate
-         !shf=ocean_ice_heat_flux
-         !write(100,*) shf
          shf = _ZERO_
-         ssf=ocean_ice_salt_flux
          heat_input%value = _ZERO_
          tx = _ZERO_
          ty = _ZERO_
+#ifdef _ICE_
+         I_0%value = transmissivity*I_0%value
+         swf=melt_rate
+         ssf=ocean_ice_salt_flux
+#endif
       else
          swf=precip_input%value+evap
          shf=-heat_input%value ! temperature() changed to positive heat flux upwards (v7)
