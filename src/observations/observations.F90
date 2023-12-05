@@ -829,9 +829,10 @@
 
 !  The salinity profile
    call register_input(sprof_input)
+   sprof_input%data=sprof_input%constant_value
    select case (sprof_input%method)
-      case (ANALYTICAL_OFFSET + CONST_PROF)
-          sprof_input%data=sprof_input%constant_value
+!KB      case (ANALYTICAL_OFFSET + CONST_PROF)
+!KB          sprof_input%data=sprof_input%constant_value
       case (ANALYTICAL_OFFSET + TWO_LAYERS)
          call analytical_profile(nlev,z,z_s1,s_1,z_s2,s_2,sprof_input%data)
       case (ANALYTICAL_OFFSET + CONST_NN)
@@ -852,9 +853,10 @@
 
 !  The temperature profile
    call register_input(tprof_input)
+   tprof_input%data=tprof_input%constant_value
    select case (tprof_input%method)
-      case (ANALYTICAL_OFFSET + CONST_PROF)
-          tprof_input%data=tprof_input%constant_value
+!KB      case (ANALYTICAL_OFFSET + CONST_PROF)
+!KB          tprof_input%data=tprof_input%constant_value
       case (ANALYTICAL_OFFSET + TWO_LAYERS)
          call analytical_profile(nlev,z,z_t1,t_1,z_t2,t_2,tprof_input%data)
       case (ANALYTICAL_OFFSET + CONST_NN)
