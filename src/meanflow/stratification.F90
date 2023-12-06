@@ -101,8 +101,8 @@
          do n=nlev-1,1,-1
             dz=0.5*(h(n+1)+h(n))
 
-            NNT(n)=alpha*gravity*(T(n+1)-T(n))/dz
-            NNS(n)=beta*gravity*(S(n+1)-S(n))/dz
+            NNT(n)=-alpha*gravity*(T(n+1)-T(n))/dz
+            NNS(n)=-beta*gravity*(S(n+1)-S(n))/dz
             NN(n)=NNT(n)+NNS(n)
          end do
    end select
