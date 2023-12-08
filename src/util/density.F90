@@ -47,8 +47,7 @@
 !  \end{enumerate}
 
 !USES:
-   use gsw_mod_toolbox, only: gsw_rho,gsw_rho_alpha_beta
-!   use gsw_mod_toolbox, only: gsw_rho_alpha_beta_bsq
+   use gsw_mod_toolbox, only: gsw_rho,gsw_sigma0,gsw_rho_alpha_beta
    IMPLICIT NONE
 
 !  default: all is private.
@@ -57,7 +56,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_density,calculate_density
    integer, public :: density_method
-   REALTYPE, public :: T0,S0,p0,rho0=1027.,alpha,beta
+   REALTYPE, public :: T0,S0,rho0=1027.,alpha,beta
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -92,11 +91,10 @@
       case(1) ! use gsw_rho(S,T,p) - default p=0
          LEVEL3 'rho0=  ',rho0
       case(2) ! S0, T0, p0 are provided - rho0, alpha, beta are calculated
-         call gsw_rho_alpha_beta(S0,T0,p0,rho0,alpha,beta)
+         call gsw_rho_alpha_beta(S0,T0,_ZERO_,rho0,alpha,beta)
          LEVEL2 'Linearized - using gsw_rho_alpha_beta()'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
-         LEVEL3 'p0=    ',p0
          LEVEL3 'rho0=  ',rho0
          LEVEL3 'alpha= ',alpha
          LEVEL3 'beta=  ',beta
@@ -107,9 +105,7 @@
          LEVEL3 'rho0=  ',rho0
          LEVEL3 'alpha= ',alpha
          LEVEL3 'beta=  ',beta
-         alpha = -alpha/rho0
-         beta = beta/rho0
-      case default
+       case default
    end select
    LEVEL2 'done.'
    end subroutine init_density
@@ -176,9 +172,10 @@
 !BOC
    select case (density_method)
       case(1)
-         x=gsw_rho(S,T,p)
+         x=gsw_sigma0(S,T) + 1000.
+         !x=gsw_rho(S,T,p)
       case (2, 3)
-         x=rho0*(_ONE_+alpha*(T-T0)+beta*(S-S0))
+         x=rho0*(_ONE_-alpha*(T-T0)+beta*(S-S0))
       case default
    end select
 

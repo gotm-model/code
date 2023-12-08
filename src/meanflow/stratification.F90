@@ -71,7 +71,7 @@
    use meanflow,   only: z,zi,h,S,T,buoy,rho
    use meanflow,   only: NN,NNT,NNS
    use meanflow,   only: gravity
-   use gsw_mod_toolbox, only: gsw_nsquared
+   use gsw_mod_toolbox, only: gsw_alpha,gsw_beta
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -90,20 +90,31 @@
    integer :: n
    REALTYPE :: lat(0:nlev)
    REALTYPE :: dz
-   REALTYPE :: zi_local(nlev)
+   REALTYPE :: lalpha,lbeta   
+   REALTYPE :: Ti,Si      
 !-----------------------------------------------------------------------
 !BOC
-   lat=_ZERO_ !GSW_KB - need to pass in lat
    select case (density_method)
       case (1)
-         call gsw_Nsquared(S(1:),T(1:),-z(1:),lat(1:),NN(1:),zi_local(1:))
+         do n=nlev-1,1,-1
+            Ti     = 0.5*(T(n+1)+T(n))
+            Si     = 0.5*(S(n+1)+S(n))         
+            dz     = 0.5*(h(n+1)+h(n))
+
+            lalpha = gsw_alpha(Si,Ti,-zi(n))
+            lbeta  = gsw_beta(Si,Ti,-zi(n))
+
+            NNT(n) = lalpha*gravity*(T(n+1)-T(n))/dz
+            NNS(n) = -lbeta*gravity*(S(n+1)-S(n))/dz
+            NN(n)  = NNT(n)+NNS(n)
+         end do      
       case (2,3)
          do n=nlev-1,1,-1
-            dz=0.5*(h(n+1)+h(n))
+            dz     = 0.5*(h(n+1)+h(n))
 
-            NNT(n)=-alpha*gravity*(T(n+1)-T(n))/dz
-            NNS(n)=-beta*gravity*(S(n+1)-S(n))/dz
-            NN(n)=NNT(n)+NNS(n)
+            NNT(n) = alpha*gravity*(T(n+1)-T(n))/dz
+            NNS(n) = -beta*gravity*(S(n+1)-S(n))/dz
+            NN(n)  = NNT(n)+NNS(n)
          end do
    end select
    rho(1:)=calculate_density(S(1:),T(1:),-z(1:))

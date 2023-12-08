@@ -13,7 +13,7 @@
 !
 ! !USES:
    use gsw_mod_toolbox, only: gsw_alpha
-   use density, only: density_method,alpha
+   use density,         only: density_method,alpha
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -40,7 +40,12 @@
    T(nlev) = T_top
    do i=nlev-1,1,-1
       if (density_method == 1) then
+         ! estimate alpha based on T above the interface
          lalpha=gsw_alpha(S_const,T(i+1),-zi(i))
+         ! use this to estimate T below the interface
+         T(i) = T(i+1) - _ONE_/(gravity*lalpha)*NN*(z(i+1)-z(i))
+         ! compute improved alpha
+         lalpha=gsw_alpha(S_const,0.5*(T(i+1)+T(i)),-zi(i))
       end if
       T(i) = T(i+1) - _ONE_/(gravity*lalpha)*NN*(z(i+1)-z(i))
    end do

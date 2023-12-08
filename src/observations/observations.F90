@@ -595,11 +595,11 @@
    twig => branch%get_typed_child('two_layer')
    call twig%get(z_s1, 'z_s', 'depth where upper layer ends', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(s_1, 's_s', 'upper layer salinity', 'psu', &
+   call twig%get(s_1, 's_s', 'upper layer salinity', 'g/kg', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
    call twig%get(z_s2, 'z_b', 'depth where lower layer begins', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(s_2, 's_b', 'lower layer salinity', 'psu', &
+   call twig%get(s_2, 's_b', 'lower layer salinity', 'g/kg', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
    call branch%get(s_obs_NN, 'NN', 'square of buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
@@ -848,9 +848,10 @@
             stop 'init_observations'
          endif
 
-         call const_NNS(nlev,z,z,s_1,t_1,s_obs_NN,gravity,sprof_input%data)
+         call const_NNS(nlev,z,zi,s_1,tprof_input%constant_value,s_obs_NN,gravity,sprof_input%data)
    end select
 
+   
 !  The temperature profile
    call register_input(tprof_input)
    tprof_input%data=tprof_input%constant_value
@@ -873,7 +874,8 @@
             stop 'init_observations'
          endif
 
-         call const_NNT(nlev,z,z,t_1,s_1,t_obs_NN,gravity,tprof_input%data)
+ 
+         call const_NNT(nlev,z,zi,t_1,sprof_input%constant_value,t_obs_NN,gravity,tprof_input%data)
    end select
 
 !  The external pressure
