@@ -324,6 +324,7 @@
    call twig%get(dtgrid, 'dtgrid', 'time step (must be fraction of dt)', 's', &
                  minimum=0._rk,default=5._rk)
 #endif
+   
 
    ! Predefine order of top-level categories in gotm.yaml
    branch => settings_store%get_child('temperature')
@@ -380,16 +381,6 @@
 #ifdef _ICE_
    if (ice_model > 0 .and. Hice > _ZERO_) zeta_input%value = -Hice*rho_ice/rho0
 #endif
-
-   branch => settings_store%get_child('buoyancy', display=display_advanced)
-   call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
-                   options=(/option(1, 'equation of state', 'eq_state'), option(2, 'prognostic equation', 'prognostic')/), default=1)
-   call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', 'm/s^2', &
-                   default=0._rk)
-   call branch%get(b_obs_NN, 'NN_ini', 'initial buoyancy gradient (squared buoyancy frequency)', 's^-2', &
-                   default=0._rk)
-   call branch%get(b_obs_sbf, 'obs_sbf', 'constant surface buoyancy flux', 'm^2/s^3', &
-                   default=0._rk, display=display_hidden)
 
    LEVEL1 'init_eqstate_yaml'
    branch => settings_store%get_child('equation_of_state', 'equation of state')
@@ -704,12 +695,8 @@
    ! Call stratification to make sure density has sensible value.
    ! This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
-   select case (buoy_method)
-      case (1)
-         call stratification(nlev)
-      case (2)
-         call prognostic_buoyancy(nlev,dt,cnpar,nuh,gamh)
-   end select
+   call stratification(nlev)
+
 
 #ifdef _FABM_
 !  Accept the current biogeochemical state and used it to compute derived diagnostics.
@@ -915,12 +902,7 @@
 !GSW
 !  update shear and stratification
    call shear(nlev,cnpar)
-   select case (buoy_method)
-      case (1)
-         call stratification(nlev)
-      case (2)
-         call prognostic_buoyancy(nlev,dt,cnpar,nuh,gamh)
-   end select
+   call stratification(nlev)
 
 #ifdef SPM
       if (spm_calc) then

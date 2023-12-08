@@ -29,7 +29,6 @@
 !
 ! !PUBLIC DATA MEMBERS:
    logical, public                              :: grid_ready
-   logical, public                              :: init_buoyancy
 
 !  coordinate z, layer thicknesses
    REALTYPE, public, dimension(:), allocatable, target  :: ga,z,zi,h,ho
@@ -334,7 +333,6 @@
 
 !  Specify that the buoyance profile and grid still need to be calculated.
 !  Note that the former is used only if a prognostic equation for buoyancy is used.
-   init_buoyancy = .true.
    grid_ready = .false.
 
 !  Initialize cumulative run time used to detect u and v ramp.
@@ -593,7 +591,6 @@
 !BOC
    LEVEL1 'State of meanflow module:'
    LEVEL2 'grid_ready',grid_ready
-   LEVEL2 'init_buoyancy',init_buoyancy
    if (allocated(ga))  LEVEL2 'ga',ga
    if (allocated(z))   LEVEL2 'z',z
    if (allocated(h))   LEVEL2 'h',h
