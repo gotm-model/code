@@ -34,7 +34,9 @@
 !
 ! !USES:
    use field_manager
-   use gsw_mod_toolbox
+   use gsw_mod_toolbox, only: gsw_sa_from_sp, gsw_sp_from_sa
+   use gsw_mod_toolbox, only: gsw_ct_from_t, gsw_t_from_ct
+   use gsw_mod_toolbox, only: gsw_pt_from_ct, gsw_ct_from_pt, gsw_pt_from_t
    use register_all_variables, only: do_register_all_variables, fm
 !KB   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,time_unit_second,type_output_category
    use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
@@ -42,8 +44,9 @@
    use diagnostics
    use settings
 
-   use density, only: init_density
-   use density, only: density_method,T0,S0,rho0,alpha,beta
+   use density, only: init_density,calculate_density,do_density_1
+   use density, only: density_method,T0,S0,rho0,alpha0,beta0
+   use density, only: rho
    use meanflow
    use input
    use input_netcdf
@@ -395,9 +398,9 @@
                  minimum=-2._rk, default=15._rk)
    call twig%get(S0, 'S0', 'reference salinity', 'g/kg', &
                  minimum=0._rk, default=35._rk)
-   call twig%get(alpha, 'alpha', 'thermal expansion coefficient', '1/K', &
+   call twig%get(alpha0, 'alpha', 'thermal expansion coefficient', '1/K', &
                  default=0.00020_rk)
-   call twig%get(beta, 'beta', 'saline contraction coefficient', 'kg/g', &
+   call twig%get(beta0, 'beta', 'saline contraction coefficient', 'kg/g', &
                  default=0.00075_rk)
 
 !  open the namelist file.
@@ -426,7 +429,7 @@
       call init_airsea(namlst,'airsea.nml')
    end if
    LEVEL1 'init_density()'
-   call init_density()
+   call init_density(nlev)
 
 #ifdef _FABM_
    if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
@@ -695,6 +698,7 @@
    ! Call stratification to make sure density has sensible value.
    ! This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
+   call do_density_1(nlev,S,T,-zi)
    call stratification(nlev)
 
 
@@ -902,6 +906,7 @@
 !GSW
 !  update shear and stratification
    call shear(nlev,cnpar)
+   call do_density_1(nlev,S,T,-zi)
    call stratification(nlev)
 
 #ifdef SPM

@@ -12,8 +12,7 @@
 ! {\tt v1}
 !
 ! !USES:
-   use gsw_mod_toolbox, only: gsw_alpha
-   use density,         only: density_method,alpha
+   use density, only: get_alpha, alpha
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -30,24 +29,15 @@
 !  Original author(s): Lars Umlauf
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   REALTYPE                  :: lalpha
+   integer :: n
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   lalpha=alpha ! density_method=2,3
+   T(nlev) = T_top ! must be done here
+   call get_alpha(nlev,gravity,S_const,NN,z,zi,T)
 
-   T(nlev) = T_top
-   do i=nlev-1,1,-1
-      if (density_method == 1) then
-         ! estimate alpha based on T above the interface
-         lalpha=gsw_alpha(S_const,T(i+1),-zi(i))
-         ! use this to estimate T below the interface
-         T(i) = T(i+1) - _ONE_/(gravity*lalpha)*NN*(z(i+1)-z(i))
-         ! compute improved alpha
-         lalpha=gsw_alpha(S_const,0.5*(T(i+1)+T(i)),-zi(i))
-      end if
-      T(i) = T(i+1) - _ONE_/(gravity*lalpha)*NN*(z(i+1)-z(i))
+   do n=nlev-1,1,-1
+      T(n) = T(n+1) - _ONE_/(gravity*alpha(n))*NN*(z(n+1)-z(n))
    end do
    end subroutine const_NNT
 !EOC

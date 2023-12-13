@@ -58,6 +58,7 @@
 !BOC
    LEVEL1 'register_all_variables()'
    call register_coordinate_variables(lat,lon)
+   call register_density_variables(nlev)
    call register_meanflow_variables(nlev)
    call register_airsea_variables(nlev)
 #ifdef _ICE_
@@ -368,6 +369,40 @@
 
 !-----------------------------------------------------------------------
 !BOP
+!
+! !IROUTINE: density variable registration
+!
+! !INTERFACE:
+   subroutine register_density_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use density, only: density_method, rho, rho_p, alpha, beta
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_density_variables()'
+   call fm%register('rho', 'kg/m3', 'density (in-situ)', standard_name='??', dimensions=(/id_dim_z/), data1d=rho(1:nlev),category='density')
+   call fm%register('rho_p', 'kg/m3', 'density (potential)', standard_name='??', dimensions=(/id_dim_z/), data1d=rho_p(1:nlev),category='density')
+#if 0
+   call fm%register('alpha', '1/K', 'thermal expansion coefficient', standard_name='??', dimensions=(/id_dim_z/), data1d=alpha(1:nlev),category='density',output_level=output_level_debug)
+   call fm%register('beta', 'kg/g', 'saline contraction coefficient', standard_name='??', dimensions=(/id_dim_z/), data1d=beta(1:nlev),category='density',output_level=output_level_debug)
+#else
+   call fm%register('alpha', '1/K', 'thermal expansion coefficient', standard_name='??', dimensions=(/id_dim_z/), data1d=alpha(1:nlev),category='density')
+   call fm%register('beta', 'kg/g', 'saline contraction coefficient', standard_name='??', dimensions=(/id_dim_z/), data1d=beta(1:nlev),category='density')
+#endif
+   end subroutine register_density_variables
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
 ! !IROUTINE: meanflow variable registration
 !
 ! !INTERFACE:
@@ -395,7 +430,6 @@
    call fm%register('temp_i', 'Celsius', 'temperature (in-situ)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Ti(1:nlev),category='temperature_and_salinity')
    call fm%register('salt', 'g/kg', 'salinity (absolute)', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=S(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
    call fm%register('salt_p', 'PSU', 'salinity (practical)', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=Sp(1:nlev),category='temperature_and_salinity')
-   call fm%register('rho', 'kg/m3', 'density (potential)', standard_name='??', dimensions=(/id_dim_z/), data1d=rho(1:nlev),category='temperature_and_salinity')
 
    call fm%register('u', 'm/s', 'x-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=u(1:nlev), category='velocities', part_of_state=.true.)
    call fm%register('uo', 'm/s', 'x-velocity - old time step', standard_name='??', dimensions=(/id_dim_z/), data1d=uo(1:nlev), category='velocities', part_of_state=.true., output_level=output_level_debug)

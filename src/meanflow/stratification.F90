@@ -66,12 +66,12 @@
 !  and $S$ and is only recommended for idealized studies.
 !
 ! !USES:
-   use density,    only: density_method,calculate_density
-   use density,    only: rho0,alpha,beta
-   use meanflow,   only: z,zi,h,S,T,buoy,rho
+   use density,    only: alpha,beta
+   use density,    only: rho0,rho_p
+   use meanflow,   only: h,T,S
+   use meanflow,   only: buoy
    use meanflow,   only: NN,NNT,NNS
    use meanflow,   only: gravity
-   use gsw_mod_toolbox, only: gsw_alpha,gsw_beta
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -87,38 +87,22 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer :: n
-   REALTYPE :: lat(0:nlev)
-   REALTYPE :: dz
-   REALTYPE :: lalpha,lbeta   
-   REALTYPE :: Ti,Si      
+   REALTYPE :: idz(0:nlev)
+   REALTYPE :: dT(0:nlev)
+   REALTYPE :: dS(0:nlev)
+   integer, parameter :: rk = kind(_ONE_)
 !-----------------------------------------------------------------------
 !BOC
-   select case (density_method)
-      case (1)
-         do n=nlev-1,1,-1
-            Ti     = 0.5*(T(n+1)+T(n))
-            Si     = 0.5*(S(n+1)+S(n))         
-            dz     = 0.5*(h(n+1)+h(n))
 
-            lalpha = gsw_alpha(Si,Ti,-zi(n))
-            lbeta  = gsw_beta(Si,Ti,-zi(n))
+   idz(1:nlev-1)=2.0_rk/(h(1:nlev-1)+h(2:nlev))
+   dT(1:nlev-1)=T(2:nlev)-T(1:nlev-1)
+   dS(1:nlev-1)=S(2:nlev)-S(1:nlev-1)
 
-            NNT(n) = lalpha*gravity*(T(n+1)-T(n))/dz
-            NNS(n) = -lbeta*gravity*(S(n+1)-S(n))/dz
-            NN(n)  = NNT(n)+NNS(n)
-         end do      
-      case (2,3)
-         do n=nlev-1,1,-1
-            dz     = 0.5*(h(n+1)+h(n))
+   NNT(1:nlev-1) = alpha(1:nlev-1)*gravity*dT(1:nlev-1)*idz(1:nlev-1)
+   NNS(1:nlev-1) = -beta(1:nlev-1)*gravity*dS(1:nlev-1)*idz(1:nlev-1)
+   NN(1:nlev-1)  = NNT(1:nlev-1)+NNS(1:nlev-1)
 
-            NNT(n) = alpha*gravity*(T(n+1)-T(n))/dz
-            NNS(n) = -beta*gravity*(S(n+1)-S(n))/dz
-            NN(n)  = NNT(n)+NNS(n)
-         end do
-   end select
-   rho(1:)=calculate_density(S(1:),T(1:),-z(1:))
-   buoy(1:) = -gravity*(rho(1:)-rho0)/rho0
+   buoy(1:) = -gravity*(rho_p(1:)-rho0)/rho0
 
    ! set boundary values
    NN(nlev) = _ZERO_

@@ -44,7 +44,7 @@
 
 !  potential temperature, salinity
 !  T -> Tc - conservative temperature, S -> Sa - absolute salinity
-   REALTYPE, public, dimension(:), allocatable, target  :: T,S,rho
+   REALTYPE, public, dimension(:), allocatable, target  :: T,S
 !  Tp - potential temperature, Sp - practical salinity
    REALTYPE, public, dimension(:), allocatable, target  :: Tp,Sp
 !  Ti - in-situ temperature
@@ -417,10 +417,6 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (Sobs)'
    Sobs = _ZERO_
 
-   allocate(rho(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_meanflow: Error allocating (rho)'
-   rho = _ZERO_
-
    allocate(NN(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (NN)'
    NN = _ZERO_
@@ -542,7 +538,6 @@
    if (allocated(Ti)) deallocate(Ti)
    if (allocated(S)) deallocate(S)
    if (allocated(Sp)) deallocate(Sp)
-   if (allocated(rho)) deallocate(rho)
    if (allocated(NN)) deallocate(NN)
    if (allocated(NNT)) deallocate(NNT)
    if (allocated(NNS)) deallocate(NNS)
@@ -602,7 +597,6 @@
    if (allocated(vo))  LEVEL2 'vo',vo
    if (allocated(T))   LEVEL2 'T',t
    if (allocated(S))   LEVEL2 'S',s
-   if (allocated(rho)) LEVEL2 'rho',rho
    if (allocated(NN))  LEVEL2 'NN',NN
    if (allocated(NNT)) LEVEL2 'NNT',NNT
    if (allocated(NNS)) LEVEL2 'NNS',NNS

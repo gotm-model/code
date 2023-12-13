@@ -89,9 +89,9 @@
 !
 ! !USES:
    use airsea_driver,only: sst,tx,ty
-   use density,      only: rho0, calculate_density
+   use density,      only: rho0, rho, calculate_density
    use meanflow,     only: gravity,cp,drag
-   use meanflow,     only: h,u,v,s,t,rho,NN,SS,buoy,rad
+   use meanflow,     only: h,u,v,s,t,NN,SS,buoy,rad
    use turbulence,   only: turb_method
    use turbulence,   only: kappa
    use turbulence,   only: num

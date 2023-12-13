@@ -7,15 +7,12 @@
 ! !INTERFACE:
    subroutine const_NNS(nlev,z,zi,S_top,T_const,NN,gravity,S)
 !
-!
 ! !DESCRIPTION:
 ! This routine creates a vertical profile {\tt prof} with value
 ! {\tt v1}
-
-
+!
 ! !USES:
-   use gsw_mod_toolbox, only: gsw_beta
-   use density,         only: density_method,beta
+   use density, only: get_beta, beta
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -32,24 +29,15 @@
 !  Original author(s): Lars Umlauf
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   REALTYPE                  :: lbeta
+   integer :: n
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   lbeta=beta ! density_method=2,3
+   S(nlev) = S_top ! must be done here
+   call get_beta(nlev,gravity,T_const,NN,z,zi,S)
 
-   S(nlev) = S_top
-   do i=nlev-1,1,-1
-      if (density_method == 1) then
-         ! estimate beta based on T above the interface
-         lbeta = gsw_beta(S(i+1),T_const,-zi(i))
-         ! use this to estimate S below the interface
-         S(i) = S(i+1) + _ONE_/(gravity*lbeta)*NN*(z(i+1)-z(i))
-         ! compute improved beta
-         lbeta=gsw_beta(0.5*(S(i+1)+S(i)),T_const,-zi(i))         
-       end if
-      S(i) = S(i+1) + _ONE_/(gravity*lbeta)*NN*(z(i+1)-z(i)) 
+   do n=nlev-1,1,-1
+      S(n) = S(n+1) + _ONE_/(gravity*beta(n))*NN*(z(n+1)-z(n)) 
    end do
    end subroutine const_NNS
 !EOC

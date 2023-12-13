@@ -47,16 +47,20 @@
 !  \end{enumerate}
 
 !USES:
-   use gsw_mod_toolbox, only: gsw_rho,gsw_sigma0,gsw_rho_alpha_beta
+   use gsw_mod_toolbox, only: gsw_rho,gsw_sigma0,gsw_rho_alpha_beta,gsw_alpha,gsw_beta
    IMPLICIT NONE
-
 !  default: all is private.
+
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_density,calculate_density
+   public init_density, calculate_density, do_density_1, get_alpha, get_beta
    integer, public :: density_method
-   REALTYPE, public :: T0,S0,rho0=1027.,alpha,beta
+   REALTYPE, public :: T0,S0,rho0=1027.,alpha0,beta0
+   REALTYPE, public, allocatable :: alpha(:), beta(:)
+   REALTYPE, public, allocatable :: rho(:), rho_p(:)
+!
+   integer, parameter :: rk = kind(_ONE_)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -72,18 +76,20 @@
 ! !IROUTINE: Configuring {\tt eqstate}
 !
 ! !INTERFACE:
-   subroutine init_density()
+   subroutine init_density(nlev)
 !
 ! !DESCRIPTION:
 !
 ! !USES:
    IMPLICIT NONE
 !
+   integer, intent(in) :: nlev
+
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer, parameter :: rk = kind(_ONE_)
+   integer :: rc
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -91,22 +97,36 @@
       case(1) ! use gsw_rho(S,T,p) - default p=0
          LEVEL3 'rho0=  ',rho0
       case(2) ! S0, T0, p0 are provided - rho0, alpha, beta are calculated
-         call gsw_rho_alpha_beta(S0,T0,_ZERO_,rho0,alpha,beta)
+         call gsw_rho_alpha_beta(S0,T0,_ZERO_,rho0,alpha0,beta0)
          LEVEL2 'Linearized - using gsw_rho_alpha_beta()'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
          LEVEL3 'rho0=  ',rho0
-         LEVEL3 'alpha= ',alpha
-         LEVEL3 'beta=  ',beta
+         LEVEL3 'alpha= ',alpha0
+         LEVEL3 'beta=  ',beta0
       case(3) ! S0, T0, rho0, alpha, beta are all provided
          LEVEL2 'Linearized - custom - using S0, T0, rho0, alpha, beta'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
          LEVEL3 'rho0=  ',rho0
-         LEVEL3 'alpha= ',alpha
-         LEVEL3 'beta=  ',beta
+         LEVEL3 'alpha= ',alpha0
+         LEVEL3 'beta=  ',beta0
        case default
    end select
+
+   allocate(alpha(nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (alpha)'  
+   alpha = alpha0
+   allocate(beta(nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (beta)'  
+   beta =  beta0
+   allocate(rho(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (rho)'  
+   rho = _ZERO_
+   allocate(rho_p(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (rho_p)'  
+   rho_p = _ZERO_
+
    LEVEL2 'done.'
    end subroutine init_density
 !EOC
@@ -175,7 +195,7 @@
          x=gsw_sigma0(S,T) + 1000.
          !x=gsw_rho(S,T,p)
       case (2, 3)
-         x=rho0*(_ONE_-alpha*(T-T0)+beta*(S-S0))
+         x=rho0*(_ONE_-alpha0*(T-T0)+beta0*(S-S0))
       case default
    end select
 
@@ -188,6 +208,122 @@
 !EOC
 
 !-----------------------------------------------------------------------
+
+   subroutine do_density_1(nlev,S,T,p)
+
+!  Subroutine arguments
+   integer, intent(in) :: nlev
+      !! number of layers []
+   REALTYPE, intent(in), dimension(0:nlev) :: S
+      !! absolute salinity [kg/g]
+   REALTYPE, intent(in), dimension(0:nlev) :: T
+      !! conservative temperature profile [C]
+   REALTYPE, intent(in), dimension(0:nlev) :: p
+      !! conservative temperature profile [dbar]
+!-----------------------------------------------------------------------
+
+      select case (density_method)
+         case(1)
+            call gsw_rho_alpha_beta(S(1:),T(1:),p(1:), &
+                                    rho=rho(1:),alpha=alpha,beta=beta)
+            rho_p(1:nlev)=gsw_sigma0(S(1:nlev),T(1:nlev)) + 1000._rk
+         case(2,3)
+            rho_p(1:nlev)=rho0-alpha*(T(1:nlev)-T0)+beta*(S(1:nlev)-S0)
+!KB            call gsw_rho_alpha_beta(S(1:),T(1:),p(1:),rho=rho(1:))
+         case default
+      end select
+
+! Lars suggests to put calculation of buoyancy here
+
+   end subroutine do_density_1
+
+!-----------------------------------------------------------------------
+
+   subroutine get_alpha(nlev,gravity,S_const,NN,z,zi,T)
+
+!  Subroutine arguments
+   integer, intent(in) :: nlev
+      !! number of layers []
+   REALTYPE, intent(in) :: gravity
+      !! gravitationl acceleration [m/s^2]
+   REALTYPE, intent(in) :: S_const
+      !! constant salinity [kg/g]
+   REALTYPE, intent(in) :: NN
+      !! Brunt Vaisalla frequency squared [s^-2]
+   REALTYPE, intent(in), dimension(0:nlev) :: z
+      !! z-ccordinate of cell centers [m]
+   REALTYPE, intent(in), dimension(0:nlev) :: zi
+      !! z-ccordinate of cell faces [m]
+   REALTYPE, intent(inout), dimension(0:nlev) :: T
+      !! conservative temperature profile [C]
+
+!  Local variables
+   integer :: n
+!-----------------------------------------------------------------------
+
+   select case (density_method)
+      case(1)
+         do n=nlev-1,1,-1
+            ! estimate beta based on T above the interface
+            alpha(n) = gsw_alpha(T(n+1),S_const,-zi(n))
+            ! use this to estimate S below the interface
+            T(n) = T(n+1) - _ONE_/(gravity*alpha(n))*NN*(z(n+1)-z(n))
+            ! compute improved beta                                  
+            beta(n)=gsw_beta(0.5*(T(n+1)+T(n)),S_const,-zi(n))
+         end do
+      case default
+   end select
+
+   end subroutine get_alpha
+
+!-----------------------------------------------------------------------
+
+   subroutine get_beta(nlev,gravity,T_const,NN,z,zi,S)
+
+   integer, intent(in) :: nlev
+      !! number of layers []
+   REALTYPE, intent(in) :: gravity
+      !! gravitationl acceleration [m/s^2]
+   REALTYPE, intent(in) :: T_const
+      !! constant temperature [C]
+   REALTYPE, intent(in) :: NN
+      !! Brunt Vaisalla frequency squared [s^-2]
+   REALTYPE, intent(in), dimension(0:nlev) :: z
+      !! z-ccordinate of cell centers [m]
+   REALTYPE, intent(in), dimension(0:nlev) :: zi
+      !! z-ccordinate of cell faces [m]
+   REALTYPE, intent(inout), dimension(0:nlev) :: S
+      !! salinity profile [kg/g]
+
+!  Local variables
+   integer :: n
+!-----------------------------------------------------------------------
+
+   select case (density_method)
+      case(1)
+         do n=nlev-1,1,-1
+            ! estimate beta based on T above the interface
+            beta(n) = gsw_beta(S(n+1),T_const,-zi(n))
+            ! use this to estimate S below the interface
+            S(n) = S(n+1) + _ONE_/(gravity*beta(n))*NN*(z(n+1)-z(n))
+            ! compute improved beta                                  
+            beta(n)=gsw_beta(0.5*(S(n+1)+S(n)),T_const,-zi(n))
+         end do
+      case default
+   end select
+
+   end subroutine get_beta
+
+!-----------------------------------------------------------------------
+
+   subroutine clean_density()
+
+      if (allocated(alpha)) deallocate(alpha)
+      if (allocated(beta)) deallocate(beta)
+      if (allocated(rho)) deallocate(rho)
+      if (allocated(rho_p)) deallocate(rho_p)
+
+   end subroutine clean_density
 
    end module density
 
