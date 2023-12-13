@@ -269,7 +269,7 @@
             ! use this to estimate S below the interface
             T(n) = T(n+1) - _ONE_/(gravity*alpha(n))*NN*(z(n+1)-z(n))
             ! compute improved beta                                  
-            beta(n)=gsw_beta(0.5*(T(n+1)+T(n)),S_const,-zi(n))
+            alpha(n)=gsw_alpha(0.5*(T(n+1)+T(n)),S_const,-zi(n))
          end do
       case default
    end select
