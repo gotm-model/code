@@ -62,9 +62,9 @@
 ! by setting {\tt length\_lim = .true.} in {\tt gotmturb.nml}.
 !
 ! !USES:
-   use turbulence, only: P,B,PSTK,num
+   use turbulence, only: P,B,Px,PSTK,num
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: ce1,ce2,ce3plus,ce3minus,ce4
+   use turbulence, only: ce1,ce2,ce3plus,ce3minus,cex,ce4
    use turbulence, only: cm0,cde,galp,length_lim
    use turbulence, only: epsilon_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
    use turbulence, only: sig_e,sig_e0,sig_peps
@@ -147,7 +147,7 @@
       end if
 
       EpsOverTke  = eps(i)/tkeo(i)
-      prod        = ce1*EpsOverTke*P(i) + ce4*EpsOverTke*PSTK(i)
+      prod        = EpsOverTke * ( ce1*P(i) + cex*Px(i) + ce4*PSTK(i) )
       buoyan      = ce3*EpsOverTke*B(i)
       diss        = ce2*EpsOverTke*eps(i)
 

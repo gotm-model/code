@@ -44,7 +44,7 @@
 ! \end{equation}
 !
 ! !USES:
-   use turbulence,   only: P,B, PSTK
+   use turbulence,   only: P,B,Px,PSTK
    use turbulence,   only: tke,tkeo,k_min,eps,L
    use turbulence,   only: q2over2_bc, k_ubc, k_lbc, ubc_type, lbc_type
    use turbulence,   only: sq
@@ -103,7 +103,7 @@
       avh(i) = sq*sqrt( 2.*tke(i) )*L(i)
 
 !     compute production terms in q^2/2-equation
-      prod     = P(i) + PSTK(i)
+      prod     = P(i) + Px(i) + PSTK(i)
       buoyan   = B(i)
       diss     = eps(i)
 
