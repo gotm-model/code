@@ -54,7 +54,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_density, calculate_density, do_density_1, get_alpha, get_beta
+   public init_density, calculate_density, do_density, get_alpha, get_beta
    integer, public :: density_method
    REALTYPE, public :: T0,S0,p0,rho0=1027.,alpha0,beta0
    REALTYPE, public, allocatable :: alpha(:), beta(:)
@@ -210,7 +210,7 @@
 
 !-----------------------------------------------------------------------
 
-   subroutine do_density_1(nlev,S,T,p)
+   subroutine do_density(nlev,S,T,p)
 
 !  Subroutine arguments
    integer, intent(in) :: nlev
@@ -236,7 +236,7 @@
 
 ! Lars suggests to put calculation of buoyancy here
 
-   end subroutine do_density_1
+   end subroutine do_density
 
 !-----------------------------------------------------------------------
 
