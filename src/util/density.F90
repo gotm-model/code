@@ -56,7 +56,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_density, calculate_density, do_density_1, get_alpha, get_beta
    integer, public :: density_method
-   REALTYPE, public :: T0,S0,rho0=1027.,alpha0,beta0
+   REALTYPE, public :: T0,S0,p0,rho0=1027.,alpha0,beta0
    REALTYPE, public, allocatable :: alpha(:), beta(:)
    REALTYPE, public, allocatable :: rho(:), rho_p(:)
 !
@@ -97,10 +97,11 @@
       case(1) ! use gsw_rho(S,T,p) - default p=0
          LEVEL3 'rho0=  ',rho0
       case(2) ! S0, T0, p0 are provided - rho0, alpha, beta are calculated
-         call gsw_rho_alpha_beta(S0,T0,_ZERO_,rho0,alpha0,beta0)
+         call gsw_rho_alpha_beta(S0,T0,p0,rho0,alpha0,beta0) 
          LEVEL2 'Linearized - using gsw_rho_alpha_beta()'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
+         LEVEL3 'p0=    ',p0        
          LEVEL3 'rho0=  ',rho0
          LEVEL3 'alpha= ',alpha0
          LEVEL3 'beta=  ',beta0

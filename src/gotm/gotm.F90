@@ -45,7 +45,7 @@
    use settings
 
    use density, only: init_density,calculate_density,do_density_1
-   use density, only: density_method,T0,S0,rho0,alpha0,beta0
+   use density, only: density_method,T0,S0,p0,rho0,alpha0,beta0
    use density, only: rho, rho_p
    use meanflow
    use input
@@ -389,7 +389,7 @@
    branch => settings_store%get_child('equation_of_state', 'equation of state')
    call branch%get(density_method, 'method', 'density formulation', &
                    options=(/option(1, 'TEOS-10', 'full_TEOS-10'), &
-                             option(2, 'linearized at T0, S0, and zero pressure (rho0 is calculated)', 'linear_teos-10'), &
+                             option(2, 'linearized at T0, S0, p0 (rho0 is calculated)', 'linear_teos-10'), &
                              option(3, 'linearized at T0, S0, rho0, alpha, beta', 'linear_custom')/), &
                              default=1)
    call branch%get(rho0, 'rho0', 'reference density', 'kg/m3', default=1027._rk)
@@ -398,6 +398,8 @@
                  minimum=-2._rk, default=15._rk)
    call twig%get(S0, 'S0', 'reference salinity', 'g/kg', &
                  minimum=0._rk, default=35._rk)
+   call twig%get(p0, 'p0', 'reference pressure', 'dbar', &
+                 minimum=0._rk, default=0._rk)
    call twig%get(alpha0, 'alpha', 'thermal expansion coefficient', '1/K', &
                  default=0.00020_rk)
    call twig%get(beta0, 'beta', 'saline contraction coefficient', 'kg/g', &
