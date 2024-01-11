@@ -102,7 +102,7 @@
    NNS(1:nlev-1) = -beta(1:nlev-1)*gravity*dS(1:nlev-1)*idz(1:nlev-1)
    NN(1:nlev-1)  = NNT(1:nlev-1)+NNS(1:nlev-1)
 
-   buoy(1:) = -gravity*(rho_p(1:)-rho0)/rho0
+!KB   buoy(1:) = -gravity*(rho_p(1:)-rho0)/rho0
 
    ! set boundary values
    NN(nlev) = _ZERO_

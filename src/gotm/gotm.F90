@@ -46,7 +46,7 @@
 
    use density, only: init_density,calculate_density,do_density_1
    use density, only: density_method,T0,S0,rho0,alpha0,beta0
-   use density, only: rho
+   use density, only: rho, rho_p
    use meanflow
    use input
    use input_netcdf
@@ -699,6 +699,7 @@
    ! This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
    call do_density_1(nlev,S,T,-zi)
+   buoy(1:) = -gravity*(rho_p(1:)-rho0)/rho0
    call stratification(nlev)
 
 
@@ -907,6 +908,7 @@
 !  update shear and stratification
    call shear(nlev,cnpar)
    call do_density_1(nlev,S,T,-zi)
+   buoy(1:nlev) = -gravity*(rho_p(1:nlev)-rho0)/rho0
    call stratification(nlev)
 
 #ifdef SPM
