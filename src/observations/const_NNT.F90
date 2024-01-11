@@ -12,7 +12,7 @@
 ! {\tt v1}
 !
 ! !USES:
-   use density, only: get_alpha, alpha
+   use density, only: get_alpha
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -29,16 +29,28 @@
 !  Original author(s): Lars Umlauf
 !
 ! !LOCAL VARIABLES:
-   integer :: n
+   integer                             :: i
+   REALTYPE                           :: lalpha
+   
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   T(nlev) = T_top ! must be done here
-   call get_alpha(nlev,gravity,S_const,NN,z,zi,T)
+    T(nlev) = T_top ! must be done here
 
-   do n=nlev-1,1,-1
-      T(n) = T(n+1) - _ONE_/(gravity*alpha(n))*NN*(z(n+1)-z(n))
+    do i=nlev-1,1,-1
+      ! estimate interface alpha based on T above the interface
+      lalpha = get_alpha(S_const,T(i+1),-zi(i))
+
+      ! use this to estimate T below the interface
+      T(i)   = T(i+1) - _ONE_/(gravity*lalpha)*NN*(z(i+1)-z(i))
+
+      ! compute improved interface alpha
+      lalpha = get_alpha(S_const,0.5*(T(i+1)+T(i)),-zi(i))
+
+      ! compute final temperature profile
+      T(i)   = T(i+1) - _ONE_/(gravity*lalpha)*NN*(z(i+1)-z(i))
    end do
+
    end subroutine const_NNT
 !EOC
 

@@ -28,7 +28,7 @@
 ! the eddy viscosity $\nu_t$ and the eddy diffusivity $\nu'_t$, respectively.
 !
 ! !USES:
-   use density, only: calculate_density
+   use density, only:  get_rho_p
    use meanflow, only: h,t,s,buoy,NN
 !
    IMPLICIT NONE
@@ -67,8 +67,8 @@
       hint=h(nlev)
       i=nlev
 111   i=i-1
-      buoyupp=calculate_density(Sint,Tint,hint,g)
-      buoylow=calculate_density(S(i),T(i),hint,g)
+      buoyupp =-g*( get_rho_p(Sint,Tint,hint) - rho_0 )/rho_0
+      buoylow =-g*( get_rho_p(S(i),T(i),hint) - rho_0 )/rho_0
       if (buoyupp.lt.buoylow) then     ! instable stratification
          NN(i)=0.
          Tint=(Tint*hint+T(i)*h(i))/(hint+h(i))
@@ -84,7 +84,7 @@
       do i=ii,nlev
          T(i)=Tint
          S(i)=Sint
-         buoy(i)=calculate_density(Sint,Tint,zero,g)
+         buoy(i)=-g*( get_rho_p(Sint,Tint,zero) - rho_0 )/rho_0
       end do
    else   ! if (buoy_method.eq.2)
       buoyint=buoy(nlev)

@@ -12,7 +12,7 @@
 ! {\tt v1}
 !
 ! !USES:
-   use density, only: get_beta, beta
+   use density, only: get_beta
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -29,17 +29,28 @@
 !  Original author(s): Lars Umlauf
 !
 ! !LOCAL VARIABLES:
-   integer :: n
+   integer                               :: i
+    REALTYPE                             :: lbeta   
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   S(nlev) = S_top ! must be done here
-   call get_beta(nlev,gravity,T_const,NN,z,zi,S)
+    S(nlev) = S_top ! must be done here
 
-   do n=nlev-1,1,-1
-      S(n) = S(n+1) + _ONE_/(gravity*beta(n))*NN*(z(n+1)-z(n)) 
+    do i=nlev-1,1,-1
+      ! estimate interface beta based on S above the interface
+      lbeta = get_beta(S(i+1),T_const,-zi(i))
+
+      ! use this to estimate S below the interface
+      S(i)  = S(i+1) + _ONE_/(gravity*lbeta)*NN*(z(i+1)-z(i))
+
+      ! compute improved interface beta
+      lbeta  = get_beta(0.5*(S(i+1)+S(i)),T_const,-zi(i))
+
+      ! compute final salinity profile
+      S(i)   = S(i+1) + _ONE_/(gravity*lbeta)*NN*(z(i+1)-z(i))
    end do
-   end subroutine const_NNS
+   
+   end subroutine const_NNS   
 !EOC
 
 !-----------------------------------------------------------------------

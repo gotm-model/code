@@ -47,14 +47,14 @@
 !  \end{enumerate}
 
 !USES:
-   use gsw_mod_toolbox, only: gsw_rho,gsw_sigma0,gsw_rho_alpha_beta,gsw_alpha,gsw_beta
+   use gsw_mod_toolbox, only: gsw_rho,gsw_sigma0,gsw_alpha,gsw_beta,gsw_rho_alpha_beta
    IMPLICIT NONE
 !  default: all is private.
 
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_density, calculate_density, do_density, get_alpha, get_beta
+   public init_density, do_density, get_rho_p, get_rho, get_alpha, get_beta
    integer, public :: density_method
    REALTYPE, public :: T0,S0,p0,rho0=1027.,alpha0,beta0
    REALTYPE, public, allocatable :: alpha(:), beta(:)
@@ -115,10 +115,10 @@
        case default
    end select
 
-   allocate(alpha(nlev),stat=rc)
+   allocate(alpha(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (alpha)'  
    alpha = alpha0
-   allocate(beta(nlev),stat=rc)
+   allocate(beta(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (beta)'  
    beta =  beta0
    allocate(rho(0:nlev),stat=rc)
@@ -133,47 +133,64 @@
 !EOC
 
 !-----------------------------------------------------------------------
+
+   subroutine do_density(nlev,S,T,p,pi)
+
+!  Subroutine arguments
+   integer, intent(in) :: nlev
+      !! number of layers []
+   REALTYPE, intent(in), dimension(0:nlev) :: S
+      !! absolute salinity [g/kg]
+   REALTYPE, intent(in), dimension(0:nlev) :: T
+      !! conservative temperature [C]
+   REALTYPE, intent(in), dimension(0:nlev) :: p
+      !! pressure at cell centers [dbar]
+   REALTYPE, intent(in), dimension(0:nlev) :: pi
+      !! pressure at cell interfaces [dbar]   
+!-----------------------------------------------------------------------
+
+      select case (density_method)
+      case(1)
+             rho(1:nlev)     =  gsw_rho(S(1:nlev),T(1:nlev),p(1:nlev))
+             rho_p(1:nlev)   =  gsw_sigma0(S(1:nlev),T(1:nlev)) + 1000._rk
+             alpha(1:nlev-1) =  gsw_alpha(0.5*(S(1:nlev-1) + S(2:nlev)),               &
+                                          0.5*(T(1:nlev-1) + T(2:nlev)),pi(1:nlev-1))
+             beta(1:nlev-1)  =  gsw_beta(0.5*(S(1:nlev-1) + S(2:nlev)),                &
+                                         0.5*(T(1:nlev-1) + T(2:nlev)),pi(1:nlev-1))              
+         case(2,3)
+            rho_p(1:nlev)    = rho0*(_ONE_ - alpha0*(T(1:nlev)-T0) + beta0*(S(1:nlev)-S0) )
+            rho              = rho_p   ! Lars: here, we should implement some sort of pressure dependency
+         case default
+      end select
+
+   end subroutine do_density
+
+!-----------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Select an equation of state
+! !IROUTINE: Compute potential density
 !
 ! !INTERFACE:
-   elemental REALTYPE function calculate_density(S,T,p,g)
+   elemental REALTYPE function get_rho_p(S,T,p)
 !
 ! !DESCRIPTION:
-!  Calculates the in-situ buoyancy according to the selected method.
-!  {\tt S} is salinity $S$ in psu, {\tt T} is
-!  potential temperature $\theta$ in $^{\circ}$C (ITS-90), {\tt p} is
-!  gauge pressure (absolute pressure - 10.1325 bar), {\tt g} is the
-!  gravitational acceleration in m\,s$^{-2}$ and {\tt rho\_0} the reference
-!  density in kg\,m$^{-3}$. {\tt calculate_density} is the in-situ-density
-!  in kg\,m$^{-3}$.
-!  For {\tt eq\_state\_method}=1, the UNESCO equation of state is used,
-!  for {\tt eq\_state\_method}=2, the \cite{JACKETTea05} equation
-!  of state is used. Here, some care is needed, since the UNESCO equation
-!  used bar for pressure and the \cite{JACKETTea05} uses dbar for pressure.
-!  For values of
-!  {\tt eq\_state\_method} ranging from 1 to 4, one of the following methods
-!  will be used.
-!
+! Compute potential density $\rho_p$ based on absolute salinity, conservative temperature, and pressure.
+! There are three options at the moment
 !   \begin{enumerate}
-!     \item the full equation of state for sea water
-!           including pressure dependence.
-!     \item the equation of state for sea water
-!           with the pressure evaluated at the sea surface as
-!           reference level. This is the choice
-!           for computations based on potential temperature and density.
-!     \item a linearised equation of state.
-!           The parameters {\tt T0},
-!           {\tt S0} and {\tt p0} have to be specified in the namelist.
-!     \item a linear equation of state with prescribed {\tt rho0}, {\tt T0},
-!           {\tt S0}, {\tt alpha}, {\tt beta} according to
+!     \item Compute $\rho_p$ from the full TEOS-10 equation of state
+!     \item Compute $\rho_p$ from a linear equation of state: 
 !           \begin{equation}
 !              \label{eosLinear}
-!              \rho = \rho_0 + \text{\tt alpha} (T - T_0)
-!                            + \text{\tt beta} (S - S_0)
-!               \point
+!              \frac{\rho_p}{\rho_0} = 1 - \text{\tt alpha} (T - T_0) + \text{\tt beta} (S - S_0)
+!               \comma
 !           \end{equation}
+!           where  {\tt rho0}, {\tt alpha}, {\tt beta} are computed from TEOS-10 for user-spezified values of
+!           {\tt T0},  {\tt S0},  and {\tt p0}.
+!     \item  Compute $rho_p$ from the above linear equation of state for user-specified  values of {\tt rho0},
+!     {\tt alpha}, and  {\tt beta}.
 !   \end{enumerate}
 !
 ! !USES:
@@ -181,139 +198,152 @@
 !
 ! !INPUT PARAMETERS:
    REALTYPE,intent(in)                 :: S,T,p
-   REALTYPE,optional,intent(in)        :: g
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Hans Burchard, Karsten Bolding, Lars Umlauf
 !
 ! !LOCAL VARIABLES:
-   REALTYPE :: x
+!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    select case (density_method)
       case(1)
-         x=gsw_sigma0(S,T) + 1000.
-         !x=gsw_rho(S,T,p)
-      case (2, 3)
-         x=rho0*(_ONE_-alpha0*(T-T0)+beta0*(S-S0))
+         get_rho_p = gsw_sigma0(S,T) + 1000.
+       case (2,3)
+         get_rho_p = rho0*( _ONE_ - alpha0*(T-T0) + beta0*(S-S0) )
       case default
    end select
 
-   if (present(g)) then
-      calculate_density=-g*(x-rho0)/rho0
-   else
-      calculate_density=x
-   end if
-   end function calculate_density
+   end function get_rho_p
 !EOC
 
-!-----------------------------------------------------------------------
 
-   subroutine do_density(nlev,S,T,p)
-
-!  Subroutine arguments
-   integer, intent(in) :: nlev
-      !! number of layers []
-   REALTYPE, intent(in), dimension(0:nlev) :: S
-      !! absolute salinity [kg/g]
-   REALTYPE, intent(in), dimension(0:nlev) :: T
-      !! conservative temperature profile [C]
-   REALTYPE, intent(in), dimension(0:nlev) :: p
-      !! conservative temperature profile [dbar]
-!-----------------------------------------------------------------------
-
-      select case (density_method)
-         case(1)
-            call gsw_rho_alpha_beta(S(1:),T(1:),p(1:), &
-                                    rho=rho(1:),alpha=alpha,beta=beta)
-            rho_p(1:nlev)=gsw_sigma0(S(1:nlev),T(1:nlev)) + 1000._rk
-         case(2,3)
-            rho_p(1:nlev)=rho0-alpha*(T(1:nlev)-T0)+beta*(S(1:nlev)-S0)
-!KB            call gsw_rho_alpha_beta(S(1:),T(1:),p(1:),rho=rho(1:))
-         case default
-      end select
-
-! Lars suggests to put calculation of buoyancy here
-
-   end subroutine do_density
 
 !-----------------------------------------------------------------------
-
-   subroutine get_alpha(nlev,gravity,S_const,NN,z,zi,T)
-
-!  Subroutine arguments
-   integer, intent(in) :: nlev
-      !! number of layers []
-   REALTYPE, intent(in) :: gravity
-      !! gravitationl acceleration [m/s^2]
-   REALTYPE, intent(in) :: S_const
-      !! constant salinity [kg/g]
-   REALTYPE, intent(in) :: NN
-      !! Brunt Vaisalla frequency squared [s^-2]
-   REALTYPE, intent(in), dimension(0:nlev) :: z
-      !! z-ccordinate of cell centers [m]
-   REALTYPE, intent(in), dimension(0:nlev) :: zi
-      !! z-ccordinate of cell faces [m]
-   REALTYPE, intent(inout), dimension(0:nlev) :: T
-      !! conservative temperature profile [C]
-
-!  Local variables
-   integer :: n
+!BOP
+!
+! !IROUTINE: Compute in-situ density
+!
+! !INTERFACE:
+   elemental REALTYPE function get_rho(S,T,p)
+!
+! !DESCRIPTION:
+! Compute in-situ density $\rho$ based on absolute salinity, conservative temperature, and pressure.
+! There are three options at the moment
+!   \begin{enumerate}
+!     \item Compute $\rho$ from the full TEOS-10 equation of state
+!     \item Compute $\rho$ from a linear equation of state: 
+!           \begin{equation}
+!              \label{eosLinear}
+!              \frac{\rho}{\rho_0} = 1 - \text{\tt alpha} (T - T_0) + \text{\tt beta} (S - S_0)
+!               \comma
+!           \end{equation}
+!           where  {\tt rho0}, {\tt alpha}, {\tt beta} are computed from TEOS-10 for user-spezified values of
+!           {\tt T0},  {\tt S0},  and {\tt p0}.
+!     \item  Compute $rho$ from the above linear equation of state for user-specified  values of {\tt rho0},
+!     {\tt alpha}, and  {\tt beta}.
+!   \end{enumerate}
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE,intent(in)                 :: S,T,p
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf
+!
+! !LOCAL VARIABLES:
+!
+!EOP
 !-----------------------------------------------------------------------
-
+!BOC
    select case (density_method)
       case(1)
-         do n=nlev-1,1,-1
-            ! estimate beta based on T above the interface
-            alpha(n) = gsw_alpha(T(n+1),S_const,-zi(n))
-            ! use this to estimate S below the interface
-            T(n) = T(n+1) - _ONE_/(gravity*alpha(n))*NN*(z(n+1)-z(n))
-            ! compute improved beta                                  
-            alpha(n)=gsw_alpha(0.5*(T(n+1)+T(n)),S_const,-zi(n))
-         end do
+         get_rho = gsw_rho(S,T,p)
+       case (2,3)
+         get_rho = rho0*( _ONE_ - alpha0*(T-T0) + beta0*(S-S0) )
+         ! Lars: here, we should implement some pressure dependency 
       case default
    end select
 
-   end subroutine get_alpha
+   end function get_rho
+!EOC   
 
+   
 !-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute thermal expansion coefficient
+!
+! !INTERFACE:
+   elemental REALTYPE function get_alpha(S,T,p)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE,intent(in)                 :: S,T,p
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf
+!
+! !LOCAL VARIABLES:
 
-   subroutine get_beta(nlev,gravity,T_const,NN,z,zi,S)
-
-   integer, intent(in) :: nlev
-      !! number of layers []
-   REALTYPE, intent(in) :: gravity
-      !! gravitationl acceleration [m/s^2]
-   REALTYPE, intent(in) :: T_const
-      !! constant temperature [C]
-   REALTYPE, intent(in) :: NN
-      !! Brunt Vaisalla frequency squared [s^-2]
-   REALTYPE, intent(in), dimension(0:nlev) :: z
-      !! z-ccordinate of cell centers [m]
-   REALTYPE, intent(in), dimension(0:nlev) :: zi
-      !! z-ccordinate of cell faces [m]
-   REALTYPE, intent(inout), dimension(0:nlev) :: S
-      !! salinity profile [kg/g]
-
-!  Local variables
-   integer :: n
+!EOP
 !-----------------------------------------------------------------------
-
+!BOC
    select case (density_method)
       case(1)
-         do n=nlev-1,1,-1
-            ! estimate beta based on T above the interface
-            beta(n) = gsw_beta(S(n+1),T_const,-zi(n))
-            ! use this to estimate S below the interface
-            S(n) = S(n+1) + _ONE_/(gravity*beta(n))*NN*(z(n+1)-z(n))
-            ! compute improved beta                                  
-            beta(n)=gsw_beta(0.5*(S(n+1)+S(n)),T_const,-zi(n))
-         end do
+         get_alpha = gsw_alpha(S,T,p)
+       case (2,3)
+         get_alpha = alpha0
       case default
    end select
 
-   end subroutine get_beta
+   end function get_alpha
+!EOC   
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute haline contraction coefficient
+!
+! !INTERFACE:
+   elemental REALTYPE function get_beta(S,T,p)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE,intent(in)                 :: S,T,p
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf
+!
+! !LOCAL VARIABLES:
+
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   select case (density_method)
+      case(1)
+         get_beta = gsw_beta(S,T,p)
+       case (2,3)
+         get_beta = beta0
+      case default
+   end select
+
+   end function get_beta
+!EOC   
+
+
 
 !-----------------------------------------------------------------------
 

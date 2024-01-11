@@ -44,7 +44,7 @@
    use diagnostics
    use settings
 
-   use density, only: init_density,calculate_density,do_density
+   use density, only: init_density,do_density
    use density, only: density_method,T0,S0,p0,rho0,alpha0,beta0
    use density, only: rho, rho_p
    use meanflow
@@ -700,7 +700,7 @@
    ! Call stratification to make sure density has sensible value.
    ! This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
-   call do_density(nlev,S,T,-zi)
+   call do_density(nlev,S,T,-z,-zi)
    buoy(1:) = -gravity*(rho_p(1:)-rho0)/rho0
    call stratification(nlev)
 
@@ -909,7 +909,7 @@
 !GSW
 !  update shear and stratification
    call shear(nlev,cnpar)
-   call do_density(nlev,S,T,-zi)
+   call do_density(nlev,S,T,-z,-zi)
    buoy(1:nlev) = -gravity*(rho_p(1:nlev)-rho0)/rho0
    call stratification(nlev)
 

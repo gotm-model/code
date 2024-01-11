@@ -391,13 +391,9 @@
    LEVEL2 'register_density_variables()'
    call fm%register('rho', 'kg/m3', 'density (in-situ)', standard_name='??', dimensions=(/id_dim_z/), data1d=rho(1:nlev),category='density')
    call fm%register('rho_p', 'kg/m3', 'density (potential)', standard_name='??', dimensions=(/id_dim_z/), data1d=rho_p(1:nlev),category='density')
-#if 0
-   call fm%register('alpha', '1/K', 'thermal expansion coefficient', standard_name='??', dimensions=(/id_dim_z/), data1d=alpha(1:nlev),category='density',output_level=output_level_debug)
-   call fm%register('beta', 'kg/g', 'saline contraction coefficient', standard_name='??', dimensions=(/id_dim_z/), data1d=beta(1:nlev),category='density',output_level=output_level_debug)
-#else
-   call fm%register('alpha', '1/K', 'thermal expansion coefficient', standard_name='??', dimensions=(/id_dim_z/), data1d=alpha(1:nlev),category='density')
-   call fm%register('beta', 'kg/g', 'saline contraction coefficient', standard_name='??', dimensions=(/id_dim_z/), data1d=beta(1:nlev),category='density')
-#endif
+   call fm%register('alpha', '1/K', 'thermal expansion coefficient', standard_name='??', dimensions=(/id_dim_zi/), data1d=alpha(0:nlev),category='density',output_level=output_level_debug)
+   call fm%register('beta', 'kg/g', 'saline contraction coefficient', standard_name='??', dimensions=(/id_dim_zi/), data1d=beta(0:nlev),category='density',output_level=output_level_debug)
+
    end subroutine register_density_variables
 !EOC
 
