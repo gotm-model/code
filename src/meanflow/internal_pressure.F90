@@ -198,15 +198,15 @@
 !        buoyancy gradient in x direction
          dSS    = dx*dsdx_input%data(i)
          dTT    = dx*dtdx_input%data(i)
-         Bl     = -gravity*(get_rho(S(i)    ,T(i)    ,z) - rho0)/rho0
-         Br     = -gravity*(get_rho(S(i)+dSS,T(i)+dTT,z) - rho0)/rho0
+         Bl     = -gravity*(get_rho(S(i)    ,T(i)    ,p=z) - rho0)/rho0
+         Br     = -gravity*(get_rho(S(i)+dSS,T(i)+dTT,p=z) - rho0)/rho0
          dxB(i) = (Br-Bl)/dx
 
 !        buoyancy gradient in y direction
          dSS    = dy*dsdy_input%data(i)
          dTT    = dy*dtdy_input%data(i)
-         Bl     = -gravity*(get_rho(S(i)     ,T(i)   ,z) - rho0)/rho0
-         Br     = -gravity*(get_rho(S(i)+dSS,T(i)+dTT,z) - rho0)/rho0
+         Bl     = -gravity*(get_rho(S(i)     ,T(i)   ,p=z) - rho0)/rho0
+         Br     = -gravity*(get_rho(S(i)+dSS,T(i)+dTT,p=z) - rho0)/rho0
          dyB(i) = (Br-Bl)/dy
 
          z=z+0.5*h(i)

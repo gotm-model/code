@@ -54,7 +54,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_density, do_density, get_rho_p, get_rho, get_alpha, get_beta
+   public init_density, do_density, get_rho, get_alpha, get_beta
    integer, public :: density_method
    REALTYPE, public :: T0,S0,p0,rho0=1027.,alpha0,beta0
    REALTYPE, public, allocatable :: alpha(:), beta(:)
@@ -149,87 +149,33 @@
       !! pressure at cell interfaces [dbar]   
 !-----------------------------------------------------------------------
 
-      select case (density_method)
+   select case (density_method)
       case(1)
-             rho(1:nlev)     =  gsw_rho(S(1:nlev),T(1:nlev),p(1:nlev))
-             rho_p(1:nlev)   =  gsw_sigma0(S(1:nlev),T(1:nlev)) + 1000._rk
-             alpha(1:nlev-1) =  gsw_alpha(0.5*(S(1:nlev-1) + S(2:nlev)),               &
-                                          0.5*(T(1:nlev-1) + T(2:nlev)),pi(1:nlev-1))
-             beta(1:nlev-1)  =  gsw_beta(0.5*(S(1:nlev-1) + S(2:nlev)),                &
-                                         0.5*(T(1:nlev-1) + T(2:nlev)),pi(1:nlev-1))              
-         case(2,3)
-            rho_p(1:nlev)    = rho0*(_ONE_ - alpha0*(T(1:nlev)-T0) + beta0*(S(1:nlev)-S0) )
-            rho              = rho_p   ! Lars: here, we should implement some sort of pressure dependency
-         case default
-      end select
+         rho(1:nlev)     =  gsw_rho(S(1:nlev),T(1:nlev),p(1:nlev))
+         rho_p(1:nlev)   =  gsw_sigma0(S(1:nlev),T(1:nlev)) + 1000._rk
+         alpha(1:nlev-1) =  gsw_alpha(0.5*(S(1:nlev-1) + S(2:nlev)),               &
+                                      0.5*(T(1:nlev-1) + T(2:nlev)),pi(1:nlev-1))
+         beta(1:nlev-1)  =  gsw_beta(0.5*(S(1:nlev-1) + S(2:nlev)),                &
+                                     0.5*(T(1:nlev-1) + T(2:nlev)),pi(1:nlev-1))              
+      case(2,3)
+         rho_p(1:nlev)    = rho0*(_ONE_ - alpha0*(T(1:nlev)-T0) + beta0*(S(1:nlev)-S0) )
+         rho              = rho_p   ! Lars: here, we should implement some sort of pressure dependency
+      case default
+   end select
 
    end subroutine do_density
 
 !-----------------------------------------------------------------------
-
-
-!-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Compute potential density
-!
-! !INTERFACE:
-   elemental REALTYPE function get_rho_p(S,T,p)
-!
-! !DESCRIPTION:
-! Compute potential density $\rho_p$ based on absolute salinity, conservative temperature, and pressure.
-! There are three options at the moment
-!   \begin{enumerate}
-!     \item Compute $\rho_p$ from the full TEOS-10 equation of state
-!     \item Compute $\rho_p$ from a linear equation of state: 
-!           \begin{equation}
-!              \label{eosLinear}
-!              \frac{\rho_p}{\rho_0} = 1 - \text{\tt alpha} (T - T_0) + \text{\tt beta} (S - S_0)
-!               \comma
-!           \end{equation}
-!           where  {\tt rho0}, {\tt alpha}, {\tt beta} are computed from TEOS-10 for user-spezified values of
-!           {\tt T0},  {\tt S0},  and {\tt p0}.
-!     \item  Compute $rho_p$ from the above linear equation of state for user-specified  values of {\tt rho0},
-!     {\tt alpha}, and  {\tt beta}.
-!   \end{enumerate}
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE,intent(in)                 :: S,T,p
-!
-! !REVISION HISTORY:
-!  Original author(s): Hans Burchard, Karsten Bolding, Lars Umlauf
-!
-! !LOCAL VARIABLES:
-!
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   select case (density_method)
-      case(1)
-         get_rho_p = gsw_sigma0(S,T) + 1000.
-       case (2,3)
-         get_rho_p = rho0*( _ONE_ - alpha0*(T-T0) + beta0*(S-S0) )
-      case default
-   end select
-
-   end function get_rho_p
-!EOC
-
-
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Compute in-situ density
+! !IROUTINE: Compute in-situ or potential density
 !
 ! !INTERFACE:
    elemental REALTYPE function get_rho(S,T,p)
 !
 ! !DESCRIPTION:
-! Compute in-situ density $\rho$ based on absolute salinity, conservative temperature, and pressure.
+! Compute in-situ density $\rho$ or potential density $\rho_p$  based on absolute salinity, conservative temperature, 
+! and in case - in-situ - the optional parameter pressure.
 ! There are three options at the moment
 !   \begin{enumerate}
 !     \item Compute $\rho$ from the full TEOS-10 equation of state
@@ -249,7 +195,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE,intent(in)                 :: S,T,p
+   REALTYPE,intent(in)                 :: S,T
+   REALTYPE,intent(in), optional       :: p
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -261,8 +208,12 @@
 !BOC
    select case (density_method)
       case(1)
-         get_rho = gsw_rho(S,T,p)
-       case (2,3)
+         if (present(p)) then
+            get_rho = gsw_rho(S,T,p)
+         else
+            get_rho = gsw_sigma0(S,T) + 1000.
+         end if
+      case (2,3)
          get_rho = rho0*( _ONE_ - alpha0*(T-T0) + beta0*(S-S0) )
          ! Lars: here, we should implement some pressure dependency 
       case default
@@ -343,18 +294,22 @@
    end function get_beta
 !EOC   
 
-
-
 !-----------------------------------------------------------------------
-
+!BOP
    subroutine clean_density()
+!EOP
+!-----------------------------------------------------------------------
+!BOC
 
-      if (allocated(alpha)) deallocate(alpha)
-      if (allocated(beta)) deallocate(beta)
-      if (allocated(rho)) deallocate(rho)
-      if (allocated(rho_p)) deallocate(rho_p)
+   if (allocated(alpha)) deallocate(alpha)
+   if (allocated(beta)) deallocate(beta)
+   if (allocated(rho)) deallocate(rho)
+   if (allocated(rho_p)) deallocate(rho_p)
 
    end subroutine clean_density
+!EOC   
+
+!-----------------------------------------------------------------------
 
    end module density
 
