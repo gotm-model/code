@@ -845,6 +845,7 @@
 #ifdef _ICE_
          I_0%value = transmissivity*I_0%value
          swf=melt_rate
+         shf=ocean_ice_heat_flux
          ssf=ocean_ice_salt_flux
 #endif
       else
@@ -876,7 +877,6 @@
       if (sprof_input%method .ne. 0) then
          call salinity(nlev,dt,cnpar,swf,ssf,nus,gams)
       endif
-
       if (tprof_input%method .ne. 0) then
          call temperature(nlev,dt,cnpar,I_0%value,swf,shf,nuh,gamh,rad)
       endif
