@@ -1,5 +1,4 @@
 add_library(meanflow
-   convectiveadjustment.F90
    coriolis.F90
    external_pressure.F90
    friction.F90
