@@ -19,7 +19,6 @@ add_library(turbulence
    ispralength.F90
    kbalgebraic.F90
    kbeq.F90
-   kpp.F90
    lengthscaleeq.F90
    potentialml.F90
    production.F90
@@ -48,7 +47,6 @@ add_library(turbulence
    ispralength.F90
    kbalgebraic.F90
    kbeq.F90
-   kpp.F90
    lengthscaleeq.F90
    potentialml.F90
    production.F90

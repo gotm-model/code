@@ -81,8 +81,6 @@
    use turbulence,  only: kappa
    use turbulence,  only: clean_turbulence
 
-   use kpp,         only: init_kpp,do_kpp,clean_kpp
-
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
 
 #ifdef _CVMIX_
@@ -423,7 +421,7 @@
       call init_stokes_drift(namlst,'stokes_drift.nml')
 
       call init_turbulence(namlst,'gotmturb.nml')
-      if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho0)
+
 #ifdef _CVMIX_
       if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
 #endif
@@ -925,15 +923,6 @@
 
 !     compute turbulent mixing
       select case (turb_method)
-      case (99)
-!        update KPP model
-         call convert_fluxes(nlev,gravity,cp,rho0,heat_input%value,precip_input%value+evap,    &
-                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
-
-         call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
-                     u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
-                     tRad,bRad,cori)
-
 #ifdef _CVMIX_
       case (100)
 
@@ -1018,8 +1007,6 @@
 #endif
 
    call clean_meanflow()
-
-   if (turb_method.eq.99) call clean_kpp()
 
 #ifdef _CVMIX_
    if (turb_method .eq. 100) call clean_cvmix()
