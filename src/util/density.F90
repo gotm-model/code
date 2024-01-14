@@ -146,20 +146,27 @@
    REALTYPE, intent(in), dimension(0:nlev) :: p
       !! pressure at cell centers [dbar]
    REALTYPE, intent(in), dimension(0:nlev) :: pi
-      !! pressure at cell interfaces [dbar]   
+      !! pressure at cell interfaces [dbar]
+
+
+   REALTYPE, dimension(0:nlev)             :: Si, Ti
+      !! interface salnity and temperature
+   
 !-----------------------------------------------------------------------
+
+   ! compute interface salinity and temperature
+   Si(1:nlev-1)         = 0.5*(S(1:nlev-1) + S(2:nlev))
+   Ti(1:nlev-1)         = 0.5*(T(1:nlev-1) + T(2:nlev))   
 
    select case (density_method)
       case(1)
          rho(1:nlev)     =  gsw_rho(S(1:nlev),T(1:nlev),p(1:nlev))
          rho_p(1:nlev)   =  gsw_sigma0(S(1:nlev),T(1:nlev)) + 1000._rk
-         alpha(1:nlev-1) =  gsw_alpha(0.5*(S(1:nlev-1) + S(2:nlev)),               &
-                                      0.5*(T(1:nlev-1) + T(2:nlev)),pi(1:nlev-1))
-         beta(1:nlev-1)  =  gsw_beta(0.5*(S(1:nlev-1) + S(2:nlev)),                &
-                                     0.5*(T(1:nlev-1) + T(2:nlev)),pi(1:nlev-1))              
+         alpha(1:nlev-1) =  gsw_alpha(Si(1:nlev-1),Ti(1:nlev-1),pi(1:nlev-1))
+         beta(1:nlev-1)  =  gsw_beta(Si(1:nlev-1),Ti(1:nlev-1),pi(1:nlev-1))
       case(2,3)
-         rho_p(1:nlev)    = rho0*(_ONE_ - alpha0*(T(1:nlev)-T0) + beta0*(S(1:nlev)-S0) )
-         rho              = rho_p   ! Lars: here, we should implement some sort of pressure dependency
+         rho_p(1:nlev)   = rho0*(_ONE_ - alpha0*(T(1:nlev)-T0) + beta0*(S(1:nlev)-S0) )
+         rho             = rho_p   ! Lars: here, we should implement some sort of pressure dependency
       case default
    end select
 
