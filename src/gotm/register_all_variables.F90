@@ -225,7 +225,8 @@
    call fm%register('Tmelt', 'C', 'melt layer temperature', standard_name='', data0d=T_melt, category='ice', output_level=output_level_debug)
    call fm%register('Smelt', 'PSU', 'melt layer salinity', standard_name='', data0d=S_melt, category='ice', output_level=output_level_debug)
    call fm%register('ocean_ice_flux', 'kg/m2', 'ocean-ice water flux', standard_name='', data0d=ocean_ice_flux, category='ice')
-   call fm%register('ocean_ice_salt_flux', 'PSU', 'ocean/ice salt flux', standard_name='', data0d=ocean_ice_salt_flux, category='ice', output_level=output_level_debug)
+   call fm%register('ocean_ice_salt_flux', 'PSU', 'ocean-ice salt flux', standard_name='', data0d=ocean_ice_salt_flux, category='ice')
+!   call fm%register('ocean_ice_salt_flux', 'PSU', 'ocean-ice salt flux', standard_name='', data0d=ocean_ice_salt_flux, category='ice', output_level=output_level_debug)
    call fm%register('ocean_ice_heat_flux', 'W/m2', 'ocean-ice heat flux', standard_name='', data0d=ocean_ice_heat_flux, category='ice')
 !   call fm%register('ocean_ice_heat_flux', 'W/m2', 'ocean/ice heat flux', standard_name='', data0d=ocean_ice_heat_flux, category='ice', output_level=output_level_debug)
    end if
