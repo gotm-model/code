@@ -113,7 +113,7 @@
       integer                             :: secs2 = 0
       integer                             :: unit = -1
       integer                             :: lines = 0
-      integer                             :: n
+      integer                             :: n = 0
       type (type_scalar_input_list)       :: variables
       type (type_timeseries_file),pointer :: next => null()
    contains

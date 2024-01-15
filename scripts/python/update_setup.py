@@ -134,7 +134,7 @@ def update_yaml(oldroot):
         move_node(root, 'mimic_3d/int_pressure/dtdy', 'mimic_3d/int_pressure/gradients/dtdy')
         move_node(root, 'mimic_3d/int_pressure/dsdx', 'mimic_3d/int_pressure/gradients/dsdx')
         move_node(root, 'mimic_3d/int_pressure/dsdy', 'mimic_3d/int_pressure/gradients/dsdy')
-    if version == 7:
+#    if version == 7:
         # Adding GSW support
         old_method = get_node(root, 'eq_state/method')
         old_form = get_node(root, 'eq_state/form')

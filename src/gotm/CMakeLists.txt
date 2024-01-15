@@ -1,5 +1,6 @@
 add_library(gotm
    gotm.F90
+   cmdline.F90
    diagnostics.F90
    register_all_variables.F90
    print_version.F90

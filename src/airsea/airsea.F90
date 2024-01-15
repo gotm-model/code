@@ -279,7 +279,7 @@
                 default=.false.)
 
    call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
-                minimum=0._rk,default=0._rk, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
+                minimum=0._rk,default=0._rk, method_constant=1, method_file=2, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
    call branch%get(ql_input, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
                 default=0._rk, method_file=0, method_constant=method_unsupported, &
                extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
@@ -525,6 +525,10 @@
 
 !-----------------------------------------------------------------------
 !BOP
+!
+! !IROUTINE: surface_fluxes
+!
+! !INTERFACE:
    subroutine surface_fluxes(surface_temp,sensible,latent,longwave_radiation)
 !
 ! !USES:

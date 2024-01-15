@@ -63,6 +63,7 @@
 ! !USES:
    use meanflow,     only: avmols
    use meanflow,     only: h,u,v,w,S,avh
+   use meanflow,     only: Sobs
    use observations, only: dsdx_input,dsdy_input,s_adv
    use observations, only: w_adv_discr,w_adv_input
    use observations, only: sprof_input,SRelaxTau
@@ -155,9 +156,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sprof_input%data,S)
-
-   return
+                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,Sobs,S)
    end subroutine salinity
 !EOC
 

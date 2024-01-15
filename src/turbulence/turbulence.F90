@@ -211,7 +211,6 @@
 ! !DEFINED PARAMETERS:
 
 !  general outline of the turbulence model
-   integer, parameter, public                    :: convective=0
    integer, parameter, public                    :: algebraic=1
    integer, parameter, public                    :: first_order=2
    integer, parameter, public                    :: second_order=3
@@ -343,7 +342,7 @@
                             kb_min,epsb_min
 
    namelist /generic/       compute_param,gen_m,gen_n,gen_p,   &
-                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,  &
+                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,cpsi4, &
                             sig_kpsi,sig_psi,                  &
                             gen_d,gen_alpha,gen_l
 
@@ -431,7 +430,7 @@
    cpsi2=1.92
    cpsi3minus=0.0
    cpsi3plus=1.0
-   cpsi4=0   
+   cpsi4=_ZERO_
    sig_kpsi=1.0
    sig_psi=1.3
    gen_d=-1.2
@@ -576,7 +575,7 @@
    LEVEL1 'init_turbulence_yaml'
 
    call branch%get(turb_method, 'turb_method', 'turbulence closure', &
-                   options=(/option(convective, 'convective adjustment', 'convective'), option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
+                   options=(/option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
    call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
                    options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-epsilon style)', 'tke'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
@@ -2334,10 +2333,6 @@
 ! of the calls in {\tt do\_turbulence()}. At the moment, the following
 ! model types are available:
 ! \begin{itemize}
-!   \item {\tt turb\_method = 0} corresponds to the "convective adjustment"
-!   algorithm, see \sect{sec:convective}. Since this model is not a real
-!   one-point turbulence closure, it is not called from {\tt do\_turbulence} but
-!   directly from the main GOTM loop.
 !   \item {\tt turb\_method = 1} corresponds to a purely algebraic description
 !   of the turbulent diffusivities.
 !  \item  {\tt turb\_method = 2} corresponds to models computing the diffusivities

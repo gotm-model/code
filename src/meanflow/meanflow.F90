@@ -28,7 +28,6 @@
 !
 ! !PUBLIC DATA MEMBERS:
    logical, public                              :: grid_ready
-   logical, public                              :: init_buoyancy
 
 !  coordinate z, layer thicknesses
    REALTYPE, public, dimension(:), allocatable, target  :: ga,z,zi,h,ho
@@ -44,11 +43,13 @@
 
 !  potential temperature, salinity
 !  T -> Tc - conservative temperature, S -> Sa - absolute salinity
-   REALTYPE, public, dimension(:), allocatable, target  :: T,S,rho
+   REALTYPE, public, dimension(:), allocatable, target  :: T,S
 !  Tp - potential temperature, Sp - practical salinity
    REALTYPE, public, dimension(:), allocatable, target  :: Tp,Sp
 !  Ti - in-situ temperature
    REALTYPE, public, dimension(:), allocatable, target  :: Ti
+!  Tobs, Sobs - observed profiles as conservative and absolute values
+   REALTYPE, public, dimension(:), allocatable, target  :: Tobs, Sobs
 
 !  boyancy frequency squared
 !  (total, from temperature only, from salinity only)
@@ -254,7 +255,6 @@
 
 !  Specify that the buoyance profile and grid still need to be calculated.
 !  Note that the former is used only if a prognostic equation for buoyancy is used.
-   init_buoyancy = .true.
    grid_ready = .false.
 
 !  Initialize cumulative run time used to detect u and v ramp.
@@ -323,6 +323,10 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (Ti)'
    Ti = _ZERO_
 
+   allocate(Tobs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Tobs)'
+   Tobs = _ZERO_
+
    allocate(S(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (S)'
    S = _ZERO_
@@ -331,9 +335,9 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (Sp)'
    Sp = _ZERO_
 
-   allocate(rho(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_meanflow: Error allocating (rho)'
-   rho = _ZERO_
+   allocate(Sobs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Sobs)'
+   Sobs = _ZERO_
 
    allocate(NN(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (NN)'
@@ -456,7 +460,6 @@
    if (allocated(Ti)) deallocate(Ti)
    if (allocated(S)) deallocate(S)
    if (allocated(Sp)) deallocate(Sp)
-   if (allocated(rho)) deallocate(rho)
    if (allocated(NN)) deallocate(NN)
    if (allocated(NNT)) deallocate(NNT)
    if (allocated(NNS)) deallocate(NNS)
@@ -505,7 +508,6 @@
 !BOC
    LEVEL1 'State of meanflow module:'
    LEVEL2 'grid_ready',grid_ready
-   LEVEL2 'init_buoyancy',init_buoyancy
    if (allocated(ga))  LEVEL2 'ga',ga
    if (allocated(z))   LEVEL2 'z',z
    if (allocated(h))   LEVEL2 'h',h
@@ -517,7 +519,6 @@
    if (allocated(vo))  LEVEL2 'vo',vo
    if (allocated(T))   LEVEL2 'T',t
    if (allocated(S))   LEVEL2 'S',s
-   if (allocated(rho)) LEVEL2 'rho',rho
    if (allocated(NN))  LEVEL2 'NN',NN
    if (allocated(NNT)) LEVEL2 'NNT',NNT
    if (allocated(NNS)) LEVEL2 'NNS',NNS
