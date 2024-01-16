@@ -373,6 +373,9 @@
    call twig%get(beta0, 'beta', 'saline contraction coefficient', 'kg/g', &
                  default=0.00075_rk)
 
+   LEVEL1 'init_density()'
+   call init_density(nlev)
+
 #ifdef _FABM_
    ! Allow FABM to create its model tree. After this we know all biogeochemical variables
    ! This must be done before gotm_fabm_input configuration.

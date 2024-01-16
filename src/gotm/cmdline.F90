@@ -55,8 +55,6 @@ contains
       case ('-h', '--help')
          call print_help(exe)
          stop
-      case ('--read_nml')
-         read_nml = .true.
       case ('--write_yaml')
          i = i+1
          if (i > n) then
