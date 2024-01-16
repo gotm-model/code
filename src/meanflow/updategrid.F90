@@ -15,7 +15,7 @@
 !  \item Equidistant grid with possible zooming towards surface and bottom.
 !  The number of layers, {\tt nlev}, and the zooming factors,
 !  {\tt ddu}=$d_u$ and  {\tt ddl}=$d_l$,
-!  are specified in {\tt gotmmean.nml}.
+!  are specified in {\tt gotm.yaml}.
 !  Zooming is applied according to the formula
 !  \begin{equation}\label{formula_Antoine}
 !    \gamma_i = \frac{\mbox{tanh}\left( (d_l+d_u)\frac{i}{M}-d_l\right)
@@ -35,9 +35,9 @@
 !  \end{itemize}
 !
 !  \item Sigma-layers. The fraction that every layer occupies is
-!  read-in from file, see {\tt gotmmean.nml}.
+!  read-in from file, see {\tt gotm.yaml}.
 !  \item Cartesian layers. The height of every layer is read in from file,
-!  see {\tt gotmmean.nml}.
+!  see {\tt gotm.yaml}.
 !  This method is not recommended when a varying sea surface is considered.
 !  \end{enumerate}
 !

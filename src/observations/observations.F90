@@ -142,7 +142,7 @@
    REALTYPE, public          :: amp_2
    REALTYPE, public          :: phase_2
 
-!  Wind waves - 'wave_nml' namelist
+!  Wind waves - 'wave_nml'
    type (type_scalar_input), public :: Hs_input
    type (type_scalar_input), public :: Tz_input
    type (type_scalar_input), public :: phiw_input
@@ -717,52 +717,52 @@
    LEVEL2 'w_adv,w_height',w_adv,w_height
    LEVEL2 'A,g1,g2',A,g1,g2
 
-   LEVEL2 'salinity namelist',                                  &
+   LEVEL2 'salinity configuration',                             &
             s_prof_method,s_analyt_method,                      &
             s_prof_file,z_s1,s_1,z_s2,s_2,s_obs_NN,             &
             SRelaxTauM,SRelaxTauS,SRelaxTauB,                   &
             SRelaxSurf,SRelaxBott
 
-   LEVEL2 'temperature namelist',                               &
+   LEVEL2 'temperature configuration',                          &
             t_prof_method,t_analyt_method,                      &
             t_prof_file,z_t1,t_1,z_t2,t_2,t_obs_NN,             &
             TRelaxTauM,TRelaxTauS,TRelaxTauB,                   &
             TRelaxSurf,TRelaxBott
 
-   LEVEL2 'oxygen namelist',                                    &
+   LEVEL2 'oxygen configuration',                               &
             o2_prof_method,o2_units,o2_prof_file
 
-   LEVEL2 'external pressure namelist',                         &
+   LEVEL2 'external pressure configuration',                    &
             ext_press_method,ext_press_mode,ext_press_file,     &
             PressConstU,PressConstV,PressHeight,                &
             PeriodM,AmpMu,AmpMv,PhaseMu,PhaseMv,                &
             PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv
 
-   LEVEL2 'internal_pressure namelist',                         &
+   LEVEL2 'internal_pressure configuration',                    &
             int_press_method,int_press_type,int_press_file,     &
             const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
             s_adv,t_adv,plume_slope_x,plume_slope_y
 
-   LEVEL2 'extinct namelist',extinct_method,extinct_file
+   LEVEL2 'extinct configuration',extinct_method,extinct_file
 
-   LEVEL2 'w_advspec namelist',                                 &
+   LEVEL2 'w_advspec configuration',                            &
             w_adv_method,w_adv0,w_adv_height0,w_adv_file,w_adv_discr
 
-   LEVEL2 'zetaspec namelist',                                  &
+   LEVEL2 'zetaspec configuration',                             &
             zeta_method,zeta_file,zeta_0,                       &
             period_1,amp_1,phase_1,period_2,amp_2,phase_2
 
-   LEVEL2 'wave_nml namelist',                                  &
+   LEVEL2 'wave_nml configuration',                             &
             wave_method,wave_file,Hs,Tz,phiw
 
-   LEVEL2 'observed velocity profiles namelist',                &
+   LEVEL2 'observed velocity profiles configuration',           &
             vel_prof_method,vel_prof_file,                      &
             vel_relax_tau,vel_relax_ramp
 
-   LEVEL2 'observed dissipation profiles namelist',             &
+   LEVEL2 'observed dissipation profiles configuration',        &
             e_prof_method,e_obs_const,e_prof_file
 
-   LEVEL2 'bprofile namelist',b_obs_surf,b_obs_NN,b_obs_sbf
+   LEVEL2 'bprofile configuration',b_obs_surf,b_obs_NN,b_obs_sbf
 
    end subroutine print_state_observations
 !EOC

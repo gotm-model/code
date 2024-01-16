@@ -22,7 +22,7 @@
 ! \end{equation}
 ! where where $Ri$ is the gradient Richardson--number and $Pr_t^0$
 ! is the turbulent Prandtl--number for $Ri \rightarrow 0$. $Pr_t^0$
-! and the fixed value $c_\mu^0$ have to be set in {\tt gotmturb.nml}.
+! and the fixed value $c_\mu^0$ have to be set in {\tt gotm.yaml}.
 ! \cite{SchumannGerz95}  suggested $Pr_t^0=0.74$ and $Ri^{\infty}=0.25$.
 !
 ! !USES:

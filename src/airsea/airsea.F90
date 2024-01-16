@@ -309,7 +309,7 @@
 !
 ! !DESCRIPTION:
 !  This routine initialises the air-sea module by reading various variables
-!  from the namelist {\tt airsea.nml} and opens relevant files.
+!  from the {\tt gotm.yaml} and opens relevant files.
 !  These parameters are:
 !
 !  \begin{tabular}{ll}
@@ -569,8 +569,8 @@
 !  Depending on the value of the boolean variable {\tt calc\_fluxes},
 !  the subroutines for the calculation of the fluxes
 !  and the short wave radiation are
-!  called or the fluxes are directly read in from the namelist
-!  {\tt airsea.nml} as constants or read in from files.
+!  called or the fluxes are directly read in from 
+!  {\tt gotm.yaml} as constants or read in from files.
 !  Furthermore, the surface freshwater flux is set to a constant
 !  value or is read in from a file.
 !

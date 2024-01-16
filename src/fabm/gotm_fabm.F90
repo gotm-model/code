@@ -171,7 +171,7 @@
    subroutine configure_gotm_fabm(cfg)
 !
 ! !DESCRIPTION:
-! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+! Initializes the GOTM-FABM driver module by reading settings from fabm.yaml.
 
 ! !USES:
    use yaml_settings
@@ -192,7 +192,7 @@
 !BOC
    LEVEL1 'init_gotm_fabm_yaml'
 
-   ! Initialize all namelist variables to reasonable default values.
+   ! Initialize all configuration variables
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
    call cfg%get(yaml_file, 'yaml_file', 'FABM configuration file', &
@@ -283,7 +283,6 @@
    end if
    select case (configuration_method)
    case (0)
-      ! From namelists in fabm.nml
       model => fabm_create_model_from_file(namlst)
    case (1)
       ! From YAML file fabm.yaml
@@ -303,7 +302,7 @@
    subroutine init_gotm_fabm(nlev,dt,field_manager)
 !
 ! !DESCRIPTION:
-! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+! Initializes the GOTM-FABM driver module by reading settings from fabm.yaml.
 !
 ! !INPUT PARAMETERS:
    integer,                   intent(in)              :: nlev

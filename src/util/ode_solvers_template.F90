@@ -156,7 +156,7 @@
       case (11)
          call emp_2()
       case default
-         stop "ode_solvers_template: no valid solver method specified in gotm_fabm.nml !"
+         stop "ode_solvers_template: no valid solver method specified in gotm.yaml !"
    end select
 
 !EOC

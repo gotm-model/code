@@ -165,7 +165,7 @@
 !  Note that the KPP-turbulence model requires not only a call to
 !  {\tt init\_kpp()} but before also a call to {\tt init\_turbulence()},
 !  since there some fields (fluxes, diffusivities, etc) are declared and
-!  the turbulence namelist is read.
+!  the turbulence configuration is done.
 
 ! !USES:
   IMPLICIT NONE
@@ -397,7 +397,6 @@
    branch => settings_store%get_child('output')
    call output_manager_init(fm,title,settings=branch,postfix=output_id)
 
-!KB
    inquire(file='output.yaml',exist=file_exists)
 
    ! Make sure all elements in the YAML configuration file were recognized
