@@ -24,7 +24,6 @@
 
    interface init_meanflow
       module procedure init_meanflow_yaml
-      module procedure init_meanflow_nml
    end interface
 !
 ! !PUBLIC DATA MEMBERS:
@@ -89,7 +88,7 @@
 
 # endif
 
-!  the 'meanflow' namelist
+!  the 'meanflow' configuration
    REALTYPE, public                    :: h0b
    REALTYPE, public                    :: z0s_min
    logical,  public                    :: charnock
@@ -198,83 +197,6 @@
    LEVEL2 'done'
 
    end subroutine init_meanflow_yaml
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialisation of the mean flow variables
-!
-! !INTERFACE:
-   subroutine init_meanflow_nml(namlst,fn)
-!
-! !DESCRIPTION:
-!  Allocates memory and initialises everything related
-!  to the `meanflow' component of GOTM.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                      :: namlst
-   character(len=*), intent(in)             :: fn
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See log for the meanflow module
-!
-! !LOCAL VARIABLES:
-   namelist /meanflow/  h0b,z0s_min,charnock,charnock_val,ddu,ddl,     &
-                        grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
-                        SSnorm,dsurf,dtgrid,grid_file,gravity,cp,&
-                        avmolu,avmolT,avmolS,MaxItz0b,no_shear
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   LEVEL1 'init_meanflow_nml'
-
-!  Initialize namelist variables with default values.
-!  Note that namelists should preferably contain all variables,
-!  which implies that all defaults defined below will be overwritten.
-   h0b          = 0.05
-   z0s_min      = 0.02
-   charnock     = .false.
-   charnock_val = 1400.
-   ddu          = _ZERO_
-   ddl          = _ZERO_
-   grid_method  = 1
-   c1ad         = 0.8
-   c2ad         = 0.0
-   c3ad         = 0.1
-   c4ad         = 0.1
-   Tgrid        = 3600.
-   NNnorm       = 0.2
-   SSnorm       = 0.2
-   dsurf        = 10.0
-   dtgrid       = 5.
-   grid_file    = 'grid.dat'
-   gravity      = 9.81
-   cp           = 3985.
-   avmolu       = 1.3e-6
-   avmolT       = 1.4e-7
-   avmolS       = 1.1e-9
-   MaxItz0b     = 10
-   no_shear     = .false.
-
-!  Read namelist from file.
-   open(namlst,file=fn,status='old',action='read',err=80)
-   read(namlst,nml=meanflow,err=81)
-   close (namlst)
-   LEVEL2 'done.'
-
-   return
-80 FATAL 'I could not open: ',fn
-   stop 'init_meanflow'
-81 FATAL 'I could not read "meanflow" namelist'
-   stop 'init_meanflow'
-
-   end subroutine init_meanflow_nml
 !EOC
 
 !-----------------------------------------------------------------------
@@ -619,7 +541,7 @@
    if (allocated(mean5)) LEVEL2 'mean5',mean5
 # endif
 
-   LEVEL2 'meanflow namelist',                      &
+   LEVEL2 'meanflow configuration',                 &
       h0b,z0s_min,charnock,charnock_val,ddu,ddl,    &
       grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm, &
       SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,  &

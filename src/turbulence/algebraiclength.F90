@@ -12,7 +12,7 @@
 ! scale $l$ from different types of analytical expressions. These
 ! range from simple geometrical forms to more complicated expressions
 ! taking into account the effects of stratification and shear. The
-! users can select their method in the input file {\tt gotmturb.nml}.
+! users can select their method in the input file {\tt gotm.yaml}.
 ! For convenience, we define here $d_b$ and $d_s$ as the distance
 ! from the bottom and the surface, respectively. The water
 ! depth is then given by $H=d_b+d_s$, and $z_0^b$ and
@@ -92,7 +92,7 @@
 ! \end{enumerate}
 ! After the length--scale has been computed, it is optionally
 ! limited by the method suggested by \cite{Galperinetal88}. This
-! option can be activated in {\tt gotmturb.nml} by setting
+! option can be activated in {\tt gotm.yaml} by setting
 ! {\tt length\_lim = .true.} The rate of dissipation is computed
 ! according to \eq{epsilon}.
 !

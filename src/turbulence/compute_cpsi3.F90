@@ -84,7 +84,7 @@
          STDERR 'Method for calculating c3 does not converge.'
          STDERR 'Probably, the prescribed steady-state Richardson number'
          STDERR 'is outside the range of the chosen stability function.'
-         STDERR 'Please change gotmturb.nml accordingly.'
+         STDERR 'Please change gotm.yaml accordingly.'
          STDERR 'If the problem persists, then use another'
          STDERR 'stability function or Algebraic Stress Model.'
          STDERR 'Program aborts now in turbulence.F90.'

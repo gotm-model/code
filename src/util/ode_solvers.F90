@@ -125,7 +125,7 @@
       case (11)
          call emp_2(dt,numc,nlev,cc,right_hand_side_rhs)
       case default
-         stop "bio: no valid solver method specified in bio.nml !"
+         stop "bio: no valid solver method specified in gotm.yaml !"
    end select
 
    return

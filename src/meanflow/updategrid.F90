@@ -15,7 +15,7 @@
 !  \item Equidistant grid with possible zooming towards surface and bottom.
 !  The number of layers, {\tt nlev}, and the zooming factors,
 !  {\tt ddu}=$d_u$ and  {\tt ddl}=$d_l$,
-!  are specified in {\tt gotmmean.nml}.
+!  are specified in {\tt gotm.yaml}.
 !  Zooming is applied according to the formula
 !  \begin{equation}\label{formula_Antoine}
 !    \gamma_i = \frac{\mbox{tanh}\left( (d_l+d_u)\frac{i}{M}-d_l\right)
@@ -35,15 +35,15 @@
 !  \end{itemize}
 !
 !  \item Sigma-layers. The fraction that every layer occupies is
-!  read-in from file, see {\tt gotmmean.nml}.
+!  read-in from file, see {\tt gotm.yaml}.
 !  \item Cartesian layers. The height of every layer is read in from file,
-!  see {\tt gotmmean.nml}.
+!  see {\tt gotm.yaml}.
 !  This method is not recommended when a varying sea surface is considered.
 !  \end{enumerate}
 !
 !  Furthermore, vertical velocity profiles are calculated here, if
 !  {\tt w\_adv\_method} is 1 or 2, which has to be chosen in the
-!  {\tt w\_advspec} namelist in {\tt obs.nml}. The profiles of vertical
+!  {\tt w\_advspec} in {\tt gotm.yaml}. The profiles of vertical
 !  velocity are determined by two values,
 !  the height of maximum absolute value of vertical velocity, {\tt w\_height},
 !  and the vertical velocity at this height, {\tt w\_adv}. From {\tt w\_height},

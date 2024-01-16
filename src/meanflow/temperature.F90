@@ -36,7 +36,7 @@
 !  denotes the non-local flux of heat, see \sect{sec:turbulenceIntro}.
 !
 !  Horizontal advection is optionally
-!  included  (see {\tt obs.nml}) by means of prescribed
+!  included  (see {\tt gotm.yaml}) by means of prescribed
 !  horizontal gradients $\partial_x\Theta$ and $\partial_y\Theta$ and
 !  calculated horizontal mean velocities $U$ and $V$.
 !  Relaxation with the time scale $\tau^\Theta_R$
@@ -53,7 +53,7 @@
 !  The absorbtion coefficients $\eta_1$ and $\eta_2$ depend on the water type
 !  and have to be prescribed either by means of choosing a \cite{Jerlov68} class
 !  (see \cite{PaulsonSimpson77}) or by reading in a file through the namelist
-!  {\tt extinct} in {\tt obs.nml}. The damping term due to bioturbidity,
+!  {\tt extinct} in {\tt gotm.yaml}. The damping term due to bioturbidity,
 !  $B(z)$ is calculated in the biogeochemical routines, see section
 !  \ref{sec:bio-intro}.
 

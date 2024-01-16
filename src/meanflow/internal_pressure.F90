@@ -81,7 +81,7 @@
 !
 ! The horizontal salinity and temperature gradients have to supplied by the
 ! user, either as constant values or as profiles given in a file (see
-! {\tt obs.nml}).
+! {\tt gotm.yaml}).
 !
 ! {\bf Scenarios for dense bottom and buoyant surface plumes in a sloping frame:}
 ! Assuming for a {\it sloping water-colum model model}

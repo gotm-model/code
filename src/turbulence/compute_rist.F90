@@ -100,7 +100,7 @@
             STDERR 'number Rist does not converge.'
             STDERR 'Probably, the prescribed value for c3'
             STDERR 'is outside the range of the chosen stability function.'
-            STDERR 'Please change gotmturb.nml accordingly.'
+            STDERR 'Please change gotm.yaml accordingly.'
             STDERR 'You have chosen the stability function no.',stab_method
             STDERR 'If the problem persists, then use another'
             STDERR 'stability function.'
@@ -178,7 +178,7 @@
             STDERR 'number Rist does not converge.'
             STDERR 'Probably, the prescribed value for c3'
             STDERR 'is outside the range of the chosen stability function.'
-            STDERR 'Please change gotmturb.nml accordingly.'
+            STDERR 'Please change gotm.yaml accordingly.'
             STDERR 'You have chosen the stability function no.',stab_method
             STDERR 'If the problem persists, then use another'
             STDERR 'stability function.'
@@ -217,7 +217,7 @@
          STDERR 'number Rist does not converge.'
          STDERR 'Probably, the prescribed value for c3'
          STDERR 'is outside the range of the chosen stability function.'
-         STDERR 'Please change gotmturb.nml accordingly.'
+         STDERR 'Please change gotm.yaml accordingly.'
          STDERR 'You have chosen the stability function no.',stab_method
          STDERR 'If the problem persists, then use another'
          STDERR 'stability function.'

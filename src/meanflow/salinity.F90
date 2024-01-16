@@ -36,7 +36,7 @@
 !  we set $\nu^S_t = \nu^\Theta_t$ for simplicity.
 !
 !  Horizontal advection is optionally
-!  included  (see {\tt obs.nml}) by means of prescribed
+!  included  (see {\tt gotm.yaml}) by means of prescribed
 !  horizontal gradients $\partial_xS$ and $\partial_yS$ and
 !  calculated horizontal mean velocities $U$ and $V$.
 !  Relaxation with the time scale $\tau^S_R$
