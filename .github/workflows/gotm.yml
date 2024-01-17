@@ -33,8 +33,8 @@ jobs:
       run: python3 cases/scripts/run_all.py --show_logs --gotm_base=gotm --exclude plume --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_SEAGRASS=ON -DGOTM_USE_NetCDF=OFF ${{ matrix.cmake_args }}
   conda-forge:
     strategy:
+      fail-fast: false
       matrix:
-        fail-fast: false
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
     defaults:
       run:
