@@ -25,6 +25,7 @@
 !
 ! !USES:
    use input
+   use settings
    IMPLICIT NONE
 !  default: all is private.
    private
@@ -205,7 +206,6 @@
 !  expressions.
 !
 ! !USES:
-   use settings
    use util, only: UPSTREAM, P2, MUSCL, Superbee, P2_PDM
    IMPLICIT NONE
 !

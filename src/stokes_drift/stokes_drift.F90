@@ -13,6 +13,7 @@
 !
 ! !USES:
    use input
+   use settings
 
    IMPLICIT NONE
 
@@ -108,7 +109,6 @@
 !  file with a number of different Stokes drift input options.
 !
 ! !USES:
-   use settings
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
