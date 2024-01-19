@@ -891,6 +891,7 @@
 # endif
       end select
 
+      call variances (nlev,SSU,SSV)
       call do_diagnostics(nlev)
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),int(n))
 
