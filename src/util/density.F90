@@ -97,7 +97,9 @@
       case(1) ! use gsw_rho(S,T,p) - default p=0
          LEVEL3 'rho0=  ',rho0
       case(2) ! S0, T0, p0 are provided - rho0, alpha, beta are calculated
-         call gsw_rho_alpha_beta(S0,T0,p0,rho0,alpha0,beta0) 
+         rho0     =  gsw_sigma0(S0,T0) + 1000._rk
+         alpha0   =  gsw_alpha(S0,T0,_ZERO_)
+         beta0    =  gsw_beta(S0,T0,_ZERO_)                  
          LEVEL2 'Linearized - using gsw_rho_alpha_beta()'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
