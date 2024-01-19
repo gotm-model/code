@@ -114,7 +114,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   if (turb_method.eq.99) return
+   if (turb_method.eq.100) return
 
    select case(mld_method)
       case(1)          ! MLD according to TKE criterium

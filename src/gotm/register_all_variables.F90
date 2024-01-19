@@ -510,8 +510,6 @@
 !BOC
    LEVEL2 'register_turbulence_variables()'
 
-   if (turb_method.eq.99) return
-
    call fm%register('num', 'm2/s', 'turbulent diffusivity of momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=num(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('nuh', 'm2/s', 'turbulent diffusivity of heat', standard_name='??', dimensions=(/id_dim_zi/), data1d=nuh(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_zi/), data1d=nus(0:nlev),category='turbulence', part_of_state=.true.)
