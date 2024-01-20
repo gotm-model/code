@@ -541,7 +541,7 @@
    call fm%register('as', '', 'non-dimensional shear time scale', standard_name='??', dimensions=(/id_dim_zi/), data1d=as(0:nlev),category='turbulence')
    call fm%register('at', '', 'non-dimensional buoyancy variance', standard_name='??', dimensions=(/id_dim_zi/), data1d=at(0:nlev),category='turbulence')
    call fm%register('r', '', 'turbulent time scale ratio', standard_name='??', dimensions=(/id_dim_zi/), data1d=r(0:nlev),category='turbulence')
-   call fm%register('xRf', '', 'flux Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=xRf(0:nlev),category='turbulence')
+!   call fm%register('xRf', '', 'flux Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=xRf(0:nlev),category='turbulence')
    call fm%register('uu', 'm2/s2', 'variance of u-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=uu(0:nlev),category='turbulence/shear')
    call fm%register('vv', 'm2/s2', 'variance of v-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=vv(0:nlev),category='turbulence/shear')
    call fm%register('ww', 'm2/s2', 'variance of w-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=ww(0:nlev),category='turbulence/shear')
@@ -568,6 +568,7 @@
 !
 ! !USES:
    use diagnostics
+   use turbulence, only: turb_method     
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -590,8 +591,10 @@
    call fm%register('tauy',  'm2/s2', 'turbulent flux of momentum (y)', dimensions=(/id_dim_zi/), data1d=tauy(0:nlev), category='turbulence')
    call fm%register('Ekin',  'J', 'kinetic energy', data0d=ekin,category='column_integrals')
    call fm%register('Epot',  'J', 'potential energy', data0d=epot,category='column_integrals')
-   call fm%register('Eturb', 'J', 'turbulent kinetic energy', data0d=eturb,category='column_integrals')
-
+   if (turb_method/=100) then
+      call fm%register('Eturb', 'J', 'turbulent kinetic energy', data0d=eturb,category='column_integrals')
+   endif
+   
    return
    end subroutine register_diagnostic_variables
 !EOC

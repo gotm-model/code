@@ -25,7 +25,7 @@
    REALTYPE, public                    :: ekin,epot,eturb
    REALTYPE                            :: epot0
    REALTYPE, public, allocatable       :: taux(:),tauy(:)
-   integer, public                     :: mld_method=1
+   integer, public                     :: mld_method=2
    REALTYPE, public                    :: mld_surf,mld_bott
    REALTYPE                            :: diff_k = 1e-05
    REALTYPE                            :: Ri_crit = 0.5
@@ -94,8 +94,9 @@
    use meanflow,     only: h,u,v,s,t,NN,SS,buoy,rad
    use turbulence,   only: turb_method
    use turbulence,   only: kappa
-   use turbulence,   only: num
-   use turbulence,   only: tke
+   use turbulence,   only: num,nuh
+   use turbulence,   only: tke,P,B
+   use turbulence,   only: Rig   
    use observations, only: tprof_input,b_obs_sbf
    IMPLICIT NONE
 !
@@ -109,32 +110,34 @@
    REALTYPE                  :: z
    integer                   :: i
    integer                   :: j(1)
-   REALTYPE                  :: Ri(0:nlev)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
-   if (turb_method.eq.100) return
+!  gradient Richardson number
+   Rig  = NN/(SS  + 1.E-10)
 
    select case(mld_method)
       case(1)          ! MLD according to TKE criterium
-         mld_surf = _ZERO_
-         do i=nlev,1,-1
-            if (tke(i) .lt. diff_k) exit
-            mld_surf=mld_surf+h(i)
-         end do
-         mld_bott = _ZERO_
-         do i=1,nlev
-            if (tke(i) .lt. diff_k) exit
-            mld_bott=mld_bott+h(i)
-         end do
+         if (turb_method.ne.100) then
+            mld_surf = _ZERO_
+            do i=nlev,1,-1
+               if (tke(i) .lt. diff_k) exit
+               mld_surf=mld_surf+h(i)
+            end do
+            mld_bott = _ZERO_
+            do i=1,nlev
+               if (tke(i) .lt. diff_k) exit
+               mld_bott=mld_bott+h(i)
+            end do
+         else
+            mld_surf = _ZERO_
+            mld_bott = _ZERO_
+         endif
       case(2)          ! MLD according to critical Ri number
-         do i=1,nlev-1
-            Ri(i)=NN(i)/(SS(i)+1.e-10)
-         end do
          mld_surf    = h(nlev)
          do i=nlev-1,1,-1
-            if (Ri(i) .gt. Ri_crit) exit
+            if (Rig(i) .gt. Ri_crit) exit
             mld_surf=mld_surf+h(i)
          end do
       case(3)          ! MLD according to maxiumun NN
