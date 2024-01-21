@@ -224,7 +224,6 @@
    integer, parameter, public                    :: Constant=1
    integer, parameter, public                    :: Munk_Anderson=2
    integer, parameter, public                    :: Schumann_Gerz=3
-   integer, parameter, public                    :: Eifler_Schrimpf=4
 
 !  method to update length scale
    integer, parameter, public                    :: Parabolic=1
@@ -233,7 +232,6 @@
    integer, parameter, public                    :: Robert_Ouellet=4
    integer, parameter, public                    :: Blackadar=5
    integer, parameter, public                    :: Bougeault_Andre=6
-   integer, parameter, public                    :: ispra_length=7
    integer, parameter, public                    :: diss_eq=8
    integer, parameter, public                    :: length_eq=9
    integer, parameter, public                    :: generic_eq=10
@@ -579,9 +577,9 @@
    call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
                    options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-epsilon style)', 'tke'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
-                   options=(/option(parabolic, 'parabolic', 'parabolic'), option(triangular, 'triangular', 'triangular'), option(Xing_Davies, 'Xing and Davies (1995)', 'Xing_Davies'), option(Robert_Ouellet, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), option(Blackadar, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(Bougeault_Andre, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), option(ispra_length, 'Eifler and Schrimpf (ISPRAMIX) (1992)', 'Eifler_Schrimpf'), option(diss_eq, 'dynamic dissipation rate equation', 'dissipation'), option(length_eq, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(generic_eq, 'generic length scale (GLS)', 'gls')/),default=diss_eq)
+                   options=(/option(parabolic, 'parabolic', 'parabolic'), option(triangular, 'triangular', 'triangular'), option(Xing_Davies, 'Xing and Davies (1995)', 'Xing_Davies'), option(Robert_Ouellet, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), option(Blackadar, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(Bougeault_Andre, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), option(diss_eq, 'dynamic dissipation rate equation', 'dissipation'), option(length_eq, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(generic_eq, 'generic length scale (GLS)', 'gls')/),default=diss_eq)
    call branch%get(stab_method, 'stab_method', 'stability functions', &
-                   options=(/option(1, 'constant', 'constant'), option(Munk_Anderson, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(Schumann_Gerz, 'Schumann and Gerz (1995)', 'Schumann_Gerz'), option(Eifler_Schrimpf, 'Eifler and Schrimpf (1992)', 'Eifler_Schrimpf')/),default=1)
+                   options=(/option(1, 'constant', 'constant'), option(Munk_Anderson, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(Schumann_Gerz, 'Schumann and Gerz (1995)', 'Schumann_Gerz')/),default=1)
 
    twig => branch%get_child('bc', 'boundary conditions', display=display_advanced)
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
@@ -1929,13 +1927,6 @@
       gen_l     = kappa
       gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
 
-   case(ispra_length)
-
-      if (compute_kappa) kappa=0.4
-      gen_l     = kappa
-      gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
-
-
    case(diss_eq)
 
       ! compute kappa from the parameters
@@ -2200,24 +2191,6 @@
          LEVEL2 ' '
          LEVEL3 'Schmidt-number for k,          sig_k =', sig_k
          LEVEL3 'von Karman constant,           kappa =', kappa
-         LEVEL2 ' '
-      case(ispra_length)
-         LEVEL2 ' '
-         LEVEL2 'You are using a one-equation model'
-         LEVEL2 'with the ISPRAMIX length-scale (see GOTM-report)'
-         LEVEL2 'The properties of this model are:'
-         LEVEL2 ' '
-         LEVEL3 'Schmidt-number for k,          sig_k =', sig_k
-         LEVEL3 'von Karman constant,          kappa  =', kappa
-         LEVEL2 ' '
-         LEVEL3 'Value of the stability function'
-         LEVEL3 'in the log-law,                   cm0 =', cm0
-         LEVEL3 'in shear-free turbulence,        cmsf =', cmsf
-         LEVEL2 ' '
-         LEVEL3 'At the surface:'
-         LEVEL3 'spatial decay rate (no shear), alpha =', gen_alpha
-         LEVEL3 'length-scale slope (no shear),     L =', gen_l
-         LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
       case(diss_eq)
          LEVEL2 ' '
@@ -2849,8 +2822,6 @@
          call cmue_ma(nlev)
       case(Schumann_Gerz)
          call cmue_sg(nlev)
-      case(Eifler_Schrimpf)
-         call cmue_rf(nlev)
       case default
 
       STDERR '... not a valid stability function'
@@ -2964,9 +2935,6 @@
            cm0  = cm0_fix
            cmsf = cm0_fix
         case(Schumann_Gerz)
-           cm0  = cm0_fix
-           cmsf = cm0_fix
-        case(Eifler_Schrimpf)
            cm0  = cm0_fix
            cmsf = cm0_fix
         case default

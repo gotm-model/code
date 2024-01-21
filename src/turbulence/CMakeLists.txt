@@ -6,7 +6,6 @@ add_library(turbulence
    cmue_c.F90
    cmue_d.F90
    cmue_ma.F90
-   cmue_rf.F90
    cmue_sg.F90
    compute_cpsi3.F90
    compute_rist.F90
@@ -16,7 +15,6 @@ add_library(turbulence
    genericeq.F90
    gotm_lib_version.F90
    internal_wave.F90
-   ispralength.F90
    kbalgebraic.F90
    kbeq.F90
    lengthscaleeq.F90
@@ -34,7 +32,6 @@ add_library(turbulence
    cmue_c.F90
    cmue_d.F90
    cmue_ma.F90
-   cmue_rf.F90
    cmue_sg.F90
    compute_cpsi3.F90
    compute_rist.F90
@@ -44,7 +41,6 @@ add_library(turbulence
    genericeq.F90
    gotm_lib_version.F90
    internal_wave.F90
-   ispralength.F90
    kbalgebraic.F90
    kbeq.F90
    lengthscaleeq.F90

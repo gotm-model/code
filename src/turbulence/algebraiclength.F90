@@ -87,8 +87,6 @@
 !    converges to $\kappa(z+z_0)$ at the surface and the bottom
 !    only for large water depth, and when $l_a$ plays only a
 !    minor role.
-!  \item The so--called ISPRAMIX method to compute the length--scale
-!   is described in detail in \sect{sec:ispramix}.
 ! \end{enumerate}
 ! After the length--scale has been computed, it is optionally
 ! limited by the method suggested by \cite{Galperinetal88}. This
@@ -99,7 +97,7 @@
 ! !USES:
    use turbulence, only: L,eps,tke,k_min,eps_min
    use turbulence, only: cde,galp,kappa,length_lim
-   use turbulence, only: Parabolic,Triangular,Xing_Davies,Robert_Ouellet,Blackadar,ispra_length
+   use turbulence, only: Parabolic,Triangular,Xing_Davies,Robert_Ouellet,Blackadar
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -221,13 +219,6 @@
          L(0)    = kappa*z0b
          L(nlev) = kappa*z0s
 !
-!  Ispramix
-      case(ispra_length)
-         call ispralength(nlev,NN,h,depth)
-
-         L(0)    = kappa*z0b
-         L(nlev) = kappa*z0s
-
       case default
    end select
 

@@ -21,7 +21,6 @@
    use turbulence, only:           Constant
    use turbulence, only:           Munk_Anderson
    use turbulence, only:           Schumann_Gerz
-   use turbulence, only:           Eifler_Schrimpf
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -53,8 +52,6 @@
                call cmue_ma(2)
             case(Schumann_Gerz)
                call cmue_sg(2)
-            case(Eifler_Schrimpf)
-               call cmue_rf(2)
          end select
       else
          call cmue_d(2)
@@ -71,8 +68,6 @@
                call cmue_ma(2)
             case(Schumann_Gerz)
                call cmue_sg(2)
-            case(Eifler_Schrimpf)
-               call cmue_rf(2)
          end select
       else
          call cmue_d(2)
@@ -103,8 +98,6 @@
             call cmue_ma(2)
          case(Schumann_Gerz)
             call cmue_sg(2)
-         case(Eifler_Schrimpf)
-            call cmue_rf(2)
       end select
    else
       call cmue_d(2)
