@@ -47,7 +47,8 @@
 !  \end{enumerate}
 
 !USES:
-   use gsw_mod_toolbox, only: gsw_rho,gsw_sigma0,gsw_alpha,gsw_beta,gsw_rho_alpha_beta
+   use gsw_mod_teos10_constants, only: gsw_cp0     
+   use gsw_mod_toolbox, only: gsw_rho,gsw_sigma0,gsw_alpha,gsw_beta
    IMPLICIT NONE
 !  default: all is private.
 
@@ -56,7 +57,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_density, do_density, get_rho, get_alpha, get_beta
    integer, public :: density_method
-   REALTYPE, public :: T0,S0,p0,rho0=1027.,alpha0,beta0
+   REALTYPE, public :: T0,S0,p0,rho0,alpha0,beta0,cp
    REALTYPE, public, allocatable :: alpha(:), beta(:)
    REALTYPE, public, allocatable :: rho(:), rho_p(:)
 !
@@ -94,26 +95,30 @@
 !-----------------------------------------------------------------------
 !BOC
    select case (density_method)
-      case(1) ! use gsw_rho(S,T,p) - default p=0
+       case(1) ! use gsw_rho(S,T,p) - default p=0
+         cp      =  gsw_cp0
          LEVEL3 'rho0=  ',rho0
-      case(2) ! S0, T0, p0 are provided - rho0, alpha, beta are calculated
+      case(2) ! S0, T0, p0 are provided - rho0, alpha, beta, cp are calculated
          rho0     =  gsw_sigma0(S0,T0) + 1000._rk
          alpha0   =  gsw_alpha(S0,T0,p0)
          beta0    =  gsw_beta(S0,T0,p0)                  
-         LEVEL2 'Linearized - using gsw_rho_alpha_beta()'
+         cp       =  gsw_cp0
+         LEVEL2 'Linearized - TEOS10 - using S0, T0, p0'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
          LEVEL3 'p0=    ',p0        
          LEVEL3 'rho0=  ',rho0
          LEVEL3 'alpha= ',alpha0
          LEVEL3 'beta=  ',beta0
+         LEVEL3 'cp=    ',cp         
       case(3) ! S0, T0, rho0, alpha, beta are all provided
-         LEVEL2 'Linearized - custom - using S0, T0, rho0, alpha, beta'
+         LEVEL2 'Linearized - custom - using S0, T0, rho0, alpha, beta, cp'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
          LEVEL3 'rho0=  ',rho0
          LEVEL3 'alpha= ',alpha0
          LEVEL3 'beta=  ',beta0
+         LEVEL3 'cp=    ',cp                  
        case default
    end select
 

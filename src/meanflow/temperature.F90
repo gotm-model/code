@@ -65,9 +65,8 @@
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
 ! !USES:
-   use gsw_mod_teos10_constants, only: gsw_cp0
-   use density,      only: rho0
-   use meanflow,     only: avmolt,cp
+   use density,      only: rho0,cp
+   use meanflow,     only: avmolt
    use meanflow,     only: h,u,v,w,T,S,avh
    use meanflow,     only: Tobs
    use meanflow,     only: bioshade

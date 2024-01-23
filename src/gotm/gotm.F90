@@ -27,7 +27,7 @@
    use settings
 
    use density, only: init_density,do_density
-   use density, only: density_method,T0,S0,p0,rho0,alpha0,beta0
+   use density, only: density_method,T0,S0,p0,rho0,alpha0,beta0,cp
    use density, only: rho, rho_p
    use meanflow
    use input
@@ -357,8 +357,8 @@
    branch => settings_store%get_child('equation_of_state', 'equation of state')
    call branch%get(density_method, 'method', 'density formulation', &
                    options=(/option(1, 'TEOS-10', 'full_TEOS-10'), &
-                             option(2, 'linearized at T0, S0, p0 (rho0 is calculated)', 'linear_teos-10'), &
-                             option(3, 'linearized at T0, S0, rho0, alpha, beta', 'linear_custom')/), &
+                             option(2, 'linearized from user-specified T0, S0, p0 (rho0, alpha, beta, cp calculated)', 'linear_teos-10'), &
+                             option(3, 'linearized from user-specified T0, S0, rho0, alpha, beta, cp', 'linear_custom')/), &
                              default=1)
    call branch%get(rho0, 'rho0', 'reference density', 'kg/m3', default=1027._rk)
    twig => branch%get_child('linear')
@@ -372,6 +372,9 @@
                  default=0.00020_rk)
    call twig%get(beta0, 'beta', 'saline contraction coefficient', 'kg/g', &
                  default=0.00075_rk)
+   call twig%get(cp, 'cp', 'specific heat capacity', 'J/(kg/K)', &
+                 minimum=0._rk,default=3991.86796_rk)
+   
 
    LEVEL1 'init_density()'
    call init_density(nlev)
