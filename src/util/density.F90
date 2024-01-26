@@ -57,10 +57,11 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_density, do_density, get_rho, get_alpha, get_beta
    integer, public :: density_method
-   REALTYPE, public :: T0,S0,p0,rho0,alpha0,beta0,cp
+   REALTYPE, public :: T0,S0,p0,rho0=1027.,alpha0,beta0,cp
    REALTYPE, public, allocatable :: alpha(:), beta(:)
    REALTYPE, public, allocatable :: rho(:), rho_p(:)
 !
+   REALTYPE :: rhob
    integer, parameter :: rk = kind(_ONE_)
 !
 ! !REVISION HISTORY:
@@ -95,11 +96,11 @@
 !-----------------------------------------------------------------------
 !BOC
    select case (density_method)
-       case(1) ! use gsw_rho(S,T,p) - default p=0
+      case(1) ! use gsw_rho(S,T,p) - default p=0
          cp      =  gsw_cp0
          LEVEL3 'rho0=  ',rho0
       case(2) ! S0, T0, p0 are provided - rho0, alpha, beta, cp are calculated
-         rho0     =  gsw_sigma0(S0,T0) + 1000._rk
+         rhob     =  gsw_sigma0(S0,T0) + 1000._rk
          alpha0   =  gsw_alpha(S0,T0,p0)
          beta0    =  gsw_beta(S0,T0,p0)                  
          cp       =  gsw_cp0
@@ -112,6 +113,7 @@
          LEVEL3 'beta=  ',beta0
          LEVEL3 'cp=    ',cp         
       case(3) ! S0, T0, rho0, alpha, beta are all provided
+         rhob = rho0
          LEVEL2 'Linearized - custom - using S0, T0, rho0, alpha, beta, cp'
          LEVEL3 'S0=    ',S0
          LEVEL3 'T0=    ',T0
@@ -172,7 +174,7 @@
          alpha(1:nlev-1) =  gsw_alpha(Si(1:nlev-1),Ti(1:nlev-1),pi(1:nlev-1))
          beta(1:nlev-1)  =  gsw_beta(Si(1:nlev-1),Ti(1:nlev-1),pi(1:nlev-1))
       case(2,3)
-         rho_p(1:nlev)   = rho0*(_ONE_ - alpha0*(T(1:nlev)-T0) + beta0*(S(1:nlev)-S0) )
+         rho_p(1:nlev)   = rhob*(_ONE_ - alpha0*(T(1:nlev)-T0) + beta0*(S(1:nlev)-S0) )
          rho             = rho_p   ! Lars: here, we should implement some sort of pressure dependency
       case default
    end select
@@ -228,7 +230,7 @@
             get_rho = gsw_sigma0(S,T) + 1000.
          end if
       case (2,3)
-         get_rho = rho0*( _ONE_ - alpha0*(T-T0) + beta0*(S-S0) )
+         get_rho = rhob*( _ONE_ - alpha0*(T-T0) + beta0*(S-S0) )
          ! Lars: here, we should implement some pressure dependency 
       case default
    end select
