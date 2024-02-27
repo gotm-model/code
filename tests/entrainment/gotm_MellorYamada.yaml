@@ -323,4 +323,4 @@ output:
       time_step: 60                        # number of time units between output [min=1; default=1]
       time_method: point                   # treatment of time dimension [point=instantaneous, mean, integrated; default=point]
       variables:
-      - source: *                          # variable name in model
+      - source: /*                         # variable name in model
