@@ -99,7 +99,7 @@
       case(1) ! use gsw_rho(S,T,p) - default p=0
          cp      =  gsw_cp0
          LEVEL3 'rho0=  ',rho0
-      case(2) ! S0, T0, p0 are provided - rho0, alpha, beta, cp are calculated
+      case(2) ! S0, T0, p0 are provided - alpha, beta, cp are calculated
          rhob     =  gsw_sigma0(S0,T0) + 1000._rk
          alpha0   =  gsw_alpha(S0,T0,p0)
          beta0    =  gsw_beta(S0,T0,p0)                  
