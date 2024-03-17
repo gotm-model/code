@@ -4,9 +4,9 @@
 ! !ROUTINE: Convert between buoyancy fluxes and others \label{sec:convertFluxes}
 !
 ! !INTERFACE:
-  subroutine  convert_fluxes(nlev,g,cp,rho_0,heat,p_e,rad,T,S,           &
-                            tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
-!
+    subroutine  convert_fluxes(nlev,swf,shf,ssf,rad,Tsrf,Ssrf,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+
+    
 ! !DESCRIPTION:
 !  This subroutine computes the buoyancy fluxes that are due
 !  to
@@ -27,20 +27,24 @@
 ! are on your own in computing the  fluxes required by the KPP model, because
 ! they have to be consistent with the equation of state used in your model.
 !
+!
 ! !USES:
-  use gsw_mod_toolbox, only: gsw_rho_alpha_beta_bsq
-  IMPLICIT NONE
+   use meanflow,       only: gravity 
+   use density,        only: rho0,cp
+   use density,        only: get_alpha,get_beta
+   use density,        only: alpha,beta          
+!
+   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
   integer,  intent(in)                :: nlev
-  REALTYPE, intent(in)                :: g,cp,rho_0
-  REALTYPE, intent(in)                :: heat,p_e
+  REALTYPE, intent(in)                :: swf,shf,ssf
+  REALTYPE, intent(in)                :: Tsrf
+  REALTYPE, intent(in)                :: Ssrf
   REALTYPE, intent(in)                :: rad(0:nlev)
-  REALTYPE, intent(in)                :: T(0:nlev)
-  REALTYPE, intent(in)                :: S(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
-  REALTYPE, intent(out)              ::  tFlux,sFlux
+  REALTYPE, intent(out)               :: tFlux,sFlux
   REALTYPE, intent(out)               :: btFlux,bsFlux
   REALTYPE, intent(out)               :: tRad(0:nlev)
   REALTYPE, intent(out)               :: bRad(0:nlev)
@@ -52,43 +56,27 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: rho,alpha,beta
+   REALTYPE                  :: alpha0,beta0
 !
 !-----------------------------------------------------------------------
 !BOC
-#if 0
 
-#if 1
-   call gsw_rho_alpha_beta_bsq(S(nlev),T(nlev),_ZERO_,rho,alpha=alpha,beta=beta)
-#else
-   alpha   = eos_alpha(S(nlev),T(nlev),_ZERO_,g,rho_0)
-   beta    = eos_beta (S(nlev),T(nlev),_ZERO_,g,rho_0)
-#endif
+   ! alpha, beta at surface
+   alpha0  = get_alpha(Ssrf,Tsrf,_ZERO_)
+   beta0   = get_beta(Ssrf,Tsrf,_ZERO_)
 
-   tFlux   =  heat/(rho_0*cp)
-   btFlux  =  g*alpha*tFlux
+   ! temperature flux and associated buoyancy flux
+   tFlux   = -Tsrf*swf - shf/(rho0*cp)
+   btFlux  =  gravity*alpha0*tFlux
+   
+   ! salinity flux and associated buoyancy flux
+   sFlux   = -Ssrf*swf - ssf     
+   bsFlux  = -gravity*beta0*sFlux   
 
-   sFlux   =  -S(nlev)*p_e
-   bsFlux  =  -g*beta*sFlux
+   ! radiative temperature and buoyancy flux profiles
+   tRad    =  rad/(rho0*cp)
+   bRad    = gravity*alpha*tRad  
 
-#if 1
-   call gsw_rho_alpha_beta_bsq(S(1),T(1),_ZERO_,rho,alpha=alpha)
-#else
-   alpha   = eos_alpha(S(1),T(1),_ZERO_,g,rho_0)
-#endif
-   tRad(0) = rad(0)/(rho_0*cp)
-   bRad(0) = g*alpha*tRad(0)
-
-   do i=1,nlev
-#if 1
-   call gsw_rho_alpha_beta_bsq(S(i),T(i),_ZERO_,rho,alpha=alpha)
-#else
-      alpha   = eos_alpha(S(i),T(i),_ZERO_,g,rho_0)
-#endif
-      tRad(i) = rad(i)/(rho_0*cp)
-      bRad(i) = g*alpha*tRad(i)
-   enddo
-#endif
 
    return
    end subroutine convert_fluxes

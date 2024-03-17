@@ -840,7 +840,6 @@
 !  update shear and stratification
    call shear(nlev,cnpar)
    call do_density(nlev,S,T,-z,-zi)
-   buoy(1:nlev) = -gravity*(rho_p(1:nlev)-rho0)/rho0
    call stratification(nlev)
 
 #ifdef SPM
@@ -856,14 +855,15 @@
 !     compute turbulent mixing
       select case (turb_method)
 #ifdef _CVMIX_
+      ! use KPP implemenatation in CVMIX
       case (100)
 
-!        update Langmuir number
-         call langmuir_number(nlev,zi,Hs_input%value,u_taus,zi(nlev)-zsbl,u10_input%value,v10_input%value)
+         ! convert thermodynamic fluxes to what is needed by CVMIX
+         call convert_fluxes(nlev,swf,shf,ssf,rad,T(nlev),S(nlev),tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
-!        use KPP via CVMix
-         call convert_fluxes(nlev,gravity,cp,rho0,heat_input%value,precip_input%value+evap,    &
-                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+         ! update Langmuir number
+         call langmuir_number(nlev,zi,Hs_input%value,u_taus,zi(nlev)-zsbl,u10_input%value,v10_input%value)
+         
          select case(kpp_langmuir_method)
          case (0)
             efactor = _ONE_
@@ -878,7 +878,9 @@
             efactor = EFactor_RWH16
             La = La_SLP_RWH16
          end select
-         call do_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,              &
+
+         !  update turbulence parameter from CVMIX 
+         call do_cvmix(nlev,depth,h,rho_p,u,v,NN,NNT,NNS,SS,            &
                        u_taus,tFlux,btFlux,sFlux,bsFlux,                &
                        tRad,bRad,cori,efactor,La)
 #endif
