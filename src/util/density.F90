@@ -165,14 +165,18 @@
 
    ! compute interface salinity and temperature
    Si(1:nlev-1)         = 0.5*(S(1:nlev-1) + S(2:nlev))
-   Ti(1:nlev-1)         = 0.5*(T(1:nlev-1) + T(2:nlev))   
-
+   Ti(1:nlev-1)         = 0.5*(T(1:nlev-1) + T(2:nlev))
+   Si(0)                = S(0)
+   Si(nlev)             = S(nlev)  
+   Ti(0)                = T(0)
+   Ti(nlev)             = T(nlev)
+   
    select case (density_method)
       case(1)
          rho(1:nlev)     =  gsw_rho(S(1:nlev),T(1:nlev),p(1:nlev))
          rho_p(1:nlev)   =  gsw_sigma0(S(1:nlev),T(1:nlev)) + 1000._rk
-         alpha(1:nlev-1) =  gsw_alpha(Si(1:nlev-1),Ti(1:nlev-1),pi(1:nlev-1))
-         beta(1:nlev-1)  =  gsw_beta(Si(1:nlev-1),Ti(1:nlev-1),pi(1:nlev-1))
+         alpha           =  gsw_alpha(Si,Ti,pi)
+         beta            =  gsw_beta(Si,Ti,pi)
       case(2,3)
          rho_p(1:nlev)   = rhob*(_ONE_ - alpha0*(T(1:nlev)-T0) + beta0*(S(1:nlev)-S0) )
          rho             = rho_p   ! Lars: here, we should implement some sort of pressure dependency
