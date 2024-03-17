@@ -840,6 +840,7 @@
 !  update shear and stratification
    call shear(nlev,cnpar)
    call do_density(nlev,S,T,-z,-zi)
+   buoy(1:nlev) = -gravity*(rho_p(1:nlev)-rho0)/rho0  
    call stratification(nlev)
 
 #ifdef SPM
