@@ -4,7 +4,7 @@
 ! !ROUTINE: Convert between buoyancy fluxes and others \label{sec:convertFluxes}
 !
 ! !INTERFACE:
-    subroutine  convert_fluxes(nlev,swf,shf,ssf,rad,Tsrf,Ssrf,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+    subroutine  convert_fluxes(nlev,gravity,swf,shf,ssf,rad,Tsrf,Ssrf,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
     
 ! !DESCRIPTION:
@@ -29,7 +29,6 @@
 !
 !
 ! !USES:
-   use meanflow,       only: gravity 
    use density,        only: rho0,cp
    use density,        only: get_alpha,get_beta
    use density,        only: alpha,beta          
@@ -38,6 +37,7 @@
 !
 ! !INPUT PARAMETERS:
   integer,  intent(in)                :: nlev
+  REALTYPE, intent(in)                :: gravity
   REALTYPE, intent(in)                :: swf,shf,ssf
   REALTYPE, intent(in)                :: Tsrf
   REALTYPE, intent(in)                :: Ssrf

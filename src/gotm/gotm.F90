@@ -860,7 +860,7 @@
       case (100)
 
          ! convert thermodynamic fluxes to what is needed by CVMIX
-         call convert_fluxes(nlev,swf,shf,ssf,rad,T(nlev),S(nlev),tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+         call convert_fluxes(nlev,gravity,swf,shf,ssf,rad,T(nlev),S(nlev),tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          ! update Langmuir number
          call langmuir_number(nlev,zi,Hs_input%value,u_taus,zi(nlev)-zsbl,u10_input%value,v10_input%value)
