@@ -1,6 +1,6 @@
 project: GOTM
 page_dir: ./pages
-src_dir: ../src
+src_dir: ./src
 output_dir: ./html
 project_github: https://github.com/gotm-model
 summary: General Ocean Turbulence Model - documentation
@@ -13,8 +13,8 @@ display: public
          protected
          private
 source: true
-search: false
-graph: false
+search: true
+graph: true
 docmark_alt: c
 license: gfdl
 include: ../include
