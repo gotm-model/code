@@ -598,7 +598,7 @@
    LEVEL1 'init_turbulence_yaml'
 
    call branch%get(turb_method, 'turb_method', 'turbulence closure', &
-                   options=(/option(no_model, 'no_model', 'constant nuh and num'), option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
+                   options=(/option(no_model, 'constant nuh and num', 'no_model'), option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
    call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
                    options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-eps or k-w style)', 'tke'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
