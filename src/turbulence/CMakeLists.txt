@@ -10,6 +10,7 @@ add_library(turbulence
    compute_cpsi3.F90
    compute_rist.F90
    dissipationeq.F90
+   omegaeq.F90   
    epsbalgebraic.F90
    fk_craig.F90
    genericeq.F90
@@ -36,6 +37,7 @@ add_library(turbulence
    compute_cpsi3.F90
    compute_rist.F90
    dissipationeq.F90
+   omegaeq.F90   
    epsbalgebraic.F90
    fk_craig.F90
    genericeq.F90
