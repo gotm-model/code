@@ -1,5 +1,5 @@
 #include"cppdefs.h"
-!-------------------------------------e----------------------------------
+!-----------------------------------------------------------------------
 !BOP
 !
 ! !MODULE: turbulence: its all in here \ldots \label{sec:turbulence}
@@ -219,6 +219,7 @@
 ! !DEFINED PARAMETERS:
 
 !  general outline of the turbulence model
+   integer, parameter, public                    :: no_model=0
    integer, parameter, public                    :: algebraic=1
    integer, parameter, public                    :: first_order=2
    integer, parameter, public                    :: second_order=3
@@ -241,7 +242,7 @@
    integer, parameter, public                    :: Blackadar=5
    integer, parameter, public                    :: Bougeault_Andre=6
    integer, parameter, public                    :: diss_eq=8
-   integer, parameter, public                    :: omega_eq=9   
+   integer, parameter, public                    :: omega_eq=9
    integer, parameter, public                    :: length_eq=10
    integer, parameter, public                    :: generic_eq=11
 
@@ -597,7 +598,7 @@
    LEVEL1 'init_turbulence_yaml'
 
    call branch%get(turb_method, 'turb_method', 'turbulence closure', &
-                   options=(/option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
+                   options=(/option(no_model, 'no_model', 'constant nuh and num'), option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
    call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
                    options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-eps or k-w style)', 'tke'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
@@ -1013,6 +1014,12 @@
 # endif
 
    LEVEL2 'done.'
+
+   if (turb_method .eq. no_model) then
+      nuh = const_nuh
+      num = const_num
+      return
+   end if
 
    if (turb_method .eq. 100) return
 
@@ -2375,7 +2382,7 @@
          LEVEL2 ' '
       case default
    end select
-    
+
    return
    end subroutine report_model
 !EOC
@@ -2498,6 +2505,8 @@
 !BOC
 
    select case (turb_method)
+   case (no_model)
+      return
    case (algebraic)
 !  solve a model for algebraically described diffusity
 
