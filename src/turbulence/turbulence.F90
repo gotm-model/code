@@ -514,7 +514,11 @@
       read(namlst,nml=turb_param,err=83)
       read(namlst,nml=generic,err=84)
       read(namlst,nml=keps,err=85)
-     read(namlst,nml=kw,err=86)      
+      select case(len_scale_method)
+         case(omega_eq)
+            read(namlst,nml=kw,err=86)
+         case default
+      end select
       read(namlst,nml=my,err=87)
       read(namlst,nml=scnd,err=88)
       read(namlst,nml=iw,err=89)
