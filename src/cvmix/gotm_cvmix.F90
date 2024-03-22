@@ -46,6 +46,9 @@
 ! z-position of surface boundary layer depth
   REALTYPE, public                       ::    zsbl
 
+! z-position of bottom boundary layer depth
+  REALTYPE, public                       ::    zbbl
+
 ! !DEFINED PARAMETERS:
 !
 !  method of Langmuir turbulence parameterization
@@ -694,6 +697,7 @@
 
    ! initialize boundary layer
    zsbl = _ZERO_
+   zbbl = _ZERO_
 
    ! initialize CVMix variables
    call cvmix_put(CVmix_vars, 'nlev', nlev)
@@ -848,8 +852,7 @@
 !-----------------------------------------------------------------------
 
    if (use_bottom_layer) then
-      call bottom_layer(nlev,h,rho,u,v,NN,u_taus,                    &
-                         tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+      call bottom_layer(nlev,h,rho,u,v,NN,u_taub,tRad,bRad,f)
    endif
 
 !-----------------------------------------------------------------------
@@ -1360,8 +1363,7 @@
 ! !IROUTINE: Compute turbulence in the bottom layer with CVMix
 !
 ! !INTERFACE:
-   subroutine bottom_layer(nlev,h,rho,u,v,NN,u_taus,                   &
-                            tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+   subroutine bottom_layer(nlev,h,rho,u,v,NN,u_taub,tRad,bRad,f)
 !
 ! !DESCRIPTION:
 ! In this routine all computations related to turbulence in the bottom layer
@@ -1386,16 +1388,8 @@
 !  square of buoyancy frequency (1/s^2)
    REALTYPE, intent(in)                          :: NN(0:nlev)
 
-!  surface friction velocities (m/s)
-   REALTYPE, intent(in)                          :: u_taus
-
-!  surface temperature flux (K m/s) and
-!  salinity flux (sal m/s) (negative for loss)
-   REALTYPE, intent(in)                          :: tFlux,sFlux
-
-!  surface buoyancy fluxes (m^2/s^3) due to
-!  heat and salinity fluxes
-   REALTYPE, intent(in)                          :: btFlux,bsFlux
+!  bottom friction velocities (m/s)
+   REALTYPE, intent(in)                          :: u_taub
 
 !  radiative flux [ I(z)/(rho Cp) ] (K m/s)
 !  and associated buoyancy flux (m^2/s^3)
@@ -1414,6 +1408,27 @@
 ! !LOCAL VARIABLES:
    integer                      :: k,ksbl
    integer                      :: kk,kref,kp1
+
+   REALTYPE                     :: Bo,Bfsfc
+   REALTYPE                     :: tRadSrf
+   REALTYPE                     :: bRadSrf,bRadSbl
+   REALTYPE                     :: wm, ws
+   REALTYPE                     :: depth
+   REALTYPE                     :: Rk, Rref
+   REALTYPE                     :: Uk, Uref, Vk, Vref
+   REALTYPE                     :: bRad_cntr
+   REALTYPE                     :: NN_max
+
+
+   REALTYPE, dimension (0:nlev) :: Bflux
+   REALTYPE, dimension (0:nlev) :: RiBulk
+
+!  Thickness of surface layer
+   REALTYPE                     :: surfthick
+
+!-----------------------------------------------------------------------
+!BOC
+!
 
    return
 
