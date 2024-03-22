@@ -242,9 +242,9 @@
    integer, parameter, public                    :: Blackadar=5
    integer, parameter, public                    :: Bougeault_Andre=6
    integer, parameter, public                    :: diss_eq=8
-   integer, parameter, public                    :: omega_eq=9
-   integer, parameter, public                    :: length_eq=10
-   integer, parameter, public                    :: generic_eq=11
+   integer, parameter, public                    :: omega_eq=11
+   integer, parameter, public                    :: length_eq=9
+   integer, parameter, public                    :: generic_eq=10
 
 !  boundary conditions
    integer, parameter, public                    :: Dirichlet=0
