@@ -202,7 +202,6 @@
    config_only = write_yaml_path /= '' .or. write_schema_path /= ''
    STDERR LINE
 
-   settings_store%path = ''
    inquire(file=trim(yaml_file),exist=file_exists)
    if (file_exists) then
       LEVEL2 'Reading configuration from: ',trim(yaml_file)
