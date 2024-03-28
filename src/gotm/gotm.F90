@@ -210,7 +210,6 @@
    config_only = write_yaml_path /= '' .or. write_schema_path /= ''
    STDERR LINE
 
-   settings_store%path = ''
    if (.not. read_nml) then
       inquire(file=trim(yaml_file),exist=file_exists)
       if (file_exists) then
