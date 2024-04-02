@@ -179,7 +179,8 @@
    REALTYPE, public                              :: cw2
    REALTYPE, public                              :: cw3minus
    REALTYPE, public                              :: cw3plus
-   REALTYPE, public                              :: cw4   
+   REALTYPE, public                              :: cw4
+   REALTYPE, public                              :: sig_kw   
    REALTYPE, public                              :: sig_w
  
 !  the 'my' namelist
@@ -358,7 +359,7 @@
                             sig_k,sig_e,sig_peps
 
    namelist /kw/            cw1,cw2,cw3minus,cw3plus,cw4,      &
-                            sig_k,sig_w   
+                            sig_kw,sig_w   
 
    namelist /my/            e1,e2,e3,e6,sq,sl,my_length, new_constr
 
@@ -464,7 +465,7 @@
    cw3minus=0.0
    cw3plus=0.5
    cw4=0.15
-   sig_k=2.0
+   sig_kw=2.0
    sig_w=2.0
 
 !  the 'my' namelist
@@ -697,9 +698,9 @@
    call twig%get(ce3plus, 'ce3plus', 'ce3 for unstable stratification', '-', &
                    default=1.5_rk)
    call twig%get(ce4, 'ce4', 'empirical coefficient ce4 in dissipation equation', '-', &
-                   default=0._rk)
+                   default=0.0_rk)
    call twig%get(sig_k, 'sig_k', 'Schmidt number for TKE diffusivity', '-', &
-                   default=1._rk)
+                   default=1.0_rk)
    call twig%get(sig_e, 'sig_e', 'Schmidt number for dissipation diffusivity', '-', &
                    default=1.3_rk)
    call twig%get(sig_peps, 'sig_peps', 'use Burchard (2001) wave breaking parameterisation', &
@@ -716,7 +717,7 @@
                    default=0.5_rk)
    call twig%get(cw4, 'cw4', 'empirical coefficient cw4 in omega equation', '-', &
                    default=0.15_rk)
-   call twig%get(sig_k, 'sig_k', 'Schmidt number for TKE diffusivity', '-', &
+   call twig%get(sig_kw, 'sig_kw', 'Schmidt number for TKE diffusivity', '-', &
                    default=2.0_rk)
    call twig%get(sig_w, 'sig_w', 'Schmidt number for omega diffusivity', '-', &
                    default=2.0_rk)
@@ -2041,8 +2042,8 @@
             kappa=cm0*sqrt(rad)
          else
             STDERR 'Negative radicand discovered in computing'
-            STDERR 'kappa for the k-epsilon model.'
-            STDERR 'Possible reason: you took ce2 < ce1 '
+            STDERR 'kappa for the k-omega model.'
+            STDERR 'Possible reason: you took cw2 < cw1 '
             STDERR 'Please change gotmturb.nml accordingly.'
             STDERR 'Program aborts now in turbulence.F90'
             stop
@@ -2055,6 +2056,7 @@
 
 
       ! compute model propeties
+      sig_k      = sig_kw
       gen_d      = - 1./cw2
       gen_alpha  = -4.*sqrt(sig_k)/(3.*sqrt(sig_k)-sqrt(sig_k+24.*sig_w*cw2))
       gen_l      = cm0*sqrt(rcm)*sqrt( (5.*sig_k+12.*sig_w*cw2 -  &
@@ -2079,6 +2081,8 @@
          STDERR 'Program aborts now in turbulence.F90'
          stop
       endif
+      
+      ! compute model propeties
       sig_k      = sig_kpsi
       gen_d      = -2.*gen_n/(2.*gen_m + gen_n - 2.*cpsi2)
       gen_alpha  = -4.*gen_n*sqrt(sig_k) / &
@@ -3972,7 +3976,7 @@
                             sig_k,sig_e,sig_peps
 
    LEVEL2 'kw namelist',    cw1,cw2,cw3minus,cw3plus,cw4,      &
-                            sig_k,sig_w
+                            sig_kw,sig_w
 
    LEVEL2 'my namelist',    e1,e2,e3, e6, sq,sl,my_length,new_constr
 
