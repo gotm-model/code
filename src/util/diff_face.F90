@@ -42,7 +42,8 @@
    REALTYPE, intent(in)                :: Ydw
 
 !  diffusivity of Y
-   REALTYPE, intent(in)                :: nuY(0:N)
+!   REALTYPE, intent(in)                :: nuY(0:N)
+   REALTYPE                            :: nuY(0:N) ! Bug fix Georg Umgiesser
 
 !  linear source term
 !  (treated implicitly)
@@ -68,7 +69,19 @@
 !-----------------------------------------------------------------------
 !BOC
 !
+!  in case of two layers set nuY
+
+   if( N .eq. 2 ) then ! Bug fix Georg Umgiesser
+      nuY(0) = nuY(1)
+      nuY(N) = nuY(1)
+      Y(0)   = Y(1)     
+      Y(N)   = Y(1)
+   end if
+
 !  set up matrix
+
+   write(100,*) nuY(0),nuY(1),nuY(2)
+
    do i=2,N-2
       c     = dt*( nuY(i+1) + nuY(i  ) )  / ( h(i)+h(i+1) ) / h(i+1)
       a     = dt*( nuY(i  ) + nuY(i-1) )  / ( h(i)+h(i+1) ) / h(i  )
