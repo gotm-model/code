@@ -80,8 +80,6 @@
 
 !  set up matrix
 
-   write(100,*) nuY(0),nuY(1),nuY(2)
-
    do i=2,N-2
       c     = dt*( nuY(i+1) + nuY(i  ) )  / ( h(i)+h(i+1) ) / h(i+1)
       a     = dt*( nuY(i  ) + nuY(i-1) )  / ( h(i)+h(i+1) ) / h(i  )
