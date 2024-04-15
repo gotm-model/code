@@ -249,7 +249,7 @@
                x3 = qa * L /(rgas * ta_K * ta_K)
                cd_rain = 1.0/(1.0+const06*(x3*L*x1)/(cpa*x2))
                cd_rain = cd_rain*cpw*((tw-ta) + (qs-qa)*L/cpa)
-               qe = qe - rainfall * cd_rain
+               qh = qh - rainfall * cd_rain
             end if
 
 !           Compute turbulent latent heat flux (W/m2), qe.
