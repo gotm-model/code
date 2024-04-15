@@ -729,7 +729,7 @@
 ! !IROUTINE: Do KPP with CVMix
 !
 ! !INTERFACE:
-   subroutine do_cvmix(nlev,h0,h,rho,u,v,NN,NNT,NNS,SS,u_taus,         &
+   subroutine do_cvmix(nlev,h0,h,rho,u,v,NN,NNT,NNS,SS,u_taus,u_taub,  &
                        tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,          &
                        EFactor,LaSL)
 !
@@ -765,8 +765,8 @@
 !  square of shear frequency (1/s^2)
    REALTYPE, intent(in)                          :: SS(0:nlev)
 
-!  surface friction velocities (m/s)
-   REALTYPE, intent(in)                          :: u_taus
+!  surface and bottom friction velocities (m/s)
+   REALTYPE, intent(in)                          :: u_taus,u_taub
 
 !  surface temperature flux (K m/s) and
 !  salinity flux (psu m/s) (negative for loss)
