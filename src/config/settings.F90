@@ -189,7 +189,7 @@ contains
          if (present(minimum)) target%minimum = minimum
          if (present(maximum)) target%maximum = maximum
       end if
-      path = setting%get_path()
+      path = setting%get_path(include_file=.false.)
       target%name = path(2:len(path))
       if (present(pchild)) pchild => setting
 
