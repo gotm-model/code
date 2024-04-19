@@ -89,21 +89,23 @@
                                                use_bottom_layer
 
 !  flags for different components of CVMix
-   logical                               ::    use_kpp,                &
-                                               use_background,         &
+   logical                               ::    use_background,         &
                                                use_shear,              &
                                                use_convection,         &
                                                use_tidal_mixing,       &
                                                use_double_diffusion
 !
 !  G'(1) = 0 (shape function) if true, otherwise compute G'(1) as in LMD94
-   logical                               ::    kpp_use_noDGat1
+   logical                               ::    sbl_use_noDGat1,        &
+                                               bbl_use_noDGat1
 
 !  limit the OBL by the Ekman depth / Monin-Obukhov length if true
-   logical                               ::    kpp_check_Ekman_length, &
-                                               kpp_check_MonOb_length
+   logical                               ::    sbl_check_Ekman_length, &
+                                               sbl_check_MonOb_length, &
+                                               bbl_check_Ekman_length, &
+                                               bbl_check_MonOb_length
 !  enhance diffusivity at OBL
-   logical                               ::    kpp_use_enhanced_diff
+   logical                               ::    sbl_use_enhanced_diff
 
 !  method to parameterize the effects of Langmuir turbulence
 !  options are
@@ -111,14 +113,15 @@
 !  (1)   Langmuir mixing following Li et al., 2016
 !  (2)   Langmuir enhanced entrainment following Li & Fox-Kemper, 2017
 !  (3)   Langmuir turbulence in hurricanes following Reichl et al., 2016
-   integer, public                       ::    kpp_langmuir_method
+   integer, public                       ::    sbl_langmuir_method
 
 !  interpolation type used to interpolate bulk Richardson number
 !  options are
 !  (1) linear
 !  (2) quadratic
 !  (3) cubic
-   integer                               ::    kpp_bulk_Ri_interp_type
+   integer                               ::    sbl_bulk_Ri_interp_type,&
+                                               bbl_bulk_Ri_interp_type
 
 !  interpolation type used to interpolate diff and visc at OBL_depth
 !  options are
@@ -126,7 +129,8 @@
 !  (2) quadratic
 !  (3) cubic
 !  (4) LMD94
-   integer                               ::    kpp_OBL_interp_type
+   integer                               ::    sbl_OBL_interp_type,    &
+                                               bbl_OBL_interp_type
 
 !  matching technique between the boundary layer and the ocean interior
 !  options are
@@ -139,13 +143,15 @@
 !                           term match interior values at interface
 !  (4) ParabolicNonLocal => Shape function for the nonlocal term is
 !                           (1-sigma)^2, gradient term is sigma*(1-sigma)^2
-   integer                               ::    kpp_match_technique
+   integer                               ::    sbl_match_technique,    &
+                                               bbl_match_technique
 
 !  surface layer extent
-   REALTYPE                              ::    kpp_surface_layer_extent
+   REALTYPE                              ::    sbl_surface_layer_extent,&
+                                               bbl_surface_layer_extent
 
 !  critical Richardson number
-   REALTYPE                              ::    kpp_Ri_c
+   REALTYPE                              ::    sbl_Ri_c, bbl_Ri_c
 
 !  background diffusivity and viscosity
    REALTYPE                              ::    background_diffusivity, &
@@ -237,30 +243,27 @@
    twig => branch%get_child('surface_layer', 'surface layer mixing')
    call twig%get(use_surface_layer, 'use',                             &
       'compute surface layer mixing coefficients', default=.true.)
-   leaf => twig%get_child('kpp', 'K-Profile Parameterization')
-   call leaf%get(use_kpp, 'use', 'use the K-Profile Parameterization', &
-      default=.true.)
-   call leaf%get(kpp_langmuir_method, 'langmuir_method',               &
+   call twig%get(sbl_langmuir_method, 'langmuir_method',               &
       'method of Langmuir turbulence pararmeterization',               &
       default=CVMIX_LT_NOLANGMUIR,                                     &
       options=(/option(CVMIX_LT_NOLANGMUIR, 'none', 'none'),           &
       option(CVMIX_LT_LWF16, 'Li et al. (2016)', 'LWF16'),             &
       option(CVMIX_LT_LF17, 'Li and Fox-Kemper (2017)', 'LF17'),       &
       option(CVMIX_LT_RWH16, 'Reichl et al. (2016)', 'RWH16')/))
-   call leaf%get(kpp_surface_layer_extent, 'surface_layer_extent',     &
+   call twig%get(sbl_surface_layer_extent, 'surface_layer_extent',     &
       'extent of surface layer in fraction of the boundary layer', '-',&
       minimum=0._rk, maximum=1._rk, default=0.1_rk)
-   call leaf%get(kpp_Ri_c, 'Ri_c', 'critical Richardson number', '-',  &
+   call twig%get(sbl_Ri_c, 'Ri_c', 'critical Richardson number', '-',  &
       minimum=0._rk, default=0.3_rk)
-   call leaf%get(kpp_check_Ekman_length, 'check_Ekman_length',         &
+   call twig%get(sbl_check_Ekman_length, 'check_Ekman_length',         &
       'limit the OBL by the Ekman depth', default=.false.)
-   call leaf%get(kpp_check_MonOb_length, 'check_MonOb_length',         &
+   call twig%get(sbl_check_MonOb_length, 'check_MonOb_length',         &
       'limit the OBL by the Monin-Obukhov depth', default=.false.)
-   call leaf%get(kpp_use_enhanced_diff, 'use_enhanced_diff',           &
+   call twig%get(sbl_use_enhanced_diff, 'use_enhanced_diff',           &
       'enhance diffusivity at OBL', default=.true.)
-   call leaf%get(kpp_use_noDGat1, 'use_noDGat1',                       &
+   call twig%get(sbl_use_noDGat1, 'use_noDGat1',                       &
       'zero gradient of the shape function at OBL', default=.true.)
-   call leaf%get(kpp_match_technique, 'match_technique',               &
+   call twig%get(sbl_match_technique, 'match_technique',               &
       'matching technique of shape functions with the ocean interior', &
       default=CVMIX_MATCH_SIMPLE, options=(/                           &
       option(CVMIX_MATCH_SIMPLE, 'simple shapes', 'simple'),           &
@@ -269,13 +272,13 @@
              'both gradient and nonlocal terms', 'both'),              &
       option(CVMIX_MATCH_PARABOLIC,                                    &
              'parabolic nonlocal term', 'parabolic')/))
-   call leaf%get(kpp_bulk_Ri_interp_type, 'bulk_Ri_interp_type',       &
+   call twig%get(sbl_bulk_Ri_interp_type, 'bulk_Ri_interp_type',       &
       'interpolation type for the bulk Richardson number',             &
       default=CVMIX_INTERP_QUADRATIC, options=(/                       &
       option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
       option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
       option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic')/))
-   call leaf%get(kpp_OBL_interp_type, 'OBL_interp_type',               &
+   call twig%get(sbl_OBL_interp_type, 'OBL_interp_type',               &
       'interpolation type for diffusivity and viscosity at OBL',       &
       default=CVMIX_INTERP_LMD94, options=(/                           &
       option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
@@ -286,6 +289,39 @@
    twig => branch%get_child('bottom_layer', 'bottom layer mixing')
    call twig%get(use_bottom_layer, 'use',                              &
       'compute bottom layer mixing coefficients', default=.false.)
+   call twig%get(bbl_surface_layer_extent, 'surface_layer_extent',     &
+      'extent of surface layer in fraction of the boundary layer', '-',&
+      minimum=0._rk, maximum=1._rk, default=0.1_rk)
+   call twig%get(bbl_Ri_c, 'Ri_c', 'critical Richardson number', '-',  &
+      minimum=0._rk, default=0.3_rk)
+   call twig%get(bbl_check_Ekman_length, 'check_Ekman_length',         &
+      'limit the OBL by the Ekman depth', default=.false.)
+   call twig%get(bbl_check_MonOb_length, 'check_MonOb_length',         &
+      'limit the OBL by the Monin-Obukhov depth', default=.false.)
+   call twig%get(bbl_use_noDGat1, 'use_noDGat1',                       &
+      'zero gradient of the shape function at OBL', default=.true.)
+   call twig%get(bbl_match_technique, 'match_technique',               &
+      'matching technique of shape functions with the ocean interior', &
+      default=CVMIX_MATCH_SIMPLE, options=(/                           &
+      option(CVMIX_MATCH_SIMPLE, 'simple shapes', 'simple'),           &
+      option(CVMIX_MATCH_GRADIENT, 'gradient term', 'gradient'),       &
+      option(CVMIX_MATCH_BOTH,                                         &
+             'both gradient and nonlocal terms', 'both'),              &
+      option(CVMIX_MATCH_PARABOLIC,                                    &
+             'parabolic nonlocal term', 'parabolic')/))
+   call twig%get(bbl_bulk_Ri_interp_type, 'bulk_Ri_interp_type',       &
+      'interpolation type for the bulk Richardson number',             &
+      default=CVMIX_INTERP_QUADRATIC, options=(/                       &
+      option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
+      option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
+      option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic')/))
+   call twig%get(bbl_OBL_interp_type, 'OBL_interp_type',               &
+      'interpolation type for diffusivity and viscosity at OBL',       &
+      default=CVMIX_INTERP_LMD94, options=(/                           &
+      option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
+      option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
+      option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic'),                    &
+      option(CVMIX_INTERP_LMD94, 'Large et al. (1994)', 'LMD94')/))
 
    twig => branch%get_child('interior', 'interior mixing')
    call twig%get(use_interior, 'use',                                  &
@@ -414,14 +450,16 @@
 !  'linear'
 !  'quadratic'
 !  'cubic'
-   character(len=32)                   ::  bulk_Ri_interp_method
+   character(len=32)                   ::  sbl_bulk_Ri_interp_method,  &
+                                           bbl_bulk_Ri_interp_method
 
 !  interpolation type used to interpolate diff and visc at OBL_depth
 !  'linear'
 !  'quadratic'
 !  'cubic'
 !  'LMD94'
-   character(len=32)                   ::  OBL_interp_method
+   character(len=32)                   ::  sbl_OBL_interp_method,      &
+                                           bbl_OBL_interp_method
 
 !  matching technique between the boundary layer and the ocean interior
 !  'SimpleShapes'      - Shape functions for both the gradient and nonlocal
@@ -433,7 +471,8 @@
 !                        term match interior values at interface
 !  'ParabolicNonLocal' - Shape function for the nonlocal term is
 !                        (1-sigma)^2, gradient term is sigma*(1-sigma)^2
-   character(len=32)                   ::  match_technique
+   character(len=32)                   ::  sbl_match_method,           &
+                                           bbl_match_method
 !
 !  shear mixing scheme
 !  'PP'   - Pacanowski-Philander, 1981
@@ -534,67 +573,67 @@
 
    if (use_surface_layer) then
       LEVEL3 'Surface layer mixing algorithm             - active -'
-      if (kpp_check_Ekman_length) then
+      if (sbl_check_Ekman_length) then
          LEVEL4 'Clipping at Ekman scale                - active -'
       else
          LEVEL4 'Clipping at Ekman scale            - not active -'
       endif
-      if (kpp_check_MonOb_length) then
+      if (sbl_check_MonOb_length) then
          LEVEL4 'Clipping at Monin-Obukhov scale        - active -'
       else
          LEVEL4 'Clipping at Monin-Obukhov scale    - not active -'
       endif
-      if (kpp_use_noDGat1) then
+      if (sbl_use_noDGat1) then
          LEVEL4 "Set shape function G'(1) = 0           - active -"
       else
          LEVEL4 "Set shape function G'(1) = 0       - not active -"
       endif
-      LEVEL4 'Ri_c: ', kpp_Ri_c
+      LEVEL4 'Ri_c: ', sbl_Ri_c
 
-      select case (kpp_match_technique)
+      select case (sbl_match_technique)
       case (CVMIX_MATCH_SIMPLE)
-         match_technique = 'SimpleShapes'
+         sbl_match_method = 'SimpleShapes'
       case (CVMIX_MATCH_GRADIENT)
-         match_technique = 'MatchGradient'
+         sbl_match_method = 'MatchGradient'
       case (CVMIX_MATCH_BOTH)
-         match_technique = 'MatchBoth'
+         sbl_match_method = 'MatchBoth'
       case (CVMIX_MATCH_PARABOLIC)
-         match_technique = 'ParabolicNonLocal'
+         sbl_match_method = 'ParabolicNonLocal'
       case default
-         STDERR 'Unsupported kpp_match_technique: ', kpp_match_technique
+         STDERR 'Unsupported sbl_match_technique: ', sbl_match_technique
          stop 'init_cvmix'
       end select
+      LEVEL4 'Matching technique: ', trim(sbl_match_method)
 
-      LEVEL4 'Matching technique: ', trim(match_technique)
-      select case (kpp_bulk_Ri_interp_type)
+      select case (sbl_bulk_Ri_interp_type)
       case (CVMIX_INTERP_LINEAR)
-         bulk_Ri_interp_method = 'linear'
+         sbl_bulk_Ri_interp_method = 'linear'
       case (CVMIX_INTERP_QUADRATIC)
-         bulk_Ri_interp_method = 'quadratic'
+         sbl_bulk_Ri_interp_method = 'quadratic'
       case (CVMIX_INTERP_CUBIC)
-         bulk_Ri_interp_method = 'cubic'
+         sbl_bulk_Ri_interp_method = 'cubic'
       case default
-         STDERR 'Unsupported kpp_bulk_Ri_interp_type: ', kpp_bulk_Ri_interp_type
+         STDERR 'Unsupported sbl_bulk_Ri_interp_type: ', sbl_bulk_Ri_interp_type
          stop 'init_cvmix'
       end select
-      LEVEL4 'Interpolation type for Ri: ', trim(bulk_Ri_interp_method)
+      LEVEL4 'Interpolation type for Ri: ', trim(sbl_bulk_Ri_interp_method)
 
-      select case (kpp_OBL_interp_type)
+      select case (sbl_OBL_interp_type)
       case (CVMIX_INTERP_LINEAR)
-         OBL_interp_method = 'linear'
+         sbl_OBL_interp_method = 'linear'
       case (CVMIX_INTERP_QUADRATIC)
-         OBL_interp_method = 'quadratic'
+         sbl_OBL_interp_method = 'quadratic'
       case (CVMIX_INTERP_CUBIC)
-         OBL_interp_method = 'cubic'
+         sbl_OBL_interp_method = 'cubic'
       case (CVMIX_INTERP_LMD94)
-         OBL_interp_method = 'LMD94'
+         sbl_OBL_interp_method = 'LMD94'
       case default
-         STDERR 'Unsupported kpp_OBL_interp_type: ', kpp_OBL_interp_type
+         STDERR 'Unsupported sbl_OBL_interp_type: ', sbl_OBL_interp_type
          stop 'init_cvmix'
       end select
-      LEVEL4 'Interpolation type for diff and visc: ', trim(OBL_interp_method)
+      LEVEL4 'Interpolation type for diff and visc: ', trim(sbl_OBL_interp_method)
 
-      select case (kpp_langmuir_method)
+      select case (sbl_langmuir_method)
       case (CVMIX_LT_NOLANGMUIR)
          Langmuir_mixing_method = 'NONE'
          Langmuir_entrainment_method = 'NONE'
@@ -615,7 +654,7 @@
          LEVEL3 'Langmuir turbulence                    - active -'
          LEVEL4 ' - Langmuir mixing in hurricanes (Reichl et al. 2016)'
       case default
-         STDERR 'Unsupported kpp_langmuir_method: ', kpp_langmuir_method
+         STDERR 'Unsupported sbl_langmuir_method: ', sbl_langmuir_method
          stop 'init_cvmix'
       end select
    else
@@ -624,6 +663,65 @@
 
    if (use_bottom_layer) then
       LEVEL3 'Bottom layer mixing algorithm              - active -'
+      if (bbl_check_Ekman_length) then
+         LEVEL4 'Clipping at Ekman scale                - active -'
+      else
+         LEVEL4 'Clipping at Ekman scale            - not active -'
+      endif
+      if (bbl_check_MonOb_length) then
+         LEVEL4 'Clipping at Monin-Obukhov scale        - active -'
+      else
+         LEVEL4 'Clipping at Monin-Obukhov scale    - not active -'
+      endif
+      if (bbl_use_noDGat1) then
+         LEVEL4 "Set shape function G'(1) = 0           - active -"
+      else
+         LEVEL4 "Set shape function G'(1) = 0       - not active -"
+      endif
+      LEVEL4 'Ri_c: ', bbl_Ri_c
+
+      select case (bbl_match_technique)
+      case (CVMIX_MATCH_SIMPLE)
+         bbl_match_method = 'SimpleShapes'
+      case (CVMIX_MATCH_GRADIENT)
+         bbl_match_method = 'MatchGradient'
+      case (CVMIX_MATCH_BOTH)
+         bbl_match_method = 'MatchBoth'
+      case (CVMIX_MATCH_PARABOLIC)
+         bbl_match_method = 'ParabolicNonLocal'
+      case default
+         STDERR 'Unsupported bbl_match_technique: ', bbl_match_technique
+         stop 'init_cvmix'
+      end select
+      LEVEL4 'Matching technique: ', trim(bbl_match_method)
+
+      select case (bbl_bulk_Ri_interp_type)
+      case (CVMIX_INTERP_LINEAR)
+         bbl_bulk_Ri_interp_method = 'linear'
+      case (CVMIX_INTERP_QUADRATIC)
+         bbl_bulk_Ri_interp_method = 'quadratic'
+      case (CVMIX_INTERP_CUBIC)
+         bbl_bulk_Ri_interp_method = 'cubic'
+      case default
+         STDERR 'Unsupported bbl_bulk_Ri_interp_type: ', bbl_bulk_Ri_interp_type
+         stop 'init_cvmix'
+      end select
+      LEVEL4 'Interpolation type for Ri: ', trim(bbl_bulk_Ri_interp_method)
+
+      select case (bbl_OBL_interp_type)
+      case (CVMIX_INTERP_LINEAR)
+         bbl_OBL_interp_method = 'linear'
+      case (CVMIX_INTERP_QUADRATIC)
+         bbl_OBL_interp_method = 'quadratic'
+      case (CVMIX_INTERP_CUBIC)
+         bbl_OBL_interp_method = 'cubic'
+      case (CVMIX_INTERP_LMD94)
+         bbl_OBL_interp_method = 'LMD94'
+      case default
+         STDERR 'Unsupported bbl_OBL_interp_type: ', bbl_OBL_interp_type
+         stop 'init_cvmix'
+      end select
+      LEVEL4 'Interpolation type for diff and visc: ', trim(bbl_OBL_interp_method)
    else
       LEVEL3 'Bottom layer mixing algorithm          - not active -'
    endif
@@ -676,36 +774,38 @@
                             diff_conv_type="MC76")
    endif
 
-   ! initialize KPP
-   if (use_kpp) then
-      call cvmix_init_kpp(Ri_crit=kpp_Ri_c,                                   &
-                          interp_type=trim(bulk_Ri_interp_method),            &
-                          interp_type2=trim(OBL_interp_method),               &
-                          MatchTechnique=trim(match_technique),               &
+   ! initialize KPP in surface layer
+   if (use_surface_layer) then
+      call cvmix_init_kpp(Ri_crit=sbl_Ri_c,                                   &
+                          interp_type=trim(sbl_bulk_Ri_interp_method),        &
+                          interp_type2=trim(sbl_OBL_interp_method),           &
+                          MatchTechnique=trim(sbl_match_method),              &
                           minVtsqr=_ZERO_,                                    &
-                          lEkman=kpp_check_Ekman_length,                      &
-                          lMonOb=kpp_check_MonOb_length,                      &
-                          lnoDGat1=kpp_use_noDGat1,                           &
-                          lenhanced_diff=kpp_use_enhanced_diff,               &
-                          surf_layer_ext=kpp_surface_layer_extent,            &
+                          lEkman=sbl_check_Ekman_length,                      &
+                          lMonOb=sbl_check_MonOb_length,                      &
+                          lnoDGat1=sbl_use_noDGat1,                           &
+                          lenhanced_diff=sbl_use_enhanced_diff,               &
+                          surf_layer_ext=sbl_surface_layer_extent,            &
                           langmuir_mixing_str=trim(langmuir_mixing_method),   &
                           langmuir_entrainment_str=                           &
                                     trim(langmuir_entrainment_method))
-      if (use_bottom_layer) then
-         call cvmix_init_kpp(Ri_crit=kpp_Ri_c,                                &
-                             interp_type=trim(bulk_Ri_interp_method),         &
-                             interp_type2=trim(OBL_interp_method),            &
-                             MatchTechnique=trim(match_technique),            &
-                             minVtsqr=_ZERO_,                                 &
-                             lEkman=kpp_check_Ekman_length,                   &
-                             lMonOb=kpp_check_MonOb_length,                   &
-                             lnoDGat1=kpp_use_noDGat1,                        &
-                             lenhanced_diff=kpp_use_enhanced_diff,            &
-                             surf_layer_ext=kpp_surface_layer_extent,         &
-                             langmuir_mixing_str="NONE",                      &
-                             langmuir_entrainment_str="NONE",                 &
-                             CVmix_kpp_params_user=CVmix_kpp_params_tmp)
-      endif
+   endif
+
+   ! initialize KPP in bottom layer
+   if (use_bottom_layer) then
+      call cvmix_init_kpp(Ri_crit=bbl_Ri_c,                                   &
+                          interp_type=trim(bbl_bulk_Ri_interp_method),        &
+                          interp_type2=trim(bbl_OBL_interp_method),           &
+                          MatchTechnique=trim(bbl_match_method),              &
+                          minVtsqr=_ZERO_,                                    &
+                          lEkman=bbl_check_Ekman_length,                      &
+                          lMonOb=bbl_check_MonOb_length,                      &
+                          lnoDGat1=bbl_use_noDGat1,                           &
+                          lenhanced_diff=.false.,                             &
+                          surf_layer_ext=bbl_surface_layer_extent,            &
+                          langmuir_mixing_str="NONE",                         &
+                          langmuir_entrainment_str="NONE",                    &
+                          CVmix_kpp_params_user=CVmix_kpp_params_tmp)
    endif
 
    ! initialize constants
@@ -1261,7 +1361,7 @@
       ! update potential density and velocity components surface
       ! reference values with the surface layer averaged values
       ! determine which layer contains surface layer
-      surfthick = kpp_surface_layer_extent*depth
+      surfthick = sbl_surface_layer_extent*depth
       do kk = nlev,k,-1
          if (z_w(nlev)-z_w(kk-1) .ge. surfthick) then
             kref = kk
@@ -1508,7 +1608,7 @@
       ! update potential density and velocity components surface
       ! reference values with the surface layer averaged values
       ! determine which layer contains surface layer
-      surfthick = kpp_surface_layer_extent*depth
+      surfthick = bbl_surface_layer_extent*depth
       do kk = 1,k
          if (z_w(kk)-z_w(0) .ge. surfthick) then
             kref = kk
