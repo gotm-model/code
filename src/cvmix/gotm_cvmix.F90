@@ -191,7 +191,10 @@
    REALTYPE, dimension(:), allocatable   ::    h_r
 
 !  CVMix datatypes
-   type(cvmix_data_type)                 ::    CVmix_vars
+   type(cvmix_data_type)                 ::    CVmix_vars,             &
+                                               CVmix_vars_tmp
+!  CVMix KPP parameters for bottom layer
+   type(cvmix_kpp_params_type)           ::    CVmix_kpp_params_tmp
 
 !
 !EOP
@@ -688,6 +691,21 @@
                           langmuir_mixing_str=trim(langmuir_mixing_method),   &
                           langmuir_entrainment_str=                           &
                                     trim(langmuir_entrainment_method))
+      if (use_bottom_layer) then
+         call cvmix_init_kpp(Ri_crit=kpp_Ri_c,                                &
+                             interp_type=trim(bulk_Ri_interp_method),         &
+                             interp_type2=trim(OBL_interp_method),            &
+                             MatchTechnique=trim(match_technique),            &
+                             minVtsqr=_ZERO_,                                 &
+                             lEkman=kpp_check_Ekman_length,                   &
+                             lMonOb=kpp_check_MonOb_length,                   &
+                             lnoDGat1=kpp_use_noDGat1,                        &
+                             lenhanced_diff=kpp_use_enhanced_diff,            &
+                             surf_layer_ext=kpp_surface_layer_extent,         &
+                             langmuir_mixing_str="NONE",                      &
+                             langmuir_entrainment_str="NONE",                 &
+                             CVmix_kpp_params_user=CVmix_kpp_params_tmp)
+      endif
    endif
 
    ! initialize constants
@@ -703,8 +721,8 @@
    call cvmix_put(CVmix_vars, 'nlev', nlev)
    call cvmix_put(CVmix_vars, 'max_nlev', nlev)
    call cvmix_put(CVmix_vars, 'OceanDepth', h0)
-   call cvmix_put(CVmix_vars, 'zw_iface', z_w(nlev:0:-1))
-   call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(nlev:1:-1))
+   call cvmix_put(CVmix_vars, 'zw_iface', z_w(0:nlev))
+   call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(1:nlev))
    call cvmix_put(CVmix_vars, 'Mdiff', _ZERO_)
    call cvmix_put(CVmix_vars, 'Tdiff', _ZERO_)
    call cvmix_put(CVmix_vars, 'Sdiff', _ZERO_)
@@ -717,6 +735,19 @@
    ! TODO: the following variables need to be initialized if convection based on density is enabled <20200522, Qing Li> !
    ! call cvmix_put(CVmix_vars, 'WaterDensity_cntr', _ZERO_)
    ! call cvmix_put(CVmix_vars, 'AdiabWaterDensity_cntr', _ZERO_)
+
+   if (use_bottom_layer) then
+      ! initialize CVMix variables for bottom layer
+      call cvmix_put(CVmix_vars_tmp, 'nlev', nlev)
+      call cvmix_put(CVmix_vars_tmp, 'max_nlev', nlev)
+      call cvmix_put(CVmix_vars_tmp, 'OceanDepth', h0)
+      call cvmix_put(CVmix_vars_tmp, 'zw_iface', z_w(0:nlev))
+      call cvmix_put(CVmix_vars_tmp, 'zt_cntr',  z_r(1:nlev))
+      call cvmix_put(CVmix_vars_tmp, 'Mdiff', _ZERO_)
+      call cvmix_put(CVmix_vars_tmp, 'Tdiff', _ZERO_)
+      call cvmix_put(CVmix_vars_tmp, 'Sdiff', _ZERO_)
+      call cvmix_put(CVmix_vars_tmp, 'BulkRichardson_cntr', _ZERO_)
+   endif
 
    return
 
@@ -798,6 +829,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                             :: k
+   REALTYPE, dimension(0:nlev)         :: z_w_tmp, z_r_tmp
 
 !
 !-----------------------------------------------------------------------
@@ -826,6 +858,14 @@
    enddo
 
 !-----------------------------------------------------------------------
+!  Update grid in CVMix
+!-----------------------------------------------------------------------
+
+!  CVMix assumes that z indices increase with depth (surface to bottom)
+   CVmix_vars%zw_iface = z_w(nlev:0:-1)
+   CVmix_vars%zt_cntr = z_r(nlev:1:-1)
+
+!-----------------------------------------------------------------------
 ! compute interior non-convective mixing
 !-----------------------------------------------------------------------
 
@@ -852,6 +892,13 @@
 !-----------------------------------------------------------------------
 
    if (use_bottom_layer) then
+      z_w_tmp(0) = _ZERO_
+      do k=1,nlev
+         z_w_tmp(k) = z_w(0) - z_w(k)
+         z_r_tmp(k) = z_w(0) - z_r(k)
+      enddo
+      CVmix_vars_tmp%zw_iface = z_w_tmp(0:nlev)
+      CVmix_vars_tmp%zt_cntr = z_r_tmp(1:nlev)
       call bottom_layer(nlev,h,rho,u,v,NN,u_taub,tRad,bRad,f)
    endif
 
@@ -1146,7 +1193,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                      :: k,ksbl
-   integer                      :: kk,kref,kp1
+   integer                      :: kk,kref
 
    REALTYPE                     :: Bo,Bfsfc
    REALTYPE                     :: tRadSrf
@@ -1189,14 +1236,6 @@
    enddo
 
 !-----------------------------------------------------------------------
-!  Update grid in CVMix
-!-----------------------------------------------------------------------
-
-!  CVMix assumes that z indices increase with depth (surface to bottom)
-   CVmix_vars%zw_iface = z_w(nlev:0:-1)
-   CVmix_vars%zt_cntr = z_r(nlev:1:-1)
-
-!-----------------------------------------------------------------------
 !  Compute potential density and velocity components surface reference
 !  values.
 !-----------------------------------------------------------------------
@@ -1212,12 +1251,11 @@
 
    RiBulk = _ZERO_
 
-   do k=nlev-1,2,-1
+   do k=nlev,1,-1
       ! do the calculation at grid cell center
-      kp1 = k+1
-      depth = z_w(nlev)-z_r(kp1)
+      depth = z_w(nlev)-z_r(k)
       call cvmix_kpp_compute_turbulent_scales(_ONE_,       &
-          depth,Bflux(kp1),u_taus,                         &
+          depth,Bflux(k),u_taus,                           &
           w_s=ws,w_m=wm)
 
       ! update potential density and velocity components surface
@@ -1244,13 +1282,13 @@
          Vref = Vref/surfthick
       end if
       ! use the values at grid centers
-      Rk = rho(kp1)
-      Uk =   u(kp1)
-      Vk =   v(kp1)
+      Rk = rho(k)
+      Uk =   u(k)
+      Vk =   v(k)
       ! compute the Bulk Richardson number
       ! use the max of NN at the upper and lower interface following Van Roekel et al., 2019
-      NN_max = max(NN(kp1), NN(k))
-      RiBulk(kp1:kp1) = cvmix_kpp_compute_bulk_Richardson(           &
+      NN_max = max(NN(k-1), NN(k))
+      RiBulk(k:k) = cvmix_kpp_compute_bulk_Richardson(               &
                 zt_cntr = (/-depth/),                                &
                 delta_buoy_cntr = (/-cvmix_gorho0*(Rref-Rk)/),       &
                 delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
@@ -1258,10 +1296,9 @@
                 Nsqr_iface = (/NN_max, NN_max/),                     &
                 EFactor = EFactor,                                   &
                 LaSL = LaSL,                                         &
-                bfsfc = Bflux(kp1),                                  &
+                bfsfc = Bflux(k),                                    &
                 ustar = u_taus)
-
-   enddo  ! inner grid faces
+   enddo
 
 !-----------------------------------------------------------------------
 !  Compute total buoyancy flux at surface boundary layer depth
@@ -1271,7 +1308,7 @@
 
 !  first find old boundary layer index "ksbl".
    ksbl=1
-   do k=nlev,2,-1
+   do k=nlev,1,-1
       if ((ksbl.eq.1).and.(z_w(k-1).lt.zsbl)) then
          ksbl = k
       endif
@@ -1301,7 +1338,7 @@
 !-----------------------------------------------------------------------
 
    ksbl=1
-   do k=nlev,2,-1
+   do k=nlev,1,-1
       if ((ksbl.eq.1).and.(z_w(k-1).lt.zsbl)) then
          ksbl = k
       endif
@@ -1406,12 +1443,12 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                      :: k,ksbl
-   integer                      :: kk,kref,kp1
+   integer                      :: k,kbbl
+   integer                      :: kk,kref
 
-   REALTYPE                     :: Bo,Bfsfc
-   REALTYPE                     :: tRadSrf
-   REALTYPE                     :: bRadSrf,bRadSbl
+   REALTYPE                     :: Bfbot
+   REALTYPE                     :: tRadBot
+   REALTYPE                     :: bRadBot,bRadBbl
    REALTYPE                     :: wm, ws
    REALTYPE                     :: depth
    REALTYPE                     :: Rk, Rref
@@ -1429,6 +1466,156 @@
 !-----------------------------------------------------------------------
 !BOC
 !
+!-----------------------------------------------------------------------
+!  Compute total buoyancy flux (m2/s3) at W-points.
+!-----------------------------------------------------------------------
+!
+    tRadBot   =   tRad(0)
+    bRadBot   =   bRad(0)
+
+!  include effect of short-wave radiation
+!  Bflux(k) is the total buoyancy flux below the level z_r(k)
+
+   do k = 1,nlev
+      bRad_cntr = 0.5*(bRad(k)+bRad(k-1))
+      Bflux(k)  =  bRad_cntr - bRadBot
+   enddo
+
+!-----------------------------------------------------------------------
+!  Compute potential density and velocity components bottom reference
+!  values.
+!-----------------------------------------------------------------------
+
+!  initialize the reference potential density and velocity
+   Rref = rho(1)
+   Uref =   u(1)
+   Vref =   v(1)
+
+!-----------------------------------------------------------------------
+!  Compute bulk Richardson number at grid cell center
+!-----------------------------------------------------------------------
+
+   RiBulk = _ZERO_
+
+   do k=1,nlev
+      ! do the calculation at grid cell center
+      depth = z_r(k)-z_w(0)
+      call cvmix_kpp_compute_turbulent_scales(_ONE_,       &
+          depth,Bflux(k),u_taub,                           &
+          w_s=ws,w_m=wm,                                   &
+          CVmix_kpp_params_user=CVmix_kpp_params_tmp)
+
+      ! update potential density and velocity components surface
+      ! reference values with the surface layer averaged values
+      ! determine which layer contains surface layer
+      surfthick = kpp_surface_layer_extent*depth
+      do kk = 1,k
+         if (z_w(kk)-z_w(0) .ge. surfthick) then
+            kref = kk
+            exit
+         end if
+      end do
+      if (kref > 1) then
+         Rref = rho(kref)*(surfthick+z_w(0)-z_w(kref-1))
+         Uref =   u(kref)*(surfthick+z_w(0)-z_w(kref-1))
+         Vref =   v(kref)*(surfthick+z_w(0)-z_w(kref-1))
+         do kk = 1,kref-1
+            Rref = Rref + rho(kk)*h(kk)
+            Uref = Uref +   u(kk)*h(kk)
+            Vref = Vref +   v(kk)*h(kk)
+         end do
+         Rref = Rref/surfthick
+         Uref = Uref/surfthick
+         Vref = Vref/surfthick
+      end if
+      ! use the values at grid centers
+      Rk = rho(k)
+      Uk =   u(k)
+      Vk =   v(k)
+      ! compute the Bulk Richardson number
+      ! use the max of NN at the upper and lower interface following Van Roekel et al., 2019
+      NN_max = max(NN(k-1), NN(k))
+      RiBulk(k:k) = cvmix_kpp_compute_bulk_Richardson(               &
+                zt_cntr = (/-depth/),                                &
+                delta_buoy_cntr = (/-cvmix_gorho0*(Rk-Rref)/),       &
+                delta_Vsqr_cntr = (/(Uk-Uref)**2+(Vk-Vref)**2/),     &
+                ws_cntr = (/ws/),                                    &
+                Nsqr_iface = (/NN_max, NN_max/),                     &
+                CVmix_kpp_params_user=CVmix_kpp_params_tmp)
+   enddo
+
+!-----------------------------------------------------------------------
+!  Compute total buoyancy flux at bottom boundary layer depth
+!-----------------------------------------------------------------------
+!  This calculation is based on the boundary layer depth in the previous
+!  time step
+
+!  first find old boundary layer index "kbbl".
+   kbbl=nlev
+   do k=1,nlev
+      if ((kbbl.eq.nlev).and.(z_w(k).lt.zbbl)) then
+         kbbl = k
+      endif
+   enddo
+
+   bRadBbl = ( bRad(kbbl-1)*(z_w(kbbl)-zbbl) +                          &
+               bRad(kbbl  )*(zbbl-z_w(kbbl-1) ) )/ h(kbbl)
+
+   Bfbot   = bRadBbl - bRadBot
+
+!-----------------------------------------------------------------------
+! Find the boundary layer depth
+!-----------------------------------------------------------------------
+
+   CVmix_vars_tmp%BulkRichardson_cntr = RiBulk(1:nlev)
+   CVmix_vars_tmp%SurfaceFriction = u_taub
+   CVmix_vars_tmp%SurfaceBuoyancyForcing = -Bfbot
+   CVmix_vars_tmp%Coriolis = f
+
+   call cvmix_kpp_compute_OBL_depth(CVmix_vars_tmp, CVmix_kpp_params_tmp)
+
+   ! CVMix returns a BoundaryLayerDepth > 0
+   zbbl = z_w(0)+CVmix_vars_tmp%BoundaryLayerDepth
+
+!-----------------------------------------------------------------------
+!  Update surface buoyancy flux in the new bottom boundary layer
+!-----------------------------------------------------------------------
+
+   kbbl=nlev
+   do k=1,nlev
+      if ((kbbl.eq.nlev).and.(z_w(k).gt.zbbl)) then
+         kbbl = k
+      endif
+   enddo
+
+   bRadBbl = ( bRad(kbbl-1)*(z_w(kbbl)-zbbl) +                          &
+               bRad(kbbl  )*(zbbl-z_w(kbbl-1) ) )/ h(kbbl)
+
+   Bfbot   = bRadBbl - bRadBot
+
+   CVmix_vars_tmp%SurfaceBuoyancyForcing = -Bfbot
+
+!-----------------------------------------------------------------------
+!  Compute the mixing coefficients within the bottom boundary layer
+!-----------------------------------------------------------------------
+
+   ! Note that arrays at the cell interface in CVMix have indices (1:nlev+1)
+   ! whereas those in GOTM have indices (0:nlev)
+   CVmix_vars_tmp%Mdiff_iface(1:nlev+1) = cvmix_num(0:nlev)
+   CVmix_vars_tmp%Tdiff_iface(1:nlev+1) = cvmix_nuh(0:nlev)
+   CVmix_vars_tmp%Sdiff_iface(1:nlev+1) = cvmix_nus(0:nlev)
+
+   call cvmix_coeffs_kpp(CVmix_vars_tmp, CVmix_kpp_params_tmp)
+
+   do k=0,kbbl
+      cvmix_num(k) = CVmix_vars_tmp%Mdiff_iface(k+1)
+      cvmix_nuh(k) = CVmix_vars_tmp%Tdiff_iface(k+1)
+      cvmix_nus(k) = CVmix_vars_tmp%Sdiff_iface(k+1)
+   enddo
+
+   return
+
+!-----------------------------------------------------------------------
 
    return
 
