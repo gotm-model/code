@@ -348,6 +348,7 @@
 #if _FABM_API_VERSION_ > 0
    allocate(model)
    call fabm_create_model_from_yaml_file(model,trim(yaml_file))
+   if (light_absorption_feedback) call model%require_data(standard_variables%net_rate_of_absorption_of_shortwave_energy_in_layer)
 #else
    ! Create model tree
    if (configuration_method==-1) then
@@ -366,7 +367,6 @@
       ! From YAML file fabm.yaml
       allocate(model)
       call fabm_create_model_from_yaml_file(model,path=trim(yaml_file))
-      if (light_absorption_feedback) call model%require_data(standard_variables%net_rate_of_absorption_of_shortwave_energy_in_layer)
    end select
 #endif
 
