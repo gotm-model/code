@@ -19,7 +19,7 @@
 !
 ! !USES:
    use meanflow    , only: zi,w
-   use observations, only: w_adv_method,w_adv,w_height
+   use observations, only: w_adv,w_height
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -39,20 +39,20 @@
 
 !  Vertical velocity calculation:
 
-   select case(w_adv_method)
+   select case(w_adv%method)
       case(0)
          ! no vertical advection
       case(1,2)
          ! linearly varying advection velocity with peak at "w_height"
          z_crit=zi(nlev)-0.01*(zi(nlev)-zi(0))
-         if (w_height.gt.z_crit) w_height=z_crit
+         if (w_height%value.gt.z_crit) w_height%value=z_crit
          z_crit=zi(0)+0.01*(zi(nlev)-zi(0))
-         if (w_height.lt.z_crit) w_height=z_crit
+         if (w_height%value.lt.z_crit) w_height%value=z_crit
          do i=1,nlev-1
-            if (zi(i).gt.w_height) then
-               w(i)=(zi(nlev)-zi(i))/(zi(nlev)-w_height)*w_adv
+            if (zi(i).gt.w_height%value) then
+               w(i)=(zi(nlev)-zi(i))/(zi(nlev)-w_height%value)*w_adv%value
             else
-               w(i)=(zi(0)-zi(i))/(zi(0)-w_height)*w_adv
+               w(i)=(zi(0)-zi(i))/(zi(0)-w_height%value)*w_adv%value
             end if
          end do
          w(0)    =_ZERO_

@@ -20,7 +20,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public check_restart_time, read_restart_data
+   public open_restart, close_restart, check_restart_time, read_restart_data
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding and Jorn Bruggeman
@@ -77,6 +77,57 @@
 ! !IROUTINE:
 !
 ! !INTERFACE:
+   subroutine open_restart(fn)
+!
+! !DESCRIPTION:
+
+! !INPUT PARAMETERS:
+   character(len=*), intent(in) :: fn
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding and Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer                   :: ierr
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   ierr = nf90_open(trim(fn) // '.nc',NF90_NOWRITE,ncid)
+   if (ierr /= NF90_NOERR) call handle_err(ierr)
+
+   end subroutine open_restart
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE:
+!
+! !INTERFACE:
+   subroutine close_restart()
+!
+! !DESCRIPTION:
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding and Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer                   :: ierr
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   ierr = nf90_close(ncid)
+   if (ierr /= NF90_NOERR) call handle_err(ierr)
+
+   end subroutine close_restart
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE:
+!
+! !INTERFACE:
    subroutine check_restart_time(var_name)
 !
 ! !DESCRIPTION:
@@ -94,12 +145,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (ncid .eq. -1) then
-!      ierr = nf90_open(trim(path),NF90_NOWRITE,ncid)
-      ierr = nf90_open('restart.nc',NF90_NOWRITE,ncid)
-      if (ierr /= NF90_NOERR) call handle_err(ierr)
-   end if
-
    ierr = nf90_inq_varid(ncid, trim(var_name), id)
    if (ierr /= NF90_NOERR) then
       FATAL 'Could not find time-variable in restart file'
@@ -153,12 +198,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (ncid .eq. -1) then
-!      ierr = nf90_open(trim(path),NF90_NOWRITE,ncid)
-      ierr = nf90_open('restart.nc',NF90_NOWRITE,ncid)
-      if (ierr /= NF90_NOERR) call handle_err(ierr)
-   end if
-
    ierr = nf90_inq_varid(ncid, trim(var_name), id)
    if (ierr /= NF90_NOERR) then
       if (.not. allow_missing_variable) then

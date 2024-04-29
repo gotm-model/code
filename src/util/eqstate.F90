@@ -54,6 +54,12 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_eqstate,eqstate1,eos_alpha,eos_beta,unesco,rho_feistel
+
+   interface init_eqstate
+      module procedure init_eqstate_nml
+      module procedure init_eqstate_yaml
+   end interface
+
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -75,7 +81,7 @@
 ! !IROUTINE: Read the namelist {\tt eqstate}
 !
 ! !INTERFACE:
-   subroutine init_eqstate(namlst)
+   subroutine init_eqstate_nml(namlst)
 !
 ! !DESCRIPTION:
 !  Here, the namelist {\tt eqstate} in the namelist file {\tt gotmrun.nml}
@@ -85,7 +91,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, optional, intent(in)       :: namlst
+   integer, intent(in)                 :: namlst
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -97,15 +103,66 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_eqstate'
+   LEVEL1 'init_eqstate_nml'
+
    init_linearised = .true.
-   if(present(namlst)) then
-      read(namlst,nml=eqstate,err=80)
-   end if
+   read(namlst,nml=eqstate,err=80)
+   LEVEL2 'done.'
    return
    80 FATAL 'I could not read "eqstate" namelist'
    stop 'init_eqstate'
-   end subroutine init_eqstate
+   end subroutine init_eqstate_nml
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Read the yaml configuration {\tt eqstate}
+!
+! !INTERFACE:
+   subroutine init_eqstate_yaml(branch)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use yaml_settings
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   class (type_settings), intent(inout) :: branch
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard & Karsten Bolding
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer, parameter :: rk = kind(_ONE_)
+   class (type_settings), pointer :: twig
+!
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'init_eqstate_yaml'
+   call branch%get(eq_state_mode, 'method', 'method', default=2, &
+                   options=(/option(1, 'UNESCO', 'UNESCO'), option(2, 'Jackett et al. (2005)', 'Jackett')/))
+   call branch%get(eq_state_method, 'form', 'formulation', &
+                   options=(/option(1, 'full', 'full'), option(2, 'full with buoyancy frequency based on surface pressure', 'full-pot'), &
+                   option(3, 'linearized at T0,S0,p0', 'linear'), option(4, 'linearized at T0,S0,p0,dtr0,dsr0', 'linear_custom')/), default=1)
+   twig => branch%get_child('linear')
+   call twig%get(T0, 'T0', 'reference temperature', 'Celsius', &
+                 minimum=-2._rk, default=10._rk)
+   call twig%get(S0, 'S0', 'reference salinity', 'psu', &
+                 minimum=0._rk, default=35._rk)
+   call twig%get(p0, 'p0', 'reference pressure', 'Pa', &
+                 default=0._rk)
+   call twig%get(dtr0, 'dtr0', 'thermal expansion coefficient', 'kg/m^3/K', &
+                 default=-0.17_rk)
+   call twig%get(dsr0, 'dsr0', 'saline expansion coefficient', 'kg/m^3/psu', &
+                 default=0.78_rk)
+
+   init_linearised = .true.
+   LEVEL2 'done.'
+   end subroutine init_eqstate_yaml
 !EOC
 
 !-----------------------------------------------------------------------

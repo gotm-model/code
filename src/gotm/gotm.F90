@@ -35,28 +35,39 @@
 ! !USES:
    use field_manager
    use register_all_variables, only: do_register_all_variables, fm
-   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_category
+!KB   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,time_unit_second,type_output_category
+   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
    use output_manager
    use diagnostics
+   use settings
 
    use meanflow
    use input
    use input_netcdf
    use observations
+   use stokes_drift
    use time
 
-   use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
-   use airsea,      only: set_sst,set_ssuv,integrated_fluxes
-   use airsea,      only: calc_fluxes
-   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp
-   use airsea,      only: bio_albedo,bio_drag_scale
+   use airsea_driver, only: init_airsea,post_init_airsea,do_airsea,clean_airsea
+   use airsea_driver, only: surface_fluxes
+   use airsea_driver, only: set_sst,set_ssuv,integrated_fluxes
+   use airsea_driver, only: fluxes_method
+   use airsea_driver, only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp,albedo
+   use airsea_driver, only: bio_albedo,bio_drag_scale
+   use airsea_driver, only: u10, v10
    use airsea_variables, only: qa,ta
 
+#ifdef _ICE_
+   use ice,         only: init_ice, post_init_ice, do_ice, clean_ice, ice_cover
+   use stim_variables, only: Tice_surface,albedo_ice,transmissivity
+#endif
+
    use turbulence,  only: turb_method
-   use turbulence,  only: init_turbulence,do_turbulence
+   use turbulence,  only: init_turbulence,post_init_turbulence,do_turbulence
    use turbulence,  only: num,nuh,nus
    use turbulence,  only: const_num,const_nuh
    use turbulence,  only: gamu,gamv,gamh,gams
+   use turbulence,  only: Rig
    use turbulence,  only: kappa
    use turbulence,  only: clean_turbulence
 
@@ -64,6 +75,11 @@
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
+
+#ifdef _CVMIX_
+   use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
+   use gotm_cvmix,  only: zsbl, kpp_langmuir_method
+#endif
 
 #ifdef SEAGRASS
    use seagrass
@@ -73,16 +89,17 @@
    use spm, only: init_spm, set_env_spm, do_spm, end_spm
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
+   use gotm_fabm,only:configure_gotm_fabm,configure_gotm_fabm_from_nml,gotm_fabm_create_model,init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
-   use gotm_fabm_input,only:init_gotm_fabm_input
+   use gotm_fabm, only: fabm_airp, fabm_calendar_date, fabm_julianday
+   use gotm_fabm_input,only: configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
 #endif
 
    IMPLICIT NONE
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm, time_loop, clean_up
+   public initialize_gotm, integrate_gotm, finalize_gotm
 
 !
 ! !DEFINED PARAMETERS:
@@ -110,12 +127,25 @@
    REALTYPE,target           :: latitude,longitude
    logical                   :: restart
 
+   character(len=1024), public :: restart_file = 'restart'
+   character(len=1024), public :: yaml_file = 'gotm.yaml'
+   character(len=1024), public :: write_yaml_path = ''
+   character(len=1024), public :: write_schema_path = ''
+   character(len=1024), public :: output_id = ''
+   logical, public             :: read_nml = .false.
+   integer, public             :: write_yaml_detail = display_normal
+   logical, public             :: list_fields = .false.
+   logical, public             :: ignore_unknown_config = .false.
+   logical, public             :: generate_restart_file = .false.
+   logical, public             :: force_restart_offline = .false.
+
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
       procedure :: julian_day => gotm_host_julian_day
       procedure :: calendar_date => gotm_host_calendar_date
    end type
-!
+
+   integer(kind=timestepkind):: progress
 !-----------------------------------------------------------------------
 
    contains
@@ -126,7 +156,7 @@
 ! !IROUTINE: Initialise the model \label{initGOTM}
 !
 ! !INTERFACE:
-   subroutine init_gotm(t1,t2)
+   subroutine initialize_gotm()
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
@@ -145,57 +175,243 @@
   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   character(len=*), intent(in), optional  :: t1,t2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
+   class (type_settings), pointer :: branch, twig
+   integer, parameter :: rk = kind(_ONE_)
+
+   logical          ::    restart_allow_missing_variable = .false.
+   logical          ::    restart_allow_perpetual = .true.
+   logical          ::    restart_offline = .false.
    namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
                           restart_allow_perpetual,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
-   logical          ::    list_fields=.false.
    logical          ::    restart_online=.false.
-   logical          ::    restart_offline = .false.
-   logical          ::    restart_allow_missing_variable = .false.
-   logical          ::    restart_allow_perpetual = .true.
    integer          ::    rc
    logical          ::    file_exists
+   logical          ::    config_only=.false.
+   integer          ::    configuration_version=_CFG_VERSION_
+   integer          ::    cfg_version
+   type (type_header) :: yaml_header
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_gotm'
-   STDERR LINE
-
+   LEVEL1 'initialize_gotm'
+#if 0
    if (present(t1)) then
       restart_online = .true.
    end if
+#endif
 
-!  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
-!  will be set by init_observations.
-!  However, before that happens, it is already used in updategrid.
-!  therefore, we set to to a reasonable default here.
-   zeta = _ZERO_
-   w_adv_method = 0
+   config_only = write_yaml_path /= '' .or. write_schema_path /= ''
+   STDERR LINE
 
-!  open the namelist file.
-   LEVEL2 'reading model setup namelists..'
-   open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
-
-   read(namlst,nml=model_setup,err=91)
-   read(namlst,nml=station,err=92)
-   read(namlst,nml=time,err=93)
-   if (restart_online) then
-      LEVEL3 'online restart - updating values in the time namelist ...'
-      LEVEL4 'orignal: ',start,' -> ',stop
-      start = t1
-      stop  = t2
-      LEVEL4 'updated: ',start,' -> ',stop
+   if (.not. read_nml) then
+      inquire(file=trim(yaml_file),exist=file_exists)
+      if (file_exists) then
+         LEVEL2 'Reading configuration from: ',trim(yaml_file)
+         call settings_store%load(trim(yaml_file), namlst)
+      elseif (config_only) then
+         LEVEL2 'Configuration file ' // trim(yaml_file) // ' not found. Using default settings.'
+      else
+         FATAL 'Configuration file ' // trim(yaml_file) // ' not found.'
+         LEVEL1 'To generate a file with default settings, specify --write_yaml gotm.yaml.'
+         LEVEL1 'To read a configuration in namelists format (gotmrun.nml etc.), specify --read_nml.'
+         LEVEL1 'To migrate namelists to yaml, specify --read_nml --write_yaml gotm.yaml.'
+         LEVEL1 'For more information, run gotm with -h.'
+         stop 2
+      end if
    end if
 
+   if (config_only .or. read_nml) then
+      call settings_store%get(cfg_version, 'version', 'version of configuration file', default=configuration_version)
+   else
+      call settings_store%get(cfg_version, 'version', 'version of configuration file', default=-1)
+      if (cfg_version == -1) then
+         FATAL 'The configuration in ' // trim(yaml_file) //' does not have a version key and is therefore not compatible with this version of GOTM.'
+         LEVEL1 'Please update your configuration by running <GOTMDIR>/scripts/python/update_setup.py.'
+         stop 1
+      end if
+      if (cfg_version /= configuration_version) then
+         FATAL 'The configuration in ' // trim(yaml_file) //' has version ',cfg_version,', which does not match version ',configuration_version,' required by this executable.'
+         LEVEL1 'Please update your configuration by running <GOTMDIR>/scripts/python/update_setup.py.'
+         stop 1
+      end if
+   end if
+
+   call settings_store%get(title, 'title', 'simulation title used in output', &
+                           default='GOTM simulation')
+
+   branch => settings_store%get_child('location')
+   call branch%get(name, 'name', 'station name used in output', &
+                   default='GOTM site')
+   call branch%get(latitude, 'latitude', 'latitude', 'degrees North', &
+                   minimum=-90._rk, maximum=90._rk, default=0._rk)
+   call branch%get(longitude, 'longitude', 'longitude', 'degrees East', &
+                   minimum=-360._rk, maximum=360._rk, default=0._rk)
+   call branch%get(depth, 'depth', 'water depth', 'm', &
+                   minimum=0._rk, default=100._rk)
+
+   branch => settings_store%get_child('time')
+   call branch%get(timefmt, 'method', 'method to specify simulated period', default=2, &
+                   options=(/option(1, 'number of time steps', 'MaxN'), option(2, 'start and stop', 'start_stop'), option(3, 'start and number of time steps', 'start_MaxN')/), display=display_advanced)
+#if 0
+   call branch%get(MaxN, 'MaxN', 'number of time steps', &
+                   minimum=1,default=100, display=display_advanced)
+#endif
+   call branch%get(start, 'start', 'start date and time', units='yyyy-mm-dd HH:MM:SS', &
+                   default='2017-01-01 00:00:00')
+   call branch%get(stop, 'stop', 'stop date and time', units='yyyy-mm-dd HH:MM:SS', &
+                   default='2018-01-01 00:00:00')
+   if (generate_restart_file) stop = start
+   call branch%get(dt, 'dt', 'time step for integration', 's', &
+                   minimum=0.e-10_rk, default=3600._rk)
+   call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
+                   minimum=0._rk, maximum=1._rk, default=1._rk, display=display_advanced, &
+                   description='constant for the theta scheme used for time integration of diffusion-reaction components. Typical values: 0.5 for Cranck-Nicholson (second-order accurate), 0 for Forward Euler (first-order accurate), 1 for Backward Euler (first-order accurate). Only 1 guarantees positive solutions for positive definite systems.')
+
+   branch => settings_store%get_child('grid')
+   call branch%get(nlev, 'nlev', 'number of layers', &
+                   minimum=1, default=100)
+   call branch%get(grid_method, 'method', 'layer thickness specification', &
+                   options=(/option(0, 'equal by default with optional zooming', 'analytical'), option(1, 'prescribed relative fractions', 'file_sigma'), option(2, 'prescribed thicknesses', 'file_h')/), default=0) ! option(3, 'adaptive')
+   call branch%get(ddu, 'ddu', 'surface zooming', '-', &
+                   minimum=0._rk, default=0._rk)
+   call branch%get(ddl, 'ddl', 'bottom zooming', '-', &
+                   minimum=0._rk, default=0._rk)
+   call branch%get(grid_file, 'file', 'path to file with layer thicknesses', &
+                   default='')
+#if 0
+   twig => branch%get_child('adaptation')
+   call twig%get(c1ad, 'c1ad', 'weighting factor for buoyancy frequency', '-', &
+                 default=0.8_rk)
+   call twig%get(c2ad, 'c2ad', 'weighting factor for shear frequency', '-', &
+                 default=0.0_rk)
+   call twig%get(c3ad, 'c3ad', 'weighting factor for surface distance', '-', &
+                 default=0.1_rk)
+   call twig%get(c4ad, 'c4ad', 'weighting factor for background', '-', &
+                 default=0.1_rk)
+   call twig%get(Tgrid, 'Tgrid', 'grid adaption time scale', 's', &
+                 minimum=0._rk,default=3600._rk)
+   call twig%get(NNnorm, 'NNnorm', 'normalisation factor for buoyancy frequency', '-', &
+                 minimum=0._rk,default=0.2_rk)
+   call twig%get(SSNorm, 'SSNorm', 'normalisation factor for shear frequency', '-', &
+                 minimum=0._rk,default=0.2_rk)
+   call twig%get(dsurf, 'dsurf', 'normalisation factor for surface distance', '-', &
+                 minimum=0._rk,default=10._rk)
+   call twig%get(dtgrid, 'dtgrid', 'time step (must be fraction of dt)', 's', &
+                 minimum=0._rk,default=5._rk)
+#endif
+
+   ! Predefine order of top-level categories in gotm.yaml
+   branch => settings_store%get_child('temperature')
+   branch => settings_store%get_child('salinity')
+   branch => settings_store%get_child('surface')
+   branch => settings_store%get_child('bottom')
+   branch => settings_store%get_child('light_extinction')
+   branch => settings_store%get_child('turbulence')
+   branch => settings_store%get_child('waves', 'surface waves', display=display_advanced)
+
+   branch => settings_store%get_child('restart', order=998)
+   call branch%get(restart_offline, 'load', &
+                   'initialize simulation with state stored in restart.nc', &
+                   default=.false.)
+   if (force_restart_offline) restart_offline = .true.
+   call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
+                   'warn but not abort if a variable is missing from restart file', &
+                   default=.false., display=display_advanced)
+   branch => settings_store%get_child('output', order=999)
+
+   LEVEL2 'configuring modules ....'
+   call init_airsea()
+#ifdef _ICE_
+   call init_ice()
+#else
+   if (settings_store%ignore('surface/ice')) then
+      LEVEL3 'WARNING: surface/ice section in ' // trim(yaml_file) // ' is ignored because GOTM was compiled without STIM.'
+      LEVEL3 'To change this, specify -DGOTM_USE_STIM=ON when running cmake, then rebuild GOTM.'
+   end if
+#endif
+   call init_observations()
+   call init_stokes_drift()
+   branch => settings_store%get_child('turbulence')
+   call init_turbulence(branch)
+#ifdef _CVMIX_
+   branch => settings_store%get_child('cvmix')
+   call init_cvmix(branch)
+#else
+   if (settings_store%ignore('cvmix')) then
+      LEVEL3 'WARNING: cvmix section in ' // trim(yaml_file) // ' is ignored because GOTM was compiled without CVMix.'
+      LEVEL3 'To change this, specify -DGOTM_USE_CVMIX=ON when running cmake, then rebuild GOTM.'
+   end if
+#endif
+#ifdef _FABM_
+   branch => settings_store%get_typed_child('fabm', 'Framework for Aquatic Biogeochemical Models')
+   call configure_gotm_fabm(branch)
+#else
+   if (settings_store%ignore('fabm')) then
+      LEVEL3 'WARNING: fabm section in ' // trim(yaml_file) // ' is ignored because GOTM was compiled without FABM.'
+      LEVEL3 'To change this, specify -DGOTM_USE_FABM=ON when running cmake, then rebuild GOTM.'
+   end if
+#endif
+   call init_meanflow()
+
+   branch => settings_store%get_child('buoyancy', display=display_advanced)
+   call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
+                   options=(/option(1, 'equation of state', 'eq_state'), option(2, 'prognostic equation', 'prognostic')/), default=1)
+   call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', 'm/s^2', &
+                   default=0._rk)
+   call branch%get(b_obs_NN, 'NN_ini', 'initial buoyancy gradient (squared buoyancy frequency)', 's^-2', &
+                   default=0._rk)
+   call branch%get(b_obs_sbf, 'obs_sbf', 'constant surface buoyancy flux', 'm^2/s^3', &
+                   default=0._rk, display=display_hidden)
+
+   branch => settings_store%get_child('eq_state', 'equation of state')
+   call init_eqstate(branch)
+
+!  open the namelist file.
+   if (read_nml) then
+      LEVEL2 'reading model setup namelists..'
+      open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
+
+      read(namlst,nml=model_setup,err=91)
+      read(namlst,nml=station,err=92)
+      read(namlst,nml=time,err=93)
+      call init_eqstate(namlst)
+      close (namlst)
+
+      call init_meanflow(namlst,'gotmmean.nml')
+
+      call init_observations(namlst,'obs.nml')
+
+      call init_stokes_drift(namlst,'stokes_drift.nml')
+
+      call init_turbulence(namlst,'gotmturb.nml')
+      if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
+#ifdef _CVMIX_
+      if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
+#endif
+
+      call init_airsea(namlst,'airsea.nml')
+   end if
+
+#ifdef _FABM_
+   if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
+
+   ! Allow FABM to create its model tree. After this we know all biogeochemical variables
+   ! This must be done before gotm_fabm_input configuration.
+   call gotm_fabm_create_model(namlst)
+
+   call configure_gotm_fabm_input()
+   if (read_nml) call configure_gotm_fabm_input_from_nml(namlst, 'fabm_input.nml')
+#endif
+
    ! Initialize field manager
+   ! This is needed for the output manager to be able to read its configuration [output_manager_init]
    call fm%register_dimension('lon',1,id=id_dim_lon)
    call fm%register_dimension('lat',1,id=id_dim_lat)
    call fm%register_dimension('z',nlev,id=id_dim_z)
@@ -204,14 +420,68 @@
    call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
 
    allocate(type_gotm_host::output_manager_host)
-   call output_manager_init(fm,title)
+   branch => settings_store%get_child('output')
+   call output_manager_init(fm,title,settings=branch,postfix=output_id)
 
    inquire(file='output.yaml',exist=file_exists)
-   if (.not.file_exists) then
+   if (read_nml .and. .not. file_exists) then
       call deprecated_output(namlst,title,dt,list_fields)
    end if
 
-   LEVEL2 'done.'
+   ! Make sure all elements in the YAML configuration file were recognized
+   if (.not. settings_store%check_all_used()) then
+      if (ignore_unknown_config) then
+         LEVEL0 'Continuing because --ignore_unknown_config is specified.'
+      else
+         LEVEL0 'If you want GOTM to ignore unknown settings in ' // trim(yaml_file) // ','
+         LEVEL0 'rerun with --ignore_unknown_config.'
+         stop 1
+      end if
+   end if
+
+   if (write_yaml_path /= '') then
+      select case (write_yaml_detail)
+      case (0)
+         call yaml_header%append('This file was created with only the settings that differ from the default specified by GOTM.')
+         call yaml_header%append('You can generate a configuration with all commonly used settings with: gotm --write_yaml <OUTFILE> --detail default')
+         call yaml_header%append('To generate a configuration with every possible setting, use: gotm --write_yaml <OUTFILE> --detail full')
+      case (1)
+         call yaml_header%append('This file was created with only commonly used settings, plus those that differ from the default specified by GOTM.')
+         call yaml_header%append('You can generate a configuration with every possible setting with: gotm --write_yaml <OUTFILE> --detail full')
+         call yaml_header%append('To see only the settings that differ from the default, use: gotm --write_yaml <OUTFILE> --detail minimal')
+      case (2)
+         call yaml_header%append('This file was created with every possible GOTM setting.')
+         call yaml_header%append('You can generate a configuration with just the commonly used settings with: gotm --write_yaml <OUTFILE> --detail default')
+         call yaml_header%append('To see only the settings that differ from the default, use: gotm --write_yaml <OUTFILE> --detail minimal')
+      end select
+      call settings_store%save(trim(write_yaml_path), namlst, display=write_yaml_detail, header=yaml_header)
+      LEVEL0 'Your configuration has been written to '//trim(write_yaml_path)//'.'
+      if (file_exists) then
+         LEVEL0 'Settings from output.yaml have been migrated to gotm.yaml, but output.yaml will still take priority.'
+         LEVEL0 'Delete or rename output.yaml if you want output settings from gotm.yaml to take effect.'
+      end if
+   end if
+   if (write_schema_path /= '') then
+      call settings_store%write_schema_file(trim(write_schema_path), namlst, 'gotm-5.3')
+      LEVEL0 'Schema file has been written to '//trim(write_schema_path)//'.'
+   end if
+   if (config_only) stop 0
+
+   if (restart_online) then
+      LEVEL3 'online restart - updating values in the time namelist ...'
+      LEVEL4 'orignal: ',start,' -> ',stop
+!KB      start = t1
+!KB      stop  = t2
+      LEVEL4 'updated: ',start,' -> ',stop
+   end if
+
+!  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
+!  will be set by init_observations.
+!  However, before that happens, it is already used in updategrid.
+!  therefore, we set to to a reasonable default here.
+   zeta%value = _ZERO_
+   w_adv%method = 0
+
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.
 
@@ -223,7 +493,7 @@
    LEVEL2 trim(title)
    LEVEL2 'Using ',nlev,' layers to resolve a depth of',depth
    LEVEL2 'The station ',trim(name),' is situated at (lat,long) ',      &
-           latitude,longitude
+            latitude,longitude
    LEVEL2 trim(name)
 
    if (restart_offline) then
@@ -233,47 +503,53 @@
    LEVEL2 'initializing modules....'
    call init_input(nlev)
    call init_time(MinN,MaxN)
-   call init_eqstate(namlst)
-   close (namlst)
 
 !  From here - each init_? is responsible for opening and closing the
 !  namlst - unit.
-   call init_meanflow(namlst,'gotmmean.nml',nlev,latitude)
+   call post_init_meanflow(nlev,latitude)
    call init_tridiagonal(nlev)
-   call updategrid(nlev,dt,zeta)
+   call updategrid(nlev,dt,zeta%value)
 
-!  initialise each of the extra features/modules
 #ifdef SEAGRASS
-   call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
+      call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
 #endif
 #ifdef SPM
-   call init_spm(namlst,'spm.nml',unit_spm,nlev)
+      call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
-   call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
-                          depth,nlev,z,h,gravity,rho_0)
+
+!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
+   call post_init_observations(depth,nlev,z,h,gravity,rho_0)
    call get_all_obs(julianday,secondsofday,nlev,z)
+
+!  Stokes drift
+   call post_init_stokes_drift(nlev)
 
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
 
-   !  Update the grid based on true initial zeta (possibly read from file by do_input).
-   call updategrid(nlev,dt,zeta)
+   ! Update the grid based on true initial zeta (possibly read from file by do_input).
+   call updategrid(nlev,dt,zeta%value)
 
-   call init_turbulence(namlst,'gotmturb.nml',nlev)
+   call post_init_turbulence(nlev)
+
+#ifdef _CVMIX_
+   if (turb_method .eq. 100) then
+      call post_init_cvmix(nlev,depth,gravity,rho_0)
+   endif
+#endif
 
 !  initialise mean fields
-   s = sprof
-   t = tprof
-   u = uprof
-   v = vprof
+   s(1:nlev) = sprof%data(1:nlev)
+   t(1:nlev) = tprof%data(1:nlev)
+   u(1:nlev) = uprof%data(1:nlev)
+   v(1:nlev) = vprof%data(1:nlev)
 
-!  initialize KPP model
-   if (turb_method.eq.99) then
-      call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
-   endif
-
-   call init_air_sea(namlst,latitude,longitude)
-
+   call post_init_airsea(latitude,longitude)
+#if 0
+#ifdef _ICE_
+   call post_init_ice(ta,S(nlev))
+#endif
+#endif
    call init_diagnostics(nlev)
 
    call do_register_all_variables(latitude,longitude,nlev)
@@ -281,28 +557,32 @@
    !  initialize FABM module
 #ifdef _FABM_
 
-!  Initialize the GOTM-FABM coupler from its configuration file.
-   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml',dt,fm)
-
-!  Link relevant GOTM data to FABM.
-!  This sets pointers, rather than copying data, and therefore needs to be done only once.
    if (fabm_calc) then
+      call init_gotm_fabm(nlev,dt,fm)
+
+!     Link relevant GOTM data to FABM.
+!     This sets pointers, rather than copying data, and therefore needs to be done only once.
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth,depth)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_roughness_length,z0b)
-      if (calc_fluxes) then
+      if (fluxes_method /= 0) then
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
-         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp)
+         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp%value)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
       end if
-   end if
-   call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
-                          nuh,h,w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
-                          A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
-                          bio_albedo,bio_drag_scale,swr_abs_method,swr_abs(1:nlev))
+      call set_env_gotm_fabm(latitude,longitude,dt,w_adv%method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
+                             nuh,h,w,bioshade(1:nlev),I_0%value,cloud%value,taub,wind,precip%value,evap,z(1:nlev), &
+                             A_%value,g1_%value,g2_%value,yearday,secondsofday,SRelaxTau(1:nlev),sProf%data(1:nlev), &
+                             bio_albedo,bio_drag_scale,swr_abs_method,swr_abs(1:nlev))
 
-!  Initialize FABM input (data files with observations)
-   call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
+      ! Initialize FABM input (data files with observations)
+      call init_gotm_fabm_input(nlev,h(1:nlev))
+
+      ! Transfer optional dependencies to FABM coupler
+      if (fluxes_method /= 0) fabm_airp => airp%value
+      fabm_calendar_date => calendar_date
+      fabm_julianday => julianday
+   end if
 #endif
 
    ! Now that all inputs have been registered (FABM added some), update them all by reading from file.
@@ -317,12 +597,7 @@
    if (restart) then
       if (restart_offline) then
          LEVEL1 'read_restart'
-         if (.not. restart_allow_perpetual) then
-            call check_restart_time('time')
-         else
-            LEVEL2 'allow perpetual restarts'
-         end if
-         call read_restart(restart_allow_missing_variable)
+         call read_restart(restart_allow_perpetual, restart_allow_missing_variable)
          call friction(kappa,avmolu,tx,ty)
       end if
       if (restart_online) then
@@ -334,39 +609,45 @@
    call setup_restart()
 !   call init_output(title,nlev,latitude,longitude)
 
-   call do_air_sea(julianday,secondsofday)
+   call do_airsea(julianday,secondsofday)
+#ifdef _ICE_
+   call post_init_ice(ta,S(nlev))
+#endif
 
-!  Call stratification to make sure density has sensible value.
-!  This is needed to ensure the initial density is saved correctly, and also for FABM.
+   ! Call stratification to make sure density has sensible value.
+   ! This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
    call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
 
 #ifdef _FABM_
 !  Accept the current biogeochemical state and used it to compute derived diagnostics.
-!  This MUST be preceded with a call to stratification, in order to ensure FABM has a valid density.
-   if (fabm_calc) call start_gotm_fabm(nlev,fm)
+   if (fabm_calc) call start_gotm_fabm(nlev, fm)
 #endif
 
-   if (list_fields) call fm%list()
+   if (list_fields) then
+      call fm%list()
+      stop 0
+   end if
 
    LEVEL2 'done.'
    STDERR LINE
 
+   progress = (MaxN-MinN+1)/10
+
 #ifdef _PRINTSTATE_
    call print_state
 #endif
-
    return
 
 90 FATAL 'I could not open gotmrun.nml for reading'
-   stop 'init_gotm'
+   stop 'initialize_gotm'
 91 FATAL 'I could not read the "model_setup" namelist'
-   stop 'init_gotm'
+   stop 'initialize_gotm'
 92 FATAL 'I could not read the "station" namelist'
-   stop 'init_gotm'
+   stop 'initialize_gotm'
 93 FATAL 'I could not read the "time" namelist'
-   stop 'init_gotm'
-   end subroutine init_gotm
+   stop 'initialize_gotm'
+   end subroutine initialize_gotm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -375,7 +656,7 @@
 ! !IROUTINE: Manage global time--stepping \label{timeLoop}
 !
 ! !INTERFACE:
-   subroutine time_loop()
+   subroutine integrate_gotm()
 !
 ! !DESCRIPTION:
 ! This internal routine is the heart of the code. It contains
@@ -407,34 +688,28 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer(kind=timestepkind):: n,progress
-   integer                   :: i
+   integer(kind=timestepkind):: n
+   integer                   :: i=0
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
-   character(8)              :: d_
-   character(10)             :: t_
 
+   REALTYPE                  :: Qsw, Qflux
+   REALTYPE                  :: La, EFactor
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. restart) then
+   if (i == 0 .and. .not. restart) then
       LEVEL1 'saving initial conditions'
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
+      STDERR LINE
+      LEVEL1 'integrate_gotm'
+      STDERR LINE
    end if
-   STDERR LINE
-   LEVEL1 'time_loop'
-   progress = (MaxN-MinN+1)/10
-   i=0
    do n=MinN,MaxN
 
-      if(mod(n,progress) .eq. 0 .or. n .eq. MinN) then
-#if 0
-         call date_and_time(date=d_,time=t_)
-         LEVEL0 i,'%: ',t_(1:2),':',t_(3:4),':',t_(5:10)
-#else
+      if(mod(n,progress) .eq. 0 .or. i == 0) then
          LEVEL0 i,'%'
-#endif
          i = i +10
       end if
 
@@ -445,22 +720,55 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
+      call do_stokes_drift(nlev,z,zi,gravity,u10%value,v10%value)
 
 !     external forcing
-      if( calc_fluxes ) then
+      if(fluxes_method /= 0) then
+#ifdef _ICE_
+         if(ice_cover .eq. 0) then
+#endif
          call set_sst(T(nlev))
          call set_ssuv(u(nlev),v(nlev))
+#ifdef _ICE_
+         else
+            call set_sst(Tice_surface)
+            call set_ssuv(_ZERO_,_ZERO_)
+         end if
+#endif
       end if
-      call do_air_sea(julianday,secondsofday)
+      call do_airsea(julianday,secondsofday)
+
+#ifdef _ICE_
+      if(ice_cover .eq. 2) then
+         albedo = albedo_ice
+      end if
+#endif
+      I_0%value = I_0%value*(_ONE_-albedo-bio_albedo)
+
+#ifdef _ICE_
+      Qsw = I_0%value
+      call do_ice(h(nlev),dt,T(nlev),S(nlev),ta,precip%value,Qsw,surface_fluxes)
+#endif
 
 !     reset some quantities
-      tx = tx/rho_0
-      ty = ty/rho_0
+#ifdef _ICE_
+      if(ice_cover .gt. 0) then
+         tx = _ZERO_
+         ty = _ZERO_
+         heat%value = _ZERO_
+         I_0%value = transmissivity*I_0%value
+      else
+#endif
+         tx = tx/rho_0
+         ty = ty/rho_0
+#ifdef _ICE_
+      end if
+#endif
 
       call integrated_fluxes(dt)
 
 !     meanflow integration starts
-      call updategrid(nlev,dt,zeta)
+      call updategrid(nlev,dt,zeta%value)
       call wequation(nlev,dt)
       call coriolis(nlev,dt)
 
@@ -476,13 +784,13 @@
 #endif
 
 !     update temperature and salinity
-      if (s_prof_method .ne. 0) then
+      if (sprof%method .ne. 0) then
          call salinity(nlev,dt,cnpar,nus,gams)
       endif
 
-      if (t_prof_method .ne. 0) then
-         if (swr_abs_method .eq. 0) call light(nlev,I_0,rad,swr_abs)
-         call temperature(nlev,dt,cnpar,heat,nuh,gamh,swr_abs)
+      if (tprof%method .ne. 0) then
+         if (swr_abs_method .eq. 0) call light(nlev,I_0%value,rad,swr_abs)
+         call temperature(nlev,dt,cnpar,heat%value,nuh,gamh,swr_abs)
       endif
 
 !     update shear and stratification
@@ -500,7 +808,7 @@
       call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
 #endif
 
-!    compute turbulent mixing
+!     compute turbulent mixing
       select case (turb_method)
       case (0)
 !        do convective adjustment
@@ -508,12 +816,40 @@
                                    buoy_method,gravity,rho_0)
       case (99)
 !        update KPP model
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip+evap,    &
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
                      u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
                      tRad,bRad,cori)
+
+#ifdef _CVMIX_
+      case (100)
+
+!        update Langmuir number
+         call langmuir_number(nlev,zi,Hs_%value,u_taus,zi(nlev)-zsbl,u10%value,v10%value)
+
+!        use KPP via CVMix
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat%value,precip%value+evap,    &
+                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+         select case(kpp_langmuir_method)
+         case (0)
+            efactor = _ONE_
+            La = _ONE_/SMALL
+         case (1)
+            efactor = EFactor_LWF16
+            La = La_SL
+         case (2)
+            efactor = EFactor_LWF16
+            La = La_SL
+         case (3)
+            efactor = EFactor_RWH16
+            La = La_SLP_RWH16
+         end select
+         call do_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,              &
+                       u_taus,tFlux,btFlux,sFlux,bsFlux,                &
+                       tRad,bRad,cori,efactor,La)
+#endif
 
       case default
 !        update one-point models
@@ -533,7 +869,7 @@
    STDERR LINE
 
    return
-   end subroutine time_loop
+   end subroutine integrate_gotm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -542,7 +878,7 @@
 ! !IROUTINE: The run is over --- now clean up.
 !
 ! !INTERFACE:
-   subroutine clean_up()
+   subroutine finalize_gotm()
 !
 ! !DESCRIPTION:
 ! This function is just a wrapper for the external routine
@@ -562,13 +898,21 @@
    call print_state
 #endif
 
-   LEVEL1 'clean_up'
+   LEVEL1 'finalize_gotm'
 
-   call clean_air_sea()
+   call clean_airsea()
+
+#ifdef _ICE_
+   call clean_ice()
+#endif
 
    call clean_meanflow()
 
    if (turb_method.eq.99) call clean_kpp()
+
+#ifdef _CVMIX_
+   if (turb_method .eq. 100) call clean_cvmix()
+#endif
 
    call clean_turbulence()
 
@@ -587,13 +931,16 @@
    call close_input()
 
    call output_manager_clean()
+   if (associated(output_manager_host)) deallocate(output_manager_host)
 
    call clean_diagnostics()
 
    call fm%finalize()
 
+   call settings_store%finalize()
+
    return
-   end subroutine clean_up
+   end subroutine finalize_gotm
 !EOC
 
 #ifdef _PRINTSTATE_
@@ -660,56 +1007,69 @@
       use output_manager_core
       use time, only: jul2,secs2
 
-      class (type_netcdf_file),     pointer :: file
-      class (type_output_category), pointer :: category
+      class (type_netcdf_file), pointer :: file
+      type (type_output_item),  pointer :: item
 
       allocate(file)
       file%path = 'restart'
+      file%postfix = output_id
       file%time_unit = time_unit_day
       file%time_step = 1
       file%first_julian = jul2
       file%first_seconds = secs2
       call output_manager_add_file(fm,file)
 
-      allocate(category)
-      category%name = 'state'
-      category%output_level = output_level_debug
-      category%settings => file%create_settings()
-      select type (settings=>category%settings)
-         class is (type_netcdf_variable_settings)
-            settings%xtype = NF90_DOUBLE
+      allocate(item)
+      item%name = 'state'
+      item%output_level = output_level_debug
+      item%settings => file%create_settings()
+      select type (settings=>item%settings)
+      class is (type_netcdf_variable_settings)
+         settings%xtype = NF90_DOUBLE
       end select
-      call file%append_category(category)
+      call file%append_item(item)
 #endif
    end subroutine setup_restart
 
-   subroutine read_restart(restart_allow_missing_variable)
-      logical                               :: restart_allow_missing_variable
+   subroutine read_restart(restart_allow_perpetual, restart_allow_missing_variable)
+      logical, intent(in) :: restart_allow_perpetual
+      logical, intent(in) :: restart_allow_missing_variable
+
 #ifdef NETCDF_FMT
       type (type_field_set)                 :: field_set
       class (type_field_set_member),pointer :: member
+
+      call open_restart(trim(restart_file))
+
+      if (.not. restart_allow_perpetual) then
+         call check_restart_time('time')
+      else
+         LEVEL2 'allow perpetual restarts'
+      end if
 
       field_set = fm%get_state()
       member => field_set%first
       do while (associated(member))
          ! This field is part of the model state. Its name is member%field%name.
-         if (associated(member%field%data_0d)) then
-            ! Depth-independent variable with data pointed to by child%field%data_0d
-            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data_0d.
-            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data_0d)
-         elseif (associated(member%field%data_1d)) then
-            ! Depth-dependent variable with data pointed to by child%field%data_1d
-            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data_1d.
-            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data_1d)
+         if (associated(member%field%data%p0d)) then
+            ! Depth-independent variable with data pointed to by member%field%data%p0d
+            ! Here you would read the relevant scalar (name: member%field%name) from the NetCDF file and assign it to member%field%data%p0d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_0d=member%field%data%p0d)
+         elseif (associated(member%field%data%p1d)) then
+            ! Depth-dependent variable with data pointed to by member%field%data%p1d
+            ! Here you would read the relevant 1D variable (name: member%field%name) from the NetCDF file and assign it to member%field%data%p1d.
+            call read_restart_data(trim(member%field%name),restart_allow_missing_variable,data_1d=member%field%data%p1d)
          else
             stop 'no data assigned to state field'
          end if
          member => member%next
       end do
       call field_set%finalize()
+
+      call close_restart()
 #else
-      FATAL 'GOTM has been compiled without NetCDF support; restart reading is not supported'
-      stop 'read_restart'
+      FATAL 'Restart reading requires NetCDF support. Please build with GOTM_USE_NetCDF=ON'
+      stop 1
 #endif
    end subroutine read_restart
 !-----------------------------------------------------------------------

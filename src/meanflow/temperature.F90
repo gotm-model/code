@@ -67,8 +67,12 @@
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: h,u,v,w,T,S,avh
+#ifndef _ICE_
+   use meanflow,     only: Hice
+#endif
+   use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
-   use observations, only: w_adv_discr,w_adv_method
+   use observations, only: w_adv_discr,w_adv
    use observations, only: tprof,TRelaxTau
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
@@ -122,12 +126,18 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
+#ifndef _ICE_
 ! simple sea ice model: surface heat flux switched off for sst < freezing temp
    if (T(nlev) .le. -0.0575*S(nlev)) then
        DiffTup    = max(_ZERO_,heat/(rho_0*cp))
+       Hice = _ONE_
    else
        DiffTup    = heat/(rho_0*cp)
+       Hice = _ZERO_
    end if
+#else
+   DiffTup    = heat/(rho_0*cp)
+#endif
    DiffTdw        = _ZERO_
 
    AdvBcup        = oneSided
@@ -160,19 +170,19 @@
 !  ... and from lateral advection
    if (t_adv) then
       do i=1,nlev
-         Qsour(i) = Qsour(i) - u(i)*dtdx(i) - v(i)*dtdy(i)
+         Qsour(i) = Qsour(i) - u(i)*dtdx%data(i) - v(i)*dtdy%data(i)
       end do
    end if
 
 !  do advection step
-   if (w_adv_method.ne.0) then
+   if (w_adv%method.ne.0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
    end if
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
+                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf%data,T)
    return
    end subroutine temperature
 !EOC

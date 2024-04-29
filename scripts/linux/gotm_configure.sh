@@ -1,8 +1,7 @@
 #!/bin/sh
 
 # if not set use the suggested source code installation directories
-GOTM_BASE=${GOTM_BASE:=~/GOTM/code}
-FABM_BASE=${FABM_BASE:=~/FABM/code}
+GOTM_BASE=${GOTM_BASE:=~/source/repos/GOTM/code}
 
 # default Fortran compiler is gfortran - overide by setting compuiler like:
 # export compiler=ifort
@@ -19,10 +18,9 @@ install_prefix=${install_prefix:=~/local/gotm/$compiler}
 # ready to configure
 mkdir -p $compiler
 cd $compiler
-cmake $GOTM_BASE/src \
+cmake $GOTM_BASE \
       -DGOTM_EMBED_VERSION=on \
       -DGOTM_USE_FABM=on \
-      -DFABM_BASE=$FABM_BASE/ \
       -DCMAKE_Fortran_COMPILER=$compiler \
       -DCMAKE_INSTALL_PREFIX=$install_prefix
 cd ..

@@ -9,7 +9,7 @@
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the solar zenith angle as being used both
-!  in albedo_water() and short_wave_radiation(). The result is in degrees.
+!  in albedo_water() and shortwave_radiation(). The result is in degrees.
 !
 ! !USES:
    IMPLICIT NONE

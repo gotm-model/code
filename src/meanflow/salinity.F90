@@ -64,9 +64,9 @@
    use meanflow,     only: avmols
    use meanflow,     only: h,u,v,w,S,avh
    use observations, only: dsdx,dsdy,s_adv
-   use observations, only: w_adv_discr,w_adv_method
+   use observations, only: w_adv_discr,w_adv
    use observations, only: sprof,SRelaxTau
-   use airsea,       only: precip,evap
+   use airsea_driver,only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -111,7 +111,7 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*(precip+evap)
+   DiffSup        = -S(nlev)*(precip%value+evap)
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided
@@ -138,20 +138,20 @@
 !  ... and from lateral advection
    if (s_adv) then
       do i=1,nlev
-         Qsour(i) = Qsour(i) - u(i)*dsdx(i) - v(i)*dsdy(i)
+         Qsour(i) = Qsour(i) - u(i)*dsdx%data(i) - v(i)*dsdy%data(i)
       end do
    end if
 
 
 !  do advection step
-   if (w_adv_method .ne. 0) then
+   if (w_adv%method .ne. 0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvSup,AdvSdw,w_adv_discr,adv_mode,S)
    end if
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
+                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf%data,S)
 
    return
    end subroutine salinity

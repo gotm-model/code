@@ -54,7 +54,7 @@
    use meanflow,      only: h,w,buoy,T,avh,init_buoyancy
    use meanflow,      only: grid_method
    use observations,  only: b_obs_NN,b_obs_surf,b_obs_sbf
-   use observations,  only: w_adv_discr,w_adv_method
+   use observations,  only: w_adv_discr,w_adv
    use util,          only: Dirichlet,Neumann
    use util,          only: oneSided,zeroDivergence
 !
@@ -137,7 +137,7 @@
    BRelaxTau = 1.e15
 
 !  do advection step
-   if (w_adv_method .ne. 0) then
+   if (w_adv%method .ne. 0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                       AdvBup,AdvBdw,w_adv_discr,adv_mode,buoy)
    end if

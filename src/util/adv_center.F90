@@ -210,7 +210,6 @@
 !
 ! !LOCAL VARIABLES:
    integer                              :: i,k,it
-   REALTYPE                             :: x,r,Phi,limit
    REALTYPE                             :: Yu,Yc,Yd
    REALTYPE                             :: c,cmax
    REALTYPE                             :: cu(0:N)
@@ -269,13 +268,6 @@
             Yc=Y(k  )                                 ! central value
             Yd=Y(k+1)                                 ! downstream value
 
-!           compute slope ration
-            if (abs(Yd-Yc) .gt. 1e-10) then
-               r=(Yc-Yu)/(Yd-Yc)
-            else
-               r=(Yc-Yu)*1.e10
-            end if
-
 !        negative speed
          else
 
@@ -290,45 +282,11 @@
             Yc=Y(k+1)                                 ! central value
             Yd=Y(k  )                                 ! downstream value
 
-
-!           compute slope ratio
-            if (abs(Yc-Yd) .gt. 1e-10) then
-               r=(Yu-Yc)/(Yc-Yd)
-            else
-               r=(Yu-Yc)*1.e10
-            end if
-
          end if
 
-!        compute the flux-factor phi
-         x    =  one6th*(1.-2.0*c)
-         Phi  =  (0.5+x)+(0.5-x)*r
-
-!        limit the flux according to different suggestions
-         select case (method)
-            case (UPSTREAM)
-               limit=_ZERO_
-            case (P1)
-               FATAL "P1 advection method not yet implemented, choose other method"
-               stop  "adv_center.F90"
-            case ((P2),(P2_PDM))
-               if (method.eq.P2) then
-                  limit=Phi
-               else
-                  limit=max(_ZERO_,min(Phi,2./(1.-c),2.*r/(c+1.e-10)))
-               end if
-            case (Superbee)
-               limit=max(_ZERO_, min(_ONE_, 2.0*r), min(r,2.*_ONE_) )
-            case (MUSCL)
-               limit=max(_ZERO_,min(2.*_ONE_,2.0*r,0.5*(1.0+r)))
-            case default
-               LEVEL3 method
-               FATAL 'unkown advection method in adv_center()'
-               stop
-          end select
-
 !        compute the limited flux
-         cu(k)=ww(k)*(Yc+0.5*limit*(1-c)*(Yd-Yc))
+         Yc = adv_reconstruct(method,c,Yu,Yc,Yd)
+         cu(k) = ww(k) * Yc
 
       end do
 
@@ -393,7 +351,101 @@
    write(*,*)
 #endif
 
-   return
+   contains
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: adv_reconstruct -
+!
+! !INTERFACE:
+   REALTYPE function adv_reconstruct(scheme,cfl,fuu,fu,fd)
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,intent(in)  :: scheme
+   REALTYPE,intent(in) :: cfl,fuu,fu,fd
+!
+! !DEFINED PARAMETERS:
+#define _TWO_ 2.0d0
+   REALTYPE,parameter :: one3rd=_ONE_/3
+   REALTYPE,parameter :: one6th=_ONE_/6
+!
+! !REVISION HISTORY:
+!  Original author(s): Knut Klingbeil
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   REALTYPE           :: ratio,limiter,x,deltaf,deltafu
+!
+!-----------------------------------------------------------------------
+!BOC
+#ifdef DEBUG
+   integer, save :: Ncall = 0
+   Ncall = Ncall+1
+   write(*,*) 'adv_reconstruct # ',Ncall
+#endif
+
+   deltaf  = fd - fu
+   deltafu = fu - fuu
+
+   if (deltaf*deltafu .gt. _ZERO_) then
+
+      ratio = deltafu / deltaf   ! slope ratio
+
+      select case (scheme)
+         case (SUPERBEE)
+            limiter = max(min(_TWO_*ratio,_ONE_),min(ratio,_TWO_))
+         case (P2_PDM)
+            x = one6th*(_ONE_-_TWO_*cfl)
+            limiter = (_HALF_+x) + (_HALF_-x)*ratio
+            limiter = min(_TWO_*ratio/(cfl+1.d-10),limiter,_TWO_/(_ONE_-cfl))
+         case (SPLMAX13)
+            limiter = min(_TWO_*ratio,one3rd*max(_ONE_+_TWO_*ratio,_TWO_+ratio),_TWO_)
+         case (MUSCL)
+            limiter = min(_TWO_*ratio,_HALF_*(_ONE_+ratio),_TWO_)
+         case (P2)
+            x = one6th*(_ONE_-_TWO_*cfl)
+            limiter = (_HALF_+x) + (_HALF_-x)*ratio
+         case (CENTRAL)
+            limiter = _ONE_ / ( _ONE_ -cfl )
+         case default
+!           UPSTREAM
+            limiter = _ZERO_
+      end select
+
+      adv_reconstruct = fu + _HALF_*limiter*(_ONE_-cfl)*deltaf
+
+   else
+
+      select case (scheme)
+         case (P2)
+            x = one6th*(_ONE_-_TWO_*cfl)
+!           limiter formulation invalid for deltaf=0
+            adv_reconstruct = &
+                        fu + _HALF_*(_ONE_-cfl)*(  (_HALF_+x)*deltaf   &
+                                                 + (_HALF_-x)*deltafu )
+         case (CENTRAL)
+            adv_reconstruct = _HALF_ * ( fu + fd )
+         case default
+!           UPSTREAM
+            adv_reconstruct = fu
+      end select
+
+   end if
+
+#ifdef DEBUG
+   write(*,*) 'Leaving adv_reconstruct()'
+   write(*,*)
+#endif
+
+   end function adv_reconstruct
+!EOC
+!-----------------------------------------------------------------------
+
    end subroutine adv_center
 !EOC
 

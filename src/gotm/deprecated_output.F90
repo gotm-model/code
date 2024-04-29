@@ -2,7 +2,7 @@
    subroutine deprecated_output(namlst,title,dt,list_fields)
 
    use register_all_variables, only: fm
-   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_category
+   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
    use output_manager
    use netcdf_output
    use text_output
@@ -15,7 +15,7 @@
    logical, intent(inout) :: list_fields
 
    class (type_output_manager_file), pointer :: outfile
-   class (type_output_category),     pointer :: output_category
+   type (type_output_item),          pointer :: output_item
 
    integer                             :: out_fmt
    character(len=PATH_MAX)             :: out_dir
@@ -27,10 +27,14 @@
    REALTYPE                            :: diff_k
    REALTYPE                            :: Ri_crit
    logical                             :: rad_corr
+   character(len=*), parameter         :: fname='gotmrun.nml'
+   logical                             :: file_exists=.false.
 
    namelist /output/      list_fields, &
                           out_fmt,out_dir,out_fn,nfirst,nsave,sync_out, &
                           diagnostics,mld_method,diff_k,Ri_crit,rad_corr
+
+   LEVEL1 'deprecated_output'
 
    out_fmt     = ASCII
    out_dir     = '.'
@@ -44,7 +48,13 @@
    Ri_crit     = 0.5
    rad_corr    = .true.
 
-   read(namlst,nml=output,err=94)
+   inquire(file=fname,exist=file_exists)
+   if (file_exists) then
+      open(namlst,file=fname,action='read',status='old',err=90)
+      read(namlst,nml=output,err=94)
+   else
+      LEVEL2 'use default output parameters'
+   end if
 
 #ifndef NETCDF_FMT
    if (out_fmt == NETCDF) then
@@ -74,11 +84,14 @@
    outfile%time_unit = time_unit_second
    outfile%time_step = dt*nsave
    call output_manager_add_file(fm,outfile)
-   allocate(output_category)
-   call outfile%append_category(output_category)
+   allocate(output_item)
+   call outfile%append_item(output_item)
 
+   LEVEL2 'done'
    return
 
+90 FATAL 'I could not open ', trim(fname)
+   stop 'deprecated_output'
 94 FATAL 'I could not read the "output" namelist'
    stop 'deprecated_output'
 

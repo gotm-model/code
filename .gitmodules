@@ -1,0 +1,14 @@
+[submodule "extern/fabm"]
+	path = extern/fabm
+	url = https://github.com/fabm-model/fabm
+#	url = ../../fabm-model/fabm
+[submodule "extern/flexout"]
+	path = extern/flexout
+	url = https://github.com/BoldingBruggeman/flexout
+#	url = ../../BoldingBruggeman/flexout
+[submodule "extern/stim"]
+	path = extern/stim
+	url = https://github.com/BoldingBruggeman/stim
+[submodule "extern/CVMix-src"]
+	path = extern/CVMix-src
+	url = https://github.com/CVMix/CVMix-src.git

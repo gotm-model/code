@@ -16,8 +16,12 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_input, do_input, close_input, register_input_0d, register_input_1d
+   public init_input, do_input, close_input, register_input
    public read_obs
+   public type_input, type_scalar_input, type_profile_input
+   public type_scalar_input_list
+
+   integer, parameter, public :: method_unsupported = huge(1)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -29,20 +33,55 @@
 !  PRIVATE TYPES
    integer,parameter,public :: maxpathlen=256
 
-!  Information on an observed variable
-   type type_1d_variable
-      integer                            :: index = -1     ! Column index of variable in input file
-      REALTYPE, pointer,dimension(:)     :: data => null() ! Pointer to profile data (depth-dependent variable)
-      type (type_1d_variable),pointer    :: next => null() ! Next variable in current input file
-      REALTYPE                           :: scale_factor = _ONE_
+   type type_input
+      character(len=:), allocatable :: name
+      integer                       :: method = 0     ! 0: constant, 2: from file
+      REALTYPE                      :: scale_factor = _ONE_
+      character(len=maxpathlen)     :: path = ''
+      integer                       :: index = 1     ! Column index of variable in input file
+      REALTYPE                      :: add_offset = _ZERO_
+      REALTYPE                      :: constant_value = _ZERO_
+      REALTYPE                      :: minimum = -huge(_ZERO_)
+      REALTYPE                      :: maximum = huge(_ZERO_)
+
+      integer                       :: method_off = method_unsupported
+      integer                       :: method_constant = 0
+      integer                       :: method_file = 2
+   contains
+      procedure :: configure
    end type
 
-   type type_0d_variable
-      integer                            :: index = -1     ! Column index of variable in input file
-      REALTYPE,pointer                   :: data => null() ! Pointer to scalar data (depth-independent variable)
-      type (type_0d_variable),pointer    :: next => null() ! Next variable in current input file
-      REALTYPE                           :: scale_factor = _ONE_
-      REALTYPE                           :: add_offset = _ZERO_
+!  Information on an observed variable
+   type, extends(type_input) :: type_profile_input
+      REALTYPE, allocatable, dimension(:) :: data
+   end type
+
+   type, extends(type_input) :: type_scalar_input
+      REALTYPE :: value = _ZERO_
+   end type
+
+   type type_scalar_input_node
+      type (type_scalar_input),      pointer :: p => null()
+      type (type_scalar_input_node), pointer :: next => null()
+   end type
+
+   type type_scalar_input_list
+      type (type_scalar_input_node), pointer :: first => null()
+   contains
+      procedure :: add      => scalar_input_list_add
+      procedure :: finalize => scalar_input_list_finalize
+   end type
+
+   type type_profile_input_node
+      type (type_profile_input),      pointer :: p => null()
+      type (type_profile_input_node), pointer :: next => null()
+   end type
+
+   type type_profile_input_list
+      type (type_profile_input_node), pointer :: first => null()
+   contains
+      procedure :: add      => profile_input_list_add
+      procedure :: finalize => profile_input_list_finalize
    end type
 
 !  Information on file with observed profiles
@@ -57,8 +96,11 @@
       integer                               :: lines = 0
       integer                               :: nprofiles = 0
       logical                               :: one_profile = .false.
-      type (type_1d_variable), pointer      :: first_variable => null()
+      type (type_profile_input_list)        :: variables
       type (type_profile_file),pointer      :: next => null()
+   contains
+      procedure :: initialize => profile_file_initialize
+      procedure :: update => profile_file_update
    end type
 
 !  Information on file with observed scalars (time series)
@@ -71,24 +113,52 @@
       integer                             :: secs2 = 0
       integer                             :: unit = -1
       integer                             :: lines = 0
-      type (type_0d_variable),    pointer :: first_variable => null()
+      integer                             :: n = 0
+      type (type_scalar_input_list)       :: variables
       type (type_timeseries_file),pointer :: next => null()
+   contains
+      procedure :: initialize => timeseries_file_initialize
+      procedure :: update => timeseries_file_update
    end type
-
-!  PRIVATE DATA MEMBERS
-!  Pointers to first files with observed profiles and observed scalars.
-   type (type_profile_file),    pointer :: first_profile_file
-   type (type_timeseries_file), pointer :: first_timeseries_file
-
-!  Unit to use for next data file.
-   integer :: next_unit_no
 !
 !  PRIVATE PARAMETERS
    integer,parameter :: first_unit_no = 555
 
-   integer :: nlev
+   type (type_scalar_input_list),  save :: scalar_inputs
+   type (type_profile_input_list), save :: profile_inputs
+
+!  PRIVATE DATA MEMBERS
+!  Pointers to first files with observed profiles and observed scalars.
+   type (type_profile_file),    pointer, save :: first_profile_file => null()
+   type (type_timeseries_file), pointer, save :: first_timeseries_file => null()
+
+!  Unit to use for next data file.
+   integer, save :: next_unit_no = first_unit_no
+
+   integer, save :: nlev = -1
+
+   interface register_input
+      module procedure register_scalar_input
+      module procedure register_profile_input
+   end interface
 
    contains
+
+   subroutine configure(self, method, path, index, constant_value, scale_factor, add_offset, name)
+      class (type_input),         intent(inout) :: self
+      integer,          optional, intent(in)    :: method, index
+      character(len=*), optional, intent(in)    :: path
+      REALTYPE,         optional, intent(in)    :: constant_value, scale_factor, add_offset
+      character(len=*), optional, intent(in)    :: name
+
+      if (present(method)) self%method = method
+      if (present(path)) self%path = path
+      if (present(index) .and. self%method == self%method_file) self%index = index
+      if (present(constant_value)) self%constant_value = constant_value
+      if (present(scale_factor)) self%scale_factor = scale_factor
+      if (present(add_offset)) self%add_offset = add_offset
+      if (present(name)) self%name = name
+   end subroutine
 
 !-----------------------------------------------------------------------
 !BOP
@@ -117,11 +187,8 @@
    else
       nlev = -1
    end if
-   next_unit_no = first_unit_no
-   nullify(first_profile_file)
-   nullify(first_timeseries_file)
 
-   LEVEL1 'done'
+   LEVEL2 'done'
 
    end subroutine init_input
 !EOC
@@ -132,15 +199,12 @@
 ! !IROUTINE: Register a 1d input variable.
 !
 ! !INTERFACE:
-   subroutine register_input_1d(path,icolumn,data,name,scale_factor)
+   subroutine register_profile_input(input)
 !
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
-   character(len=*), intent(in) :: path,name
-   integer,          intent(in) :: icolumn
-   REALTYPE,target              :: data(:)
-   REALTYPE,optional,intent(in) :: scale_factor
+   type (type_profile_input), target, intent(inout) :: input
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -148,58 +212,55 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   type (type_profile_file),pointer :: file
-   type (type_1d_variable), pointer :: variable
+   type (type_profile_file), pointer :: file
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (nlev==-1) call fatal_error('input::register_input_1d', 'input module has been initialized without depth information; &
-         &depth-explicit inputs can therefore not be registered.')
+   if (.not.allocated(input%name)) &
+      call fatal_error('input::register_profile_input', 'input has not had a name assigned')
 
-   if (path=='') call fatal_error('input::register_input_1d', 'Empty file path specified to read variable '//trim(name)//' from.')
+   if (nlev==-1) call fatal_error('input::register_profile_input', 'input module has not been initialized with depth information; &
+      &depth-explicit inputs can therefore not be registered.')
 
-!  Find a file object for the specified file path; create one if it does exist yet.
-   if (.not.associated(first_profile_file)) then
-      allocate(first_profile_file)
-      file => first_profile_file
-   else
-      file => first_profile_file
-      do while (associated(file))
-         if (file%path==path.and.file%unit==-1) exit
-         file => file%next
-      end do
-      if (.not.associated(file)) then
+   call profile_inputs%add(input)
+
+   allocate(input%data(0:nlev))
+   if (input%method == input%method_constant) then
+      LEVEL2 'Using constant ' // input%name // '= ', input%constant_value
+      input%data = input%constant_value
+   elseif (input%method == input%method_file) then
+      if (input%path=='') call fatal_error('input::register_profile_input', 'Empty file path specified to read variable '//input%name//' from.')
+
+      LEVEL2 'Reading ' // input%name // ' from:'
+      LEVEL3 trim(input%path)
+      if (input%scale_factor /= 1) LEVEL3 'applying scale factor = ', input%scale_factor
+
+      ! Find a file object for the specified file path; create one if it does exist yet.
+      if (.not.associated(first_profile_file)) then
+         allocate(first_profile_file)
          file => first_profile_file
-         do while (associated(file%next))
+      else
+         file => first_profile_file
+         do while (associated(file))
+            if (file%path==input%path.and.file%unit==-1) exit
             file => file%next
          end do
-         allocate(file%next)
-         file => file%next
+         if (.not.associated(file)) then
+            file => first_profile_file
+            do while (associated(file%next))
+               file => file%next
+            end do
+            allocate(file%next)
+            file => file%next
+         end if
       end if
-   end if
-   file%path = path
-
-!  Create a variable object for the specified column index
-   if (associated(file%first_variable)) then
-!     Append a new variable object to the linked list.
-      variable => file%first_variable
-      do while (associated(variable%next))
-         variable => variable%next
-      end do
-      allocate(variable%next)
-      variable => variable%next
+      file%path = input%path
+      call file%variables%add(input)
    else
-!     This file does not have any associated variables; create the first.
-      allocate(file%first_variable)
-      variable => file%first_variable
+      input%data = 0
    end if
 
-   variable%index = icolumn
-   variable%data => data
-   variable%data = _ZERO_
-   if (present(scale_factor)) variable%scale_factor = scale_factor
-
-   end subroutine register_input_1d
+   end subroutine register_profile_input
 !EOC
 
 !-----------------------------------------------------------------------
@@ -208,15 +269,12 @@
 ! !IROUTINE: Register a 0d input variable.
 !
 ! !INTERFACE:
-   subroutine register_input_0d(path,icolumn,data,name,scale_factor,add_offset)
+   subroutine register_scalar_input(input)
 !
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
-   character(len=*), intent(in) :: path,name
-   integer,          intent(in) :: icolumn
-   REALTYPE,target              :: data
-   REALTYPE,optional,intent(in) :: scale_factor,add_offset
+   type (type_scalar_input), target, intent(inout) :: input
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -224,57 +282,121 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   type (type_timeseries_file),pointer :: file
-   type (type_0d_variable),    pointer :: variable
+   type (type_timeseries_file), pointer :: file
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (path=='') call fatal_error('input::register_input_0d', 'Empty file path specified to read variable '//trim(name)//' from.')
+   if (.not.allocated(input%name)) &
+      call fatal_error('input::register_scalar_input', 'input has not had a name assigned')
 
-!  Find a file object for the specified file path; create one if it does exist yet.
-   if (.not.associated(first_timeseries_file)) then
-      allocate(first_timeseries_file)
-      file => first_timeseries_file
-   else
-      file => first_timeseries_file
-      do while (associated(file))
-         if (file%path==path.and.file%unit==-1) exit
-         file => file%next
-      end do
-      if (.not.associated(file)) then
+   call scalar_inputs%add(input)
+
+   if (input%method == input%method_constant) then
+      LEVEL2 'Using constant ' // input%name // '= ', input%constant_value
+      input%value = input%constant_value
+   elseif (input%method == input%method_file) then
+      if (input%path=='') call fatal_error('input::register_scalar_input', 'Empty file path specified to read variable '//input%name//' from.')
+
+      LEVEL2 'Reading ' // input%name // ' from:'
+      LEVEL3 trim(input%path)
+      if (input%scale_factor /= 1) LEVEL3 'applying scale factor = ', input%scale_factor
+
+      ! Find a file object for the specified file path; create one if it does exist yet.
+      if (.not.associated(first_timeseries_file)) then
+         allocate(first_timeseries_file)
          file => first_timeseries_file
-         do while (associated(file%next))
+      else
+         file => first_timeseries_file
+         do while (associated(file))
+            if (file%path==input%path.and.file%unit==-1) exit
             file => file%next
          end do
-         allocate(file%next)
-         file => file%next
+         if (.not.associated(file)) then
+            file => first_timeseries_file
+            do while (associated(file%next))
+               file => file%next
+            end do
+            allocate(file%next)
+            file => file%next
+         end if
       end if
-   end if
-   file%path = path
-
-!  Create a variable object for the specified column index
-   if (associated(file%first_variable)) then
-!     Append a new variable object to the linked list.
-      variable => file%first_variable
-      do while (associated(variable%next))
-         variable => variable%next
-      end do
-      allocate(variable%next)
-      variable => variable%next
+      file%path = input%path
+      call file%variables%add(input)
    else
-!     This file does not have any associated variables; create the first.
-      allocate(file%first_variable)
-      variable => file%first_variable
+      input%value = 0
    end if
 
-   variable%index = icolumn
-   variable%data => data
-   variable%data = _ZERO_
-   if (present(scale_factor)) variable%scale_factor = scale_factor
-   if (present(add_offset)) variable%add_offset = add_offset
-
-   end subroutine register_input_0d
+   end subroutine register_scalar_input
 !EOC
+
+   subroutine scalar_input_list_add(self, input)
+      class(type_scalar_input_list), intent(inout) :: self
+      type(type_scalar_input), target              :: input
+
+      type(type_scalar_input_node), pointer :: node
+
+      if (associated(self%first)) then
+         node => self%first
+         do while (associated(node%next))
+            node => node%next
+         end do
+         allocate(node%next)
+         node => node%next
+      else
+         allocate(self%first)
+         node => self%first
+      end if
+      node%p => input
+   end subroutine
+   
+   subroutine profile_input_list_add(self, input)
+      class(type_profile_input_list), intent(inout) :: self
+      type(type_profile_input), target              :: input
+
+      type(type_profile_input_node), pointer :: node
+
+      if (associated(self%first)) then
+         node => self%first
+         do while (associated(node%next))
+            node => node%next
+         end do
+         allocate(node%next)
+         node => node%next
+      else
+         allocate(self%first)
+         node => self%first
+      end if
+      node%p => input
+   end subroutine
+
+   subroutine scalar_input_list_finalize(self)
+      class(type_scalar_input_list), intent(inout) :: self
+
+      type(type_scalar_input_node), pointer :: node, next_node
+
+      node => self%first
+      do while (associated(node))
+         next_node => node%next
+         deallocate(node)
+         node => next_node
+      end do
+      self%first => null()
+   end subroutine
+
+   subroutine profile_input_list_finalize(self)
+      class(type_profile_input_list), intent(inout) :: self
+
+      type(type_profile_input_node), pointer :: node, next_node
+
+      node => self%first
+      do while (associated(node))
+         next_node => node%next
+         if (allocated(node%p%data)) deallocate(node%p%data)
+         deallocate(node)
+         node => next_node
+      end do
+      self%first => null()
+   end subroutine
 
 !-----------------------------------------------------------------------
 !BOP
@@ -310,14 +432,14 @@
 !  Loop over files with observed profiles.
    profile_file => first_profile_file
    do while (associated(profile_file))
-      call get_observed_profiles(profile_file,jul,secs,nlev,z)
+      call profile_file%update(jul,secs,nlev,z)
       profile_file => profile_file%next
    end do
 
 !  Loop over files with observed scalars.
    timeseries_file => first_timeseries_file
    do while (associated(timeseries_file))
-      call get_observed_scalars(timeseries_file,jul,secs)
+      call timeseries_file%update(jul,secs)
       timeseries_file => timeseries_file%next
    end do
 
@@ -330,7 +452,7 @@
 ! !IROUTINE: Initialize a single input file with depth-explicit (1D) variables
 !
 ! !INTERFACE:
-   subroutine initialize_profile_file(info,nlev)
+   subroutine profile_file_initialize(self, nlev)
 !
 ! !DESCRIPTION:
 !  Initialize a single file with observed profiles.
@@ -338,8 +460,8 @@
 ! !USES:
 !
 ! !INPUT PARAMETERS:
-   type (type_profile_file),intent(inout) :: info
-   integer,                 intent(in)    :: nlev
+   class (type_profile_file), intent(inout) :: self
+   integer,                   intent(in)    :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -347,7 +469,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   type (type_1d_variable),pointer :: curvar
+   type (type_profile_input_node), pointer :: curvar
    integer :: nvar
    integer :: rc
    integer :: ios
@@ -355,34 +477,34 @@
 !-----------------------------------------------------------------------
 !BOC
 !  Open the input file.
-   open(next_unit_no,file=info%path,status='old',action='read',iostat=ios)
-   if (ios /= 0) call fatal_error('input::initialize_profile_file', 'Unable to open "'//trim(info%path)//'" for reading')
+   open(next_unit_no,file=self%path,status='old',action='read',iostat=ios)
+   if (ios /= 0) call fatal_error('input::profile_file_initialize', 'Unable to open "'//trim(self%path)//'" for reading')
 
 !  Opening was successful - store the file unit, and increment the next unit with 1.
-   info%unit = next_unit_no
+   self%unit = next_unit_no
    next_unit_no = next_unit_no + 1
 
 !  Determine the maximum number of columns that we need to read.
    nvar = 0
-   curvar => info%first_variable
+   curvar => self%variables%first
    do while (associated(curvar))
-      nvar = max(nvar,curvar%index)
+      nvar = max(nvar, curvar%p%index)
       curvar => curvar%next
    end do
 
-   allocate(info%prof1(0:nlev,nvar),stat=rc)
-   if (rc /= 0) stop 'input::initialize_profile_file: Error allocating memory (prof1)'
-   info%prof1 = _ZERO_
+   allocate(self%prof1(0:nlev,nvar),stat=rc)
+   if (rc /= 0) stop 'input::profile_file_initialize: Error allocating memory (prof1)'
+   self%prof1 = 0
 
-   allocate(info%prof2(0:nlev,nvar),stat=rc)
-   if (rc /= 0) stop 'input::initialize_profile_file: Error allocating memory (prof2)'
-   info%prof2 = _ZERO_
+   allocate(self%prof2(0:nlev,nvar),stat=rc)
+   if (rc /= 0) stop 'input::profile_file_initialize: Error allocating memory (prof2)'
+   self%prof2 = 0
 
-   allocate(info%alpha(0:nlev,nvar),stat=rc)
-   if (rc /= 0) stop 'input::initialize_profile_file: Error allocating memory (alpha)'
-   info%alpha = _ZERO_
+   allocate(self%alpha(0:nlev,nvar),stat=rc)
+   if (rc /= 0) stop 'input::profile_file_initialize: Error allocating memory (alpha)'
+   self%alpha = 0
 
-   end subroutine initialize_profile_file
+   end subroutine profile_file_initialize
 !EOC
 
 !-----------------------------------------------------------------------
@@ -391,7 +513,7 @@
 ! !IROUTINE: Read 1D data from a single input file
 !
 ! !INTERFACE:
-   subroutine get_observed_profiles(info,jul,secs,nlev,z)
+   subroutine profile_file_update(self,jul,secs,nlev,z)
 !
 ! !DESCRIPTION:
 !  Get observations for the current time from a single input file.
@@ -407,7 +529,7 @@
    REALTYPE,                intent(in)   :: z(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETERS:
-   type(type_profile_file), intent(inout):: info
+   class(type_profile_file), intent(inout):: self
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -418,60 +540,82 @@
    integer                      :: rc
    integer                      :: yy,mm,dd,hh,min,ss
    REALTYPE                     :: t,dt
-   type (type_1d_variable),pointer :: curvar
-   character(len=8)             :: strline
+   type (type_profile_input_node), pointer :: curvar
+   character(len=128)           :: strline
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (info%unit==-1) call initialize_profile_file(info,nlev)
+   if (self%unit==-1) call self%initialize(nlev)
+
+   if (self%one_profile) return
 
 !  This part reads in new values if necessary.
-   if(.not. info%one_profile .and. time_diff(info%jul2,info%secs2,jul,secs)<0) then
+   if(time_diff(self%jul2,self%secs2,jul,secs)<0) then
       do
-         info%jul1 = info%jul2
-         info%secs1 = info%secs2
-         info%prof1 = info%prof2
-         call read_profiles(info%unit,nlev,ubound(info%prof2,2),yy,mm,dd,hh,min,ss,z,info%prof2,info%lines,rc)
+         self%jul1 = self%jul2
+         self%secs1 = self%secs2
+         self%prof1 = self%prof2
+         call read_profiles(self%unit,nlev,ubound(self%prof2,2),yy,mm,dd,hh,min,ss,z,self%prof2,self%lines,rc)
          if(rc/=0) then
-            if(info%nprofiles==1) then
-               LEVEL3 'Only one set of profiles is present in '//trim(info%path)//'.'
-               info%one_profile = .true.
-               curvar => info%first_variable
-               do while (associated(curvar))
-                  curvar%data = curvar%scale_factor*info%prof1(:,curvar%index)
-                  curvar => curvar%next
-               end do
-            elseif (rc<0) then
-               call fatal_error('input:get_observed_profiles', 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?')
+            if (rc<0) then
+               if(self%nprofiles==1) then
+                  LEVEL3 'Only one set of profiles is present in '//trim(self%path)//'. These will be used throughout the simulation'
+                  self%one_profile = .true.
+                  curvar => self%variables%first
+                  do while (associated(curvar))
+                     curvar%p%data = self%prof1(:,curvar%p%index)
+                     curvar => curvar%next
+                  end do
+               else
+                  call fatal_error('input::profile_file_update', 'End of file reached while attempting to read new data from '//trim(self%path)//'. Does this file span the entire simulated period?')
+               end if
             else
-               write (strline,'(i0)') info%lines
-               call fatal_error('input:get_observed_profiles', 'Error reading profiles from '//trim(info%path)//' at line '//trim(strline))
+               write (strline,'(i0)') self%lines
+               call fatal_error('input::profile_file_update', 'Error reading profiles from '//trim(self%path)//' at line '//trim(strline))
             end if
-            exit
-         else
-            info%nprofiles = info%nprofiles + 1
-            call julian_day(yy,mm,dd,info%jul2)
-            info%secs2 = hh*3600 + min*60 + ss
-            if(time_diff(info%jul2,info%secs2,jul,secs)>0) exit
+            return
          end if
+
+         ! Apply offsets and scale factors to newly read profile
+         curvar => self%variables%first
+         do while (associated(curvar))
+            self%prof2(:,curvar%p%index) = curvar%p%scale_factor * self%prof2(:,curvar%p%index) + curvar%p%add_offset
+            if (any(self%prof2(:,curvar%p%index) < curvar%p%minimum)) then
+               write (strline,'(a,a,a,i0.4,"-",i0.2,"-",i0.2," ",i0.2,":",i0.2,":",i0.2,a,g13.6,a)') &
+                  'One or more values of the ',trim(curvar%p%name),' profile at ',yy,mm,dd,hh,min,ss, &
+                  ' lie below prescribed minimum of ',curvar%p%minimum,'.'
+               call fatal_error('input::profile_file_update', trim(self%path)//': '//trim(strline))
+            end if
+            if (any(self%prof2(:,curvar%p%index) > curvar%p%maximum)) then
+               write (strline,'(a,a,a,i0.4,"-",i0.2,"-",i0.2," ",i0.2,":",i0.2,":",i0.2,a,g13.6,a)') &
+                  'One or more values of the ',trim(curvar%p%name),' profile at ',yy,mm,dd,hh,min,ss, &
+                  ' exceed the prescribed maximum of ',curvar%p%maximum,'.'
+               call fatal_error('input::profile_file_update', trim(self%path)//': '//trim(strline))
+            end if
+            curvar => curvar%next
+         end do
+
+         self%nprofiles = self%nprofiles + 1
+         call julian_day(yy,mm,dd,self%jul2)
+         self%secs2 = hh*3600 + min*60 + ss
+         if(time_diff(self%jul2,self%secs2,jul,secs) > 0) exit
       end do
-      if( .not. info%one_profile) then
-         dt = time_diff(info%jul2,info%secs2,info%jul1,info%secs1)
-         info%alpha = (info%prof2-info%prof1)/dt
-      end if
+      if (self%nprofiles == 1) call fatal_error('input::profile_file_update', 'Simulation starts before time of first observation in '//trim(self%path)//'.')
+
+      ! Compute slopes (change in variable per second)
+      dt = time_diff(self%jul2,self%secs2,self%jul1,self%secs1)
+      self%alpha = (self%prof2-self%prof1)/dt
    end if
 
-!  Do the time interpolation - only if more than one profile
-   if( .not. info%one_profile) then
-      t = time_diff(jul,secs,info%jul1,info%secs1)
-      curvar => info%first_variable
-      do while (associated(curvar))
-         curvar%data = curvar%scale_factor*(info%prof1(:,curvar%index) + t*info%alpha(:,curvar%index))
-         curvar => curvar%next
-      end do
-   end if
+   ! Perform time interpolation
+   t = time_diff(jul,secs,self%jul1,self%secs1)
+   curvar => self%variables%first
+   do while (associated(curvar))
+      curvar%p%data = self%prof1(:,curvar%p%index) + t * self%alpha(:,curvar%p%index)
+      curvar => curvar%next
+   end do
 
-   end subroutine get_observed_profiles
+   end subroutine profile_file_update
 !EOC
 
 !-----------------------------------------------------------------------
@@ -480,13 +624,13 @@
 ! !IROUTINE: Initialize a single input file with horizontal (0D) variables.
 !
 ! !INTERFACE:
-   subroutine initialize_timeseries_file(info)
+   subroutine timeseries_file_initialize(self)
 !
 ! !DESCRIPTION:
 !  Initialize a single file with observed profiles.
 !
 ! !INPUT PARAMETERS:
-   type (type_timeseries_file),intent(inout) :: info
+   class (type_timeseries_file),intent(inout) :: self
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -494,7 +638,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   type (type_0d_variable),pointer :: curvar
+   type (type_scalar_input_node),pointer :: curvar
    integer :: nvar
    integer :: rc
    integer :: ios
@@ -502,34 +646,34 @@
 !-----------------------------------------------------------------------
 !BOC
 !  Open the input file.
-   open(next_unit_no,file=info%path,status='old',action='read',iostat=ios)
-   if (ios /= 0) call fatal_error('input::initialize_timeseries_file', 'Unable to open "'//trim(info%path)//'" for reading')
+   open(next_unit_no,file=self%path,status='old',action='read',iostat=ios)
+   if (ios /= 0) call fatal_error('input::timeseries_file_initialize', 'Unable to open "'//trim(self%path)//'" for reading')
 
 !  Opening was successful - store the file unit, and increment the next unit with 1.
-   info%unit = next_unit_no
+   self%unit = next_unit_no
    next_unit_no = next_unit_no + 1
 
 !  Determine the maximum number of columns that we need to read.
    nvar = 0
-   curvar => info%first_variable
+   curvar => self%variables%first
    do while (associated(curvar))
-      nvar = max(nvar,curvar%index)
+      nvar = max(nvar,curvar%p%index)
       curvar => curvar%next
    end do
 
-   allocate(info%obs1(nvar),stat=rc)
-   if (rc /= 0) stop 'input::initialize_timeseries_file: Error allocating memory (obs1)'
-   info%obs1 = _ZERO_
+   allocate(self%obs1(nvar),stat=rc)
+   if (rc /= 0) stop 'input::timeseries_file_initialize: Error allocating memory (obs1)'
+   self%obs1 = 0
 
-   allocate(info%obs2(nvar),stat=rc)
-   if (rc /= 0) stop 'input::initialize_timeseries_file: Error allocating memory (obs2)'
-   info%obs2 = _ZERO_
+   allocate(self%obs2(nvar),stat=rc)
+   if (rc /= 0) stop 'input::timeseries_file_initialize: Error allocating memory (obs2)'
+   self%obs2 = 0
 
-   allocate(info%alpha(nvar),stat=rc)
-   if (rc /= 0) stop 'input::initialize_timeseries_file: Error allocating memory (alpha)'
-   info%alpha = _ZERO_
+   allocate(self%alpha(nvar),stat=rc)
+   if (rc /= 0) stop 'input::timeseries_file_initialize: Error allocating memory (alpha)'
+   self%alpha = 0
 
-   end subroutine initialize_timeseries_file
+   end subroutine timeseries_file_initialize
 !EOC
 
 !-----------------------------------------------------------------------
@@ -538,7 +682,7 @@
 ! !IROUTINE: Read 0D data from a single input file
 !
 ! !INTERFACE:
-   subroutine get_observed_scalars(info,jul,secs)
+   subroutine timeseries_file_update(self,jul,secs)
 !
 ! !DESCRIPTION:
 !  Get observations for the current time from a single input file.
@@ -552,7 +696,7 @@
    integer,                    intent(in)    :: jul,secs
 !
 ! !INPUT/OUTPUT PARAMETERS:
-   type(type_timeseries_file), intent(inout) :: info
+   class(type_timeseries_file), intent(inout) :: self
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -563,43 +707,67 @@
    integer                      :: rc
    integer                      :: yy,mm,dd,hh,mins,ss
    REALTYPE                     :: t,dt
-   type (type_0d_variable),pointer :: curvar
-   character(len=8)             :: strline
+   type (type_scalar_input_node),pointer :: curvar
+   character(len=128)           :: strline
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (info%unit==-1) call initialize_timeseries_file(info)
+   if (self%unit==-1) call self%initialize()
 
 !  This part reads in new values if necessary.
-   if(time_diff(info%jul2,info%secs2,jul,secs)<0) then
+   if(time_diff(self%jul2,self%secs2,jul,secs) < 0) then
       do
-         info%jul1 = info%jul2
-         info%secs1 = info%secs2
-         info%obs1 = info%obs2
-         call read_obs(info%unit,yy,mm,dd,hh,mins,ss,size(info%obs2),info%obs2,rc,line=info%lines)
+         self%jul1 = self%jul2
+         self%secs1 = self%secs2
+         self%obs1 = self%obs2
+         call read_obs(self%unit,yy,mm,dd,hh,mins,ss,size(self%obs2),self%obs2,rc,line=self%lines)
          if (rc>0) then
-            write (strline,'(i0)') info%lines
-            call fatal_error('input:get_observed_scalars', 'Error reading time series from '//trim(info%path)//' at line '//strline)
+            write (strline,'(i0)') self%lines
+            call fatal_error('input::timeseries_file_update', 'Error reading time series from '//trim(self%path)//' at line '//strline)
          elseif (rc<0) then
-            call fatal_error('input:get_observed_scalars', 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?')
+            call fatal_error('input::timeseries_file_update', 'End of file reached while attempting to read new data from '//trim(self%path)//'. Does this file span the entire simulated period?')
          end if
-         call julian_day(yy,mm,dd,info%jul2)
-         info%secs2 = hh*3600 + mins*60 + ss
-         if(time_diff(info%jul2,info%secs2,jul,secs)>0) exit
+
+         ! Apply offsets and scale factors to newly read data
+         curvar => self%variables%first
+         do while (associated(curvar))
+            self%obs2(curvar%p%index) = curvar%p%scale_factor * self%obs2(curvar%p%index) + curvar%p%add_offset
+            if (self%obs2(curvar%p%index) < curvar%p%minimum) then
+               write (strline,'(a,a,i0.4,"-",i0.2,"-",i0.2," ",i0.2,":",i0.2,":",i0.2,a,g13.6,a)') &
+                  trim(curvar%p%name),' at ',yy,mm,dd,hh,mins,ss, &
+                  ' lies below prescribed minimum of ',curvar%p%minimum,'.'
+               call fatal_error('input::timeseries_file_update', trim(self%path)//': '//trim(strline))
+            end if
+            if (self%obs2(curvar%p%index) > curvar%p%maximum) then
+               write (strline,'(a,a,i0.4,"-",i0.2,"-",i0.2," ",i0.2,":",i0.2,":",i0.2,a,g13.6,a)') &
+                  trim(curvar%p%name),' at ',yy,mm,dd,hh,mins,ss, &
+                  ' exceeds the prescribed maximum of ',curvar%p%maximum,'.'
+               call fatal_error('input::timeseries_file_update', trim(self%path)//': '//trim(strline))
+            end if
+            curvar => curvar%next
+         end do
+
+         self%n = self%n + 1
+         call julian_day(yy,mm,dd,self%jul2)
+         self%secs2 = hh*3600 + mins*60 + ss
+         if(time_diff(self%jul2,self%secs2,jul,secs) > 0) exit
       end do
-      dt = time_diff(info%jul2,info%secs2,info%jul1,info%secs1)
-      info%alpha = (info%obs2-info%obs1)/dt
+      if (self%n == 1) call fatal_error('input::timeseries_file_update', 'Simulation starts before time of first observation in '//trim(self%path)//'.')
+
+      ! Compute slopes (change in variable per second)
+      dt = time_diff(self%jul2,self%secs2,self%jul1,self%secs1)
+      self%alpha = (self%obs2 - self%obs1) / dt
    end if
 
-!  Do the time interpolation
-   t  = time_diff(jul,secs,info%jul1,info%secs1)
-   curvar => info%first_variable
+   ! Perform time interpolation
+   t = time_diff(jul,secs,self%jul1,self%secs1)
+   curvar => self%variables%first
    do while (associated(curvar))
-      curvar%data = curvar%scale_factor*min(max(info%obs1(curvar%index),info%obs2(curvar%index)),max(min(info%obs1(curvar%index),info%obs2(curvar%index)),info%obs1(curvar%index) + t*info%alpha(curvar%index))) + curvar%add_offset
+      curvar%p%value = min(max(self%obs1(curvar%p%index), self%obs2(curvar%p%index)), max(min(self%obs1(curvar%p%index), self%obs2(curvar%p%index)), self%obs1(curvar%p%index) + t * self%alpha(curvar%p%index)))
       curvar => curvar%next
    end do
 
-   end subroutine get_observed_scalars
+   end subroutine timeseries_file_update
 !EOC
 
 !-----------------------------------------------------------------------
@@ -622,20 +790,15 @@
 ! !LOCAL VARIABLES:
    type (type_profile_file),     pointer :: profile_file,next_profile_file
    type (type_timeseries_file),  pointer :: timeseries_file,next_scalar_file
-   type (type_1d_variable),pointer :: curvar_1d,nextvar_1d
-   type (type_0d_variable),pointer :: curvar_0d,nextvar_0d
+   type (type_profile_input_node),pointer :: curvar_1d,nextvar_1d
+   type (type_scalar_input_node),pointer :: curvar_0d,nextvar_0d
 !
 !-----------------------------------------------------------------------
 !BOC
 
    profile_file => first_profile_file
    do while (associated(profile_file))
-      curvar_1d => profile_file%first_variable
-      do while (associated(curvar_1d))
-         nextvar_1d => curvar_1d%next
-         deallocate(curvar_1d)
-         curvar_1d => nextvar_1d
-      end do
+      call profile_file%variables%finalize()
 
       next_profile_file => profile_file%next
       if (profile_file%unit/=-1) close(profile_file%unit)
@@ -650,12 +813,7 @@
 
    timeseries_file => first_timeseries_file
    do while (associated(timeseries_file))
-      curvar_0d => timeseries_file%first_variable
-      do while (associated(curvar_0d))
-         nextvar_0d => curvar_0d%next
-         deallocate(curvar_0d)
-         curvar_0d => nextvar_0d
-      end do
+      call timeseries_file%variables%finalize()
 
       next_scalar_file => timeseries_file%next
       if (timeseries_file%unit/=-1) close(timeseries_file%unit)
@@ -667,6 +825,12 @@
       timeseries_file => next_scalar_file
    end do
    nullify(first_timeseries_file)
+
+   call scalar_inputs%finalize()
+   call profile_inputs%finalize()
+
+   next_unit_no = first_unit_no
+   nlev = -1
 
    end subroutine close_input
 !EOC

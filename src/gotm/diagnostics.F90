@@ -88,7 +88,7 @@
 !  This subroutine calculates the following diagnostic/integrated variables.
 !
 ! !USES:
-   use airsea,       only: sst,tx,ty
+   use airsea_driver,only: sst,tx,ty
    use meanflow,     only: gravity,rho_0,cp,drag
    use meanflow,     only: h,u,v,s,t,rho,NN,SS,buoy,rad
    use turbulence,   only: turb_method
@@ -205,7 +205,7 @@
    heat_obs=0
    do i=1,nlev
       heat_sim=heat_sim+T(i)*h(i)*rho_0*cp
-      heat_obs=heat_obs+tprof(i)*h(i)*rho_0*cp
+      heat_obs=heat_obs+tprof%data(i)*h(i)*rho_0*cp
    end do
    if (init_diagnostics) then
       heat_sim0=heat_sim

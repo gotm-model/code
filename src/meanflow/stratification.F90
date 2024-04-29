@@ -152,7 +152,7 @@
          NN(i) = NNT(i) + NNS(i)
 
          ! compute buoyancy and density
-         buoy(i) = eqstate1(S(i),T(i),pCenter,gravity,rho_0)
+         buoy(i) = eqstate1(S(i),T(i),_ZERO_,gravity,rho_0)
          rho(i)  = rho_0 - rho_0/gravity*buoy(i)
       end do
 

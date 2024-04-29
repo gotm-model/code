@@ -16,6 +16,7 @@
 ! \sect{sec:gotm}.
 !
 ! !USES:
+   use cmdline
    use time
    use gotm
 !
@@ -34,7 +35,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   call cmdline()
+   call parse_cmdline('gotm')
 
 !  monitor CPU time and report system time and date
 #ifdef FORTRAN95
@@ -57,13 +58,9 @@
 #endif
 
 !  run the model
-#if 1
-   call init_gotm()
-#else
-   call init_gotm(t1='1998-02-01 00:00:00',t2='1998-07-01 00:00:00')
-#endif
-   call time_loop()
-   call clean_up()
+   call initialize_gotm()
+   call integrate_gotm()
+   call finalize_gotm()
 
 !  report system date and time at end of run
 #ifdef FORTRAN95
@@ -92,76 +89,6 @@
 #endif
 
    call print_version()
-
-   contains
-
-!EOC
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Parse the command line
-!
-! !INTERFACE:
-   subroutine cmdline
-!
-! !DESCRIPTION:
-!
-! !LOCAL VARIABLES:
-   character(len=32) :: arg
-   integer :: i
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   i = 1
-   do while (i <= command_argument_count())
-      call get_command_argument(i, arg)
-      select case (arg)
-      case ('-v', '--version')
-         call print_version()
-         stop
-      case ('-c', '--compile')
-         call print_version()
-         call compilation_options()
-         stop
-      case ('-h', '--help')
-         call print_help()
-         stop
-      case default
-         print '(a,a,/)', 'Unrecognized command-line option: ', arg
-         call print_help()
-         stop
-      end select
-      i = i+1
-   end do
-
-   end subroutine  cmdline
-
-   subroutine compilation_options()
-#ifdef _FABM_
-      LEVEL1 '_FABM_'
-#endif
-#ifdef SEAGRASS
-      LEVEL1 'SEAGRASS'
-#endif
-#ifdef SPM
-      LEVEL1 'SPM'
-#endif
-#ifdef SEDIMENT
-      LEVEL1 'SEDIMENT'
-#endif
-      STDERR LINE
-   end subroutine compilation_options
-
-   subroutine print_help()
-      print '(a)', 'Usage: gotm [OPTIONS]'
-      print '(a)', ''
-      print '(a)', 'Options:'
-      print '(a)', ''
-      print '(a)', '  -h, --help        print usage information and exit'
-      print '(a)', '  -v, --version     print version information'
-      print '(a)', '  -c, --compiler    print compilation options'
-      print '(a)', ''
-   end subroutine print_help
 
 end program
 
