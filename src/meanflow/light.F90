@@ -10,7 +10,7 @@
 ! !DESCRIPTION:
 !
 ! !USES:
-   use observations, only: A,g1,g2
+   use observations, only: A_,g1_,g2_
    use meanflow,     only: h,bioshade
 
    IMPLICIT NONE
@@ -47,7 +47,7 @@
    z          =_ZERO_
    do i=nlev-1,0,-1
       z=z+h(i+1)
-      rad(i)=I_0*(A*exp(-z/g1)+(1.-A)*exp(-z/g2)*bioshade(i+1))
+      rad(i)=I_0*(A*exp(-z/g1_%value)+(1.-A_%value)*exp(-z/g2_%value)*bioshade(i+1))
    end do
 
 !  light absorption per layer (W m-2) is the difference between shortwave at the top and bottom interface
