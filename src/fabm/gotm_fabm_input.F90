@@ -19,9 +19,9 @@
 ! !USES:
    use fabm
    use fabm_types, only: attribute_length
-#if _FABM_API_VERSION_ > 0
-   use fabm_v0_compatibility
-#endif
+!KB#if _FABM_API_VERSION_ > 0
+!KB   use fabm_v0_compatibility
+!KB#endif
    use gotm_fabm,only:fabm_calc,model,cc,register_observation
    use input,only: register_input, type_scalar_input, type_profile_input
    use settings
@@ -50,9 +50,9 @@
    type type_input_variable
       type (type_scalar_input)                :: scalar_input
       type (type_profile_input)               :: profile_input
-      type (type_bulk_variable_id)            :: interior_id          ! FABM identifier of pelagic variable (not associated if variable is not pelagic)
-      type (type_horizontal_variable_id)      :: horizontal_id        ! FABM identifier of horizontal variable (not associated if variable is not horizontal)
-      type (type_scalar_variable_id)          :: scalar_id            ! FABM identifier of scalar variable (not associated if variable is not scalar)
+      type (type_fabm_interior_variable_id)   :: interior_id          ! FABM identifier of pelagic variable (not associated if variable is not pelagic)
+      type (type_fabm_horizontal_variable_id) :: horizontal_id        ! FABM identifier of horizontal variable (not associated if variable is not horizontal)
+      type (type_fabm_scalar_variable_id)     :: scalar_id            ! FABM identifier of scalar variable (not associated if variable is not scalar)
       integer                                 :: ncid = -1            ! NetCDF id in output file (only used if this variable is included in output)
       REALTYPE                                :: relax_tau            ! Relaxation times
       REALTYPE                                :: relax_tau_bot        ! Relaxation times for bottom layer (depth-dependent variables only)
@@ -114,13 +114,13 @@
       allocate(input_variable)
 
 !     First search in interior variables
-      input_variable%interior_id = model%get_bulk_variable_id(pair%name)
+      input_variable%interior_id = model%get_interior_variable_id(pair%name)
 
-      if (fabm_is_variable_used(input_variable%interior_id)) then
-         fabm_name = fabm_get_variable_name(model, input_variable%interior_id)
+      if (model%is_variable_used(input_variable%interior_id)) then
+         fabm_name = model%get_variable_name(input_variable%interior_id)
          call type_input_create(pair, input_variable%profile_input, trim(input_variable%interior_id%variable%long_name), trim(input_variable%interior_id%variable%units), default=0._rk, pchild=branch)
-         do i = 1, size(model%state_variables)
-            if (fabm_name == model%state_variables(i)%name) then
+         do i = 1, size(model%interior_state_variables)
+            if (fabm_name == model%interior_state_variables(i)%name) then
                call branch%get(input_variable%relax_tau, 'relax_tau', 'relaxation time scale', 's', minimum=0._rk, default=1.e15_rk)
                call branch%get(input_variable%relax_tau_bot, 'relax_tau_bot', 'relaxation time scale for bottom layer', 's', minimum=0._rk, default=1.e15_rk)
                call branch%get(input_variable%relax_tau_surf, 'relax_tau_surf', 'relaxation time scale for surface layer', 's', minimum=0._rk, default=1.e15_rk)
@@ -132,8 +132,8 @@
       else
 !        Variable was not found among interior variables. Try variables defined on horizontal slice of model domain (e.g., benthos)
          input_variable%horizontal_id = model%get_horizontal_variable_id(pair%name)
-         if (fabm_is_variable_used(input_variable%horizontal_id)) then
-            fabm_name = fabm_get_variable_name(model, input_variable%horizontal_id)
+         if (model%is_variable_used(input_variable%horizontal_id)) then
+            fabm_name = model%get_variable_name(input_variable%horizontal_id)
             call type_input_create(pair, input_variable%scalar_input, trim(input_variable%horizontal_id%variable%long_name), trim(input_variable%horizontal_id%variable%units), default=0._rk, pchild=branch)
             do i = 1, size(model%bottom_state_variables)
                if (fabm_name == model%bottom_state_variables(i)%name) then
@@ -144,7 +144,7 @@
          else
 !           Variable was not found among interior or horizontal variables. Try global scalars.
             input_variable%scalar_id = model%get_scalar_variable_id(pair%name)
-            if (.not. fabm_is_variable_used(input_variable%scalar_id)) then
+            if (.not. model%is_variable_used(input_variable%scalar_id)) then
                FATAL 'Variable '//pair%name//', referenced among FABM inputs was not found in model.'
                stop 'gotm_fabm_input:init_gotm_fabm_input'
             end if
@@ -186,7 +186,7 @@
 
    curvariable => first_input_variable
    do while (associated(curvariable))
-      if (fabm_is_variable_used(curvariable%interior_id)) then
+      if (model%is_variable_used(curvariable%interior_id)) then
          call register_input(curvariable%profile_input)
 
          allocate(curvariable%relax_tau_1d(0:nlev))
@@ -208,7 +208,7 @@
          call register_observation(curvariable%interior_id, curvariable%profile_input%data, curvariable%relax_tau_1d)
       else
          call register_input(curvariable%scalar_input)
-         if (fabm_is_variable_used(curvariable%horizontal_id)) then
+         if (model%is_variable_used(curvariable%horizontal_id)) then
             ! Horizontal variable
             call register_observation(curvariable%horizontal_id, curvariable%scalar_input%value, curvariable%relax_tau)
          else
