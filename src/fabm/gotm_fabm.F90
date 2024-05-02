@@ -1256,7 +1256,7 @@
 
    if (bioshade_feedback) then
       bioext = 0
-      call fabm_get_light_extinction(1, nlev, localexts(1:nlev))
+!KB      call fabm_get_light_extinction(1, nlev, localexts(1:nlev))
       do i = nlev, 1, -1
          bioext = bioext + localexts(i) * curh(i)
          bioshade(i) = exp(-bioext)
