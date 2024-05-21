@@ -182,9 +182,7 @@
 
    do i=1,nlev
 !     from non-local turbulence
-#ifdef NONLOCAL
       Qsour(i) = Qsour(i) - ( gamh(i) - gamh(i-1) )/h(i)
-#endif
    end do
 
 !  ... and from lateral advection
