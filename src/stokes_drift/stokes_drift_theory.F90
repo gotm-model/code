@@ -52,7 +52,7 @@
 
 !  compute surface layer averaged Stokes drift
    do k=0,nlev
-      call stokes_drift_theory_srf(wind_speed,zi(k),gravity,stokes_srf(k))
+      call stokes_drift_theory_srf(wind_speed,zi(k),gravity,us0_to_u10,stokes_srf(k))
    enddo
 
 !  compute Stokes drift profile
@@ -61,8 +61,8 @@
       usprof%data(k) = tmp * xcomp
       vsprof%data(k) = tmp * ycomp
    enddo
-   us0%value = usprof%data(nlev)
-   vs0%value = vsprof%data(nlev)
+   us0%value = us0_to_u10 * wind_speed * xcomp
+   vs0%value = us0_to_u10 * wind_speed * ycomp
    ds%value = stokes_srf(0)*abs(zi(0))/max(SMALL, sqrt(us0%value**2.+vs0%value**2.))
 
    return
@@ -76,7 +76,7 @@
 ! !IROUTINE: stokes_drift_theory_srf
 !
 ! !INTERFACE:
-   subroutine stokes_drift_theory_srf(u10,z_srf,gravity,stokes_srf)
+   subroutine stokes_drift_theory_srf(u10,z_srf,gravity,us0_to_u10,stokes_srf)
 ! !DESCRIPTION:
 !   Return the Stokes drift averaged over the surface layer
 !
@@ -92,6 +92,8 @@
    REALTYPE, intent(in)                 :: z_srf
 ! gravity
    REALTYPE, intent(in)                 :: gravity
+! ratio of surface Stokes drift to U10
+   REALTYPE, intent(in)                 :: us0_to_u10
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)                :: stokes_srf
 
@@ -107,8 +109,6 @@
    ! ratio of mean frequency to peak frequency for
    ! Pierson-Moskowitz spectrum (Webb, 2011)
    fm_to_fp = 1.296, &
-   ! ratio of surface Stokes drift to U10
-   us0_to_u10 = 0.0162, &
    ! loss ratio of Stokes transport
    r_loss = 0.667
 
