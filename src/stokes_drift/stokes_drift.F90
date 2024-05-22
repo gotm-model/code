@@ -347,7 +347,7 @@
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
    REALTYPE, parameter                 :: kappa = 0.4
-   integer                             :: k, kk, ksl, kbl
+   integer                             :: k, ksl, kbl
    REALTYPE                            :: ussl, vssl, us_srf
    REALTYPE                            :: hsl, dz, z0
 !
@@ -362,17 +362,19 @@
    hsl = 0.2*hbl
 
 !  determine which layer contains surface layer
-   do kk = nlev,k,-1
-      if (zi(nlev)-zi(kk-1) .ge. hsl) then
-         ksl = kk
+   ksl = 1
+   do k = nlev,1,-1
+      if (zi(nlev)-zi(k-1) .ge. hsl) then
+         ksl = k
          exit
       end if
    end do
 
 !  determine which layer contains boundary layer
-   do kk = nlev,k,-1
-      if (zi(nlev)-zi(kk-1) .ge. hbl) then
-         kbl = kk
+   kbl = 1
+   do k = nlev,1,-1
+      if (zi(nlev)-zi(k-1) .ge. hbl) then
+         kbl = k
          exit
       end if
    end do
@@ -381,10 +383,10 @@
    if (ksl < nlev) then
       ussl =   usprof%data(ksl)*(hsl+zi(ksl))
       vssl =   vsprof%data(ksl)*(hsl+zi(ksl))
-      do kk = nlev,ksl+1,-1
-         dz = zi(kk)-zi(kk-1)
-         ussl = ussl + usprof%data(kk)*dz
-         vssl = vssl + vsprof%data(kk)*dz
+      do k = nlev,ksl+1,-1
+         dz = zi(k)-zi(k-1)
+         ussl = ussl + usprof%data(k)*dz
+         vssl = vssl + vsprof%data(k)*dz
       end do
       ussl = ussl/hsl
       vssl = vssl/hsl
