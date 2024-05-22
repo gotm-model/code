@@ -125,14 +125,14 @@
 
    branch => settings_store%get_typed_child('waves/stokes_drift', 'observed/prescribed Stokes drift', display=display_advanced)
    call branch%get(us0, 'us0', 'surface Stokes drift in West-East direction', 'm/s',                &
-                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
+                   method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
    call branch%get(vs0, 'vs0', 'surface Stokes drift in South-North direction', 'm/s',              &
-                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
-   call branch%get(usprof, 'us', 'Stokes drift in West-East direction', 'm/s', default=0._rk,    &
+                   method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
+   call branch%get(usprof, 'us', 'Stokes drift profile in West-East direction', 'm/s', default=0._rk,    &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(EXPONENTIAL, 'exponential profile', 'exponential'), &
                                    option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017', 'empirical')/))
-   call branch%get(vsprof, 'vs', 'Stokes drift in South-North direction', 'm/s', default=0._rk,  &
+   call branch%get(vsprof, 'vs', 'Stokes drift profile in South-North direction', 'm/s', default=0._rk,  &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(EXPONENTIAL, 'exponential profile', 'exponential'), &
                                    option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017', 'empirical')/))
@@ -146,7 +146,7 @@
    call twig%get(ds, 'ds', 'Stokes drift decay depth', 'm',                          &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, &
                  minimum=0._rk, default=5._rk)
-   twig => branch%get_typed_child('empirical', 'approximate Stokes drift from empirical wave spectrum following Li et al., 2017')
+   twig => branch%get_typed_child('empirical', 'approximate Stokes drift profile from empirical wave spectrum following Li et al., 2017')
    call twig%get(uwnd, 'uwnd', 'surface wind for Stokes drift in West-East direction', 'm/s',     &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
    call twig%get(vwnd, 'vwnd', 'surface wind for Stokes drift in South-North direction', 'm/s',   &
@@ -201,14 +201,14 @@
 
    select case (usprof%method)
       case (NOTHING)
-         LEVEL2 'Stokes drift off.'
+         LEVEL2 'Stokes drift profile off.'
       case (FROMFILE)
          LEVEL2 'Reading Stokes drift profile from file.'
       case (EXPONENTIAL)
          LEVEL2 'Using exponential Stokes drift profile.'
          call register_input(ds)
       case (THEORYWAVE)
-         LEVEL2 'Using Stokes drift estimated from the theory-wave of Li et al. (2017)'
+         LEVEL2 'Using Stokes drift profile approximated by the theory-wave approach of Li et al. (2017)'
          call register_input(uwnd)
          call register_input(vwnd)
       case (CONSTANT)
