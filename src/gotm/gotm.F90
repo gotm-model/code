@@ -880,7 +880,7 @@
          end select
 
          !  update turbulence parameter from CVMix
-         call do_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,              &
+         call do_cvmix(nlev,depth,h,rho_p,u,v,NN,NNT,NNS,SS,            &
                        u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,         &
                        tRad,bRad,cori,efactor,La)
 #endif
