@@ -1431,7 +1431,7 @@
    call cvmix_kpp_compute_OBL_depth(CVmix_vars)
 
    ! CVMix returns a BoundaryLayerDepth > 0
-   zsbl = -CVmix_vars%BoundaryLayerDepth
+   zsbl = z_w(nlev)-CVmix_vars%BoundaryLayerDepth
 
 !-----------------------------------------------------------------------
 !  Update surface buoyancy flux in the new surface boundary layer
@@ -1653,7 +1653,7 @@
 !  first find old boundary layer index "kbbl".
    kbbl=nlev
    do k=1,nlev
-      if ((kbbl.eq.nlev).and.(z_w(k).lt.zbbl)) then
+      if ((kbbl.eq.nlev).and.(z_w(k).gt.zbbl)) then
          kbbl = k
       endif
    enddo

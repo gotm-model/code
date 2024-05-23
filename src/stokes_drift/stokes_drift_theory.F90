@@ -51,13 +51,14 @@
    ycomp = v10 / wind_speed
 
 !  compute surface layer averaged Stokes drift
-   do k=0,nlev
-      call stokes_drift_theory_srf(wind_speed,zi(k),gravity,us0_to_u10,stokes_srf(k))
+   do k=0,nlev-1
+      call stokes_drift_theory_srf(wind_speed,(zi(nlev)-zi(k)),gravity,us0_to_u10,stokes_srf(k))
    enddo
+   stokes_srf(nlev) = _ZERO_
 
 !  compute Stokes drift profile
    do k=1,nlev
-      tmp = ( stokes_srf(k-1)*zi(k-1)-stokes_srf(k)*zi(k) ) / (zi(k-1) - zi(k))
+      tmp = ( stokes_srf(k-1)*(zi(nlev)-zi(k-1))-stokes_srf(k)*(zi(nlev)-zi(k)) ) / (zi(k) - zi(k-1))
       usprof%data(k) = tmp * xcomp
       vsprof%data(k) = tmp * ycomp
    enddo
