@@ -43,9 +43,9 @@
       dz = zi(k)-zi(k-1)
       kdz = 0.5*dz/ds%value
       if (kdz .lt. 100.) then
-          tmp = sinh(kdz)/kdz*exp(z(k)/ds%value)
+          tmp = sinh(kdz)/kdz*exp((z(k)-zi(nlev))/ds%value)
       else
-          tmp = exp(z(k)/ds%value)
+          tmp = exp((z(k)-zi(nlev))/ds%value)
       end if
       usprof%data(k) = tmp*us0%value
       vsprof%data(k) = tmp*vs0%value
