@@ -67,7 +67,7 @@
 
 #ifdef _CVMIX_
    use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
-   use gotm_cvmix,  only: zsbl, kpp_langmuir_method
+   use gotm_cvmix,  only: zsbl, sbl_langmuir_method
 #endif
 
 #ifdef SEAGRASS
@@ -256,7 +256,7 @@
                    default='2017-01-01 00:00:00')
    call branch%get(stop, 'stop', 'stop date and time', units='yyyy-mm-dd HH:MM:SS', &
                    default='2018-01-01 00:00:00')
-   if (generate_restart_file) stop = start 
+   if (generate_restart_file) stop = start
    call branch%get(dt, 'dt', 'time step for integration', 's', &
                    minimum=0.e-10_rk, default=3600._rk)
    call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
@@ -295,7 +295,7 @@
    call twig%get(dtgrid, 'dtgrid', 'time step (must be fraction of dt)', 's', &
                  minimum=0._rk,default=5._rk)
 #endif
-   
+
 
    ! Predefine order of top-level categories in gotm.yaml
    branch => settings_store%get_child('temperature')
@@ -374,7 +374,7 @@
                  default=0.00075_rk)
    call twig%get(cp, 'cp', 'specific heat capacity', 'J/(kg/K)', &
                  minimum=0._rk,default=3991.86796_rk)
-   
+
 
    LEVEL1 'init_density()'
    call init_density(nlev)
@@ -747,7 +747,7 @@
             call set_ssuv(u(nlev),v(nlev))
 #ifdef _ICE_
          else
-            call set_sst(Tice_surface) !GSW_KB - check for GSW alternative 
+            call set_sst(Tice_surface) !GSW_KB - check for GSW alternative
             call set_ssuv(_ZERO_,_ZERO_)
 #endif
          end if
@@ -840,7 +840,7 @@
 !  update shear and stratification
    call shear(nlev,cnpar)
    call do_density(nlev,S,T,-z,-zi)
-   buoy(1:nlev) = -gravity*(rho_p(1:nlev)-rho0)/rho0  
+   buoy(1:nlev) = -gravity*(rho_p(1:nlev)-rho0)/rho0
    call stratification(nlev)
 
 #ifdef SPM
@@ -856,16 +856,16 @@
 !     compute turbulent mixing
       select case (turb_method)
 #ifdef _CVMIX_
-      ! use KPP implemenatation in CVMIX
+      ! use KPP implemenatation in CVMix
       case (100)
 
-         ! convert thermodynamic fluxes to what is needed by CVMIX
+         ! convert thermodynamic fluxes to what is needed by CVMix
          call convert_fluxes(nlev,gravity,swf,shf,ssf,rad,T(nlev),S(nlev),tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          ! update Langmuir number
          call langmuir_number(nlev,zi,Hs_input%value,u_taus,zi(nlev)-zsbl,u10_input%value,v10_input%value)
-         
-         select case(kpp_langmuir_method)
+
+         select case(sbl_langmuir_method)
          case (0)
             efactor = _ONE_
             La = _ONE_/SMALL
@@ -880,9 +880,9 @@
             La = La_SLP_RWH16
          end select
 
-         !  update turbulence parameter from CVMIX 
+         !  update turbulence parameter from CVMix
          call do_cvmix(nlev,depth,h,rho_p,u,v,NN,NNT,NNS,SS,            &
-                       u_taus,tFlux,btFlux,sFlux,bsFlux,                &
+                       u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,         &
                        tRad,bRad,cori,efactor,La)
 #endif
 

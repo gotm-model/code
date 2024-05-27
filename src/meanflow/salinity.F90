@@ -116,7 +116,7 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*wflux-sflux  
+   DiffSup        = -S(nlev)*wflux-sflux
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided
@@ -135,9 +135,7 @@
 
    do i=1,nlev
 !     from non-local turbulence
-#ifdef NONLOCAL
       Qsour(i) = Qsour(i) - ( gams(i) - gams(i-1) )/h(i)
-#endif
    end do
 
 !  ... and from lateral advection

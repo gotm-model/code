@@ -173,18 +173,16 @@
 #endif
 
 !     add non-local fluxes
-#ifdef NONLOCAL
 !      Qsour(i) = Qsour(i) - ( gamu(i) - gamu(i-1) )/h(i)
-#endif
 
    end do
 
 !  implement bottom friction as source term
    Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
 
-!  for surface plumes implement surface friction as source term 
+!  for surface plumes implement surface friction as source term
    if (int_press_type == 2 .and. plume_type .eq. 1) then
-      Lsour(nlev) = - drag(nlev)/h(nlev)*sqrt(u(nlev)*u(nlev)+v(nlev)*v(nlev)) 
+      Lsour(nlev) = - drag(nlev)/h(nlev)*sqrt(u(nlev)*u(nlev)+v(nlev)*v(nlev))
    end if
 
 !  do advection step

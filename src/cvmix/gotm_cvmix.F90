@@ -46,6 +46,9 @@
 ! z-position of surface boundary layer depth
   REALTYPE, public                       ::    zsbl
 
+! z-position of bottom boundary layer depth
+  REALTYPE, public                       ::    zbbl
+
 ! !DEFINED PARAMETERS:
 !
 !  method of Langmuir turbulence parameterization
@@ -82,24 +85,27 @@
 
 !  compute surface boundary layer mixing and internal mixing
    logical                               ::    use_surface_layer,      &
-                                               use_interior
+                                               use_interior,           &
+                                               use_bottom_layer
 
 !  flags for different components of CVMix
-   logical                               ::    use_kpp,                &
-                                               use_background,         &
+   logical                               ::    use_background,         &
                                                use_shear,              &
                                                use_convection,         &
                                                use_tidal_mixing,       &
                                                use_double_diffusion
 !
 !  G'(1) = 0 (shape function) if true, otherwise compute G'(1) as in LMD94
-   logical                               ::    kpp_use_noDGat1
+   logical                               ::    sbl_use_noDGat1,        &
+                                               bbl_use_noDGat1
 
 !  limit the OBL by the Ekman depth / Monin-Obukhov length if true
-   logical                               ::    kpp_check_Ekman_length, &
-                                               kpp_check_MonOb_length
+   logical                               ::    sbl_check_Ekman_length, &
+                                               sbl_check_MonOb_length, &
+                                               bbl_check_Ekman_length, &
+                                               bbl_check_MonOb_length
 !  enhance diffusivity at OBL
-   logical                               ::    kpp_use_enhanced_diff
+   logical                               ::    sbl_use_enhanced_diff
 
 !  method to parameterize the effects of Langmuir turbulence
 !  options are
@@ -107,14 +113,15 @@
 !  (1)   Langmuir mixing following Li et al., 2016
 !  (2)   Langmuir enhanced entrainment following Li & Fox-Kemper, 2017
 !  (3)   Langmuir turbulence in hurricanes following Reichl et al., 2016
-   integer, public                       ::    kpp_langmuir_method
+   integer, public                       ::    sbl_langmuir_method
 
 !  interpolation type used to interpolate bulk Richardson number
 !  options are
 !  (1) linear
 !  (2) quadratic
 !  (3) cubic
-   integer                               ::    kpp_bulk_Ri_interp_type
+   integer                               ::    sbl_bulk_Ri_interp_type,&
+                                               bbl_bulk_Ri_interp_type
 
 !  interpolation type used to interpolate diff and visc at OBL_depth
 !  options are
@@ -122,7 +129,8 @@
 !  (2) quadratic
 !  (3) cubic
 !  (4) LMD94
-   integer                               ::    kpp_OBL_interp_type
+   integer                               ::    sbl_OBL_interp_type,    &
+                                               bbl_OBL_interp_type
 
 !  matching technique between the boundary layer and the ocean interior
 !  options are
@@ -135,13 +143,15 @@
 !                           term match interior values at interface
 !  (4) ParabolicNonLocal => Shape function for the nonlocal term is
 !                           (1-sigma)^2, gradient term is sigma*(1-sigma)^2
-   integer                               ::    kpp_match_technique
+   integer                               ::    sbl_match_technique,    &
+                                               bbl_match_technique
 
 !  surface layer extent
-   REALTYPE                              ::    kpp_surface_layer_extent
+   REALTYPE                              ::    sbl_surface_layer_extent,&
+                                               bbl_surface_layer_extent
 
 !  critical Richardson number
-   REALTYPE                              ::    kpp_Ri_c
+   REALTYPE                              ::    sbl_Ri_c, bbl_Ri_c
 
 !  background diffusivity and viscosity
    REALTYPE                              ::    background_diffusivity, &
@@ -187,7 +197,10 @@
    REALTYPE, dimension(:), allocatable   ::    h_r
 
 !  CVMix datatypes
-   type(cvmix_data_type)                 ::    CVmix_vars
+   type(cvmix_data_type)                 ::    CVmix_vars,             &
+                                               CVmix_vars_tmp
+!  CVMix KPP parameters for bottom layer
+   type(cvmix_kpp_params_type)           ::    CVmix_kpp_params_tmp
 
 !
 !EOP
@@ -230,30 +243,27 @@
    twig => branch%get_child('surface_layer', 'surface layer mixing')
    call twig%get(use_surface_layer, 'use',                             &
       'compute surface layer mixing coefficients', default=.true.)
-   leaf => twig%get_child('kpp', 'K-Profile Parameterization')
-   call leaf%get(use_kpp, 'use', 'use the K-Profile Parameterization', &
-      default=.true.)
-   call leaf%get(kpp_langmuir_method, 'langmuir_method',               &
+   call twig%get(sbl_langmuir_method, 'langmuir_method',               &
       'method of Langmuir turbulence pararmeterization',               &
       default=CVMIX_LT_NOLANGMUIR,                                     &
       options=(/option(CVMIX_LT_NOLANGMUIR, 'none', 'none'),           &
       option(CVMIX_LT_LWF16, 'Li et al. (2016)', 'LWF16'),             &
       option(CVMIX_LT_LF17, 'Li and Fox-Kemper (2017)', 'LF17'),       &
       option(CVMIX_LT_RWH16, 'Reichl et al. (2016)', 'RWH16')/))
-   call leaf%get(kpp_surface_layer_extent, 'surface_layer_extent',     &
+   call twig%get(sbl_surface_layer_extent, 'surface_layer_extent',     &
       'extent of surface layer in fraction of the boundary layer', '-',&
       minimum=0._rk, maximum=1._rk, default=0.1_rk)
-   call leaf%get(kpp_Ri_c, 'Ri_c', 'critical Richardson number', '-',  &
+   call twig%get(sbl_Ri_c, 'Ri_c', 'critical Richardson number', '-',  &
       minimum=0._rk, default=0.3_rk)
-   call leaf%get(kpp_check_Ekman_length, 'check_Ekman_length',         &
+   call twig%get(sbl_check_Ekman_length, 'check_Ekman_length',         &
       'limit the OBL by the Ekman depth', default=.false.)
-   call leaf%get(kpp_check_MonOb_length, 'check_MonOb_length',         &
+   call twig%get(sbl_check_MonOb_length, 'check_MonOb_length',         &
       'limit the OBL by the Monin-Obukhov depth', default=.false.)
-   call leaf%get(kpp_use_enhanced_diff, 'use_enhanced_diff',           &
+   call twig%get(sbl_use_enhanced_diff, 'use_enhanced_diff',           &
       'enhance diffusivity at OBL', default=.true.)
-   call leaf%get(kpp_use_noDGat1, 'use_noDGat1',                       &
+   call twig%get(sbl_use_noDGat1, 'use_noDGat1',                       &
       'zero gradient of the shape function at OBL', default=.true.)
-   call leaf%get(kpp_match_technique, 'match_technique',               &
+   call twig%get(sbl_match_technique, 'match_technique',               &
       'matching technique of shape functions with the ocean interior', &
       default=CVMIX_MATCH_SIMPLE, options=(/                           &
       option(CVMIX_MATCH_SIMPLE, 'simple shapes', 'simple'),           &
@@ -262,13 +272,50 @@
              'both gradient and nonlocal terms', 'both'),              &
       option(CVMIX_MATCH_PARABOLIC,                                    &
              'parabolic nonlocal term', 'parabolic')/))
-   call leaf%get(kpp_bulk_Ri_interp_type, 'bulk_Ri_interp_type',       &
+   call twig%get(sbl_bulk_Ri_interp_type, 'bulk_Ri_interp_type',       &
       'interpolation type for the bulk Richardson number',             &
       default=CVMIX_INTERP_QUADRATIC, options=(/                       &
       option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
       option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
       option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic')/))
-   call leaf%get(kpp_OBL_interp_type, 'OBL_interp_type',               &
+   call twig%get(sbl_OBL_interp_type, 'OBL_interp_type',               &
+      'interpolation type for diffusivity and viscosity at OBL',       &
+      default=CVMIX_INTERP_LMD94, options=(/                           &
+      option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
+      option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
+      option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic'),                    &
+      option(CVMIX_INTERP_LMD94, 'Large et al. (1994)', 'LMD94')/))
+
+   twig => branch%get_child('bottom_layer', 'bottom layer mixing')
+   call twig%get(use_bottom_layer, 'use',                              &
+      'compute bottom layer mixing coefficients', default=.false.)
+   call twig%get(bbl_surface_layer_extent, 'surface_layer_extent',     &
+      'extent of surface layer in fraction of the boundary layer', '-',&
+      minimum=0._rk, maximum=1._rk, default=0.1_rk)
+   call twig%get(bbl_Ri_c, 'Ri_c', 'critical Richardson number', '-',  &
+      minimum=0._rk, default=0.3_rk)
+   call twig%get(bbl_check_Ekman_length, 'check_Ekman_length',         &
+      'limit the OBL by the Ekman depth', default=.false.)
+   call twig%get(bbl_check_MonOb_length, 'check_MonOb_length',         &
+      'limit the OBL by the Monin-Obukhov depth', default=.false.)
+   call twig%get(bbl_use_noDGat1, 'use_noDGat1',                       &
+      'zero gradient of the shape function at OBL', default=.true.)
+   call twig%get(bbl_match_technique, 'match_technique',               &
+      'matching technique of shape functions with the ocean interior', &
+      default=CVMIX_MATCH_SIMPLE, options=(/                           &
+      option(CVMIX_MATCH_SIMPLE, 'simple shapes', 'simple'),           &
+      option(CVMIX_MATCH_GRADIENT, 'gradient term', 'gradient'),       &
+      option(CVMIX_MATCH_BOTH,                                         &
+             'both gradient and nonlocal terms', 'both'),              &
+      option(CVMIX_MATCH_PARABOLIC,                                    &
+             'parabolic nonlocal term', 'parabolic')/))
+   call twig%get(bbl_bulk_Ri_interp_type, 'bulk_Ri_interp_type',       &
+      'interpolation type for the bulk Richardson number',             &
+      default=CVMIX_INTERP_QUADRATIC, options=(/                       &
+      option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
+      option(CVMIX_INTERP_QUADRATIC, 'quadratic', 'quadratic'),        &
+      option(CVMIX_INTERP_CUBIC, 'cubic', 'cubic')/))
+   call twig%get(bbl_OBL_interp_type, 'OBL_interp_type',               &
       'interpolation type for diffusivity and viscosity at OBL',       &
       default=CVMIX_INTERP_LMD94, options=(/                           &
       option(CVMIX_INTERP_LINEAR, 'linear', 'linear'),                 &
@@ -403,14 +450,16 @@
 !  'linear'
 !  'quadratic'
 !  'cubic'
-   character(len=32)                   ::  bulk_Ri_interp_method
+   character(len=32)                   ::  sbl_bulk_Ri_interp_method,  &
+                                           bbl_bulk_Ri_interp_method
 
 !  interpolation type used to interpolate diff and visc at OBL_depth
 !  'linear'
 !  'quadratic'
 !  'cubic'
 !  'LMD94'
-   character(len=32)                   ::  OBL_interp_method
+   character(len=32)                   ::  sbl_OBL_interp_method,      &
+                                           bbl_OBL_interp_method
 
 !  matching technique between the boundary layer and the ocean interior
 !  'SimpleShapes'      - Shape functions for both the gradient and nonlocal
@@ -422,7 +471,8 @@
 !                        term match interior values at interface
 !  'ParabolicNonLocal' - Shape function for the nonlocal term is
 !                        (1-sigma)^2, gradient term is sigma*(1-sigma)^2
-   character(len=32)                   ::  match_technique
+   character(len=32)                   ::  sbl_match_method,           &
+                                           bbl_match_method
 !
 !  shear mixing scheme
 !  'PP'   - Pacanowski-Philander, 1981
@@ -523,67 +573,67 @@
 
    if (use_surface_layer) then
       LEVEL3 'Surface layer mixing algorithm             - active -'
-      if (kpp_check_Ekman_length) then
+      if (sbl_check_Ekman_length) then
          LEVEL4 'Clipping at Ekman scale                - active -'
       else
          LEVEL4 'Clipping at Ekman scale            - not active -'
       endif
-      if (kpp_check_MonOb_length) then
+      if (sbl_check_MonOb_length) then
          LEVEL4 'Clipping at Monin-Obukhov scale        - active -'
       else
          LEVEL4 'Clipping at Monin-Obukhov scale    - not active -'
       endif
-      if (kpp_use_noDGat1) then
+      if (sbl_use_noDGat1) then
          LEVEL4 "Set shape function G'(1) = 0           - active -"
       else
          LEVEL4 "Set shape function G'(1) = 0       - not active -"
       endif
-      LEVEL4 'Ri_c: ', kpp_Ri_c
+      LEVEL4 'Ri_c: ', sbl_Ri_c
 
-      select case (kpp_match_technique)
+      select case (sbl_match_technique)
       case (CVMIX_MATCH_SIMPLE)
-         match_technique = 'SimpleShapes'
+         sbl_match_method = 'SimpleShapes'
       case (CVMIX_MATCH_GRADIENT)
-         match_technique = 'MatchGradient'
+         sbl_match_method = 'MatchGradient'
       case (CVMIX_MATCH_BOTH)
-         match_technique = 'MatchBoth'
+         sbl_match_method = 'MatchBoth'
       case (CVMIX_MATCH_PARABOLIC)
-         match_technique = 'ParabolicNonLocal'
+         sbl_match_method = 'ParabolicNonLocal'
       case default
-         STDERR 'Unsupported kpp_match_technique: ', kpp_match_technique
+         STDERR 'Unsupported sbl_match_technique: ', sbl_match_technique
          stop 'init_cvmix'
       end select
+      LEVEL4 'Matching technique: ', trim(sbl_match_method)
 
-      LEVEL4 'Matching technique: ', trim(match_technique)
-      select case (kpp_bulk_Ri_interp_type)
+      select case (sbl_bulk_Ri_interp_type)
       case (CVMIX_INTERP_LINEAR)
-         bulk_Ri_interp_method = 'linear'
+         sbl_bulk_Ri_interp_method = 'linear'
       case (CVMIX_INTERP_QUADRATIC)
-         bulk_Ri_interp_method = 'quadratic'
+         sbl_bulk_Ri_interp_method = 'quadratic'
       case (CVMIX_INTERP_CUBIC)
-         bulk_Ri_interp_method = 'cubic'
+         sbl_bulk_Ri_interp_method = 'cubic'
       case default
-         STDERR 'Unsupported kpp_bulk_Ri_interp_type: ', kpp_bulk_Ri_interp_type
+         STDERR 'Unsupported sbl_bulk_Ri_interp_type: ', sbl_bulk_Ri_interp_type
          stop 'init_cvmix'
       end select
-      LEVEL4 'Interpolation type for Ri: ', trim(bulk_Ri_interp_method)
+      LEVEL4 'Interpolation type for Ri: ', trim(sbl_bulk_Ri_interp_method)
 
-      select case (kpp_OBL_interp_type)
+      select case (sbl_OBL_interp_type)
       case (CVMIX_INTERP_LINEAR)
-         OBL_interp_method = 'linear'
+         sbl_OBL_interp_method = 'linear'
       case (CVMIX_INTERP_QUADRATIC)
-         OBL_interp_method = 'quadratic'
+         sbl_OBL_interp_method = 'quadratic'
       case (CVMIX_INTERP_CUBIC)
-         OBL_interp_method = 'cubic'
+         sbl_OBL_interp_method = 'cubic'
       case (CVMIX_INTERP_LMD94)
-         OBL_interp_method = 'LMD94'
+         sbl_OBL_interp_method = 'LMD94'
       case default
-         STDERR 'Unsupported kpp_OBL_interp_type: ', kpp_OBL_interp_type
+         STDERR 'Unsupported sbl_OBL_interp_type: ', sbl_OBL_interp_type
          stop 'init_cvmix'
       end select
-      LEVEL4 'Interpolation type for diff and visc: ', trim(OBL_interp_method)
+      LEVEL4 'Interpolation type for diff and visc: ', trim(sbl_OBL_interp_method)
 
-      select case (kpp_langmuir_method)
+      select case (sbl_langmuir_method)
       case (CVMIX_LT_NOLANGMUIR)
          Langmuir_mixing_method = 'NONE'
          Langmuir_entrainment_method = 'NONE'
@@ -604,11 +654,76 @@
          LEVEL3 'Langmuir turbulence                    - active -'
          LEVEL4 ' - Langmuir mixing in hurricanes (Reichl et al. 2016)'
       case default
-         STDERR 'Unsupported kpp_langmuir_method: ', kpp_langmuir_method
+         STDERR 'Unsupported sbl_langmuir_method: ', sbl_langmuir_method
          stop 'init_cvmix'
       end select
    else
       LEVEL3 'Surface layer mixing algorithm         - not active -'
+   endif
+
+   if (use_bottom_layer) then
+      LEVEL3 'Bottom layer mixing algorithm              - active -'
+      if (bbl_check_Ekman_length) then
+         LEVEL4 'Clipping at Ekman scale                - active -'
+      else
+         LEVEL4 'Clipping at Ekman scale            - not active -'
+      endif
+      if (bbl_check_MonOb_length) then
+         LEVEL4 'Clipping at Monin-Obukhov scale        - active -'
+      else
+         LEVEL4 'Clipping at Monin-Obukhov scale    - not active -'
+      endif
+      if (bbl_use_noDGat1) then
+         LEVEL4 "Set shape function G'(1) = 0           - active -"
+      else
+         LEVEL4 "Set shape function G'(1) = 0       - not active -"
+      endif
+      LEVEL4 'Ri_c: ', bbl_Ri_c
+
+      select case (bbl_match_technique)
+      case (CVMIX_MATCH_SIMPLE)
+         bbl_match_method = 'SimpleShapes'
+      case (CVMIX_MATCH_GRADIENT)
+         bbl_match_method = 'MatchGradient'
+      case (CVMIX_MATCH_BOTH)
+         bbl_match_method = 'MatchBoth'
+      case (CVMIX_MATCH_PARABOLIC)
+         bbl_match_method = 'ParabolicNonLocal'
+      case default
+         STDERR 'Unsupported bbl_match_technique: ', bbl_match_technique
+         stop 'init_cvmix'
+      end select
+      LEVEL4 'Matching technique: ', trim(bbl_match_method)
+
+      select case (bbl_bulk_Ri_interp_type)
+      case (CVMIX_INTERP_LINEAR)
+         bbl_bulk_Ri_interp_method = 'linear'
+      case (CVMIX_INTERP_QUADRATIC)
+         bbl_bulk_Ri_interp_method = 'quadratic'
+      case (CVMIX_INTERP_CUBIC)
+         bbl_bulk_Ri_interp_method = 'cubic'
+      case default
+         STDERR 'Unsupported bbl_bulk_Ri_interp_type: ', bbl_bulk_Ri_interp_type
+         stop 'init_cvmix'
+      end select
+      LEVEL4 'Interpolation type for Ri: ', trim(bbl_bulk_Ri_interp_method)
+
+      select case (bbl_OBL_interp_type)
+      case (CVMIX_INTERP_LINEAR)
+         bbl_OBL_interp_method = 'linear'
+      case (CVMIX_INTERP_QUADRATIC)
+         bbl_OBL_interp_method = 'quadratic'
+      case (CVMIX_INTERP_CUBIC)
+         bbl_OBL_interp_method = 'cubic'
+      case (CVMIX_INTERP_LMD94)
+         bbl_OBL_interp_method = 'LMD94'
+      case default
+         STDERR 'Unsupported bbl_OBL_interp_type: ', bbl_OBL_interp_type
+         stop 'init_cvmix'
+      end select
+      LEVEL4 'Interpolation type for diff and visc: ', trim(bbl_OBL_interp_method)
+   else
+      LEVEL3 'Bottom layer mixing algorithm          - not active -'
    endif
 
    LEVEL2 '--------------------------------------------------------'
@@ -659,21 +774,38 @@
                             diff_conv_type="MC76")
    endif
 
-   ! initialize KPP
-   if (use_kpp) then
-      call cvmix_init_kpp(Ri_crit=kpp_Ri_c,                                   &
-                          interp_type=trim(bulk_Ri_interp_method),            &
-                          interp_type2=trim(OBL_interp_method),               &
-                          MatchTechnique=trim(match_technique),               &
+   ! initialize KPP in surface layer
+   if (use_surface_layer) then
+      call cvmix_init_kpp(Ri_crit=sbl_Ri_c,                                   &
+                          interp_type=trim(sbl_bulk_Ri_interp_method),        &
+                          interp_type2=trim(sbl_OBL_interp_method),           &
+                          MatchTechnique=trim(sbl_match_method),              &
                           minVtsqr=_ZERO_,                                    &
-                          lEkman=kpp_check_Ekman_length,                      &
-                          lMonOb=kpp_check_MonOb_length,                      &
-                          lnoDGat1=kpp_use_noDGat1,                           &
-                          lenhanced_diff=kpp_use_enhanced_diff,               &
-                          surf_layer_ext=kpp_surface_layer_extent,            &
+                          lEkman=sbl_check_Ekman_length,                      &
+                          lMonOb=sbl_check_MonOb_length,                      &
+                          lnoDGat1=sbl_use_noDGat1,                           &
+                          lenhanced_diff=sbl_use_enhanced_diff,               &
+                          surf_layer_ext=sbl_surface_layer_extent,            &
                           langmuir_mixing_str=trim(langmuir_mixing_method),   &
                           langmuir_entrainment_str=                           &
                                     trim(langmuir_entrainment_method))
+   endif
+
+   ! initialize KPP in bottom layer
+   if (use_bottom_layer) then
+      call cvmix_init_kpp(Ri_crit=bbl_Ri_c,                                   &
+                          interp_type=trim(bbl_bulk_Ri_interp_method),        &
+                          interp_type2=trim(bbl_OBL_interp_method),           &
+                          MatchTechnique=trim(bbl_match_method),              &
+                          minVtsqr=_ZERO_,                                    &
+                          lEkman=bbl_check_Ekman_length,                      &
+                          lMonOb=bbl_check_MonOb_length,                      &
+                          lnoDGat1=bbl_use_noDGat1,                           &
+                          lenhanced_diff=.false.,                             &
+                          surf_layer_ext=bbl_surface_layer_extent,            &
+                          langmuir_mixing_str="NONE",                         &
+                          langmuir_entrainment_str="NONE",                    &
+                          CVmix_kpp_params_user=CVmix_kpp_params_tmp)
    endif
 
    ! initialize constants
@@ -683,13 +815,14 @@
 
    ! initialize boundary layer
    zsbl = _ZERO_
+   zbbl = _ZERO_
 
    ! initialize CVMix variables
    call cvmix_put(CVmix_vars, 'nlev', nlev)
    call cvmix_put(CVmix_vars, 'max_nlev', nlev)
    call cvmix_put(CVmix_vars, 'OceanDepth', h0)
-   call cvmix_put(CVmix_vars, 'zw_iface', z_w(nlev:0:-1))
-   call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(nlev:1:-1))
+   call cvmix_put(CVmix_vars, 'zw_iface', z_w(0:nlev))
+   call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(1:nlev))
    call cvmix_put(CVmix_vars, 'Mdiff', _ZERO_)
    call cvmix_put(CVmix_vars, 'Tdiff', _ZERO_)
    call cvmix_put(CVmix_vars, 'Sdiff', _ZERO_)
@@ -703,6 +836,19 @@
    ! call cvmix_put(CVmix_vars, 'WaterDensity_cntr', _ZERO_)
    ! call cvmix_put(CVmix_vars, 'AdiabWaterDensity_cntr', _ZERO_)
 
+   if (use_bottom_layer) then
+      ! initialize CVMix variables for bottom layer
+      call cvmix_put(CVmix_vars_tmp, 'nlev', nlev)
+      call cvmix_put(CVmix_vars_tmp, 'max_nlev', nlev)
+      call cvmix_put(CVmix_vars_tmp, 'OceanDepth', h0)
+      call cvmix_put(CVmix_vars_tmp, 'zw_iface', z_w(0:nlev))
+      call cvmix_put(CVmix_vars_tmp, 'zt_cntr',  z_r(1:nlev))
+      call cvmix_put(CVmix_vars_tmp, 'Mdiff', _ZERO_)
+      call cvmix_put(CVmix_vars_tmp, 'Tdiff', _ZERO_)
+      call cvmix_put(CVmix_vars_tmp, 'Sdiff', _ZERO_)
+      call cvmix_put(CVmix_vars_tmp, 'BulkRichardson_cntr', _ZERO_)
+   endif
+
    return
 
  end subroutine post_init_cvmix
@@ -714,7 +860,7 @@
 ! !IROUTINE: Do KPP with CVMix
 !
 ! !INTERFACE:
-   subroutine do_cvmix(nlev,h0,h,rho,u,v,NN,NNT,NNS,SS,u_taus,         &
+   subroutine do_cvmix(nlev,h0,h,rho,u,v,NN,NNT,NNS,SS,u_taus,u_taub,  &
                        tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,          &
                        EFactor,LaSL)
 !
@@ -750,8 +896,8 @@
 !  square of shear frequency (1/s^2)
    REALTYPE, intent(in)                          :: SS(0:nlev)
 
-!  surface friction velocities (m/s)
-   REALTYPE, intent(in)                          :: u_taus
+!  surface and bottom friction velocities (m/s)
+   REALTYPE, intent(in)                          :: u_taus,u_taub
 
 !  surface temperature flux (K m/s) and
 !  salinity flux (psu m/s) (negative for loss)
@@ -783,6 +929,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                             :: k
+   REALTYPE, dimension(0:nlev)         :: z_w_tmp, z_r_tmp
 
 !
 !-----------------------------------------------------------------------
@@ -811,6 +958,14 @@
    enddo
 
 !-----------------------------------------------------------------------
+!  Update grid in CVMix
+!-----------------------------------------------------------------------
+
+!  CVMix assumes that z indices increase with depth (surface to bottom)
+   CVmix_vars%zw_iface = z_w(nlev:0:-1)
+   CVmix_vars%zt_cntr = z_r(nlev:1:-1)
+
+!-----------------------------------------------------------------------
 ! compute interior non-convective mixing
 !-----------------------------------------------------------------------
 
@@ -830,6 +985,21 @@
       call surface_layer(nlev,h,rho,u,v,NN,u_taus,                   &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f,      &
                          EFactor, LaSL)
+   endif
+
+!-----------------------------------------------------------------------
+! compute bottom boundary layer mixing
+!-----------------------------------------------------------------------
+
+   if (use_bottom_layer) then
+      z_w_tmp(0) = _ZERO_
+      do k=1,nlev
+         z_w_tmp(k) = z_w(0) - z_w(k)
+         z_r_tmp(k) = z_w(0) - z_r(k)
+      enddo
+      CVmix_vars_tmp%zw_iface = z_w_tmp(0:nlev)
+      CVmix_vars_tmp%zt_cntr = z_r_tmp(1:nlev)
+      call bottom_layer(nlev,h,rho,u,v,NN,u_taub,tRad,bRad,f)
    endif
 
 !-----------------------------------------------------------------------
@@ -1123,7 +1293,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                      :: k,ksbl
-   integer                      :: kk,kref,kp1
+   integer                      :: kk,kref
 
    REALTYPE                     :: Bo,Bfsfc
    REALTYPE                     :: tRadSrf
@@ -1166,14 +1336,6 @@
    enddo
 
 !-----------------------------------------------------------------------
-!  Update grid in CVMix
-!-----------------------------------------------------------------------
-
-!  CVMix assumes that z indices increase with depth (surface to bottom)
-   CVmix_vars%zw_iface = z_w(nlev:0:-1)
-   CVmix_vars%zt_cntr = z_r(nlev:1:-1)
-
-!-----------------------------------------------------------------------
 !  Compute potential density and velocity components surface reference
 !  values.
 !-----------------------------------------------------------------------
@@ -1189,18 +1351,17 @@
 
    RiBulk = _ZERO_
 
-   do k=nlev-1,2,-1
+   do k=nlev,1,-1
       ! do the calculation at grid cell center
-      kp1 = k+1
-      depth = z_w(nlev)-z_r(kp1)
+      depth = z_w(nlev)-z_r(k)
       call cvmix_kpp_compute_turbulent_scales(_ONE_,       &
-          depth,Bflux(kp1),u_taus,                         &
+          depth,Bflux(k),u_taus,                           &
           w_s=ws,w_m=wm)
 
       ! update potential density and velocity components surface
       ! reference values with the surface layer averaged values
       ! determine which layer contains surface layer
-      surfthick = kpp_surface_layer_extent*depth
+      surfthick = sbl_surface_layer_extent*depth
       do kk = nlev,k,-1
          if (z_w(nlev)-z_w(kk-1) .ge. surfthick) then
             kref = kk
@@ -1221,13 +1382,13 @@
          Vref = Vref/surfthick
       end if
       ! use the values at grid centers
-      Rk = rho(kp1)
-      Uk =   u(kp1)
-      Vk =   v(kp1)
+      Rk = rho(k)
+      Uk =   u(k)
+      Vk =   v(k)
       ! compute the Bulk Richardson number
       ! use the max of NN at the upper and lower interface following Van Roekel et al., 2019
-      NN_max = max(NN(kp1), NN(k))
-      RiBulk(kp1:kp1) = cvmix_kpp_compute_bulk_Richardson(           &
+      NN_max = max(NN(k-1), NN(k))
+      RiBulk(k:k) = cvmix_kpp_compute_bulk_Richardson(               &
                 zt_cntr = (/-depth/),                                &
                 delta_buoy_cntr = (/-cvmix_gorho0*(Rref-Rk)/),       &
                 delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
@@ -1235,10 +1396,9 @@
                 Nsqr_iface = (/NN_max, NN_max/),                     &
                 EFactor = EFactor,                                   &
                 LaSL = LaSL,                                         &
-                bfsfc = Bflux(kp1),                                  &
+                bfsfc = Bflux(k),                                    &
                 ustar = u_taus)
-
-   enddo  ! inner grid faces
+   enddo
 
 !-----------------------------------------------------------------------
 !  Compute total buoyancy flux at surface boundary layer depth
@@ -1248,7 +1408,7 @@
 
 !  first find old boundary layer index "ksbl".
    ksbl=1
-   do k=nlev,2,-1
+   do k=nlev,1,-1
       if ((ksbl.eq.1).and.(z_w(k-1).lt.zsbl)) then
          ksbl = k
       endif
@@ -1271,14 +1431,14 @@
    call cvmix_kpp_compute_OBL_depth(CVmix_vars)
 
    ! CVMix returns a BoundaryLayerDepth > 0
-   zsbl = -CVmix_vars%BoundaryLayerDepth
+   zsbl = z_w(nlev)-CVmix_vars%BoundaryLayerDepth
 
 !-----------------------------------------------------------------------
 !  Update surface buoyancy flux in the new surface boundary layer
 !-----------------------------------------------------------------------
 
    ksbl=1
-   do k=nlev,2,-1
+   do k=nlev,1,-1
       if ((ksbl.eq.1).and.(z_w(k-1).lt.zsbl)) then
          ksbl = k
       endif
@@ -1332,6 +1492,234 @@
    return
 
  end subroutine surface_layer
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute turbulence in the bottom layer with CVMix
+!
+! !INTERFACE:
+   subroutine bottom_layer(nlev,h,rho,u,v,NN,u_taub,tRad,bRad,f)
+!
+! !DESCRIPTION:
+! In this routine all computations related to turbulence in the bottom layer
+! are performed. CVMix library is used.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!  number of grid cells
+   integer, intent(in)                           :: nlev
+
+!  thickness of grid cells (m)
+   REALTYPE, intent(in)                          :: h(0:nlev)
+
+!  potential density at grid centers (kg/m^3)
+   REALTYPE, intent(in)                          :: rho(0:nlev)
+
+!  velocity components at grid centers (m/s)
+   REALTYPE, intent(in)                          :: u(0:nlev),v(0:nlev)
+
+!  square of buoyancy frequency (1/s^2)
+   REALTYPE, intent(in)                          :: NN(0:nlev)
+
+!  bottom friction velocities (m/s)
+   REALTYPE, intent(in)                          :: u_taub
+
+!  radiative flux [ I(z)/(rho Cp) ] (K m/s)
+!  and associated buoyancy flux (m^2/s^3)
+   REALTYPE, intent(in)                          :: tRad(0:nlev),bRad(0:nlev)
+
+!  Coriolis parameter (rad/s)
+   REALTYPE, intent(in)                          :: f
+
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf
+!   Adapted for CVMix: Qing Li
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer                      :: k,kbbl
+   integer                      :: kk,kref
+
+   REALTYPE                     :: Bfbot
+   REALTYPE                     :: tRadBot
+   REALTYPE                     :: bRadBot,bRadBbl
+   REALTYPE                     :: wm, ws
+   REALTYPE                     :: depth
+   REALTYPE                     :: Rk, Rref
+   REALTYPE                     :: Uk, Uref, Vk, Vref
+   REALTYPE                     :: bRad_cntr
+   REALTYPE                     :: NN_max
+
+
+   REALTYPE, dimension (0:nlev) :: Bflux
+   REALTYPE, dimension (0:nlev) :: RiBulk
+
+!  Thickness of surface layer
+   REALTYPE                     :: surfthick
+
+!-----------------------------------------------------------------------
+!BOC
+!
+!-----------------------------------------------------------------------
+!  Compute total buoyancy flux (m2/s3) at W-points.
+!-----------------------------------------------------------------------
+!
+    tRadBot   =   tRad(0)
+    bRadBot   =   bRad(0)
+
+!  include effect of short-wave radiation
+!  Bflux(k) is the total buoyancy flux below the level z_r(k)
+
+   do k = 1,nlev
+      bRad_cntr = 0.5*(bRad(k)+bRad(k-1))
+      Bflux(k)  =  bRad_cntr - bRadBot
+   enddo
+
+!-----------------------------------------------------------------------
+!  Compute potential density and velocity components bottom reference
+!  values.
+!-----------------------------------------------------------------------
+
+!  initialize the reference potential density and velocity
+   Rref = rho(1)
+   Uref =   u(1)
+   Vref =   v(1)
+
+!-----------------------------------------------------------------------
+!  Compute bulk Richardson number at grid cell center
+!-----------------------------------------------------------------------
+
+   RiBulk = _ZERO_
+
+   do k=1,nlev
+      ! do the calculation at grid cell center
+      depth = z_r(k)-z_w(0)
+      call cvmix_kpp_compute_turbulent_scales(_ONE_,       &
+          depth,Bflux(k),u_taub,                           &
+          w_s=ws,w_m=wm,                                   &
+          CVmix_kpp_params_user=CVmix_kpp_params_tmp)
+
+      ! update potential density and velocity components surface
+      ! reference values with the surface layer averaged values
+      ! determine which layer contains surface layer
+      surfthick = bbl_surface_layer_extent*depth
+      do kk = 1,k
+         if (z_w(kk)-z_w(0) .ge. surfthick) then
+            kref = kk
+            exit
+         end if
+      end do
+      if (kref > 1) then
+         Rref = rho(kref)*(surfthick+z_w(0)-z_w(kref-1))
+         Uref =   u(kref)*(surfthick+z_w(0)-z_w(kref-1))
+         Vref =   v(kref)*(surfthick+z_w(0)-z_w(kref-1))
+         do kk = 1,kref-1
+            Rref = Rref + rho(kk)*h(kk)
+            Uref = Uref +   u(kk)*h(kk)
+            Vref = Vref +   v(kk)*h(kk)
+         end do
+         Rref = Rref/surfthick
+         Uref = Uref/surfthick
+         Vref = Vref/surfthick
+      end if
+      ! use the values at grid centers
+      Rk = rho(k)
+      Uk =   u(k)
+      Vk =   v(k)
+      ! compute the Bulk Richardson number
+      ! use the max of NN at the upper and lower interface following Van Roekel et al., 2019
+      NN_max = max(NN(k-1), NN(k))
+      RiBulk(k:k) = cvmix_kpp_compute_bulk_Richardson(               &
+                zt_cntr = (/-depth/),                                &
+                delta_buoy_cntr = (/-cvmix_gorho0*(Rk-Rref)/),       &
+                delta_Vsqr_cntr = (/(Uk-Uref)**2+(Vk-Vref)**2/),     &
+                ws_cntr = (/ws/),                                    &
+                Nsqr_iface = (/NN_max, NN_max/),                     &
+                CVmix_kpp_params_user=CVmix_kpp_params_tmp)
+   enddo
+
+!-----------------------------------------------------------------------
+!  Compute total buoyancy flux at bottom boundary layer depth
+!-----------------------------------------------------------------------
+!  This calculation is based on the boundary layer depth in the previous
+!  time step
+
+!  first find old boundary layer index "kbbl".
+   kbbl=nlev
+   do k=1,nlev
+      if ((kbbl.eq.nlev).and.(z_w(k).gt.zbbl)) then
+         kbbl = k
+      endif
+   enddo
+
+   bRadBbl = ( bRad(kbbl-1)*(z_w(kbbl)-zbbl) +                          &
+               bRad(kbbl  )*(zbbl-z_w(kbbl-1) ) )/ h(kbbl)
+
+   Bfbot   = bRadBbl - bRadBot
+
+!-----------------------------------------------------------------------
+! Find the boundary layer depth
+!-----------------------------------------------------------------------
+
+   CVmix_vars_tmp%BulkRichardson_cntr = RiBulk(1:nlev)
+   CVmix_vars_tmp%SurfaceFriction = u_taub
+   CVmix_vars_tmp%SurfaceBuoyancyForcing = -Bfbot
+   CVmix_vars_tmp%Coriolis = f
+
+   call cvmix_kpp_compute_OBL_depth(CVmix_vars_tmp, CVmix_kpp_params_tmp)
+
+   ! CVMix returns a BoundaryLayerDepth > 0
+   zbbl = z_w(0)+CVmix_vars_tmp%BoundaryLayerDepth
+
+!-----------------------------------------------------------------------
+!  Update surface buoyancy flux in the new bottom boundary layer
+!-----------------------------------------------------------------------
+
+   kbbl=nlev
+   do k=1,nlev
+      if ((kbbl.eq.nlev).and.(z_w(k).gt.zbbl)) then
+         kbbl = k
+      endif
+   enddo
+
+   bRadBbl = ( bRad(kbbl-1)*(z_w(kbbl)-zbbl) +                          &
+               bRad(kbbl  )*(zbbl-z_w(kbbl-1) ) )/ h(kbbl)
+
+   Bfbot   = bRadBbl - bRadBot
+
+   CVmix_vars_tmp%SurfaceBuoyancyForcing = -Bfbot
+
+!-----------------------------------------------------------------------
+!  Compute the mixing coefficients within the bottom boundary layer
+!-----------------------------------------------------------------------
+
+   ! Note that arrays at the cell interface in CVMix have indices (1:nlev+1)
+   ! whereas those in GOTM have indices (0:nlev)
+   CVmix_vars_tmp%Mdiff_iface(1:nlev+1) = cvmix_num(0:nlev)
+   CVmix_vars_tmp%Tdiff_iface(1:nlev+1) = cvmix_nuh(0:nlev)
+   CVmix_vars_tmp%Sdiff_iface(1:nlev+1) = cvmix_nus(0:nlev)
+
+   call cvmix_coeffs_kpp(CVmix_vars_tmp, CVmix_kpp_params_tmp)
+
+   do k=0,kbbl
+      cvmix_num(k) = CVmix_vars_tmp%Mdiff_iface(k+1)
+      cvmix_nuh(k) = CVmix_vars_tmp%Tdiff_iface(k+1)
+      cvmix_nus(k) = CVmix_vars_tmp%Sdiff_iface(k+1)
+   enddo
+
+   return
+
+!-----------------------------------------------------------------------
+
+   return
+
+ end subroutine bottom_layer
 !EOC
 
 !-----------------------------------------------------------------------

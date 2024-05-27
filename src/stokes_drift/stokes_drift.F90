@@ -124,11 +124,15 @@
    LEVEL1 'init_stokes_drift_yaml'
 
    branch => settings_store%get_typed_child('waves/stokes_drift', 'observed/prescribed Stokes drift', display=display_advanced)
-   call branch%get(usprof, 'us', 'Stokes drift in West-East direction', 'm/s', default=0._rk,    &
+   call branch%get(us0, 'us0', 'surface Stokes drift in West-East direction', 'm/s',                &
+                   method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
+   call branch%get(vs0, 'vs0', 'surface Stokes drift in South-North direction', 'm/s',              &
+                   method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
+   call branch%get(usprof, 'us', 'Stokes drift profile in West-East direction', 'm/s', default=0._rk,    &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(EXPONENTIAL, 'exponential profile', 'exponential'), &
                                    option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017', 'empirical')/))
-   call branch%get(vsprof, 'vs', 'Stokes drift in South-North direction', 'm/s', default=0._rk,  &
+   call branch%get(vsprof, 'vs', 'Stokes drift profile in South-North direction', 'm/s', default=0._rk,  &
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(EXPONENTIAL, 'exponential profile', 'exponential'), &
                                    option(THEORYWAVE, 'empirical theory-wave of Li et al., 2017', 'empirical')/))
@@ -139,14 +143,10 @@
                    method_off=NOTHING, method_constant=method_unsupported, method_file=FROMFILE, &
                    extra_options=(/option(FROMUS, 'compute from vs', 'vs')/))
    twig => branch%get_typed_child('exponential', 'exponential Stokes drift profile defined by surface value and decay depth')
-   call twig%get(us0, 'us0', 'surface Stokes drift in West-East direction', 'm/s',                &
-                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
-   call twig%get(vs0, 'vs0', 'surface Stokes drift in South-North direction', 'm/s',              &
-                 method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
    call twig%get(ds, 'ds', 'Stokes drift decay depth', 'm',                          &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, &
                  minimum=0._rk, default=5._rk)
-   twig => branch%get_typed_child('empirical', 'approximate Stokes drift from empirical wave spectrum following Li et al., 2017')
+   twig => branch%get_typed_child('empirical', 'approximate Stokes drift profile from empirical wave spectrum following Li et al., 2017')
    call twig%get(uwnd, 'uwnd', 'surface wind for Stokes drift in West-East direction', 'm/s',     &
                  method_off=NOTHING, method_constant=CONSTANT, method_file=FROMFILE, default=0._rk)
    call twig%get(vwnd, 'vwnd', 'surface wind for Stokes drift in South-North direction', 'm/s',   &
@@ -189,21 +189,26 @@
 
    LEVEL2 'allocation stokes_drift memory..'
 
+   ! surface Stokes drift
+   call register_input(us0)
+   call register_input(vs0)
    ! Stokes drift profile
    call register_input(usprof)
    call register_input(vsprof)
+   ! Stokes drift shear profile
+   call register_input(dusdz)
+   call register_input(dvsdz)
 
    select case (usprof%method)
       case (NOTHING)
-         LEVEL2 'Stokes drift off.'
+         LEVEL2 'Stokes drift profile off.'
       case (FROMFILE)
+         LEVEL2 'Reading Stokes drift profile from file.'
       case (EXPONENTIAL)
          LEVEL2 'Using exponential Stokes drift profile.'
-         call register_input(us0)
-         call register_input(vs0)
          call register_input(ds)
       case (THEORYWAVE)
-         LEVEL2 'Using Stokes drift estimated from the theory-wave of Li et al. (2017)'
+         LEVEL2 'Using Stokes drift profile approximated by the theory-wave approach of Li et al. (2017)'
          call register_input(uwnd)
          call register_input(vwnd)
       case (CONSTANT)
@@ -213,10 +218,6 @@
          LEVEL1 'A non-valid us_prof_method has been given ', usprof%method
          stop 'init_stokes_drift()'
    end select
-
-   ! Stokes drift shear profile
-   call register_input(dusdz)
-   call register_input(dvsdz)
 
    ! Langmuir number
    La_Turb = _ONE_/SMALL
@@ -272,17 +273,8 @@
 !-----------------------------------------------------------------------
 !BOC
 
+   ! Stokes drift profile
    select case (usprof%method)
-      case (FROMFILE)
-         ! usprof and vsprof already read from file
-         us0%value = usprof%data(nlev)
-         vs0%value = vsprof%data(nlev)
-         ! Stokes transport
-         ustran = _ZERO_
-         do k=1,nlev
-            ustran = ustran + sqrt(usprof%data(k)**2+vsprof%data(k)**2)*(zi(k)-zi(k-1))
-         end do
-         ds%value = ustran/max(SMALL, sqrt(us0%value**2.+vs0%value**2.))
       case (EXPONENTIAL)
          call stokes_drift_exp(nlev,z,zi)
       case (THEORYWAVE)
@@ -291,6 +283,13 @@
          else
             call stokes_drift_theory(nlev,z,zi,uwnd%value,vwnd%value,gravity)
          endif
+      case DEFAULT
+         ! Stokes transport
+         ustran = _ZERO_
+         do k=1,nlev
+            ustran = ustran + sqrt(usprof%data(k)**2+vsprof%data(k)**2)*(zi(k)-zi(k-1))
+         end do
+         ds%value = ustran/max(SMALL, sqrt(us0%value**2.+vs0%value**2.))
    end select
 
    ! Stokes shear
@@ -348,7 +347,7 @@
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
    REALTYPE, parameter                 :: kappa = 0.4
-   integer                             :: k, kk, ksl, kbl
+   integer                             :: k, ksl, kbl
    REALTYPE                            :: ussl, vssl, us_srf
    REALTYPE                            :: hsl, dz, z0
 !
@@ -363,17 +362,19 @@
    hsl = 0.2*hbl
 
 !  determine which layer contains surface layer
-   do kk = nlev,k,-1
-      if (zi(nlev)-zi(kk-1) .ge. hsl) then
-         ksl = kk
+   ksl = 1
+   do k = nlev,1,-1
+      if (zi(nlev)-zi(k-1) .ge. hsl) then
+         ksl = k
          exit
       end if
    end do
 
 !  determine which layer contains boundary layer
-   do kk = nlev,k,-1
-      if (zi(nlev)-zi(kk-1) .ge. hbl) then
-         kbl = kk
+   kbl = 1
+   do k = nlev,1,-1
+      if (zi(nlev)-zi(k-1) .ge. hbl) then
+         kbl = k
          exit
       end if
    end do
@@ -382,16 +383,16 @@
    if (ksl < nlev) then
       ussl =   usprof%data(ksl)*(hsl+zi(ksl))
       vssl =   vsprof%data(ksl)*(hsl+zi(ksl))
-      do kk = nlev,ksl+1,-1
-         dz = zi(kk)-zi(kk-1)
-         ussl = ussl + usprof%data(kk)*dz
-         vssl = vssl + vsprof%data(kk)*dz
+      do k = nlev,ksl+1,-1
+         dz = zi(k)-zi(k-1)
+         ussl = ussl + usprof%data(k)*dz
+         vssl = vssl + vsprof%data(k)*dz
       end do
       ussl = ussl/hsl
       vssl = vssl/hsl
    else
-      ussl = us0%value
-      vssl = vs0%value
+      ussl = usprof%data(nlev)
+      vssl = vsprof%data(nlev)
    end if
 
    if (us_srf .gt. 1e-4 .and. u_taus .gt. 1e-4) then
