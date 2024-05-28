@@ -2058,7 +2058,7 @@
       ! compute model propeties
       sig_k      = sig_kw
       gen_d      = - 1./cw2
-      gen_alpha  = -4.*sqrt(sig_k)/(3.*sqrt(sig_k)-sqrt(sig_k+24.*sig_w*cw2))
+      gen_alpha  = 4.*sqrt(sig_k)/(3.*sqrt(sig_k)-sqrt(sig_k+24.*sig_w*cw2))
       gen_l      = cm0*sqrt(rcm)*sqrt( (5.*sig_k+12.*sig_w*cw2 -  &
                    3.*sqrt(sig_k*(sig_k+24.*sig_w*cw2 ) ) ) / 12. )
 
@@ -3558,7 +3558,7 @@
          if (bc.eq.Dirichlet) then
             omega_bc = K**0.5/(cm0*gen_l)*(zi+z0)**(0.5*gen_alpha-1.)
          else
-            omega_bc = -cmsf*K*(0.5*alpha-1.)/(sig_w*cm0) &
+            omega_bc = -cmsf*K*(0.5*gen_alpha-1.)/(sig_w*cm0) &
                          *(zi+z0)**(gen_alpha-1.)
          endif
       case default
@@ -3698,7 +3698,7 @@
             psi_bc = - (gen_m*gen_alpha+gen_n)*cmsf*cm0**gen_p/sig_psi &
                          *K**(gen_m+0.5)*gen_l**(gen_n+1.) &
                          *(zi+z0)**((gen_m+0.5)*gen_alpha+gen_n)
-         endif
+          endif
       case default
    end select
    end function psi_bc
