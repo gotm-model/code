@@ -8,8 +8,53 @@
    subroutine omegaeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
 
 ! !DESCRIPTION:
-! Under construction. Please refer to Umlauf et al. (2003) and Umlauf and Burchard (2003)
-! for the basic documentation of the $k$-$\omega$ model and its boundary conditions.
+! The $k$-$\omega$ model described by \cite{UmlaufEtAl3003} solves
+! a transport equation for the inverse turbulence time scale,
+! $ \omega = (c_\mu^0)^4 \varepsilon /k$, of the following form:     
+! \begin{equation}
+!   \label{omega}
+!   \dot{\omega}
+!   =
+!   {\cal D}_\omega
+!   + \frac{\omega}{k} ( c_{\omega 1} P + c_{\omega 3} G
+!                        - c_{\omega 2} \varepsilon )
+!   \comma
+! \end{equation}
+! where $\dot{\omega}$ denotes the material derivative of $\omega$.
+! The production terms $P$ and $G$ follow from \eq{PandG} and
+! ${\cal D}_\omega$ represents the sum of the viscous and turbulent
+! transport terms.
+!
+! For horizontally homogeneous flows, the transport term ${\cal D}_\omega$
+! appearing in \eq{dissipation} is presently expressed by a simple
+! gradient formulation,
+! \begin{equation}
+!   \label{diffusionOmega}
+!   {\cal D}_\omega = \frstder{z}
+!    \left( \dfrac{\nu_t}{\sigma_\omega} \partder{\omega}{z} \right)
+!  \comma
+! \end{equation}
+! where $\sigma_\omega$ is the constant Schmidt-number for $\omega$.
+!
+! Model constants are summarized in \tab{tab:KW_constants}. Similar
+! to the two-equations models, the model parameter $c_{omega 3}$
+! determines the value of the stationory Richardson number. It is
+! computed numerically by solving \eq{Ri_st}.
+! \begin{table}[ht]
+!   \begin{center}
+! \begin{tabular}{cccccc}
+!     & $c_\mu^0$ & $\sigma_k$  & $\sigma_\omega$
+!     & $c_{\omega 1}$ & $c_{\omega 2}$  \\[1mm] \hline
+!     \cite{Rodi87} & $0.55$ & $2.0$ &  $2.0$ & $0.56$ & $0.83$ \\
+!   \end{tabular}
+!   \caption{\label{tab:KW_constants} Constants appearing in
+!    \eq{omega} and \eq{diffusionOmega}.}
+!   \end{center}
+! \end{table}
+!
+! At the end of this routine the length-scale can be constrained according to a
+! suggestion of \cite{Galperinetal88}. This feature is optional and can be activated
+! by setting {\tt length\_lim = .true.} in {\tt gotm.yaml}.     
 !
 ! !USES:
    use turbulence, only: P,B,PSTK,num
