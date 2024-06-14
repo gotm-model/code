@@ -69,9 +69,8 @@ contains
       integer,           optional,intent(in)    :: order
 
       class (type_settings_node), pointer :: node
-      integer                             :: istart
 
-      node => self%get_node(name, treat_as_path=treat_as_path, istart=istart, order=order)
+      node => self%get_node(name, treat_as_path=treat_as_path, order=order)
       call type_input_create(node, target, long_name, units, default, minimum, maximum, description, extra_options, method_off, method_constant, method_file, pchild, display, default_method)
    end subroutine
 
@@ -96,11 +95,11 @@ contains
       real(rk)                            :: constant_value
       logical                             :: has_constant_value
       class (type_input_setting), pointer :: setting
-      integer                             :: istart
       class(type_yaml_node),      pointer :: node2
       class(type_yaml_scalar),    pointer :: scalar
       type (type_yaml_error),     pointer :: yaml_error
       logical                             :: success
+      character(len=:), allocatable       :: path
 
       select type (value => node%value)
       class is (type_input_setting)
@@ -110,7 +109,6 @@ contains
          call node%set_value(setting)
       end select
 
-      istart = index(setting%path, '/', .true.) + 1
       setting%long_name = long_name
       if (units /= '') setting%long_name = setting%long_name // ' [' // units // ']'
       if (present(description)) setting%description = description
@@ -129,19 +127,19 @@ contains
             setting%backing_store => yaml_node
          class is (type_yaml_scalar)
             if (target%method_constant == method_unsupported) then
-               call report_error(setting%path//' must be a dictionary (constant values are not supported).')
+               call setting%report_error(setting%get_path()//' must be a dictionary (constant values are not supported).')
                return
             end if
             constant_value = yaml_node%to_real(default, success)
             if (.not. success) then
-               call report_error(setting%path//' is set to a single value "'//trim(yaml_node%string)//'" that cannot be interpreted as a real number.')
+               call setting%report_error(setting%get_path()//' is set to a single value "'//trim(yaml_node%string)//'" that cannot be interpreted as a real number.')
                return
             end if
             has_constant_value = .true.
          class is (type_yaml_null)
-            call report_error(setting%path//' must be a constant or a dictionary with further information. It cannot be null.')
+            call setting%report_error(setting%get_path()//' must be a constant or a dictionary with further information. It cannot be null.')
          class is (type_yaml_list)
-            call report_error(setting%path//' must be a constant or a dictionary with further information. It cannot be a list.')
+            call setting%report_error(setting%get_path()//' must be a constant or a dictionary with further information. It cannot be a list.')
          end select
       end if
 
@@ -191,7 +189,8 @@ contains
          if (present(minimum)) target%minimum = minimum
          if (present(maximum)) target%maximum = maximum
       end if
-      target%name = setting%path(2:)
+      path = setting%get_path(include_file=.false.)
+      target%name = path(2:len(path))
       if (present(pchild)) pchild => setting
 
    end subroutine type_input_create

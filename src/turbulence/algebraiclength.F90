@@ -12,7 +12,7 @@
 ! scale $l$ from different types of analytical expressions. These
 ! range from simple geometrical forms to more complicated expressions
 ! taking into account the effects of stratification and shear. The
-! users can select their method in the input file {\tt gotmturb.nml}.
+! users can select their method in the input file {\tt gotm.yaml}.
 ! For convenience, we define here $d_b$ and $d_s$ as the distance
 ! from the bottom and the surface, respectively. The water
 ! depth is then given by $H=d_b+d_s$, and $z_0^b$ and
@@ -87,19 +87,17 @@
 !    converges to $\kappa(z+z_0)$ at the surface and the bottom
 !    only for large water depth, and when $l_a$ plays only a
 !    minor role.
-!  \item The so--called ISPRAMIX method to compute the length--scale
-!   is described in detail in \sect{sec:ispramix}.
 ! \end{enumerate}
 ! After the length--scale has been computed, it is optionally
 ! limited by the method suggested by \cite{Galperinetal88}. This
-! option can be activated in {\tt gotmturb.nml} by setting
+! option can be activated in {\tt gotm.yaml} by setting
 ! {\tt length\_lim = .true.} The rate of dissipation is computed
 ! according to \eq{epsilon}.
 !
 ! !USES:
    use turbulence, only: L,eps,tke,k_min,eps_min
    use turbulence, only: cde,galp,kappa,length_lim
-   use turbulence, only: Parabolic,Triangular,Xing_Davies,Robert_Ouellet,Blackadar,ispra_length
+   use turbulence, only: Parabolic,Triangular,Xing_Davies,Robert_Ouellet,Blackadar
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -221,13 +219,6 @@
          L(0)    = kappa*z0b
          L(nlev) = kappa*z0s
 !
-!  Ispramix
-      case(ispra_length)
-         call ispralength(nlev,NN,h,depth)
-
-         L(0)    = kappa*z0b
-         L(nlev) = kappa*z0s
-
       case default
    end select
 

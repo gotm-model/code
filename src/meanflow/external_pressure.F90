@@ -5,7 +5,7 @@
 ! !ROUTINE: The external pressure-gradient \label{sec:extpressure}
 !
 ! !INTERFACE:
-   subroutine extpressure(method,nlev)
+   subroutine external_pressure(method,nlev)
 !
 ! !DESCRIPTION:
 !
@@ -95,9 +95,7 @@
 !     pressure gradient is applied directly
 !     in uequation() and vequation()
    end select
-
-   return
-   end subroutine extpressure
+   end subroutine external_pressure
 !EOC
 
 !-----------------------------------------------------------------------

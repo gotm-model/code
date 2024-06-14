@@ -42,7 +42,7 @@
       STDERR '**********************************************'
       STDERR '* Error detected by analytical_profile.F90:  *'
       STDERR '*   z2 should be larger than z1.             *'
-      STDERR '*   Please edit obs.nml and restart GOTM.    *'
+      STDERR '*   Please edit gotm.yaml and restart GOTM.  *'
       STDERR '**********************************************'
       stop
    end if

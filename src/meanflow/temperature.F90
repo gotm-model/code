@@ -36,7 +36,7 @@
 !  denotes the non-local flux of heat, see \sect{sec:turbulenceIntro}.
 !
 !  Horizontal advection is optionally
-!  included  (see {\tt obs.nml}) by means of prescribed
+!  included  (see {\tt gotm.yaml}) by means of prescribed
 !  horizontal gradients $\partial_x\Theta$ and $\partial_y\Theta$ and
 !  calculated horizontal mean velocities $U$ and $V$.
 !  Relaxation with the time scale $\tau^\Theta_R$
@@ -53,7 +53,7 @@
 !  The absorbtion coefficients $\eta_1$ and $\eta_2$ depend on the water type
 !  and have to be prescribed either by means of choosing a \cite{Jerlov68} class
 !  (see \cite{PaulsonSimpson77}) or by reading in a file through the namelist
-!  {\tt extinct} in {\tt obs.nml}. The damping term due to bioturbidity,
+!  {\tt extinct} in {\tt gotm.yaml}. The damping term due to bioturbidity,
 !  $B(z)$ is calculated in the biogeochemical routines, see section
 !  \ref{sec:bio-intro}.
 
@@ -65,8 +65,10 @@
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
 ! !USES:
-   use meanflow,     only: avmolt,rho_0,cp
+   use density,      only: rho0,cp
+   use meanflow,     only: avmolt
    use meanflow,     only: h,u,v,w,T,S,avh
+   use meanflow,     only: Tobs
    use meanflow,     only: bioshade
 #ifndef _ICE_
    use meanflow,     only: Hice
@@ -137,8 +139,8 @@
 
 !  HB:
 !  Note that this is the surface temperature flux for rigid-lid models like GOTM.
-!  For a free surface model the surface temperature flux must be - -hflux/(rho_0*cp)
-   DiffTup = -T(nlev)*wflux-hflux/(rho_0*cp)
+!  For a free surface model the surface temperature flux must be - -hflux/(rho0*cp)
+   DiffTup = -T(nlev)*wflux-hflux/(rho0*cp)
 #ifndef _ICE_
    ! simple sea ice model: surface heat flux switched off for sst < freezing temp
    if (T(nlev) .le. -0.0575*S(nlev)) then
@@ -172,17 +174,15 @@
    Lsour=_ZERO_
    Qsour=_ZERO_
 
-   Qsour(nlev)=(I_0-rad(nlev-1))/(rho_0*cp*h(nlev))
+   Qsour(nlev)=(I_0-rad(nlev-1))/(rho0*cp*h(nlev))
    do i=1,nlev-1
 !     from radiation
-      Qsour(i) = (rad(i)-rad(i-1))/(rho_0*cp*h(i))
+      Qsour(i) = (rad(i)-rad(i-1))/(rho0*cp*h(i))
    enddo
 
    do i=1,nlev
 !     from non-local turbulence
-#ifdef NONLOCAL
       Qsour(i) = Qsour(i) - ( gamh(i) - gamh(i-1) )/h(i)
-#endif
    end do
 
 !  ... and from lateral advection
@@ -200,8 +200,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tprof_input%data,T)
-   return
+                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,Tobs,T)
    end subroutine temperature
 !EOC
 

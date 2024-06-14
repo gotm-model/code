@@ -24,12 +24,10 @@
 
    interface init_meanflow
       module procedure init_meanflow_yaml
-      module procedure init_meanflow_nml
    end interface
 !
 ! !PUBLIC DATA MEMBERS:
    logical, public                              :: grid_ready
-   logical, public                              :: init_buoyancy
 
 !  coordinate z, layer thicknesses
    REALTYPE, public, dimension(:), allocatable, target  :: ga,z,zi,h,ho
@@ -44,7 +42,14 @@
    REALTYPE, public, dimension(:), allocatable  :: uo,vo
 
 !  potential temperature, salinity
-   REALTYPE, public, dimension(:), allocatable, target  :: T,S,rho
+!  T -> Tc - conservative temperature, S -> Sa - absolute salinity
+   REALTYPE, public, dimension(:), allocatable, target  :: T,S
+!  Tp - potential temperature, Sp - practical salinity
+   REALTYPE, public, dimension(:), allocatable, target  :: Tp,Sp
+!  Ti - in-situ temperature
+   REALTYPE, public, dimension(:), allocatable, target  :: Ti
+!  Tobs, Sobs - observed profiles as conservative and absolute values
+   REALTYPE, public, dimension(:), allocatable, target  :: Tobs, Sobs
 
 !  boyancy frequency squared
 !  (total, from temperature only, from salinity only)
@@ -83,7 +88,7 @@
 
 # endif
 
-!  the 'meanflow' namelist
+!  the 'meanflow' configuration
    REALTYPE, public                    :: h0b
    REALTYPE, public                    :: z0s_min
    logical,  public                    :: charnock
@@ -102,8 +107,6 @@
    REALTYPE, public                    :: dtgrid
    character(LEN=PATH_MAX), public     :: grid_file
    REALTYPE, public                    :: gravity
-   REALTYPE, public                    :: rho_0
-   REALTYPE, public                    :: cp
    REALTYPE, public                    :: avmolu
    REALTYPE, public                    :: avmolT
    REALTYPE, public                    :: avmolS
@@ -180,10 +183,6 @@
    branch => settings_store%get_typed_child('physical_constants', display=display_advanced)
    call branch%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
                 minimum=0._rk,default=9.81_rk)
-   call branch%get(rho_0, 'rho_0', 'reference density', 'kg/m^3', &
-                minimum=0._rk,default=1027._rk)
-   call branch%get(cp, 'cp', 'specific heat of sea water', 'J/kg/K', &
-                minimum=0._rk,default=3985._rk)
    call branch%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
                 minimum=0._rk,default=1.3e-6_rk)
    call branch%get(avmolt, 'avmolt', 'molecular viscosity for temperature', 'm^2/s', &
@@ -195,84 +194,6 @@
    LEVEL2 'done'
 
    end subroutine init_meanflow_yaml
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialisation of the mean flow variables
-!
-! !INTERFACE:
-   subroutine init_meanflow_nml(namlst,fn)
-!
-! !DESCRIPTION:
-!  Allocates memory and initialises everything related
-!  to the `meanflow' component of GOTM.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                      :: namlst
-   character(len=*), intent(in)             :: fn
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See log for the meanflow module
-!
-! !LOCAL VARIABLES:
-   namelist /meanflow/  h0b,z0s_min,charnock,charnock_val,ddu,ddl,     &
-                        grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
-                        SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
-                        avmolu,avmolT,avmolS,MaxItz0b,no_shear
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   LEVEL1 'init_meanflow_nml'
-
-!  Initialize namelist variables with default values.
-!  Note that namelists should preferably contain all variables,
-!  which implies that all defaults defined below will be overwritten.
-   h0b          = 0.05
-   z0s_min      = 0.02
-   charnock     = .false.
-   charnock_val = 1400.
-   ddu          = _ZERO_
-   ddl          = _ZERO_
-   grid_method  = 1
-   c1ad         = 0.8
-   c2ad         = 0.0
-   c3ad         = 0.1
-   c4ad         = 0.1
-   Tgrid        = 3600.
-   NNnorm       = 0.2
-   SSnorm       = 0.2
-   dsurf        = 10.0
-   dtgrid       = 5.
-   grid_file    = 'grid.dat'
-   gravity      = 9.81
-   rho_0        = 1027.
-   cp           = 3985.
-   avmolu       = 1.3e-6
-   avmolT       = 1.4e-7
-   avmolS       = 1.1e-9
-   MaxItz0b     = 10
-   no_shear     = .false.
-
-!  Read namelist from file.
-   open(namlst,file=fn,status='old',action='read',err=80)
-   read(namlst,nml=meanflow,err=81)
-   close (namlst)
-   LEVEL2 'done.'
-
-   return
-80 FATAL 'I could not open: ',fn
-   stop 'init_meanflow'
-81 FATAL 'I could not read "meanflow" namelist'
-   stop 'init_meanflow'
-
-   end subroutine init_meanflow_nml
 !EOC
 
 !-----------------------------------------------------------------------
@@ -331,7 +252,6 @@
 
 !  Specify that the buoyance profile and grid still need to be calculated.
 !  Note that the former is used only if a prognostic equation for buoyancy is used.
-   init_buoyancy = .true.
    grid_ready = .false.
 
 !  Initialize cumulative run time used to detect u and v ramp.
@@ -392,13 +312,29 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (T)'
    T = _ZERO_
 
+   allocate(Tp(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Tp)'
+   Tp = _ZERO_
+
+   allocate(Ti(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Ti)'
+   Ti = _ZERO_
+
+   allocate(Tobs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Tobs)'
+   Tobs = _ZERO_
+
    allocate(S(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (S)'
    S = _ZERO_
 
-   allocate(rho(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_meanflow: Error allocating (rho)'
-   rho = _ZERO_
+   allocate(Sp(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Sp)'
+   Sp = _ZERO_
+
+   allocate(Sobs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Sobs)'
+   Sobs = _ZERO_
 
    allocate(NN(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (NN)'
@@ -521,8 +457,10 @@
    if (allocated(fric)) deallocate(fric)
    if (allocated(drag)) deallocate(drag)
    if (allocated(T)) deallocate(T)
+   if (allocated(Tp)) deallocate(Tp)
+   if (allocated(Ti)) deallocate(Ti)
    if (allocated(S)) deallocate(S)
-   if (allocated(rho)) deallocate(rho)
+   if (allocated(Sp)) deallocate(Sp)
    if (allocated(NN)) deallocate(NN)
    if (allocated(NNT)) deallocate(NNT)
    if (allocated(NNS)) deallocate(NNS)
@@ -572,7 +510,6 @@
 !BOC
    LEVEL1 'State of meanflow module:'
    LEVEL2 'grid_ready',grid_ready
-   LEVEL2 'init_buoyancy',init_buoyancy
    if (allocated(ga))  LEVEL2 'ga',ga
    if (allocated(z))   LEVEL2 'z',z
    if (allocated(h))   LEVEL2 'h',h
@@ -584,7 +521,6 @@
    if (allocated(vo))  LEVEL2 'vo',vo
    if (allocated(T))   LEVEL2 'T',t
    if (allocated(S))   LEVEL2 'S',s
-   if (allocated(rho)) LEVEL2 'rho',rho
    if (allocated(NN))  LEVEL2 'NN',NN
    if (allocated(NNT)) LEVEL2 'NNT',NNT
    if (allocated(NNS)) LEVEL2 'NNS',NNS
@@ -608,11 +544,11 @@
    if (allocated(mean5)) LEVEL2 'mean5',mean5
 # endif
 
-   LEVEL2 'meanflow namelist',                      &
+   LEVEL2 'meanflow configuration',                 &
       h0b,z0s_min,charnock,charnock_val,ddu,ddl,    &
       grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm, &
       SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,  &
-      cp,avmolu,avmolT, avmolS,MaxItz0b,no_shear
+      avmolu,avmolT, avmolS,MaxItz0b,no_shear
 
    LEVEL2 'z0b,z0s,za',z0b,z0s,za
    LEVEL2 'cori',cori

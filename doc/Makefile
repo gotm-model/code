@@ -13,7 +13,6 @@ PROTEXSRC  = gotm.tex              \
              turbulence.tex        \
              airsea.tex            \
              observations.tex      \
-             output.tex            \
              util.tex              \
              bio.tex               \
              seagrass.tex          \
@@ -25,7 +24,6 @@ TEXSRC     = introduction.tex      \
              turbulenceIntro.tex   \
              airseaIntro.tex       \
              observationsIntro.tex \
-             outputIntro.tex       \
              utilIntro.tex         \
              extraIntro.tex        \
              cases.tex             \
@@ -38,7 +36,6 @@ TEXHTMLSRC = introduction.tex      \
              turbulenceIntro.tex   \
              airseaIntro.tex       \
              observationsIntro.tex \
-             outputIntro.tex       \
              utilIntroHTML.tex     \
              extraIntro.tex        \
              cases.tex             \
@@ -52,12 +49,12 @@ DOCSRC_meanflow = $(SRCDIR)/meanflow/meanflow.F90             \
                   $(SRCDIR)/meanflow/coriolis.F90             \
                   $(SRCDIR)/meanflow/uequation.F90            \
                   $(SRCDIR)/meanflow/vequation.F90            \
-                  $(SRCDIR)/meanflow/extpressure.F90          \
-                  $(SRCDIR)/meanflow/intpressure.F90          \
+                  $(SRCDIR)/meanflow/external_pressure.F90    \
+                  $(SRCDIR)/meanflow/internal_pressure.F90    \
                   $(SRCDIR)/meanflow/friction.F90             \
                   $(SRCDIR)/meanflow/temperature.F90          \
                   $(SRCDIR)/meanflow/salinity.F90             \
-                  $(SRCDIR)/meanflow/buoyancy.F90             \
+                  $(SRCDIR)/meanflow/prognostic_buoyancy.F90  \
                   $(SRCDIR)/meanflow/shear.F90                \
                   $(SRCDIR)/meanflow/stratification.F90       \
                   $(SRCDIR)/meanflow/convectiveadjustment.F90
@@ -94,26 +91,22 @@ DOCSRC_turbulence = $(SRCDIR)/turbulence/turbulence.F90       \
 DOCSRC_airsea = $(SRCDIR)/airsea/airsea.F90               \
                 $(SRCDIR)/airsea/airsea_variables.F90     \
                 $(SRCDIR)/airsea/humidity.F90             \
-                $(SRCDIR)/airsea/back_radiation.F90       \
+                $(SRCDIR)/airsea/longwave_radiation.F90   \
                 $(SRCDIR)/airsea/airsea_fluxes.F90        \
                 $(SRCDIR)/airsea/kondo.F90                \
                 $(SRCDIR)/airsea/fairall.F90              \
-                $(SRCDIR)/airsea/short_wave_radiation.F90 \
+                $(SRCDIR)/airsea/shortwave_radiation.F90 \
                 $(SRCDIR)/airsea/albedo_water.F90
 DOCSRC_observations = $(SRCDIR)/observations/observations.F90       \
                       $(SRCDIR)/observations/analytical_profile.F90 \
                       $(SRCDIR)/observations/const_NNT.F90          \
                       $(SRCDIR)/observations/const_NNS.F90
-DOCSRC_output = $(SRCDIR)/output/output.F90   \
-                $(SRCDIR)/output/asciiout.F90 \
-                $(SRCDIR)/output/ncdfout.F90
 DOCSRC_util = $(SRCDIR)/util/util.F90           \
               $(SRCDIR)/util/diff_center.F90    \
               $(SRCDIR)/util/diff_face.F90      \
               $(SRCDIR)/util/adv_center.F90     \
               $(SRCDIR)/util/lagrange.F90       \
               $(SRCDIR)/util/tridiagonal.F90    \
-              $(SRCDIR)/util/eqstate.F90        \
               $(SRCDIR)/util/gridinterpol.F90   \
               $(SRCDIR)/util/convert_fluxes.F90 \
               $(SRCDIR)/util/time.F90           \
@@ -170,8 +163,6 @@ airsea.tex: $(DOCSRC_airsea)
 	$(PROTEX) $(DOCSRC_airsea) > airsea.tex
 observations.tex: $(DOCSRC_observations)
 	$(PROTEX) $(DOCSRC_observations) > observations.tex
-output.tex: $(DOCSRC_output)
-	$(PROTEX) $(DOCSRC_output) > output.tex
 util.tex: $(DOCSRC_util)
 	$(PROTEX) $(DOCSRC_util) > util.tex
 input.tex: $(DOCSRC_input)

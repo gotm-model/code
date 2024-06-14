@@ -59,7 +59,7 @@
 !
 ! At the end of this routine the length-scale can be constrained according to a
 ! suggestion of \cite{Galperinetal88}. This feature is optional and can be activated
-! by setting {\tt length\_lim = .true.} in {\tt gotmturb.nml}.
+! by setting {\tt length\_lim = .true.} in {\tt gotm.yaml}.
 !
 ! !USES:
    use turbulence, only: P,B,PSTK,num

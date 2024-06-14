@@ -5,7 +5,7 @@
 ! !ROUTINE: The internal pressure-gradient \label{sec:intpressure}
 !
 ! !INTERFACE:
-   subroutine intpressure(nlev)
+   subroutine internal_pressure(nlev)
 !
 ! !DESCRIPTION:
 !   With the hydrostatic assumption
@@ -81,7 +81,7 @@
 !
 ! The horizontal salinity and temperature gradients have to supplied by the
 ! user, either as constant values or as profiles given in a file (see
-! {\tt obs.nml}).
+! {\tt gotm.yaml}).
 !
 ! {\bf Scenarios for dense bottom and buoyant surface plumes in a sloping frame:}
 ! Assuming for a {\it sloping water-colum model model}
@@ -152,14 +152,14 @@
 ! into the plume.
 !
 ! !USES:
+   use density,       only: get_rho,rho0
    use meanflow,      only: T,S
-   use meanflow,      only: gravity,rho_0,h
+   use meanflow,      only: gravity,h
    use meanflow,      only: buoy
    use observations,  only: int_press_type
    use observations,  only: dsdx_input,dsdy_input,dtdx_input,dtdy_input
    use observations,  only: plume_type,plume_slope_x,plume_slope_y
    use observations,  only: idpdx,idpdy
-   use eqstate,       only: eqstate1
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -196,18 +196,18 @@
          z=z+0.5*h(i)
 
 !        buoyancy gradient in x direction
-         dSS=dx*dsdx_input%data(i)
-         dTT=dx*dtdx_input%data(i)
-         Bl=eqstate1(S(i),T(i),z/10.,gravity,rho_0)
-         Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity,rho_0)
-         dxB(i)=(Br-Bl)/dx
+         dSS    = dx*dsdx_input%data(i)
+         dTT    = dx*dtdx_input%data(i)
+         Bl     = -gravity*(get_rho(S(i)    ,T(i)    ,p=z) - rho0)/rho0
+         Br     = -gravity*(get_rho(S(i)+dSS,T(i)+dTT,p=z) - rho0)/rho0
+         dxB(i) = (Br-Bl)/dx
 
 !        buoyancy gradient in y direction
-         dSS=dy*dsdy_input%data(i)
-         dTT=dy*dtdy_input%data(i)
-         Bl=eqstate1(S(i),T(i),z/10.,gravity,rho_0)
-         Br=eqstate1(S(i)+dSS,T(i)+dTT,z/10.,gravity,rho_0)
-         dyB(i)=(Br-Bl)/dy
+         dSS    = dy*dsdy_input%data(i)
+         dTT    = dy*dtdy_input%data(i)
+         Bl     = -gravity*(get_rho(S(i)     ,T(i)   ,p=z) - rho0)/rho0
+         Br     = -gravity*(get_rho(S(i)+dSS,T(i)+dTT,p=z) - rho0)/rho0
+         dyB(i) = (Br-Bl)/dy
 
          z=z+0.5*h(i)
       end do
@@ -249,7 +249,7 @@
       end if
 
    endif
-   end subroutine intpressure
+   end subroutine internal_pressure
 
 !EOC
 

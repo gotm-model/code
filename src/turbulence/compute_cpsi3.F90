@@ -21,7 +21,6 @@
    use turbulence, only:           Constant
    use turbulence, only:           Munk_Anderson
    use turbulence, only:           Schumann_Gerz
-   use turbulence, only:           Eifler_Schrimpf
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -53,8 +52,6 @@
                call cmue_ma(2)
             case(Schumann_Gerz)
                call cmue_sg(2)
-            case(Eifler_Schrimpf)
-               call cmue_rf(2)
          end select
       else
          call cmue_d(2)
@@ -71,8 +68,6 @@
                call cmue_ma(2)
             case(Schumann_Gerz)
                call cmue_sg(2)
-            case(Eifler_Schrimpf)
-               call cmue_rf(2)
          end select
       else
          call cmue_d(2)
@@ -84,7 +79,7 @@
          STDERR 'Method for calculating c3 does not converge.'
          STDERR 'Probably, the prescribed steady-state Richardson number'
          STDERR 'is outside the range of the chosen stability function.'
-         STDERR 'Please change gotmturb.nml accordingly.'
+         STDERR 'Please change gotm.yaml accordingly.'
          STDERR 'If the problem persists, then use another'
          STDERR 'stability function or Algebraic Stress Model.'
          STDERR 'Program aborts now in turbulence.F90.'
@@ -103,8 +98,6 @@
             call cmue_ma(2)
          case(Schumann_Gerz)
             call cmue_sg(2)
-         case(Eifler_Schrimpf)
-            call cmue_rf(2)
       end select
    else
       call cmue_d(2)

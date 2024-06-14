@@ -5,7 +5,7 @@
 ! !ROUTINE: Calculation of the stratification\label{sec:stratification}
 !
 ! !INTERFACE:
-   subroutine stratification(nlev,buoy_method,dt,cnpar,nub,gamB)
+   subroutine stratification(nlev)
 !
 ! !DESCRIPTION:
 ! This routine computes the mean potential density, $\mean{\rho}$, the mean
@@ -66,10 +66,12 @@
 !  and $S$ and is only recommended for idealized studies.
 !
 ! !USES:
-   use meanflow,   only: h,S,T,buoy,rho
+   use density,    only: alpha,beta
+   use density,    only: rho0,rho_p
+   use meanflow,   only: h,T,S
+   use meanflow,   only: buoy
    use meanflow,   only: NN,NNT,NNS
-   use meanflow,   only: gravity,rho_0
-   use eqstate,    only: eqstate1
+   use meanflow,   only: gravity
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -77,24 +79,7 @@
 !  number of vertical layers
    integer,  intent(in)                :: nlev
 
-!  method to compute buoyancy
-   integer,  intent(in)                :: buoy_method
-
-!   time step (s)
-   REALTYPE, intent(in)                :: dt
-
-!  numerical "implicitness" parameter
-   REALTYPE, intent(in)                :: cnpar
-
-!  diffusivity of buoyancy (m^2/s)
-   REALTYPE, intent(in)                :: nub(0:nlev)
-
-!  non-local buoyancy flux (m^2/s^3)
-   REALTYPE, intent(in)                :: gamb(0:nlev)
-
-!
 ! !OUTPUT PARAMETERS:
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -102,84 +87,31 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   REALTYPE                  :: buoyp,buoym,Sface,Tface
-   REALTYPE                  :: zCenter,zFace,dz
-   REALTYPE                  :: pFace,pCenter
-   integer,  parameter       :: USEEQSTATE=1
-   REALTYPE, parameter       :: oneTenth=_ONE_/10.
-!
+   REALTYPE :: idz(0:nlev)
+   REALTYPE :: dT(0:nlev)
+   REALTYPE :: dS(0:nlev)
+   integer, parameter :: rk = kind(_ONE_)
 !-----------------------------------------------------------------------
 !BOC
-   if (buoy_method .EQ. USEEQSTATE) then
 
-!     initialize parameters for uppermost grid box
-      zFace   = _ZERO_
-      zCenter = 0.5*h(nlev)
-      pCenter = oneTenth*zCenter
+   idz(1:nlev-1)=2.0_rk/(h(1:nlev-1)+h(2:nlev))
+   dT(1:nlev-1)=T(2:nlev)-T(1:nlev-1)
+   dS(1:nlev-1)=S(2:nlev)-S(1:nlev-1)
 
-      buoy(nlev) = eqstate1(S(nlev),T(nlev),pCenter,gravity,rho_0)
-      rho(nlev)  = rho_0 - rho_0/gravity*buoy(nlev)
+   NNT(1:nlev-1) = alpha(1:nlev-1)*gravity*dT(1:nlev-1)*idz(1:nlev-1)
+   NNS(1:nlev-1) = -beta(1:nlev-1)*gravity*dS(1:nlev-1)*idz(1:nlev-1)
+   NN(1:nlev-1)  = NNT(1:nlev-1)+NNS(1:nlev-1)
 
-      do i=nlev-1,1,-1
-
-         ! compute distances between centers
-         dz     = 0.5*(h(i)+h(i+1))
-
-         ! compute local depths
-         zFace   = zFace   + h(i+1)
-         zCenter = zCenter + dz
-
-         ! compute approximate local pressure
-         pFace   = oneTenth*zFace
-         pCenter = oneTenth*zCenter
-
-         ! interpolate T and S from centers to faces
-         Sface  = ( S(i+1)*h(i) + S(i)*h(i+1) ) / ( h(i+1) + h(i) )
-         Tface  = ( T(i+1)*h(i) + T(i)*h(i+1) ) / ( h(i+1) + h(i) )
-
-         ! T contribution to buoyancy frequency
-         buoyp  = eqstate1(Sface,T(i+1),pFace,gravity,rho_0)
-         buoym  = eqstate1(Sface,T(i  ),pFace,gravity,rho_0)
-         NNT(i) = (buoyp-buoym)/dz
-
-         ! S contribution to buoyancy frequency
-         buoyp  = eqstate1(S(i+1),Tface,pFace,gravity,rho_0)
-         buoym  = eqstate1(S(i  ),Tface,pFace,gravity,rho_0)
-         NNS(i) = (buoyp-buoym)/dz
-
-         ! total buoyancy frequency is the sum
-         NN(i) = NNT(i) + NNS(i)
-
-         ! compute buoyancy and density
-         buoy(i) = eqstate1(S(i),T(i),_ZERO_,gravity,rho_0)
-         rho(i)  = rho_0 - rho_0/gravity*buoy(i)
-      end do
-
-   else
-
-      ! for some idealized cases, compute buoyancy from
-      ! prognostic equation
-      call buoyancy(nlev,dt,cnpar,nub,gamb)
-
-      ! compute density and buoyancy frequency
-      rho(nlev)  = rho_0 - rho_0/gravity*buoy(nlev)
-
-      do i=nlev-1,1,-1
-         dz     = 0.5*(h(i)+h(i+1))
-         NN(i)  = (buoy(i+1)-buoy(i))/dz
-         rho(i) = rho_0 - rho_0/gravity*buoy(i)
-      end do
-   end if
-
-   ! update boundary values
-   NN(0)    = _ZERO_
-   NN(nlev) = _ZERO_
-
-   return
+   ! set boundary values
+   NNT(nlev) = _ZERO_
+   NNT(0)    = _ZERO_
+   NNS(nlev) = _ZERO_
+   NNS(0)    = _ZERO_
+   NN(nlev)  = _ZERO_
+   NN(0)     = _ZERO_   
    end subroutine stratification
 !EOC
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!-----------------------------------------------------------------------
+

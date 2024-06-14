@@ -1,11 +1,11 @@
 add_library(gotm
    gotm.F90
+   cmdline.F90
    diagnostics.F90
    register_all_variables.F90
-   deprecated_output.F90
    print_version.F90
 )
-target_link_libraries(gotm PUBLIC util airsea_driver config meanflow stokes_drift turbulence output_manager input_manager)
+target_link_libraries(gotm PUBLIC gsw_static util airsea_driver input_manager config meanflow stokes_drift turbulence output_manager input_manager)
 if(GOTM_USE_CVMIX)
    target_compile_definitions(gotm PRIVATE -D_CVMIX_)
    target_link_libraries(gotm PRIVATE cvmix_static PUBLIC gotm_cvmix)

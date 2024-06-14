@@ -14,26 +14,11 @@
 ! two routines in turn call more specialised routines e.g.\ of the
 ! {\tt meanflow} and {\tt turbulence} modules to delegate the job.
 !
-!  Here is also the place for a few words on FORTRAN `units' we used.
-!  The method of FORTRAN units is quite rigid and also a bit dangerous,
-!  but lacking a better alternative we adopted it here. This requires
-!  the definition of ranges of units for different purposes. In GOTM
-!  we strongly suggest to use units according to the following
-!  conventions.
-!  \begin{itemize}
-!     \item unit=10 is reserved for reading namelists.
-!     \item units 20-29 are reserved for the {\tt airsea} module.
-!     \item units 30-39 are reserved for the {\tt meanflow} module.
-!     \item units 40-49 are reserved for the {\tt turbulence} module.
-!     \item units 50-59 are reserved for the {\tt output} module.
-!     \item units 60-69 are reserved for the {\tt extra} modules
-!           like those dealing with sediments or sea-grass.
-!     \item units 70- are \emph{not} reserved and can be used as you
-!           wish.
-!  \end{itemize}
-!
 ! !USES:
    use field_manager
+   use gsw_mod_toolbox, only: gsw_sa_from_sp, gsw_sp_from_sa
+   use gsw_mod_toolbox, only: gsw_ct_from_t, gsw_t_from_ct
+   use gsw_mod_toolbox, only: gsw_pt_from_ct, gsw_ct_from_pt, gsw_pt_from_t
    use register_all_variables, only: do_register_all_variables, fm
 !KB   use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,time_unit_second,type_output_category
    use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host,type_output_manager_file=>type_file,time_unit_second,type_output_item
@@ -41,6 +26,9 @@
    use diagnostics
    use settings
 
+   use density, only: init_density,do_density
+   use density, only: density_method,T0,S0,p0,rho0,alpha0,beta0,cp
+   use density, only: rho, rho_p
    use meanflow
    use input
    use input_netcdf
@@ -75,14 +63,11 @@
    use turbulence,  only: kappa
    use turbulence,  only: clean_turbulence
 
-   use kpp,         only: init_kpp,do_kpp,clean_kpp
-
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
-   use eqstate,     only: init_eqstate
 
 #ifdef _CVMIX_
    use gotm_cvmix,  only: init_cvmix, post_init_cvmix, do_cvmix, clean_cvmix
-   use gotm_cvmix,  only: zsbl, kpp_langmuir_method
+   use gotm_cvmix,  only: zsbl, sbl_langmuir_method
 #endif
 
 #ifdef SEAGRASS
@@ -93,10 +78,10 @@
    use spm, only: init_spm, set_env_spm, do_spm, end_spm
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:configure_gotm_fabm,configure_gotm_fabm_from_nml,gotm_fabm_create_model,init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
+   use gotm_fabm,only:configure_gotm_fabm,gotm_fabm_create_model,init_gotm_fabm,init_gotm_fabm_state,start_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm, only: fabm_airp, fabm_calendar_date, fabm_julianday
-   use gotm_fabm_input,only: configure_gotm_fabm_input, configure_gotm_fabm_input_from_nml, init_gotm_fabm_input
+   use gotm_fabm_input,only: configure_gotm_fabm_input, init_gotm_fabm_input
 #endif
 
    IMPLICIT NONE
@@ -114,13 +99,17 @@
 #ifdef SPM
    integer, parameter                  :: unit_spm=64
 #endif
+#ifndef _ICE_
+   integer, parameter :: ice_model=0
+   integer, parameter :: ice_cover=0
+#endif
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !EOP
 !
-!  private data members initialised via namelists
+!  private data members initialised via gotm.yaml
    character(len=80)         :: title
    integer                   :: nlev
    REALTYPE                  :: dt
@@ -136,10 +125,11 @@
    character(len=1024), public :: write_yaml_path = ''
    character(len=1024), public :: write_schema_path = ''
    character(len=1024), public :: output_id = ''
-   logical, public             :: read_nml = .false.
    integer, public             :: write_yaml_detail = display_normal
    logical, public             :: list_fields = .false.
    logical, public             :: ignore_unknown_config = .false.
+   logical, public             :: generate_restart_file = .false.
+   logical, public             :: force_restart_offline = .false.
 
    type,extends(type_output_manager_host) :: type_gotm_host
    contains
@@ -166,7 +156,7 @@
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
-!  The first section reads the namelists of {\tt gotmrun.nml} with
+!  The first section reads {\tt gotm.yaml} with
 !  the user specifications. Then, one by one each of the modules are
 !  initialised with help of more specialised routines like
 !  {\tt init\_meanflow()} or {\tt init\_turbulence()} defined inside
@@ -175,7 +165,7 @@
 !  Note that the KPP-turbulence model requires not only a call to
 !  {\tt init\_kpp()} but before also a call to {\tt init\_turbulence()},
 !  since there some fields (fluxes, diffusivities, etc) are declared and
-!  the turbulence namelist is read.
+!  the turbulence configuration is done.
 
 ! !USES:
   IMPLICIT NONE
@@ -188,18 +178,14 @@
 ! !LOCAL VARIABLES:
    class (type_settings), pointer :: branch, twig
    integer, parameter :: rk = kind(_ONE_)
-
    logical          ::    restart_allow_missing_variable = .false.
    logical          ::    restart_allow_perpetual = .true.
    logical          ::    restart_offline = .false.
-   namelist /model_setup/ title,nlev,dt,restart_offline,restart_allow_missing_variable, &
-                          restart_allow_perpetual,cnpar,buoy_method
-   namelist /station/     name,latitude,longitude,depth
-   namelist /time/        timefmt,MaxN,start,stop
    logical          ::    restart_online=.false.
    integer          ::    rc
    logical          ::    file_exists
    logical          ::    config_only=.false.
+   integer          ::    n
    integer          ::    configuration_version=_CFG_VERSION_
    integer          ::    cfg_version
    type (type_header) :: yaml_header
@@ -216,25 +202,20 @@
    config_only = write_yaml_path /= '' .or. write_schema_path /= ''
    STDERR LINE
 
-   settings_store%path = ''
-   if (.not. read_nml) then
-      inquire(file=trim(yaml_file),exist=file_exists)
-      if (file_exists) then
-         LEVEL2 'Reading configuration from: ',trim(yaml_file)
-         call settings_store%load(trim(yaml_file), namlst)
-      elseif (config_only) then
-         LEVEL2 'Configuration file ' // trim(yaml_file) // ' not found. Using default settings.'
-      else
-         FATAL 'Configuration file ' // trim(yaml_file) // ' not found.'
-         LEVEL1 'To generate a file with default settings, specify --write_yaml gotm.yaml.'
-         LEVEL1 'To read a configuration in namelists format (gotmrun.nml etc.), specify --read_nml.'
-         LEVEL1 'To migrate namelists to yaml, specify --read_nml --write_yaml gotm.yaml.'
-         LEVEL1 'For more information, run gotm with -h.'
-         stop 2
-      end if
+   inquire(file=trim(yaml_file),exist=file_exists)
+   if (file_exists) then
+      LEVEL2 'Reading configuration from: ',trim(yaml_file)
+      call settings_store%load(trim(yaml_file), namlst)
+   elseif (config_only) then
+      LEVEL2 'Configuration file ' // trim(yaml_file) // ' not found. Using default settings.'
+   else
+      FATAL 'Configuration file ' // trim(yaml_file) // ' not found.'
+      LEVEL1 'To generate a file with default settings, specify --write_yaml gotm.yaml.'
+      LEVEL1 'For more information, run gotm with -h.'
+      stop 2
    end if
 
-   if (config_only .or. read_nml) then
+   if (config_only) then
       call settings_store%get(cfg_version, 'version', 'version of configuration file', default=configuration_version)
    else
       call settings_store%get(cfg_version, 'version', 'version of configuration file', default=-1)
@@ -274,6 +255,7 @@
                    default='2017-01-01 00:00:00')
    call branch%get(stop, 'stop', 'stop date and time', units='yyyy-mm-dd HH:MM:SS', &
                    default='2018-01-01 00:00:00')
+   if (generate_restart_file) stop = start
    call branch%get(dt, 'dt', 'time step for integration', 's', &
                    minimum=0.e-10_rk, default=3600._rk)
    call branch%get(cnpar, 'cnpar', '"implicitness" of diffusion scheme', '1', &
@@ -313,6 +295,7 @@
                  minimum=0._rk,default=5._rk)
 #endif
 
+
    ! Predefine order of top-level categories in gotm.yaml
    branch => settings_store%get_child('temperature')
    branch => settings_store%get_child('salinity')
@@ -326,6 +309,7 @@
    call branch%get(restart_offline, 'load', &
                    'initialize simulation with state stored in restart.nc', &
                    default=.false.)
+   if (force_restart_offline) restart_offline = .true.
    call branch%get(restart_allow_missing_variable, 'allow_missing_variable', &
                    'warn but not abort if a variable is missing from restart file', &
                    default=.false., display=display_advanced)
@@ -365,57 +349,41 @@
 #endif
    call init_meanflow()
 #ifdef _ICE_
-   if (ice_model > 0 .and. Hice > _ZERO_) zeta = -Hice*rho_ice/rho_0
+   if (ice_model > 0 .and. Hice > _ZERO_) zeta = -Hice*rho_ice/rho0
 #endif
 
-   branch => settings_store%get_child('buoyancy', display=display_advanced)
-   call branch%get(buoy_method, 'method', 'method to compute mean buoyancy', &
-                   options=(/option(1, 'equation of state', 'eq_state'), option(2, 'prognostic equation', 'prognostic')/), default=1)
-   call branch%get(b_obs_surf, 'surf_ini', 'initial buoyancy at the surface', 'm/s^2', &
-                   default=0._rk)
-   call branch%get(b_obs_NN, 'NN_ini', 'initial buoyancy gradient (squared buoyancy frequency)', 's^-2', &
-                   default=0._rk)
-   call branch%get(b_obs_sbf, 'obs_sbf', 'constant surface buoyancy flux', 'm^2/s^3', &
-                   default=0._rk, display=display_hidden)
+   LEVEL1 'init_eqstate_yaml'
+   branch => settings_store%get_child('equation_of_state', 'equation of state')
+   call branch%get(density_method, 'method', 'density formulation', &
+                   options=(/option(1, 'TEOS-10', 'full_TEOS-10'), &
+                             option(2, 'linearized from user-specified T0, S0, p0 (alpha, beta, cp calculated)', 'linear_teos-10'), &
+                             option(3, 'linearized from user-specified T0, S0, rho0, alpha, beta, cp', 'linear_custom')/), &
+                             default=1)
+   call branch%get(rho0, 'rho0', 'reference density', 'kg/m3', default=1027._rk)
+   twig => branch%get_child('linear')
+   call twig%get(T0, 'T0', 'reference temperature', 'Celsius', &
+                 minimum=-2._rk, default=15._rk)
+   call twig%get(S0, 'S0', 'reference salinity', 'g/kg', &
+                 minimum=0._rk, default=35._rk)
+   call twig%get(p0, 'p0', 'reference pressure', 'dbar', &
+                 minimum=0._rk, default=0._rk)
+   call twig%get(alpha0, 'alpha', 'thermal expansion coefficient', '1/K', &
+                 default=0.00020_rk)
+   call twig%get(beta0, 'beta', 'saline contraction coefficient', 'kg/g', &
+                 default=0.00075_rk)
+   call twig%get(cp, 'cp', 'specific heat capacity', 'J/(kg/K)', &
+                 minimum=0._rk,default=3991.86796_rk)
 
-   branch => settings_store%get_child('eq_state', 'equation of state')
-   call init_eqstate(branch)
 
-!  open the namelist file.
-   if (read_nml) then
-      LEVEL2 'reading model setup namelists..'
-      open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
-
-      read(namlst,nml=model_setup,err=91)
-      read(namlst,nml=station,err=92)
-      read(namlst,nml=time,err=93)
-      call init_eqstate(namlst)
-      close (namlst)
-
-      call init_meanflow(namlst,'gotmmean.nml')
-
-      call init_observations(namlst,'obs.nml')
-
-      call init_stokes_drift(namlst,'stokes_drift.nml')
-
-      call init_turbulence(namlst,'gotmturb.nml')
-      if (turb_method.eq.99) call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
-#ifdef _CVMIX_
-      if (turb_method .eq. 100) call init_cvmix(namlst,'cvmix.nml')
-#endif
-
-      call init_airsea(namlst,'airsea.nml')
-   end if
+   LEVEL1 'init_density()'
+   call init_density(nlev)
 
 #ifdef _FABM_
-   if (read_nml) call configure_gotm_fabm_from_nml(namlst, 'gotm_fabm.nml')
-
    ! Allow FABM to create its model tree. After this we know all biogeochemical variables
    ! This must be done before gotm_fabm_input configuration.
    call gotm_fabm_create_model(namlst)
 
    call configure_gotm_fabm_input()
-   if (read_nml) call configure_gotm_fabm_input_from_nml(namlst, 'fabm_input.nml')
 #endif
 
    ! Initialize field manager
@@ -432,9 +400,6 @@
    call output_manager_init(fm,title,settings=branch,postfix=output_id)
 
    inquire(file='output.yaml',exist=file_exists)
-   if (read_nml .and. .not. file_exists) then
-      call deprecated_output(namlst,title,dt,list_fields)
-   end if
 
    ! Make sure all elements in the YAML configuration file were recognized
    if (.not. settings_store%check_all_used()) then
@@ -476,7 +441,7 @@
    if (config_only) stop 0
 
    if (restart_online) then
-      LEVEL3 'online restart - updating values in the time namelist ...'
+      LEVEL3 'online restart - updating values read from gotm.yaml ...'
       LEVEL4 'orignal: ',start,' -> ',stop
 !KB      start = t1
 !KB      stop  = t2
@@ -494,7 +459,7 @@
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.
 
-!  initialize a few things from  namelists
+!  initialize a few things from gotm.yaml
    timestep   = dt
    depth0     = depth
 
@@ -526,8 +491,8 @@
       call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
 
-!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
-   call post_init_observations(depth,nlev,z,h,gravity,rho_0)
+!KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho0)
+   call post_init_observations(depth,nlev,z,zi,h,gravity)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
 !  Stokes drift
@@ -535,8 +500,7 @@
 
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
-!KB need some check to find out if this should be done:  zeta = zeta_input%value
-   
+   if (ice_model == 0) zeta = zeta_input%value
 
    ! Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta)
@@ -545,13 +509,56 @@
 
 #ifdef _CVMIX_
    if (turb_method .eq. 100) then
-      call post_init_cvmix(nlev,depth,gravity,rho_0)
+      call post_init_cvmix(nlev,depth,gravity,rho0)
    endif
 #endif
 
 !  initialise mean fields
-   s(1:nlev) = sprof_input%data(1:nlev)
-   t(1:nlev) = tprof_input%data(1:nlev)
+!GSW_KB
+   select case (initial_salinity_type)
+      case(1) ! Practical
+         LEVEL1 "Initial salinity: practical"
+         Sp(1:nlev) = sprof_input%data(1:nlev)
+      case(2) ! Absolute
+         LEVEL1 "Initial salinity: absolute"
+         S(1:nlev) = sprof_input%data(1:nlev)
+   end select
+   select case (initial_temperature_type)
+      case(1) ! In-situ
+         LEVEL1 "Initial temperature: in-situ"
+         Ti(1:nlev) = tprof_input%data(1:nlev)
+      case(2) ! Potential
+         LEVEL1 "Initial temperature: potential"
+         Tp(1:nlev) = tprof_input%data(1:nlev)
+      case(3) ! Conservative
+         LEVEL1 "Initial temperature: conservative"
+         T(1:nlev) = tprof_input%data(1:nlev)
+   end select
+   LEVEL1 ""
+   Sobs = S
+   Tobs = T
+
+   select case (density_method)
+      case (1,2,3)
+         select case (initial_salinity_type)
+            case(1) ! Practical --> Absolute
+               S(1:nlev) = gsw_sa_from_sp(Sp(1:nlev),-z(1:nlev),longitude,latitude)
+            case(2) ! Absolute --> Practical
+               Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
+         end select
+         select case (initial_temperature_type)
+            case(1) ! In-situ
+               T(1:nlev) = gsw_ct_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev))
+               Tp(1:nlev) = gsw_pt_from_t(S(1:nlev),Ti(1:nlev),-z(1:nlev),_ZERO_)
+            case(2) ! Potential
+               T(1:nlev) = gsw_ct_from_pt(S(1:nlev),Tp(1:nlev))
+               Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+            case(3) ! Conservative
+               Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
+               Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+         end select
+   end select
+!GSW_KB
    u(1:nlev) = uprof_input%data(1:nlev)
    v(1:nlev) = vprof_input%data(1:nlev)
 
@@ -601,7 +608,7 @@
 
    ! Now that all inputs have been registered (FABM added some), update them all by reading from file.
    call do_input(julianday,secondsofday,nlev,z)
-!KB need some check to find out if this should be done:  zeta = zeta_input%value
+   if (ice_model == 0) zeta = zeta_input%value
 
 #ifdef _FABM_
 !  Initialize FABM initial state (this is done after the first call to do_input,
@@ -632,7 +639,10 @@
    ! Call stratification to make sure density has sensible value.
    ! This is needed to ensure the initial density is saved correctly, and also for FABM.
    call shear(nlev,cnpar)
-   call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+   call do_density(nlev,S,T,-z,-zi)
+   buoy(1:) = -gravity*(rho_p(1:)-rho0)/rho0
+   call stratification(nlev)
+
 
 #ifdef _FABM_
 !  Accept the current biogeochemical state and used it to compute derived diagnostics.
@@ -648,20 +658,11 @@
    STDERR LINE
 
    progress = (MaxN-MinN+1)/10
+   if (progress < 1) progress = 1
 
 #ifdef _PRINTSTATE_
    call print_state
 #endif
-   return
-
-90 FATAL 'I could not open gotmrun.nml for reading'
-   stop 'initialize_gotm'
-91 FATAL 'I could not read the "model_setup" namelist'
-   stop 'initialize_gotm'
-92 FATAL 'I could not read the "station" namelist'
-   stop 'initialize_gotm'
-93 FATAL 'I could not read the "time" namelist'
-   stop 'initialize_gotm'
    end subroutine initialize_gotm
 !EOC
 
@@ -710,6 +711,7 @@
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
 
    REALTYPE                  :: Qsw, Qflux
+   integer                   :: k
    REALTYPE                  :: La, EFactor
 !-----------------------------------------------------------------------
 !BOC
@@ -734,22 +736,20 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
-!KB need some check to find out if this should be done:  zeta = zeta_input%value
+      if (ice_model == 0) zeta = zeta_input%value
       call do_stokes_drift(nlev,z,zi,gravity,u10_input%value,v10_input%value)
 
 !     external forcing
       if(fluxes_method /= 0) then
-#ifdef _ICE_
          if(ice_cover .eq. 0) then
-#endif
-         call set_sst(T(nlev))
-         call set_ssuv(u(nlev),v(nlev))
+            call set_sst(gsw_t_from_ct(S(nlev), T(nlev), _ZERO_))
+            call set_ssuv(u(nlev),v(nlev))
 #ifdef _ICE_
          else
-            call set_sst(Tice_surface)
+            call set_sst(Tice_surface) !GSW_KB - check for GSW alternative
             call set_ssuv(_ZERO_,_ZERO_)
-         end if
 #endif
+         end if
       end if
       call do_airsea(julianday,secondsofday)
 
@@ -766,23 +766,23 @@
 #endif
 
 !     reset some quantities
-#ifdef _ICE_
       if(ice_cover .gt. 0) then
+         shf = _ZERO_
+         heat_input%value = _ZERO_
+         tx = _ZERO_
+         ty = _ZERO_
+#ifdef _ICE_
          I_0%value = transmissivity*I_0%value
          swf=melt_rate
          shf=ocean_ice_heat_flux
          ssf=ocean_ice_salt_flux
-         tx = _ZERO_
-         ty = _ZERO_
+#endif
       else
-#endif
          swf=precip_input%value+evap
-         shf=-heat_input%value !KB must be updated in next release version where fluxes will follow positive -z-coordinate
-         tx = tx/rho_0
-         ty = ty/rho_0
-#ifdef _ICE_
+         shf=-heat_input%value ! temperature() changed to positive heat flux upwards (v7)
+         tx = tx/rho0
+         ty = ty/rho0
       end if
-#endif
 
       call integrated_fluxes(dt)
 
@@ -794,8 +794,8 @@
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num, nucl, gamu,ext_press_mode)
       call vequation(nlev,dt,cnpar,ty,num, nucl, gamv,ext_press_mode)
-      call extpressure(ext_press_mode,nlev)
-      call intpressure(nlev)
+      call external_pressure(ext_press_mode,nlev)
+      call internal_pressure(nlev)
       call friction(nlev,kappa,avmolu,tx,ty,plume_type)
 
 #ifdef SEAGRASS
@@ -806,19 +806,45 @@
       if (sprof_input%method .ne. 0) then
          call salinity(nlev,dt,cnpar,swf,ssf,nus,gams)
       endif
-
       if (tprof_input%method .ne. 0) then
          call temperature(nlev,dt,cnpar,I_0%value,swf,shf,nuh,gamh,rad)
       endif
-
-!     update shear and stratification
-      call shear(nlev,cnpar)
-      call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+!GSW
+   select case (density_method)
+      case (1,2,3)
+         Sp(1:nlev) = gsw_sp_from_sa(S(1:nlev),-z(1:nlev),longitude,latitude)
+         Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
+         Tp(1:nlev) = gsw_pt_from_ct(S(1:nlev),T(1:nlev))
+         ! convert obs to conservative and absolute - for proper nudging
+         if (sprof_input%method .ne. 0) then
+            select case (initial_salinity_type)
+               case(1) ! Practical --> Absolute
+                  Sobs(1:nlev) = gsw_sa_from_sp(sprof_input%data(1:nlev),-z(1:nlev),longitude,latitude)
+               case(2) ! Absolute
+                  Sobs(1:nlev) = sprof_input%data(1:nlev)
+            end select
+         end if
+         if (tprof_input%method .ne. 0) then
+            select case (initial_temperature_type)
+               case(1) ! In-situ
+                  Tobs(1:nlev) = gsw_ct_from_t(Sobs(1:nlev),tprof_input%data(1:nlev),-z(1:nlev))
+               case(2) ! Potential
+                  Tobs(1:nlev) = gsw_ct_from_pt(Sobs(1:nlev),tprof_input%data(1:nlev))
+               case(3) ! Conservative
+                  Tobs(1:nlev) = tprof_input%data(1:nlev)
+         end select
+         end if
+   end select
+!GSW
+!  update shear and stratification
+   call shear(nlev,cnpar)
+   call do_density(nlev,S,T,-z,-zi)
+   buoy(1:nlev) = -gravity*(rho_p(1:nlev)-rho0)/rho0
+   call stratification(nlev)
 
 #ifdef SPM
       if (spm_calc) then
-         call set_env_spm(nlev,rho_0,depth,u_taub,h,u,v,nuh, &
-                          tx,ty,Hs,Tz,Phiw)
+         call set_env_spm(nlev,rho0,depth,u_taub,h,u,v,nuh,tx,ty,Hs,Tz,Phiw)
          call do_spm(nlev,dt)
       end if
 #endif
@@ -828,29 +854,17 @@
 
 !     compute turbulent mixing
       select case (turb_method)
-      case (0)
-!        do convective adjustment
-         call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,    &
-                                   buoy_method,gravity,rho_0)
-      case (99)
-!        update KPP model
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat_input%value,precip_input%value+evap,    &
-                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
-
-         call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
-                     u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
-                     tRad,bRad,cori)
-
 #ifdef _CVMIX_
+      ! use KPP implemenatation in CVMix
       case (100)
 
-!        update Langmuir number
+         ! convert thermodynamic fluxes to what is needed by CVMix
+         call convert_fluxes(nlev,gravity,swf,shf,ssf,rad,T(nlev),S(nlev),tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+
+         ! update Langmuir number
          call langmuir_number(nlev,zi,Hs_input%value,u_taus,zi(nlev)-zsbl,u10_input%value,v10_input%value)
 
-!        use KPP via CVMix
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat_input%value,precip_input%value+evap,    &
-                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
-         select case(kpp_langmuir_method)
+         select case(sbl_langmuir_method)
          case (0)
             efactor = _ONE_
             La = _ONE_/SMALL
@@ -864,8 +878,10 @@
             efactor = EFactor_RWH16
             La = La_SLP_RWH16
          end select
-         call do_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,              &
-                       u_taus,tFlux,btFlux,sFlux,bsFlux,                &
+
+         !  update turbulence parameter from CVMix
+         call do_cvmix(nlev,depth,h,rho_p,u,v,NN,NNT,NNS,SS,            &
+                       u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,         &
                        tRad,bRad,cori,efactor,La)
 #endif
 
@@ -880,6 +896,7 @@
 # endif
       end select
 
+      call variances (nlev,SSU,SSV)
       call do_diagnostics(nlev)
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),int(n))
 
@@ -925,8 +942,6 @@
 #endif
 
    call clean_meanflow()
-
-   if (turb_method.eq.99) call clean_kpp()
 
 #ifdef _CVMIX_
    if (turb_method .eq. 100) call clean_cvmix()

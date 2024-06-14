@@ -5,54 +5,52 @@
 ! !IROUTINE: const_NNS
 !
 ! !INTERFACE:
-   subroutine const_NNS(nlev,z,S_top,T_const,NN,gravity,rho_0,S)
-!
+   subroutine const_NNS(nlev,z,zi,S_top,T_const,NN,gravity,S)
 !
 ! !DESCRIPTION:
 ! This routine creates a vertical profile {\tt prof} with value
 ! {\tt v1}
-
-
+!
 ! !USES:
-   use eqstate
+   use density, only: get_beta
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)                :: nlev
    REALTYPE, intent(in)                :: z(0:nlev)
+   REALTYPE, intent(in)                :: zi(0:nlev)
    REALTYPE, intent(in)                :: S_top,T_const,NN
-   REALTYPE, intent(in)                :: gravity,rho_0
+   REALTYPE, intent(in)                :: gravity
 !
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: S(0:nlev)
+! !INOUT PARAMETERS:
+   REALTYPE, intent(inout)             :: S(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   REALTYPE                  :: beta
-   REALTYPE                  :: pFace
-!
+   integer                               :: i
+    REALTYPE                             :: lbeta   
+!EOP
 !-----------------------------------------------------------------------
 !BOC
+    S(nlev) = S_top ! must be done here
 
-   S(nlev) = S_top
+    do i=nlev-1,1,-1
+      ! estimate interface beta based on S above the interface
+      lbeta = get_beta(S(i+1),T_const,-zi(i))
 
-   do i=nlev-1,1,-1
+      ! use this to estimate S below the interface
+      S(i)  = S(i+1) + _ONE_/(gravity*lbeta)*NN*(z(i+1)-z(i))
 
-      pFace    = 0.5/gravity*(z(i+1)+z(i));
-      beta     = eos_beta(S(i+1),T_const,pFace,gravity,rho_0)
+      ! compute improved interface beta
+      lbeta  = get_beta(0.5*(S(i+1)+S(i)),T_const,-zi(i))
 
-      S(i) = S(i+1) + _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))
-
-   enddo
-
-
-   return
-   end subroutine const_NNS
+      ! compute final salinity profile
+      S(i)   = S(i+1) + _ONE_/(gravity*lbeta)*NN*(z(i+1)-z(i))
+   end do
+   
+   end subroutine const_NNS   
 !EOC
 
 !-----------------------------------------------------------------------

@@ -69,10 +69,6 @@
    subroutine init_time(MinN,MaxN)
 !
 ! !DESCRIPTION:
-!  The subroutine {\tt init\_time()} initialises the time module by reading
-!  a namelist and take actions according to the specifications.
-!  On exit from this subroutine the two variables MinN and MaxN have well
-!  defined values and can be used in the time loop.
 !
 ! !USES:
    IMPLICIT NONE
@@ -91,7 +87,7 @@
 !
 !-------------------------------------------------------------------------
 !BOC
-!  Read time specific things from the namelist.
+!  Read time specific things from the gotm.yaml
 !
    LEVEL1 'init_time'
 !

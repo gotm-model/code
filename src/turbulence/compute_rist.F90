@@ -24,7 +24,6 @@
    use turbulence, only:           Constant
    use turbulence, only:           Munk_Anderson
    use turbulence, only:           Schumann_Gerz
-   use turbulence, only:           Eifler_Schrimpf
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -66,8 +65,6 @@
                   call cmue_ma(2)
                case(Schumann_Gerz)
                   call cmue_sg(2)
-               case(Eifler_Schrimpf)
-                  call cmue_rf(2)
             end select
          else
             call cmue_d(2)
@@ -84,8 +81,6 @@
                   call cmue_ma(2)
                case(Schumann_Gerz)
                   call cmue_sg(2)
-               case(Eifler_Schrimpf)
-                  call cmue_rf(2)
             end select
          else
             call cmue_d(2)
@@ -100,7 +95,7 @@
             STDERR 'number Rist does not converge.'
             STDERR 'Probably, the prescribed value for c3'
             STDERR 'is outside the range of the chosen stability function.'
-            STDERR 'Please change gotmturb.nml accordingly.'
+            STDERR 'Please change gotm.yaml accordingly.'
             STDERR 'You have chosen the stability function no.',stab_method
             STDERR 'If the problem persists, then use another'
             STDERR 'stability function.'
@@ -123,8 +118,6 @@
                call cmue_ma(2)
             case(Schumann_Gerz)
                call cmue_sg(2)
-            case(Eifler_Schrimpf)
-               call cmue_rf(2)
          end select
       else
          call cmue_d(2)
@@ -146,8 +139,6 @@
                   call cmue_ma(2)
                case(Schumann_Gerz)
                   call cmue_sg(2)
-               case(Eifler_Schrimpf)
-                  call cmue_rf(2)
             end select
          else
             call cmue_d(2)
@@ -164,8 +155,6 @@
                   call cmue_ma(2)
                case(Schumann_Gerz)
                   call cmue_sg(2)
-               case(Eifler_Schrimpf)
-                  call cmue_rf(2)
             end select
          else
             call cmue_d(2)
@@ -178,7 +167,7 @@
             STDERR 'number Rist does not converge.'
             STDERR 'Probably, the prescribed value for c3'
             STDERR 'is outside the range of the chosen stability function.'
-            STDERR 'Please change gotmturb.nml accordingly.'
+            STDERR 'Please change gotm.yaml accordingly.'
             STDERR 'You have chosen the stability function no.',stab_method
             STDERR 'If the problem persists, then use another'
             STDERR 'stability function.'
@@ -200,9 +189,7 @@
                call cmue_ma(2)
             case(Schumann_Gerz)
                call cmue_sg(2)
-            case(Eifler_Schrimpf)
-               call cmue_rf(2)
-         end select
+          end select
       else
          call cmue_d(2)
       end if
@@ -217,7 +204,7 @@
          STDERR 'number Rist does not converge.'
          STDERR 'Probably, the prescribed value for c3'
          STDERR 'is outside the range of the chosen stability function.'
-         STDERR 'Please change gotmturb.nml accordingly.'
+         STDERR 'Please change gotm.yaml accordingly.'
          STDERR 'You have chosen the stability function no.',stab_method
          STDERR 'If the problem persists, then use another'
          STDERR 'stability function.'

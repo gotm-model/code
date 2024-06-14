@@ -30,7 +30,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public configure_gotm_fabm, configure_gotm_fabm_from_nml, gotm_fabm_create_model, init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
+   public configure_gotm_fabm, gotm_fabm_create_model, init_gotm_fabm, init_gotm_fabm_state, start_gotm_fabm
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
@@ -98,7 +98,6 @@
    integer(8) :: clock_adv,clock_diff,clock_source
 !
 ! !PRIVATE DATA MEMBERS:
-   ! Namelist variables
    REALTYPE                  :: cnpar
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor,configuration_method
    logical                   :: fabm_calc,repair_state, &
@@ -169,82 +168,10 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine configure_gotm_fabm_from_nml(namlst, fname)
-!
-! !DESCRIPTION:
-! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
-!
-! !INPUT PARAMETERS:
-   integer,          intent(in) :: namlst
-   character(len=*), intent(in) :: fname
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-!  local variables
-!KB   integer :: i, output_level
-!KB   logical :: file_exists, in_output
-   logical :: no_precipitation_dilution
-   namelist /gotm_fabm_nml/ fabm_calc,                                               &
-                            cnpar,w_adv_discr,ode_method,split_factor,               &
-                            bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
-                            repair_state,no_precipitation_dilution,                  &
-                            salinity_relaxation_to_freshwater_flux,save_inputs, &
-                            no_surface,configuration_method
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   LEVEL1 'init_gotm_fabm_nml'
-
-   ! Initialize all namelist variables to reasonable default values.
-   fabm_calc         = .false.
-   cnpar             = _ONE_
-   w_adv_discr       = 6
-   ode_method        = 1
-   split_factor      = 1
-   bioshade_feedback = .true.
-   bioalbedo_feedback = .true.
-   biodrag_feedback  = .true.
-   repair_state      = .false.
-   salinity_relaxation_to_freshwater_flux = .false.
-   no_precipitation_dilution = .false.              ! useful to check mass conservation
-   no_surface = .false.                             ! disables surface exchange; useful to check mass conservation
-   save_inputs = .false.
-   configuration_method = -1                        ! -1: auto-detect, 0: namelists, 1: YAML
-
-   ! Open the namelist file and read the namelist.
-   ! Note that the namelist file is left open until the routine terminates,
-   ! so FABM can read more namelists from it during initialization.
-   open(namlst,file=fname,action='read',status='old',err=98)
-   read(namlst,nml=gotm_fabm_nml,err=99)
-   close(namlst)
-   freshwater_impact = .not. no_precipitation_dilution
-   LEVEL2 'done.'
-   return
-
-98 LEVEL2 'I could not open '//trim(fname)
-   LEVEL2 'If thats not what you want you have to supply '//trim(fname)
-   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
-   fabm_calc = .false.
-   return
-
-99 FATAL 'I could not read '//trim(fname)
-   stop 'init_gotm_fabm_nml'
-   return
-
-   end subroutine configure_gotm_fabm_from_nml
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the FABM driver
-!
-! !INTERFACE:
    subroutine configure_gotm_fabm(cfg)
 !
 ! !DESCRIPTION:
-! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+! Initializes the GOTM-FABM driver module by reading settings from fabm.yaml.
 
 ! !USES:
    use yaml_settings
@@ -265,7 +192,7 @@
 !BOC
    LEVEL1 'init_gotm_fabm_yaml'
 
-   ! Initialize all namelist variables to reasonable default values.
+   ! Initialize all configuration variables
    call cfg%get(fabm_calc, 'use', 'enable FABM', &
                 default=.false.)
    call cfg%get(yaml_file, 'yaml_file', 'FABM configuration file', &
@@ -356,7 +283,6 @@
    end if
    select case (configuration_method)
    case (0)
-      ! From namelists in fabm.nml
       model => fabm_create_model_from_file(namlst)
    case (1)
       ! From YAML file fabm.yaml
@@ -376,7 +302,7 @@
    subroutine init_gotm_fabm(nlev,dt,field_manager)
 !
 ! !DESCRIPTION:
-! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
+! Initializes the GOTM-FABM driver module by reading settings from fabm.yaml.
 !
 ! !INPUT PARAMETERS:
    integer,                   intent(in)              :: nlev
@@ -1774,7 +1700,7 @@
 !EOP
 !-----------------------------------------------------------------------!
 !BOC
-   write (*,*) trim(message)
+   STDOUT trim(message)
    end subroutine gotm_driver_log_message
 !EOC
 

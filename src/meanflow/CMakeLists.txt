@@ -1,10 +1,8 @@
 add_library(meanflow
-   buoyancy.F90
-   convectiveadjustment.F90
    coriolis.F90
-   extpressure.F90
+   external_pressure.F90
    friction.F90
-   intpressure.F90
+   internal_pressure.F90
    meanflow.F90
    salinity.F90
    shear.F90
@@ -15,5 +13,5 @@ add_library(meanflow
    vequation.F90
    wequation.F90
 )
-target_link_libraries(meanflow PRIVATE stokes_drift observations airsea_driver config)
+target_link_libraries(meanflow PRIVATE gsw_static stokes_drift observations airsea_driver config)
 set_property(TARGET meanflow PROPERTY FOLDER gotm)
