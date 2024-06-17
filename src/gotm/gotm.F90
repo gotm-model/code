@@ -333,6 +333,11 @@
    branch => settings_store%get_child('cvmix')
    call init_cvmix(branch)
 #else
+   if (turb_method .eq. 100) then
+      FATAL 'turb_method=100 requires compilation with CVMix.'
+      LEVEL3 'Rerun cmake with -DGOTM_USE_CVMIX=ON, then rebuild GOTM.'
+      stop 1
+   end if
    if (settings_store%ignore('cvmix')) then
       LEVEL3 'WARNING: cvmix section in ' // trim(yaml_file) // ' is ignored because GOTM was compiled without CVMix.'
       LEVEL3 'To change this, specify -DGOTM_USE_CVMIX=ON when running cmake, then rebuild GOTM.'
