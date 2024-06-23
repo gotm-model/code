@@ -45,8 +45,11 @@
    vs0%value = _ZERO_
    ds%value = _ZERO_
 
-!  wind direction
    wind_speed = sqrt(u10**2+v10**2)
+
+   if (wind_speed .gt. _ZERO_) then
+
+!  wind direction
    xcomp = u10 / wind_speed
    ycomp = v10 / wind_speed
 
@@ -65,6 +68,8 @@
    us0%value = us0_to_u10 * u10
    vs0%value = us0_to_u10 * v10
    ds%value = stokes_srf(0)*abs(zi(0))/max(SMALL, sqrt(us0%value**2.+vs0%value**2.))
+
+   end if
 
    return
 

@@ -71,6 +71,11 @@
    REALTYPE, public, dimension(:), allocatable, target :: nuh
    REALTYPE, public, dimension(:), allocatable         :: nus
 
+!  turbulent eddy coefficient for momentum flux down Stokes gradient
+!  in second moment closures with Craik-Leibovich vortex force in the
+!  algebraic Reynolds stress and flux models.
+   REALTYPE, public, dimension(:), allocatable         :: nucl
+
 !  non-local fluxes of momentum
    REALTYPE, public, dimension(:), allocatable   :: gamu,gamv
 
@@ -79,13 +84,23 @@
    REALTYPE, public, dimension(:), allocatable   :: gamb,gamh,gams
 
 !  non-dimensional  stability functions
-   REALTYPE, public, dimension(:), allocatable   :: cmue1,cmue2
+   REALTYPE, public, dimension(:), allocatable   :: cmue1,cmue2, cmue3
+
+!  spatially varying sq and sl for q2over2 and lengthscale
+   REALTYPE, public, dimension(:), allocatable   :: sq_var, sl_var
 
 !  non-dimensional counter-gradient term
    REALTYPE, public, dimension(:), allocatable   :: gam
 
 !  alpha_M, alpha_N, and alpha_B
    REALTYPE, public, dimension(:), allocatable   :: as,an,at
+
+!  alpha_V, alpha_W
+!  dimensionless Stokes-Eulerian cross-shear and Stokes shear^2
+   REALTYPE, public, dimension(:), allocatable   :: av,aw
+
+!  surface proximity function
+   REALTYPE, public, dimension(:), allocatable   :: SPF
 
 !  time scale ratio r
    REALTYPE, public, dimension(:), allocatable   :: r
@@ -258,6 +273,7 @@
    integer, parameter                            :: quasi_Eq=1
    integer, parameter                            :: weak_Eq_Kb_Eq=2
    integer, parameter                            :: weak_Eq_Kb=3
+   integer, parameter                            :: quasi_Eq_H15=4
 
 !  method to solve equation for k_b
    integer, parameter                            :: kb_algebraic=1
@@ -740,7 +756,7 @@
 
    twig => branch%get_child('scnd', 'second-order model')
    call twig%get(scnd_method, 'method', 'method', &
-                   options=(/option(quasi_eq, 'quasi-equilibrium', 'quasi_eq'), option(weak_eq_kb_eq, 'weak equilibrium with algebraic buoyancy variance', 'weak_eq_kb_eq')/), default=weak_eq_kb_eq)
+                   options=(/option(quasi_eq, 'quasi-equilibrium', 'quasi_eq'), option(weak_eq_kb_eq, 'weak equilibrium with algebraic buoyancy variance', 'weak_eq_kb_eq'),option(quasi_eq_h15, 'quasi-equilibrium with Langmuir (Harcourt, 2015)', 'quasi_eq_h15')/), default=weak_eq_kb_eq)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
                    options=(/option(kb_algebraic, 'algebraic', 'algebraic'), option(kb_dynamic, 'prognostic', 'prognostic')/), default=1, display=display_advanced)
    call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
@@ -926,6 +942,10 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (nus)'
    nus = 1.0D-6
 
+   allocate(nucl(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (nucl)'
+   nucl = _ZERO_
+
    allocate(gamu(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gamu)'
    gamu = _ZERO_
@@ -954,6 +974,18 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (cmue2)'
    cmue2 = _ZERO_
 
+   allocate(cmue3(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (cmue3)'
+   cmue3 = _ZERO_
+
+   allocate(sq_var(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (sq_var)'
+   sq_var = sq
+
+   allocate(sl_var(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (sl_var)'
+   sl_var = sl
+
    allocate(gam(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gam)'
    gam = _ZERO_
@@ -969,6 +1001,18 @@
    allocate(at(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (at)'
    at = _ZERO_
+
+   allocate(av(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (av)'
+   av = _ZERO_
+
+   allocate(aw(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (aw)'
+   aw = _ZERO_
+
+   allocate(SPF(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (SPF)'
+   SPF = _ONE_
 
    allocate(r(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (r)'
@@ -2402,7 +2446,7 @@
 !
 ! !INTERFACE:
    subroutine do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP, SSCSTK)
+                            NN,SS,xP, SSCSTK, SSSTK)
 !
 ! !DESCRIPTION: This routine is the central point of the
 ! turbulence scheme. It determines the order, in which
@@ -2458,13 +2502,22 @@
    IMPLICIT NONE
 
    interface
-      subroutine production(nlev,NN,SS,xP, SSCSTK)
+      subroutine production(nlev,NN,SS,xP, SSCSTK, SSSTK)
         integer,  intent(in)                :: nlev
         REALTYPE, intent(in)                :: NN(0:nlev)
         REALTYPE, intent(in)                :: SS(0:nlev)
         REALTYPE, intent(in), optional      :: xP(0:nlev)
         REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
+        REALTYPE, intent(in), optional      :: SSSTK (0:nlev)
       end subroutine production
+
+      subroutine alpha_mnb(nlev,NN,SS, SSCSTK, SSSTK)
+        integer,  intent(in)                :: nlev
+        REALTYPE, intent(in)                :: NN(0:nlev)
+        REALTYPE, intent(in)                :: SS(0:nlev)
+        REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
+        REALTYPE, intent(in), optional      :: SSSTK (0:nlev)
+      end subroutine alpha_mnb
    end interface
 
 !
@@ -2503,6 +2556,9 @@
 
 !  Stokes-Eulerian cross-shear (1/s^2)
    REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
+
+!  Stokes shear squared (1/s^2)
+   REALTYPE, intent(in), optional      :: SSSTK (0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -2531,10 +2587,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,xP, SSCSTK=SSCSTK)
+         call production(nlev,NN,SS,xP, SSCSTK=SSCSTK, SSSTK=SSSTK)
       else
 !        without
-         call production(nlev,NN,SS, SSCSTK=SSCSTK)
+         call production(nlev,NN,SS, SSCSTK=SSCSTK, SSSTK=SSSTK)
       end if
 
       call alpha_mnb(nlev,NN,SS)
@@ -2552,10 +2608,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,xP, SSCSTK=SSCSTK)
+         call production(nlev,NN,SS,xP, SSCSTK=SSCSTK, SSSTK=SSSTK)
       else
 !        without
-         call production(nlev,NN,SS, SSCSTK=SSCSTK)
+         call production(nlev,NN,SS, SSCSTK=SSCSTK, SSSTK=SSSTK)
       end if
 
       select case(scnd_method)
@@ -2588,6 +2644,21 @@
       STDERR 'Choose scnd_method=1,2 in gotmturb.nml.'
       STDERR 'Program execution stopped ...'
       stop 'turbulence.F90'
+
+      case (quasi_Eq_H15)
+         ! quasi-equilibrium model
+         ! SMC model of Langmuir turbulence (Harcourt, 2015)
+!        KK-TODO: test whether SSCSTK and SSSTK are present?
+
+         call alpha_mnb(nlev,NN,SS, SSCSTK=SSCSTK, SSSTK=SSSTK)
+         call surface_proximity_function(nlev,depth,h)
+         call cmue_d_h15(nlev)
+         call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_kb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call alpha_mnb(nlev,NN,SS, SSCSTK=SSCSTK, SSSTK=SSSTK)
+         call kolpran(nlev)
 
       case default
 
@@ -2890,6 +2961,8 @@
       nuh(i)   =  cmue2(i)*x
 !     salinity
       nus(i)   =  cmue2(i)*x
+!     momentum down Stokes gradient
+      nucl(i)  =  cmue3(i)*x
    end do
 
    return
@@ -3083,6 +3156,78 @@
      end subroutine compute_cm0
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute the surface proximity function
+!
+! !INTERFACE:
+   subroutine surface_proximity_function(nlev,depth,h)
+!
+! !DESCRIPTION:
+! Compute the surface proximity function (SPF) used the second moment
+! closure model of Langmuir turbulence \citep{Harcourt2015}. SPF is defined
+! as $\mathrm{SPF} = 1-f_z^S$, where
+! \begin{equation}
+! f_z^S=1+\tanh\left(C_l^S z/l^S\right),
+! \end{equation}
+! with $C_l^S=0.25$. The length scale $l^S$ is an average of the dissipation
+! length scale weighted by positive CL vortex production,
+! \begin{equation}
+! l^S=\langle l \rangle_{P^S>0}\equiv\frac{\int l P^S_+ dz}{\int P^S_+ dz}
+! \end{equation}
+! where $P^S_+=\max(0,P^S)$.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)                 :: nlev
+   REALTYPE, intent(in)                 :: depth
+   REALTYPE, intent(in)                 :: h(0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer                  :: i
+   REALTYPE                 :: lS, znrm, dz
+   REALTYPE                 :: fzS(0:nlev), zz(0:nlev)
+   REALTYPE, parameter      :: ClS = 0.25
+!
+!-----------------------------------------------------------------------
+!BOC
+
+   ! find the length scale
+   lS = _ZERO_
+   znrm = _ZERO_
+   do i=1,nlev-1
+      dz = 0.5*(h(i)+h(i+1))
+      znrm = znrm + max(_ZERO_,PSTK(i))*dz
+      lS = lS + L(i)*max(_ZERO_,PSTK(i))*dz
+   end do
+   znrm = znrm + 0.5*max(_ZERO_,PSTK(nlev))*h(nlev)
+   lS = lS + 0.5*L(nlev)*max(_ZERO_,PSTK(nlev))*h(nlev)
+   lS = lS/max(SMALL,znrm)
+
+   ! get depth at cell interface
+   zz(0) = -depth
+   do i=1,nlev
+      zz(i) = zz(i-1) + h(i)
+   end do
+
+   fzS = _ZERO_
+   do i=0,nlev
+      ! compute fzS
+      fzS(i) = _ONE_ + tanh(ClS*zz(i)/lS)
+      ! surface proximity function
+      SPF(i) = _ONE_ - fzS(i)
+   end do
+
+   end subroutine surface_proximity_function
+!EOC
 
 !-----------------------------------------------------------------------
 !BOP
@@ -3874,6 +4019,7 @@
    if (allocated(num)) deallocate(num)
    if (allocated(nuh)) deallocate(nuh)
    if (allocated(nus)) deallocate(nus)
+   if (allocated(nucl)) deallocate(nucl)
    if (allocated(gamu)) deallocate(gamu)
    if (allocated(gamv)) deallocate(gamv)
    if (allocated(gamb)) deallocate(gamb)
@@ -3881,10 +4027,14 @@
    if (allocated(gams)) deallocate(gams)
    if (allocated(cmue1)) deallocate(cmue1)
    if (allocated(cmue2)) deallocate(cmue2)
+   if (allocated(cmue3)) deallocate(cmue3)
    if (allocated(gam)) deallocate(gam)
    if (allocated(an)) deallocate(an)
    if (allocated(as)) deallocate(as)
    if (allocated(at)) deallocate(at)
+   if (allocated(av)) deallocate(av)
+   if (allocated(aw)) deallocate(aw)
+   if (allocated(SPF)) deallocate(SPF)
    if (allocated(r)) deallocate(r)
    if (allocated(Rig)) deallocate(Rig)
    if (allocated(xRf)) deallocate(xRf)
@@ -3931,12 +4081,14 @@
    LEVEL2 'tkeo',tkeo
    LEVEL2 'kb,epsb',kb,epsb
    LEVEL2 'P,B,Pb,PSTK',P,B,Pb, PSTK
-   LEVEL2 'num,nuh,nus',num,nuh,nus
+   LEVEL2 'num,nuh,nus,nucl',num,nuh,nus, nucl
    LEVEL2 'gamu,gamv',gamu,gamv
    LEVEL2 'gamb,gamh,gams',gamb,gamh,gams
-   LEVEL2 'cmue1,cmue2',cmue1,cmue2
+   LEVEL2 'cmue1,cmue2,cmue3',cmue1,cmue2, cmue3
    LEVEL2 'gam',gam
    LEVEL2 'as,an,at',as,an,at
+   LEVEL2 'av aw', av, aw
+   LEVEL2 'SPF', SPF
    LEVEL2 'r',r
    LEVEL2 'Rig',Rig
    LEVEL2 'xRf',xRf
