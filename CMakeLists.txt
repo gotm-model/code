@@ -41,7 +41,7 @@ else(MSVC)
   option(GOTM_EMBED_VERSION "Embed GOTM version information" ON)
 endif(MSVC)
 
-option(GOTM_USE_SEAGRASS "Enable seagrass module" OFF)
+option(GOTM_USE_SEAGRASS "Enable seagrass module" ON)
 
 option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
 mark_as_advanced(GOTM_EXTRA_OUTPUT)

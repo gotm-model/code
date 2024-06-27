@@ -70,7 +70,7 @@
    use gotm_cvmix,  only: zsbl, sbl_langmuir_method
 #endif
 
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
    use seagrass
 #endif
 #ifdef SPM
@@ -93,7 +93,7 @@
 !
 ! !DEFINED PARAMETERS:
    integer, parameter                  :: namlst=10
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
    integer, parameter                  :: unit_seagrass=62
 #endif
 #ifdef SPM
@@ -391,6 +391,10 @@
    call configure_gotm_fabm_input()
 #endif
 
+#ifdef _SEAGRASS_
+      call init_seagrass()
+#endif
+
    ! Initialize field manager
    ! This is needed for the output manager to be able to read its configuration [output_manager_init]
    call fm%register_dimension('lon',1,id=id_dim_lon)
@@ -489,9 +493,6 @@
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta)
 
-#ifdef SEAGRASS
-      call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
-#endif
 #ifdef SPM
       call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
@@ -577,6 +578,10 @@
 #endif
 #endif
    call init_diagnostics(nlev)
+
+#ifdef _SEAGRASS_
+   call post_init_seagrass(nlev)
+#endif
 
    call do_register_all_variables(latitude,longitude,nlev)
 
@@ -803,7 +808,7 @@
       call internal_pressure(nlev)
       call friction(nlev,kappa,avmolu,tx,ty,plume_type)
 
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
       if(seagrass_calc) call do_seagrass(nlev,dt)
 #endif
 
@@ -892,7 +897,7 @@
 
       case default
 !        update one-point models
-# ifdef SEAGRASS
+# ifdef _SEAGRASS_
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
                             NN,SS,xP, SSCSTK=SSCSTK, SSSTK=SSSTK)
 # else
@@ -958,7 +963,7 @@
 
    call clean_tridiagonal()
 
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
    call end_seagrass
 #endif
 

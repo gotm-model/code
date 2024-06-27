@@ -60,6 +60,9 @@
    call register_coordinate_variables(lat,lon)
    call register_density_variables(nlev)
    call register_meanflow_variables(nlev)
+#ifdef _SEAGRASS_
+   call register_seagrass_variables(nlev)
+#endif
    call register_airsea_variables(nlev)
 #ifdef _ICE_
    call register_stim_variables(nlev)
@@ -487,6 +490,38 @@
    return
    end subroutine register_meanflow_variables
 !EOC
+
+#ifdef _SEAGRASS_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: seagrass variable registration
+!
+! !INTERFACE:
+   subroutine register_seagrass_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use seagrass, only: seagrass_calc, xx, yy
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in) :: nlev
+!
+! !LOCAL VARIABLES:
+   REALTYPE, parameter :: miss_val = -999.0 
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (seagrass_calc) then
+      LEVEL2 'register_seagrass_variables()'
+      call fm%register('x_excur', 'm', 'seagrass excursion(x)', dimensions=(/id_dim_z/), data1d=xx(1:nlev), fill_value=miss_val, category='seagrass')
+      call fm%register('y_excur', 'm', 'seagrass excursion(y)', dimensions=(/id_dim_z/), data1d=yy(1:nlev), fill_value=miss_val, category='seagrass')
+   end if
+   end subroutine register_seagrass_variables
+!EOC
+#endif
 
 !-----------------------------------------------------------------------
 !BOP
