@@ -92,9 +92,10 @@
    use density,      only: rho0,cp
    use meanflow,     only: gravity,drag
    use meanflow,     only: h,u,v,s,t,NN,SS,buoy,rad
+   use stokes_drift, only: dusdz, dvsdz
    use turbulence,   only: turb_method
    use turbulence,   only: kappa
-   use turbulence,   only: num,nuh
+   use turbulence,   only: num,nuh, nucl
    use turbulence,   only: tke,P,B
    use turbulence,   only: Rig   
    use observations, only: tprof_input,b_obs_sbf
@@ -151,8 +152,10 @@
    taux(nlev) = -tx
    tauy(nlev) = -ty
    do i=nlev-1,1,-1
-      taux(i)=-num(i)*(u(i+1)-u(i))/(0.5*(h(i+1)+h(i)))
-      tauy(i)=-num(i)*(v(i+1)-v(i))/(0.5*(h(i+1)+h(i)))
+      taux(i)=-num(i)*(u(i+1)-u(i))/(0.5*(h(i+1)+h(i)))                &
+              -nucl(i)*dusdz%data(i)
+      tauy(i)=-num(i)*(v(i+1)-v(i))/(0.5*(h(i+1)+h(i)))                &
+              -nucl(i)*dvsdz%data(i)
    end do
    taux(0)=-drag(1)*u(1)*sqrt(u(1)**2+v(1)**2)
    tauy(0)=-drag(1)*v(1)*sqrt(u(1)**2+v(1)**2)

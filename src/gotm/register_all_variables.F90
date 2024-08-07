@@ -60,6 +60,9 @@
    call register_coordinate_variables(lat,lon)
    call register_density_variables(nlev)
    call register_meanflow_variables(nlev)
+#ifdef _SEAGRASS_
+   call register_seagrass_variables(nlev)
+#endif
    call register_airsea_variables(nlev)
 #ifdef _ICE_
    call register_stim_variables(nlev)
@@ -488,6 +491,38 @@
    end subroutine register_meanflow_variables
 !EOC
 
+#ifdef _SEAGRASS_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: seagrass variable registration
+!
+! !INTERFACE:
+   subroutine register_seagrass_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use seagrass, only: seagrass_calc, xx, yy
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in) :: nlev
+!
+! !LOCAL VARIABLES:
+   REALTYPE, parameter :: miss_val = -999.0 
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (seagrass_calc) then
+      LEVEL2 'register_seagrass_variables()'
+      call fm%register('x_excur', 'm', 'seagrass excursion(x)', dimensions=(/id_dim_z/), data1d=xx(1:nlev), fill_value=miss_val, category='seagrass')
+      call fm%register('y_excur', 'm', 'seagrass excursion(y)', dimensions=(/id_dim_z/), data1d=yy(1:nlev), fill_value=miss_val, category='seagrass')
+   end if
+   end subroutine register_seagrass_variables
+!EOC
+#endif
+
 !-----------------------------------------------------------------------
 !BOP
 ! !IROUTINE: turbulence variable registration
@@ -513,6 +548,7 @@
    call fm%register('num', 'm2/s', 'turbulent diffusivity of momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=num(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('nuh', 'm2/s', 'turbulent diffusivity of heat', standard_name='??', dimensions=(/id_dim_zi/), data1d=nuh(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_zi/), data1d=nus(0:nlev),category='turbulence', part_of_state=.true.)
+   call fm%register('nucl', 'm2/s', 'turbulent diffusivity of momentum down Stokes gradient', standard_name='??', dimensions=(/id_dim_zi/), data1d=nucl(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('gamu', 'm2/s2', 'non-local flux of u-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamu(0:nlev),category='turbulence')
    call fm%register('gamv', 'm2/s2', 'non-local flux of v-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamv(0:nlev),category='turbulence')
    call fm%register('gamh', 'K m/s', 'non-local heat flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamh(0:nlev),category='turbulence')

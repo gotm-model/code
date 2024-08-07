@@ -5,7 +5,7 @@
 ! !ROUTINE: The V-momentum equation\label{sec:vequation}
 !
 ! !INTERFACE:
-   subroutine vequation(nlev,dt,cnpar,ty,num,gamv,ext_method)
+   subroutine vequation(nlev,dt,cnpar,ty,num, nucl, gamv,ext_method)
 !
 ! !DESCRIPTION:
 !  This subroutine computes the transport of momentum in
@@ -45,6 +45,7 @@
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,v,vo,u,w,avh
    use meanflow,     only: drag,SS,runtimev
+   use stokes_drift, only: dvsdz
    use observations, only: w_adv_input,w_adv_discr
    use observations, only: vprof_input,vel_relax_tau,vel_relax_ramp
    use observations, only: int_press_type
@@ -72,6 +73,9 @@
 
 !  diffusivity of momentum (m^2/s)
    REALTYPE, intent(in)                :: num(0:nlev)
+
+!  eddy coefficient of momentum flux down the Stokes gradient (m^2/s)
+   REALTYPE, intent(in)                :: nucl(0:nlev)
 
 !  non-local flux of momentum (m^2/s^2)
    REALTYPE, intent(in)                :: gamv(0:nlev)
@@ -147,12 +151,16 @@
 !     add external and internal pressure gradients
       Qsour(i) = Qsour(i) - gravity*dzetady + idpdy(i)
 
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
       Lsour(i) = -drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
 #endif
 
 !     add non-local fluxes
 !      Qsour(i) = Qsour(i) - ( gamv(i) - gamv(i-1) )/h(i)
+
+!     add down Stokes gradient fluxes
+      Qsour(i) = Qsour(i) + ( nucl(i  )*dvsdz%data(i  )                 &
+                             -nucl(i-1)*dvsdz%data(i-1) )/h(i)
 
    end do
 

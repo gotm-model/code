@@ -1077,8 +1077,8 @@
       call cvmix_coeffs_bkgnd(CVmix_vars)
 
       ! update turbulent viscosity and diffusivity
-      cvmix_num(0:nlev) = CVmix_vars%Mdiff_iface(nlev+1:1:-1)
-      cvmix_nuh(0:nlev) = CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+      cvmix_num(1:nlev-1) = CVmix_vars%Mdiff_iface(nlev:2:-1)
+      cvmix_nuh(1:nlev-1) = CVmix_vars%Tdiff_iface(nlev:2:-1)
 
       ! CVMix background only update Tdiff, so same background diffusivity
       ! for salinity
@@ -1121,8 +1121,8 @@
       call cvmix_coeffs_shear(CVmix_vars)
 
       ! update turbulent viscosity and diffusivity
-      cvmix_num(0:nlev) = cvmix_num(0:nlev) + CVmix_vars%Mdiff_iface(nlev+1:1:-1)
-      cvmix_nuh(0:nlev) = cvmix_nuh(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+      cvmix_num(1:nlev-1) = cvmix_num(1:nlev-1) + CVmix_vars%Mdiff_iface(nlev:2:-1)
+      cvmix_nuh(1:nlev-1) = cvmix_nuh(1:nlev-1) + CVmix_vars%Tdiff_iface(nlev:2:-1)
       ! CVMix shear only update Tdiff, so same shear diffusivity
       ! for salinity
       cvmix_nus(:) = cvmix_nuh(:)
@@ -1147,8 +1147,8 @@
       call cvmix_coeffs_ddiff(CVmix_vars)
 
       ! update turbulent diffusivity for temperature and salinity
-      cvmix_nuh(0:nlev) = cvmix_nuh(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
-      cvmix_nus(0:nlev) = cvmix_nus(0:nlev) + CVmix_vars%Sdiff_iface(nlev+1:1:-1)
+      cvmix_nuh(1:nlev-1) = cvmix_nuh(1:nlev-1) + CVmix_vars%Tdiff_iface(nlev:2:-1)
+      cvmix_nus(1:nlev-1) = cvmix_nus(1:nlev-1) + CVmix_vars%Sdiff_iface(nlev:2:-1)
    endif
 
    return
@@ -1214,8 +1214,8 @@
    call cvmix_coeffs_conv(CVmix_vars)
 
    ! update turbulent viscosity and diffusivity
-   cvmix_num(0:nlev) = cvmix_num(0:nlev) + CVmix_vars%Mdiff_iface(nlev+1:1:-1)
-   cvmix_nuh(0:nlev) = cvmix_nuh(0:nlev) + CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+   cvmix_num(1:nlev-1) = cvmix_num(1:nlev-1) + CVmix_vars%Mdiff_iface(nlev:2:-1)
+   cvmix_nuh(1:nlev-1) = cvmix_nuh(1:nlev-1) + CVmix_vars%Tdiff_iface(nlev:2:-1)
    ! CVMix shear only update Tdiff, so same shear diffusivity
    ! for salinity
    cvmix_nus(:) = cvmix_nuh(:)

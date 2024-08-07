@@ -56,7 +56,7 @@
 
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,post_init_turbulence,do_turbulence
-   use turbulence,  only: num,nuh,nus
+   use turbulence,  only: num,nuh,nus, nucl
    use turbulence,  only: const_num,const_nuh
    use turbulence,  only: gamu,gamv,gamh,gams
    use turbulence,  only: Rig
@@ -70,7 +70,7 @@
    use gotm_cvmix,  only: zsbl, sbl_langmuir_method
 #endif
 
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
    use seagrass
 #endif
 #ifdef SPM
@@ -94,7 +94,7 @@
 !
 ! !DEFINED PARAMETERS:
    integer, parameter                  :: namlst=10
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
    integer, parameter                  :: unit_seagrass=62
 #endif
 #ifdef SPM
@@ -334,6 +334,11 @@
    branch => settings_store%get_child('cvmix')
    call init_cvmix(branch)
 #else
+   if (turb_method .eq. 100) then
+      FATAL 'turb_method=100 requires compilation with CVMix.'
+      LEVEL3 'Rerun cmake with -DGOTM_USE_CVMIX=ON, then rebuild GOTM.'
+      stop 1
+   end if
    if (settings_store%ignore('cvmix')) then
       LEVEL3 'WARNING: cvmix section in ' // trim(yaml_file) // ' is ignored because GOTM was compiled without CVMix.'
       LEVEL3 'To change this, specify -DGOTM_USE_CVMIX=ON when running cmake, then rebuild GOTM.'
@@ -385,6 +390,10 @@
    call gotm_fabm_create_model(namlst)
 
    call configure_gotm_fabm_input()
+#endif
+
+#ifdef _SEAGRASS_
+      call init_seagrass()
 #endif
 
    ! Initialize field manager
@@ -485,9 +494,6 @@
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta)
 
-#ifdef SEAGRASS
-      call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h,fm)
-#endif
 #ifdef SPM
       call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
@@ -573,6 +579,10 @@
 #endif
 #endif
    call init_diagnostics(nlev)
+
+#ifdef _SEAGRASS_
+   call post_init_seagrass(nlev)
+#endif
 
    call do_register_all_variables(latitude,longitude,nlev)
 
@@ -793,13 +803,13 @@
       call coriolis(nlev,dt)
 
 !     update velocity
-      call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
-      call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
+      call uequation(nlev,dt,cnpar,tx,num, nucl, gamu,ext_press_mode)
+      call vequation(nlev,dt,cnpar,ty,num, nucl, gamv,ext_press_mode)
       call external_pressure(ext_press_mode,nlev)
       call internal_pressure(nlev)
       call friction(nlev,kappa,avmolu,tx,ty,plume_type)
 
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
       if(seagrass_calc) call do_seagrass(nlev,dt)
 #endif
 
@@ -888,12 +898,12 @@
 
       case default
 !        update one-point models
-# ifdef SEAGRASS
+# ifdef _SEAGRASS_
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP, SSCSTK=SSCSTK)
+                            NN,SS,xP, SSCSTK=SSCSTK, SSSTK=SSSTK)
 # else
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS, SSCSTK=SSCSTK)
+                            NN,SS, SSCSTK=SSCSTK, SSSTK=SSSTK)
 # endif
       end select
 
@@ -954,7 +964,7 @@
 
    call clean_tridiagonal()
 
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
    call end_seagrass
 #endif
 
