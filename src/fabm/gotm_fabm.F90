@@ -18,10 +18,6 @@
    use fabm_expressions
    use fabm_config
    use fabm_driver
-!KB#if _FABM_API_VERSION_ > 0
-!KB   use fabm_v0_compatibility
-!KB#endif
-
    use field_manager
 
    implicit none
@@ -311,10 +307,6 @@
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call model%set_domain(nlev,dt)
-#if _FABM_API_VERSION_ == 0
-      call model%set_bottom_index(1)
-      call model%set_surface_index(nlev)
-#endif
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
@@ -819,7 +811,6 @@
    fabm_ready = .true.
 
    ! Allow individual biogeochemical models to provide a custom initial state.
-   !KB
    call model%initialize_interior_state(1,nlev)
    call model%initialize_surface_state()
    call model%initialize_bottom_state()
@@ -870,9 +861,7 @@
       fabm_ready = .true.
    end if
 
-!KB
    call model%prepare_inputs()
-!KB
 
    if (present(field_manager)) then
       ! Send pointers to diagnostic data to output manager.
@@ -889,13 +878,6 @@
    ! Compute pressure, depth, day of the year
    call calculate_derived_input(nlev)
 
-   !KBcall fabm_update_time(model, _ZERO_)
-
-!KB#if _FABM_API_VERSION_ == 0
-!KB   call fabm_get_light_extinction(model,1,nlev,k_par(1:nlev))
-!KB   call fabm_get_light(model,1,nlev)
-!KB#endif
-
    ! Call model%get_?_sources() here to make sure diagnostic variables all have an initial value.
    ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
    rhs = _ZERO_
@@ -903,9 +885,7 @@
    call model%get_surface_sources(rhs(nlev,:),surface_flux)
    call model%get_interior_sources(1,nlev,rhs)
 
-!KB#if _FABM_API_VERSION_ > 0
    call model%finalize_outputs()
-!KB#endif
 
    if (save_diag) then
       ! Obtain current values of diagnostic variables from FABM.
@@ -1129,9 +1109,7 @@
 !BOC
    if (.not. fabm_calc) return
 
-!KB
    call model%prepare_inputs()
-!KB
 
    call calculate_derived_input(nlev)
    has_date = associated(fabm_calendar_date) .and. associated(fabm_julianday)
@@ -1215,19 +1193,15 @@
    call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after advection/diffusion')
 
    do split=1,split_factor
+!KB - JB - how to treat the next bit?
       if (has_date) then
          !KB call fabm_update_time(model, itime, yyyy, mm, dd, real(secondsofday, gotmrk))
       else
          !KB call fabm_update_time(model, itime)
       end if
-!KB#if _FABM_API_VERSION_ == 0
-
-!KB      call fabm_get_light_extinction(model,1,nlev,k_par(1:nlev))
-!KB      call fabm_get_light(model,1,nlev)
-!KB#endif
 
       ! Update local light field (self-shading may have changed through changes in biological state variables)
-      if (compute_light) call light(nlev)
+!KB      if (compute_light) call light(nlev)
 
       ! Time-integrate one biological time step
       call ode_solver(ode_method,size(cc,2),nlev,dt_eff,cc,right_hand_side_rhs,right_hand_side_ppdd)
@@ -1256,16 +1230,14 @@
 
    if (bioshade_feedback) then
       bioext = 0
-!KB      call fabm_get_light_extinction(1, nlev, localexts(1:nlev))
+!KB - JB      call fabm_get_light_extinction(1, nlev, localexts(1:nlev))
       do i = nlev, 1, -1
          bioext = bioext + localexts(i) * curh(i)
          bioshade(i) = exp(-bioext)
       end do
    end if
 
-!KB#if _FABM_API_VERSION_ > 0
    call model%finalize_outputs()
-!KB#endif
 
    end subroutine do_gotm_fabm
 !EOC

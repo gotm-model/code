@@ -19,9 +19,6 @@
 ! !USES:
    use fabm
    use fabm_types, only: attribute_length
-!KB#if _FABM_API_VERSION_ > 0
-!KB   use fabm_v0_compatibility
-!KB#endif
    use gotm_fabm,only:fabm_calc,model,cc,register_observation
    use input,only: register_input, type_scalar_input, type_profile_input
    use settings
