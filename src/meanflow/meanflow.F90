@@ -107,6 +107,7 @@
    REALTYPE, public                    :: dtgrid
    character(LEN=PATH_MAX), public     :: grid_file
    REALTYPE, public                    :: gravity
+   REALTYPE, public                    :: rotation_period
    REALTYPE, public                    :: avmolu
    REALTYPE, public                    :: avmolT
    REALTYPE, public                    :: avmolS
@@ -183,6 +184,8 @@
    branch => settings_store%get_typed_child('physical_constants', display=display_advanced)
    call branch%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
                 minimum=0._rk,default=9.81_rk)
+   call branch%get(rotation_period, 'rotation_period', 'Rotation period', 's', &
+                minimum=1.e-9_rk,default=86164.0_rk, description='rotation_period for Coriolis parameter, default is one sidereal day (86164 s)')
    call branch%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
                 minimum=0._rk,default=1.3e-6_rk)
    call branch%get(avmolt, 'avmolt', 'molecular viscosity for temperature', 'm^2/s', &
@@ -222,7 +225,6 @@
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, parameter       :: pi=3.141592654
-   REALTYPE, parameter       :: omega=2*pi/86164.
 !
 ! !LOCAL VARIABLES:
    integer                   :: rc
@@ -248,7 +250,7 @@
    za=_ZERO_      ! roughness caused by suspended sediment
 
 !  Calculate Coriolis parameter
-   cori=2*omega * sin(2*pi*latitude/360.)
+   cori=2*2*pi/rotation_period * sin(2*pi*latitude/360.)
 
 !  Specify that the buoyance profile and grid still need to be calculated.
 !  Note that the former is used only if a prognostic equation for buoyancy is used.
@@ -547,8 +549,9 @@
    LEVEL2 'meanflow configuration',                 &
       h0b,z0s_min,charnock,charnock_val,ddu,ddl,    &
       grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm, &
-      SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,  &
-      avmolu,avmolT, avmolS,MaxItz0b,no_shear
+      SSnorm,dsurf,dtgrid,grid_file,gravity,        &
+      rotation_period,rho_0,avmolu,avmolT, avmolS,  &
+      MaxItz0b,no_shear
 
    LEVEL2 'z0b,z0s,za',z0b,z0s,za
    LEVEL2 'cori',cori
