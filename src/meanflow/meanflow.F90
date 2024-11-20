@@ -185,7 +185,7 @@
    call branch%get(gravity, 'gravity', 'gravitational acceleration', 'm/s^2', &
                 minimum=0._rk,default=9.81_rk)
    call branch%get(rotation_period, 'rotation_period', 'Rotation period', 's', &
-                minimum=1.e-9_rk,default=86164.0_rk, description='rotation_period is used to compute the Coriolis parameter cori = 2*2*pi/rotation_period*sin(2*pi*latitude/360). The default value is rotation_period = 86164 s (one sideral day)')
+                minimum=1.e-9_rk,default=86164.0_rk, description='rotation_period for Coriolis parameter, default is one sidereal day (86164 s)')
    call branch%get(avmolu, 'avmolu', 'molecular viscosity for momentum', 'm^2/s', &
                 minimum=0._rk,default=1.3e-6_rk)
    call branch%get(avmolt, 'avmolt', 'molecular viscosity for temperature', 'm^2/s', &
