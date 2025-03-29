@@ -1,35 +1,66 @@
 name: Build and test
 on: push
 jobs:
-   gfortran:
-      strategy:
-         matrix:
-            version: [9, 10, 11]
-            os: [ubuntu-latest]
-            include:
-               - version: 6
-                 os: ubuntu-18.04
-               - version: 7
-                 os: ubuntu-20.04
-               - version: 8
-                 os: ubuntu-20.04
-                 cmake_args: -DFABM_USE_CONTIGUOUS=OFF
-         fail-fast: false
-      runs-on: ${{ matrix.os }}
-      steps:
-      - name: Install compiler
-        run: |
-           sudo apt-get update
-           sudo apt-get install gfortran-${{ matrix.version }}
-      - name: Clone gotm
-        uses: actions/checkout@v2
-        with:
-           path: gotm
-           submodules: recursive
-      - name: Clone gotm-cases
-        uses: actions/checkout@v2
-        with:
-           path: cases
-           repository: gotm-model/cases
-      - name: Build and run all test cases
-        run: python3 cases/scripts/run_all.py --show_logs --gotm_base=gotm --exclude plume --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_SEAGRASS=ON -DGOTM_USE_NetCDF=OFF ${{ matrix.cmake_args }}
+  gfortran:
+    strategy:
+        matrix:
+          version: [9, 10, 11, 12]
+          os: ["ubuntu-latest"]
+          include:
+              - version: 7
+                os: ubuntu-20.04
+              - version: 8
+                os: ubuntu-20.04
+                cmake_args: -DFABM_USE_CONTIGUOUS=OFF
+              - version: 13
+                os: ubuntu-24.04
+              - version: 14
+                os: ubuntu-24.04
+        fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Install compiler
+      run: |
+          sudo apt-get update
+          sudo apt-get install gfortran-${{ matrix.version }}
+    - name: Clone gotm
+      uses: actions/checkout@v4
+      with:
+          path: gotm
+          submodules: recursive
+    - name: Clone gotm-cases
+      uses: actions/checkout@v4
+      with:
+          path: cases
+          repository: gotm-model/cases
+    - name: Build and run all test cases
+      run: python3 cases/scripts/run_all.py --show_logs --gotm_base=gotm --exclude plume --compiler=gfortran-${{ matrix.version }} -DGOTM_USE_STIM=ON -DGOTM_USE_SEAGRASS=ON -DGOTM_USE_NetCDF=OFF ${{ matrix.cmake_args }}
+  conda-forge:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+    defaults:
+      run:
+        shell: bash -el {0}
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+    - name: Clone gotm
+      uses: actions/checkout@v4
+      with:
+          submodules: recursive
+    - name: Install conda packages (Linux, Mac)
+      if: matrix.os != 'windows-latest'
+      run: conda install -c conda-forge fortran-compiler netcdf-fortran
+    - name: Install conda packages (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        conda install -c conda-forge m2w64-gcc-fortran m2w64-make netcdf-fortran
+        echo "CMAKE_GENERATOR=MinGW Makefiles" >> "$GITHUB_ENV"
+    - name: build
+      run: |
+        cmake -B build -S . -DGOTM_USE_STIM=ON -DGOTM_USE_SEAGRASS=ON -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --config Release

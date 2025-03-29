@@ -58,7 +58,11 @@
 !BOC
    LEVEL1 'register_all_variables()'
    call register_coordinate_variables(lat,lon)
+   call register_density_variables(nlev)
    call register_meanflow_variables(nlev)
+#ifdef _SEAGRASS_
+   call register_seagrass_variables(nlev)
+#endif
    call register_airsea_variables(nlev)
 #ifdef _ICE_
    call register_stim_variables(nlev)
@@ -203,10 +207,13 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+
+   if (ice_model > 0) then
+
    LEVEL2 'register_stim_variables()'
 
    call fm%register('Tice_surface', 'celsius', 'ice temperature (surface)', standard_name='', data0d=Tice_surface, category='ice')
-   if (ice_model .eq. 3) then
+   if (ice_model .eq. 5) then
       call fm%register('T1', 'celsius', 'ice temperature (upper)', standard_name='', data0d=Tice(1), category='ice')
       call fm%register('T2', 'celsius', 'ice temperature (lower)', standard_name='', data0d=Tice(2), category='ice')
    end if
@@ -214,17 +221,18 @@
    call fm%register('Hice', 'm', 'ice thickness', standard_name='', data0d=Hice, category='ice')
    call fm%register('surface_ice_energy', 'J/m2', 'ice energy (surface)', standard_name='', data0d=surface_ice_energy, category='ice')
    call fm%register('bottom_ice_energy', 'J/m2', 'ice energy (bottom)', standard_name='', data0d=bottom_ice_energy, category='ice')
-   call fm%register('ocean_ice_flux', 'W/m2', 'ocean-ice heat flux', standard_name='', data0d=ocean_ice_flux, category='ice')
    call fm%register('Hfrazil', 'm', 'ice thickness (frazil)', standard_name='', data0d=Hfrazil, category='ice')
-   call fm%register('dHis', 'm', 'ice growth (surface)', standard_name='', data0d=dHis, category='ice')
-   call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice')
-   call fm%register('melt_rate', 'm/s', 'ice melt rate', standard_name='', data0d=melt_rate, category='ice')
-   call fm%register('Tmelt', 'C', 'melt layer temperature', standard_name='', data0d=T_melt, category='ice')
-   call fm%register('Smelt', 'PSU', 'melt layer salinity', standard_name='', data0d=S_melt, category='ice')
-   call fm%register('ocean_ice_salt_flux', 'PSU', 'ocean/ice salt flux', standard_name='', data0d=ocean_ice_salt_flux, category='ice')
-   call fm%register('ocean_ice_heat_flux', 'W/m2', 'ocean/ice heat flux', standard_name='', data0d=ocean_ice_heat_flux, category='ice')
-
-   return
+   call fm%register('dHis', 'm', 'ice growth (surface)', standard_name='', data0d=dHis, category='ice', output_level=output_level_debug)
+   call fm%register('dHib', 'm', 'ice growth (bottom)', standard_name='', data0d=dHib, category='ice', output_level=output_level_debug)
+   call fm%register('melt_rate', 'm/s', 'ice melt rate', standard_name='', data0d=melt_rate, category='ice', output_level=output_level_debug)
+   call fm%register('Tmelt', 'C', 'melt layer temperature', standard_name='', data0d=T_melt, category='ice', output_level=output_level_debug)
+   call fm%register('Smelt', 'PSU', 'melt layer salinity', standard_name='', data0d=S_melt, category='ice', output_level=output_level_debug)
+   call fm%register('ocean_ice_flux', 'kg/m2', 'ocean-ice water flux', standard_name='', data0d=ocean_ice_flux, category='ice')
+   call fm%register('ocean_ice_salt_flux', '(g/kg)*(m/s)', 'ocean-ice salt flux', standard_name='', data0d=ocean_ice_salt_flux, category='ice')
+!   call fm%register('ocean_ice_salt_flux', '(g/kg)*(m/s)', 'ocean-ice salt flux', standard_name='', data0d=ocean_ice_salt_flux, category='ice', output_level=output_level_debug)
+   call fm%register('ocean_ice_heat_flux', 'W/m2', 'ocean-ice heat flux', standard_name='', data0d=ocean_ice_heat_flux, category='ice')
+!   call fm%register('ocean_ice_heat_flux', 'W/m2', 'ocean/ice heat flux', standard_name='', data0d=ocean_ice_heat_flux, category='ice', output_level=output_level_debug)
+   end if
    end subroutine register_stim_variables
 !EOC
 #endif
@@ -289,8 +297,8 @@
    LEVEL2 'register_stokes_drift_variables()'
    call fm%register('us', 'm/s', 'Stokes drift x-component', dimensions=(/id_dim_z/), data1d=usprof%data(1:nlev),category='stokes_drift')
    call fm%register('vs', 'm/s', 'Stokes drift y-component', dimensions=(/id_dim_z/), data1d=vsprof%data(1:nlev),category='stokes_drift')
-   call fm%register('dusdz', '1/s', 'Stokes drift shear x-component', dimensions=(/id_dim_z/), data1d=dusdz%data(1:nlev),category='stokes_drift')
-   call fm%register('dvsdz', '1/s', 'Stokes drift shear y-component', dimensions=(/id_dim_z/), data1d=dvsdz%data(1:nlev),category='stokes_drift')
+   call fm%register('dusdz', '1/s', 'Stokes drift shear x-component', dimensions=(/id_dim_zi/), data1d=dusdz%data(0:nlev),category='stokes_drift')
+   call fm%register('dvsdz', '1/s', 'Stokes drift shear y-component', dimensions=(/id_dim_zi/), data1d=dvsdz%data(0:nlev),category='stokes_drift')
    call fm%register('us0', 'm/s', 'surface Stokes drift x-component', data0d=us0%value, category='stokes_drift')
    call fm%register('vs0', 'm/s', 'surface Stokes drift y-component', data0d=vs0%value, category='stokes_drift')
    call fm%register('ds', 'm', 'Stokes drift penetration depth', data0d=ds%value, category='stokes_drift')
@@ -365,6 +373,38 @@
 
 !-----------------------------------------------------------------------
 !BOP
+!
+! !IROUTINE: density variable registration
+!
+! !INTERFACE:
+   subroutine register_density_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use density, only: density_method, rho, rho_p, alpha, beta
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_density_variables()'
+   call fm%register('rho_p', 'kg/m3', 'density (potential)', standard_name='??', dimensions=(/id_dim_z/), data1d=rho_p(1:nlev),category='density')
+   call fm%register('alpha', '1/K', 'thermal expansion coefficient', standard_name='??', dimensions=(/id_dim_zi/), data1d=alpha(0:nlev),category='density',output_level=output_level_debug)
+   call fm%register('beta', 'kg/g', 'saline contraction coefficient', standard_name='??', dimensions=(/id_dim_zi/), data1d=beta(0:nlev),category='density',output_level=output_level_debug)
+   if (density_method == 1) then
+      call fm%register('rho', 'kg/m3', 'density (in-situ)', standard_name='??', dimensions=(/id_dim_z/), data1d=rho(1:nlev),category='density')
+   end if
+
+   end subroutine register_density_variables
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
 ! !IROUTINE: meanflow variable registration
 !
 ! !INTERFACE:
@@ -374,6 +414,7 @@
 !
 ! !USES:
    use meanflow
+   use density, only: density_method
    use observations, only: idpdx,idpdy
    IMPLICIT NONE
 !
@@ -388,11 +429,12 @@
    LEVEL2 'register_meanflow_variables()'
    call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta,category='surface')
    call fm%register('temp', 'Celsius', 'temperature (conservative)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=T(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
-   call fm%register('temp_p', 'Celsius', 'temperature (potential)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Tp(1:nlev),category='temperature_and_salinity')
-   call fm%register('temp_i', 'Celsius', 'temperature (in-situ)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Ti(1:nlev),category='temperature_and_salinity')
    call fm%register('salt', 'g/kg', 'salinity (absolute)', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=S(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
-   call fm%register('salt_p', 'PSU', 'salinity (practical)', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=Sp(1:nlev),category='temperature_and_salinity')
-   call fm%register('rho', 'kg/m3', 'density (potential)', standard_name='??', dimensions=(/id_dim_z/), data1d=rho(1:nlev),category='temperature_and_salinity')
+   if (density_method == 1) then
+      call fm%register('temp_p', 'Celsius', 'temperature (potential)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Tp(1:nlev),category='temperature_and_salinity')
+      call fm%register('temp_i', 'Celsius', 'temperature (in-situ)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Ti(1:nlev),category='temperature_and_salinity')
+      call fm%register('salt_p', 'PSU', 'salinity (practical)', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=Sp(1:nlev),category='temperature_and_salinity')
+   end if
 
    call fm%register('u', 'm/s', 'x-velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=u(1:nlev), category='velocities', part_of_state=.true.)
    call fm%register('uo', 'm/s', 'x-velocity - old time step', standard_name='??', dimensions=(/id_dim_z/), data1d=uo(1:nlev), category='velocities', part_of_state=.true., output_level=output_level_debug)
@@ -449,6 +491,38 @@
    end subroutine register_meanflow_variables
 !EOC
 
+#ifdef _SEAGRASS_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: seagrass variable registration
+!
+! !INTERFACE:
+   subroutine register_seagrass_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use seagrass, only: seagrass_calc, xx, yy
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in) :: nlev
+!
+! !LOCAL VARIABLES:
+   REALTYPE, parameter :: miss_val = -999.0 
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (seagrass_calc) then
+      LEVEL2 'register_seagrass_variables()'
+      call fm%register('x_excur', 'm', 'seagrass excursion(x)', dimensions=(/id_dim_z/), data1d=xx(1:nlev), fill_value=miss_val, category='seagrass')
+      call fm%register('y_excur', 'm', 'seagrass excursion(y)', dimensions=(/id_dim_z/), data1d=yy(1:nlev), fill_value=miss_val, category='seagrass')
+   end if
+   end subroutine register_seagrass_variables
+!EOC
+#endif
+
 !-----------------------------------------------------------------------
 !BOP
 ! !IROUTINE: turbulence variable registration
@@ -471,11 +545,10 @@
 !BOC
    LEVEL2 'register_turbulence_variables()'
 
-   if (turb_method.eq.99) return
-
    call fm%register('num', 'm2/s', 'turbulent diffusivity of momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=num(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('nuh', 'm2/s', 'turbulent diffusivity of heat', standard_name='??', dimensions=(/id_dim_zi/), data1d=nuh(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_zi/), data1d=nus(0:nlev),category='turbulence', part_of_state=.true.)
+   call fm%register('nucl', 'm2/s', 'turbulent diffusivity of momentum down Stokes gradient', standard_name='??', dimensions=(/id_dim_zi/), data1d=nucl(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('gamu', 'm2/s2', 'non-local flux of u-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamu(0:nlev),category='turbulence')
    call fm%register('gamv', 'm2/s2', 'non-local flux of v-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamv(0:nlev),category='turbulence')
    call fm%register('gamh', 'K m/s', 'non-local heat flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamh(0:nlev),category='turbulence')
@@ -504,7 +577,7 @@
    call fm%register('as', '', 'non-dimensional shear time scale', standard_name='??', dimensions=(/id_dim_zi/), data1d=as(0:nlev),category='turbulence')
    call fm%register('at', '', 'non-dimensional buoyancy variance', standard_name='??', dimensions=(/id_dim_zi/), data1d=at(0:nlev),category='turbulence')
    call fm%register('r', '', 'turbulent time scale ratio', standard_name='??', dimensions=(/id_dim_zi/), data1d=r(0:nlev),category='turbulence')
-   call fm%register('xRf', '', 'flux Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=xRf(0:nlev),category='turbulence')
+!   call fm%register('xRf', '', 'flux Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=xRf(0:nlev),category='turbulence')
    call fm%register('uu', 'm2/s2', 'variance of u-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=uu(0:nlev),category='turbulence/shear')
    call fm%register('vv', 'm2/s2', 'variance of v-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=vv(0:nlev),category='turbulence/shear')
    call fm%register('ww', 'm2/s2', 'variance of w-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=ww(0:nlev),category='turbulence/shear')
@@ -531,6 +604,7 @@
 !
 ! !USES:
    use diagnostics
+   use turbulence, only: turb_method     
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -553,8 +627,10 @@
    call fm%register('tauy',  'm2/s2', 'turbulent flux of momentum (y)', dimensions=(/id_dim_zi/), data1d=tauy(0:nlev), category='turbulence')
    call fm%register('Ekin',  'J', 'kinetic energy', data0d=ekin,category='column_integrals')
    call fm%register('Epot',  'J', 'potential energy', data0d=epot,category='column_integrals')
-   call fm%register('Eturb', 'J', 'turbulent kinetic energy', data0d=eturb,category='column_integrals')
-
+   if (turb_method/=100) then
+      call fm%register('Eturb', 'J', 'turbulent kinetic energy', data0d=eturb,category='column_integrals')
+   endif
+   
    return
    end subroutine register_diagnostic_variables
 !EOC

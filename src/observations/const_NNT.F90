@@ -12,8 +12,7 @@
 ! {\tt v1}
 !
 ! !USES:
-   use gsw_mod_toolbox, only: gsw_alpha
-   use density, only: density_method,dtr0
+   use density, only: get_alpha
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -30,21 +29,28 @@
 !  Original author(s): Lars Umlauf
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   REALTYPE                  :: alpha
+   integer                             :: i
+   REALTYPE                           :: lalpha
+   
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   alpha=dtr0 ! density_method=2,3
+    T(nlev) = T_top ! must be done here
 
-   T(nlev) = T_top
-   do i=nlev-1,1,-1
-      if (density_method == 1) then
-stop 'Constant NN configuration has been disabled for full TEOS-10 - for the time being'
-         alpha=gsw_alpha(S_const,T(i+1),-zi(i))
-      end if
-      T(i) = T(i+1) - _ONE_/(gravity*alpha)*NN*(z(i+1)-z(i))
+    do i=nlev-1,1,-1
+      ! estimate interface alpha based on T above the interface
+      lalpha = get_alpha(S_const,T(i+1),-zi(i))
+
+      ! use this to estimate T below the interface
+      T(i)   = T(i+1) - _ONE_/(gravity*lalpha)*NN*(z(i+1)-z(i))
+
+      ! compute improved interface alpha
+      lalpha = get_alpha(S_const,0.5*(T(i+1)+T(i)),-zi(i))
+
+      ! compute final temperature profile
+      T(i)   = T(i+1) - _ONE_/(gravity*lalpha)*NN*(z(i+1)-z(i))
    end do
+
    end subroutine const_NNT
 !EOC
 

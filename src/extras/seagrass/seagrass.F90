@@ -1,4 +1,4 @@
-#ifdef SEAGRASS
+#ifdef _SEAGRASS_
 
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
@@ -27,24 +27,19 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_seagrass, do_seagrass, end_seagrass
-   logical, public                     :: seagrass_calc
+   public init_seagrass, post_init_seagrass, do_seagrass, end_seagrass
+   logical, public :: seagrass_calc = .false.
+   REALTYPE, public, dimension(:), allocatable :: xx,yy
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-   REALTYPE, dimension(:), allocatable :: xx,yy
    REALTYPE, dimension(:), allocatable :: exc,vfric,grassz,xxP
-   logical                   :: init_output
-!  from a namelist
    character(len=PATH_MAX)   :: grassfile='seagrass.dat'
-   REALTYPE                  :: XP_rat
+   REALTYPE                  :: alpha
    integer                   :: grassind
    integer                   :: grassn
-   integer                   :: out_unit
-   integer                   :: maxn
 
-   REALTYPE, parameter       :: miss_val = -999.0  
 !EOP
 !-----------------------------------------------------------------------
 
@@ -56,54 +51,75 @@
 ! !IROUTINE: Initialise the sea grass module
 !
 ! !INTERFACE:
-   subroutine init_seagrass(namlst,fname,unit,nlev,h,fm)
+   subroutine init_seagrass()
 !
 ! !DESCRIPTION:
-! Here, the seagrass namelist {\tt seagrass.nml} is read
-! and memory is allocated
-! for some relevant vectors. Afterwards, excursion limits and friction
-! coefficients are read from a file. The uppermost grid related index
-! for the seagrass canopy is then calculated.
+!  Reading seagrass configuration from YAML-file
 !
 ! !USES:
-   use field_manager
+   use settings
+   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer,          intent(in)   :: namlst
-   character(len=*), intent(in)   :: fname
-   integer,          intent(in)   :: unit
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+   class (type_gotm_settings), pointer :: branch
+     !! GOTM settings variable
+   integer :: i
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+
+   branch => settings_store%get_typed_child('seagrass','calculate seagrass effect on turbulence')
+   call branch%get(i, 'method', '', options=(/option(0, 'off'), option(1, 'from file')/), default=0)
+   call branch%get(grassfile, 'file', 'path to file with grass specifications', default='seagrass.dat')
+   call branch%get(alpha, 'alpha', 'efficiency of leafes turbulence production', '',default=0._rk)
+
+   if (i .ne. 0) seagrass_calc = .true.
+
+   if (seagrass_calc) LEVEL2 'seagrass initialise ...'
+   end subroutine init_seagrass
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the sea grass module
+!
+! !INTERFACE:
+   subroutine post_init_seagrass(nlev)
+!
+! !DESCRIPTION:
+! Seagrass memory is allocated and initialized from file
+!
+! !USES:
+   use meanflow, only: h
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
    integer,          intent(in)   :: nlev
-   REALTYPE,         intent(in)   :: h(0:nlev)
-   type (type_field_manager), intent(inout) :: fm
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,rc
+   integer                   :: iu
    REALTYPE                  :: z
-   namelist /canopy/  seagrass_calc,grassfile,XP_rat
+   REALTYPE, parameter       :: miss_val = -999.0  
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_seagrass'
-
-   init_output = .true.
-   seagrass_calc = .false.
-
-   maxn=nlev
-
-!  Open and read the namelist
-   open(namlst,file=fname,action='read',status='old',err=98)
-   read(namlst,nml=canopy,err=99)
-   close(namlst)
 
    if (seagrass_calc) then
-      out_unit=unit
+      LEVEL2 'post seagrass initialise ...'
+      open(newunit=iu,status='unknown',file=grassfile)
 
-      open(unit,status='unknown',file=grassfile)
-
-      read(unit,*) grassn
+      read(iu,*) grassn
 
       allocate(xx(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (xx)'
@@ -130,7 +146,7 @@
       grassz = _ZERO_
 
       do i=1,grassn
-         read(unit,*) grassz(i),exc(i),vfric(i)
+         read(iu,*) grassz(i),exc(i),vfric(i)
       end do
 
       z=0.5*h(1)
@@ -139,28 +155,13 @@
          if (grassz(grassn).gt.z) grassind=i
       end do
 
-      close(unit)
+      close(iu)
 
       xx(grassind+1:nlev) = miss_val
       yy(grassind+1:nlev) = miss_val
 
-      call fm%register('x_excur', 'm', 'seagrass excursion(x)', dimensions=(/id_dim_z/), data1d=xx(1:nlev), fill_value=miss_val, category='seagrass')
-      call fm%register('y_excur', 'm', 'seagrass excursion(y)', dimensions=(/id_dim_z/), data1d=yy(1:nlev), fill_value=miss_val, category='seagrass')
-
-      LEVEL2 'seagrass initialised ...'
-
    end if
-   return
-
-98 LEVEL2 'I could not open seagrass.nml'
-   LEVEL2 'Ill continue but set seagrass_calc to false.'
-   LEVEL2 'If thats not what you want you have to supply seagrass.nml'
-   LEVEL2 'See the Seagrass example on www.gotm.net for a working seagrass.nml'
-   seagrass_calc = .false.
-   return
-99 FATAL 'I could not read seagrass.nml'
-   stop 'init_seagrass'
-   end subroutine init_seagrass
+   end subroutine post_init_seagrass
 !EOC
 
 !-----------------------------------------------------------------------
@@ -265,7 +266,7 @@
             drag(i)=drag(i)+grassfric(i)
 
 !           Extra turbulence production by seagrass friction
-            xxP(i)=xP_rat*grassfric(i)*(sqrt(u(i)**2+v(i)**2))**3
+            xxP(i)=alpha*grassfric(i)*(sqrt(u(i)**2+v(i)**2))**3
          else
             xxP(i)=_ZERO_
          end if

@@ -25,7 +25,7 @@
    REALTYPE, public                    :: ekin,epot,eturb
    REALTYPE                            :: epot0
    REALTYPE, public, allocatable       :: taux(:),tauy(:)
-   integer, public                     :: mld_method=1
+   integer, public                     :: mld_method=2
    REALTYPE, public                    :: mld_surf,mld_bott
    REALTYPE                            :: diff_k = 1e-05
    REALTYPE                            :: Ri_crit = 0.5
@@ -89,13 +89,15 @@
 !
 ! !USES:
    use airsea_driver,only: sst,tx,ty
-   use density,      only: rho0, calculate_density
-   use meanflow,     only: gravity,cp,drag
-   use meanflow,     only: h,u,v,s,t,rho,NN,SS,buoy,rad
+   use density,      only: rho0,cp
+   use meanflow,     only: gravity,drag
+   use meanflow,     only: h,u,v,s,t,NN,SS,buoy,rad
+   use stokes_drift, only: dusdz, dvsdz
    use turbulence,   only: turb_method
    use turbulence,   only: kappa
-   use turbulence,   only: num
-   use turbulence,   only: tke
+   use turbulence,   only: num,nuh, nucl
+   use turbulence,   only: tke,P,B
+   use turbulence,   only: Rig   
    use observations, only: tprof_input,b_obs_sbf
    IMPLICIT NONE
 !
@@ -109,32 +111,34 @@
    REALTYPE                  :: z
    integer                   :: i
    integer                   :: j(1)
-   REALTYPE                  :: Ri(0:nlev)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
-   if (turb_method.eq.99) return
+!  gradient Richardson number
+   Rig  = NN/(SS  + 1.E-10)
 
    select case(mld_method)
       case(1)          ! MLD according to TKE criterium
-         mld_surf = _ZERO_
-         do i=nlev,1,-1
-            if (tke(i) .lt. diff_k) exit
-            mld_surf=mld_surf+h(i)
-         end do
-         mld_bott = _ZERO_
-         do i=1,nlev
-            if (tke(i) .lt. diff_k) exit
-            mld_bott=mld_bott+h(i)
-         end do
+         if (turb_method.ne.100) then
+            mld_surf = _ZERO_
+            do i=nlev,1,-1
+               if (tke(i) .lt. diff_k) exit
+               mld_surf=mld_surf+h(i)
+            end do
+            mld_bott = _ZERO_
+            do i=1,nlev
+               if (tke(i) .lt. diff_k) exit
+               mld_bott=mld_bott+h(i)
+            end do
+         else
+            mld_surf = _ZERO_
+            mld_bott = _ZERO_
+         endif
       case(2)          ! MLD according to critical Ri number
-         do i=1,nlev-1
-            Ri(i)=NN(i)/(SS(i)+1.e-10)
-         end do
          mld_surf    = h(nlev)
          do i=nlev-1,1,-1
-            if (Ri(i) .gt. Ri_crit) exit
+            if (Rig(i) .gt. Ri_crit) exit
             mld_surf=mld_surf+h(i)
          end do
       case(3)          ! MLD according to maxiumun NN
@@ -148,75 +152,13 @@
    taux(nlev) = -tx
    tauy(nlev) = -ty
    do i=nlev-1,1,-1
-      taux(i)=-num(i)*(u(i+1)-u(i))/(0.5*(h(i+1)+h(i)))
-      tauy(i)=-num(i)*(v(i+1)-v(i))/(0.5*(h(i+1)+h(i)))
+      taux(i)=-num(i)*(u(i+1)-u(i))/(0.5*(h(i+1)+h(i)))                &
+              -nucl(i)*dusdz%data(i)
+      tauy(i)=-num(i)*(v(i+1)-v(i))/(0.5*(h(i+1)+h(i)))                &
+              -nucl(i)*dvsdz%data(i)
    end do
    taux(0)=-drag(1)*u(1)*sqrt(u(1)**2+v(1)**2)
    tauy(0)=-drag(1)*v(1)*sqrt(u(1)**2+v(1)**2)
-
-#if 0
-!  Here, the surface buoyancy flux (sbf) and the surface temperature
-!  flux (stf) are calculated.
-
-   if (BuoyMeth .eq. 1) then
-      dtt=0.01
-      x=0.5*h(nlev)/10.
-      dTb=(calculate_density(S(nlev),T(nlev)+0.5*dtt,x,gravity,rho0)         &
-          -calculate_density(S(nlev),T(nlev)-0.5*dtt,x,gravity,rho0))/dtt
-      sbf=-heat/cp/rho0*dTb
-!     Correction of surface buoyancy and temperature flux
-!     for solar radiation penetration
-      if (rad_corr) then
-         z=0.
-         i=nlev+1
-444      i=i-1
-         z=z+h(i)
-         if (z.lt.mld_surf) goto 444
-         sbf=sbf-dTb*(rad(nlev)-rad(i))
-                                    !Using dTb such as here is not fully
-                                    !correct, but we assume that the
-                                    !thermal expansion coefficient does not
-                                    !vary significantly over the mixed layer.
-      end if
-      stf=sbf/dTb
-   else
-      sbf=b_obs_sbf
-      stf=0.
-   end if
-   if (sbf.ge.0) then
-      wstar=(sbf*mld_surf)**(1./3.)
-   else
-      wstar=-(-sbf*mld_surf)**(1./3.)
-   end if
-   if (wstar.eq.0) then
-      TStar=1.e15
-   else
-      tstar=stf/wstar
-   end if
-!  Calculation of Monin-Obukhov length MOL:
-   if (abs(sbf).lt.1.e-10) then
-      if (sbf.ge.0) MOL=-1.e10
-      if (sbf.lt.0) MOL= 1.e10
-   else
-      MOL=-u_taus**3/kappa/sbf
-   end if
-
-   heat_sim=0
-   heat_obs=0
-   do i=1,nlev
-      heat_sim=heat_sim+T(i)*h(i)*rho_0*cp
-      heat_obs=heat_obs+tprof_input%data(i)*h(i)*rho_0*cp
-   end do
-   if (init_diagnostics) then
-      heat_sim0=heat_sim
-      heat_obs0=heat_obs
-      heat_flux=0.
-   end if
-   heat_sim=heat_sim-heat_sim0
-   heat_obs=heat_obs-heat_obs0
-
-   heat_flux=heat_flux+dt*(I_0+heat)
-#endif
 
    ekin=_ZERO_
    epot=_ZERO_

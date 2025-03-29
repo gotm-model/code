@@ -5,7 +5,7 @@
 ! !ROUTINE: Update turbulence production\label{sec:production}
 !
 ! !INTERFACE:
-   subroutine production(nlev,NN,SS,xP, SSCSTK)
+   subroutine production(nlev,NN,SS,xP, SSCSTK, SSSTK)
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the production terms of turbulent kinetic
@@ -52,7 +52,7 @@
 !
 ! !USES:
    use turbulence, only: P,B,Pb,Px,PSTK
-   use turbulence, only: num,nuh
+   use turbulence, only: num,nuh, nucl
    use turbulence, only: alpha,iw_model
    IMPLICIT NONE
 !
@@ -73,6 +73,9 @@
 
 !  Stokes-Eulerian cross-shear (1/s^2)
    REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
+
+!  Stokes shear squared (1/s^2)
+   REALTYPE, intent(in), optional      :: SSSTK (0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
@@ -101,9 +104,20 @@
       end do
    end if
 
+!  P is -<u'w'>du/dz for q2l production with e1,
+!  PSTK is -<u'w'>dus/dz for q2l prodcution with e6,
+!  see  (6) in Harcourt2015.
+!  -<u'w'> = num*(du/dz) + nucl*(dus/dz), see (7) in Harcourt2015.
    if ( PRESENT(SSCSTK) ) then
       do i=0,nlev
+         P(i)    =  P(i) + nucl(i)*SSCSTK(i)
          PSTK(i) =         num (i)*SSCSTK(i)
+      end do
+   end if
+   if ( PRESENT(SSSTK) ) then
+      if ( .not. PRESENT(SSCSTK) ) PSTK = _ZERO_
+      do i=0,nlev
+         PSTK(i) =  PSTK(i) + nucl(i)*SSSTK(i)
       end do
    end if
 

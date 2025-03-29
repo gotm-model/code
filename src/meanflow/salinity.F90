@@ -36,7 +36,7 @@
 !  we set $\nu^S_t = \nu^\Theta_t$ for simplicity.
 !
 !  Horizontal advection is optionally
-!  included  (see {\tt obs.nml}) by means of prescribed
+!  included  (see {\tt gotm.yaml}) by means of prescribed
 !  horizontal gradients $\partial_xS$ and $\partial_yS$ and
 !  calculated horizontal mean velocities $U$ and $V$.
 !  Relaxation with the time scale $\tau^S_R$
@@ -63,6 +63,7 @@
 ! !USES:
    use meanflow,     only: avmols
    use meanflow,     only: h,u,v,w,S,avh
+   use meanflow,     only: Sobs
    use observations, only: dsdx_input,dsdy_input,s_adv
    use observations, only: w_adv_discr,w_adv_input
    use observations, only: sprof_input,SRelaxTau
@@ -115,7 +116,7 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*wflux-sflux  
+   DiffSup        = -S(nlev)*wflux-sflux
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided
@@ -134,9 +135,7 @@
 
    do i=1,nlev
 !     from non-local turbulence
-#ifdef NONLOCAL
       Qsour(i) = Qsour(i) - ( gams(i) - gams(i-1) )/h(i)
-#endif
    end do
 
 !  ... and from lateral advection
@@ -155,9 +154,7 @@
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sprof_input%data,S)
-
-   return
+                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,Sobs,S)
    end subroutine salinity
 !EOC
 

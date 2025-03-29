@@ -3,7 +3,6 @@ add_library(gotm
    cmdline.F90
    diagnostics.F90
    register_all_variables.F90
-   deprecated_output.F90
    print_version.F90
 )
 target_link_libraries(gotm PUBLIC gsw_static util airsea_driver input_manager config meanflow stokes_drift turbulence output_manager input_manager)

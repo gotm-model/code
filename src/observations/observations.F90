@@ -25,6 +25,7 @@
 !
 ! !USES:
    use input
+   use settings
    IMPLICIT NONE
 !  default: all is private.
    private
@@ -36,7 +37,6 @@
 #endif
 
    interface init_observations
-      module procedure init_observations_nml
       module procedure init_observations_yaml
    end interface
 !
@@ -106,7 +106,7 @@
    REALTYPE                  :: TRelaxSurf
    REALTYPE                  :: TRelaxBott
 
-!  External pressure - 'press' namelist
+!  External pressure
    integer, public           :: ext_press_mode
    REALTYPE, public          :: PeriodM
    REALTYPE, public          :: AmpMu
@@ -119,7 +119,7 @@
    REALTYPE, public          :: PhaseSu
    REALTYPE, public          :: PhaseSv
 
-!  Internal pressure - 'internal_pressure' namelist
+!  Internal pressure
    integer, public           :: int_press_type
    logical, public           :: s_adv
    logical, public           :: t_adv
@@ -129,13 +129,13 @@
    REALTYPE, public          :: plume_slope_x
    REALTYPE, public          :: plume_slope_y
 
-!  Light extinction - the 'extinct' namelist
+!  Light extinction
    integer                   :: extinct_method
 
-!  Vertical advection velocity - 'w_advspec' namelist
+!  Vertical advection velocity
    integer, public           :: w_adv_discr
 
-!  Sea surface elevations - 'zetaspec' namelist
+!  Sea surface elevations
    REALTYPE, public          :: period_1
    REALTYPE, public          :: amp_1
    REALTYPE, public          :: phase_1
@@ -143,7 +143,7 @@
    REALTYPE, public          :: amp_2
    REALTYPE, public          :: phase_2
 
-!  Wind waves - 'wave_nml' namelist
+!  Wind waves - 'wave_nml'
    type (type_scalar_input), public :: Hs_input
    type (type_scalar_input), public :: Tz_input
    type (type_scalar_input), public :: phiw_input
@@ -159,7 +159,7 @@
    REALTYPE                  :: e_obs_const
    CHARACTER(LEN=PATH_MAX)   :: e_prof_file
 
-!  Buoyancy - 'bprofile' namelist
+!  Buoyancy
    REALTYPE, public          :: b_obs_surf,b_obs_NN
    REALTYPE, public          :: b_obs_sbf
 
@@ -195,357 +195,17 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
-   subroutine init_observations_nml(namlst,fn)
-!
-! !DESCRIPTION:
-!  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
-!  file with a number of different namelists and takes actions according
-!  to the specifications in the different namelists.
-!  In this routine also memory is allocated to hold the 'observations'.
-!  Finally, all variables are initialised to sane values, either by
-!  reading from files, by prescribing constant values, or by using analytical
-!  expressions.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: namlst
-   character(len=*), intent(in)        :: fn
-!
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
-!
-! !LOCAL VARIABLES:
-   integer, parameter :: rk = kind(_ZERO_)
-
-   integer                   :: s_prof_method
-   character(LEN=PATH_MAX)   :: s_prof_file
-   integer                   :: s_analyt_method
-   integer                   :: t_prof_method
-   character(LEN=PATH_MAX)   :: t_prof_file
-   integer                   :: t_analyt_method
-
-   integer                 :: int_press_method
-   character(LEN=PATH_MAX) :: int_press_file
-   REALTYPE                :: const_dsdx
-   REALTYPE                :: const_dsdy
-   REALTYPE                :: const_dtdx
-   REALTYPE                :: const_dtdy
-
-   integer                 :: ext_press_method
-   character(LEN=PATH_MAX) :: ext_press_file
-   REALTYPE                :: PressConstU
-   REALTYPE                :: PressConstV
-   REALTYPE                :: PressHeight
-
-   integer                 :: zeta_method
-   character(LEN=PATH_MAX) :: zeta_file
-   REALTYPE                :: zeta_scale
-   REALTYPE                :: zeta_offset
-   REALTYPE                :: zeta_0
-
-   integer                 :: w_adv_method
-   REALTYPE                :: w_adv0
-   REALTYPE                :: w_adv_height0
-   character(LEN=PATH_MAX) :: w_adv_file
-
-   character(LEN=PATH_MAX)   :: extinct_file
-   REALTYPE :: A, g1, g2
-
-!  Oxygen profile(s)
-   integer           :: o2_prof_method
-   integer           :: o2_units
-   character(LEN=PATH_MAX)   :: o2_prof_file
-   
-   REALTYPE,parameter        :: mmol_o2_per_liter = 44.661_rk
-   REALTYPE,parameter        :: mmol_o2_per_gram  = 31.25_rk
-
-   integer                   :: wave_method
-   character(LEN=PATH_MAX)   :: wave_file
-   REALTYPE                  :: Hs,Tz,phiw
-
-   namelist /sprofile/                                          &
-            s_prof_method,s_analyt_method,                      &
-            z_s1,s_1,z_s2,s_2,s_prof_file,s_obs_NN,             &
-            SRelaxTauM,SRelaxTauB,SRelaxTauS,                   &
-            SRelaxBott,SRelaxSurf
-
-   namelist /tprofile/                                          &
-            t_prof_method,t_analyt_method,                      &
-            z_t1,t_1,z_t2,t_2,t_prof_file,t_obs_NN,             &
-            TRelaxTauM,TRelaxTauB,TRelaxTauS,                   &
-            TRelaxBott,TRelaxSurf
-
-   namelist /o2_profile/                                        &
-            o2_prof_method,o2_units,o2_prof_file
-
-   namelist /ext_pressure/                                      &
-            ext_press_method,ext_press_mode,ext_press_file,     &
-            PressConstU,PressConstV,PressHeight,                &
-            PeriodM,AmpMu,AmpMv,PhaseMu,PhaseMv,                &
-            PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv
-
-   namelist /int_pressure/                                      &
-            int_press_method,int_press_type,int_press_file,     &
-            const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
-            s_adv,t_adv,plume_slope_x,plume_slope_y
-
-   namelist /extinct/ extinct_method,extinct_file,A,g1,g2
-
-   namelist /w_advspec/                                         &
-            w_adv_method,w_adv_file,w_adv_height0,w_adv0,w_adv_discr
-
-   namelist /zetaspec/                                          &
-            zeta_method,zeta_file,zeta_scale,zeta_offset,zeta_0,&
-            period_1,amp_1,phase_1,period_2,amp_2,phase_2
-
-   namelist /wave_nml/                                          &
-            wave_method,wave_file,Hs,Tz,phiw
-
-   namelist /velprofile/ vel_prof_method,vel_prof_file,         &
-            vel_relax_tau,vel_relax_ramp
-
-   namelist /eprofile/ e_prof_method,e_obs_const,e_prof_file
-
-   namelist /bprofile/ b_obs_surf,b_obs_NN,b_obs_sbf
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   LEVEL1 'init_observations_nml'
-
-!  Salinity profile(s)
-   s_prof_method=0
-   s_analyt_method=1
-   s_prof_file='sprof.dat'
-   z_s1 = _ZERO_
-   s_1 = _ZERO_
-   z_s2 = _ZERO_
-   s_2 = _ZERO_
-   s_obs_NN = _ZERO_
-   SRelaxTauM=_ZERO_
-   SRelaxTauS=_ZERO_
-   SRelaxTauB=_ZERO_
-   SRelaxSurf=_ZERO_
-   SRelaxBott=_ZERO_
-
-!  Temperature profile(s)
-   t_prof_method=0
-   t_analyt_method=1
-   t_prof_file='tprof.dat'
-   z_t1 = _ZERO_
-   t_1 = _ZERO_
-   z_t2 = _ZERO_
-   t_2 = _ZERO_
-   t_obs_NN = _ZERO_
-   TRelaxTauM=_ZERO_
-   TRelaxTauS=_ZERO_
-   TRelaxTauB=_ZERO_
-   TRelaxSurf=_ZERO_
-   TRelaxBott=_ZERO_
-
-!  Oxygen profile(s)
-   o2_prof_method=0
-   o2_units=1
-   o2_prof_file='o2.dat'
-
-!  External pressure - 'press' namelist
-   ext_press_method=0
-   ext_press_mode=0
-   ext_press_file=''
-   PressConstU=_ZERO_
-   PressConstV=_ZERO_
-   PressHeight=_ZERO_
-   PeriodM=44714._rk
-   AmpMu=_ZERO_
-   AmpMv=_ZERO_
-   PhaseMu=_ZERO_
-   PhaseMv=_ZERO_
-   PeriodS=43200._rk
-   AmpSu=_ZERO_
-   AmpSv=_ZERO_
-   PhaseSu=_ZERO_
-   PhaseSv=_ZERO_
-
-!  Internal pressure - 'internal_pressure' namelist
-   int_press_method=0
-   int_press_type=0
-   int_press_file=''
-   const_dsdx=_ZERO_
-   const_dsdy=_ZERO_
-   const_dtdx=_ZERO_
-   const_dtdy=_ZERO_
-   s_adv=.false.
-   t_adv=.false.
-
-!  Light extinction - the 'extinct' namelist
-   extinct_method=1
-   extinct_file='extinction.dat'
-   ! extinct_method=7 - user defined
-   ! default values are from Lago Maggiore, Stips
-   A=0.7_rk
-   g1=0.40_rk
-   g2=8.0_rk
-
-!  Vertical advection velocity - 'w_advspec' namelist
-   w_adv_method=0
-   w_adv0=_ZERO_
-   w_adv_height0=_ZERO_
-   w_adv_file='w_adv.dat'
-   w_adv_discr=1
-
-!  Sea surface elevations - 'zetaspec' namelist
-   zeta_method=0
-   zeta_file='zeta.dat'
-   zeta_scale=_ONE_
-   zeta_offset=_ZERO_
-   zeta_0=_ZERO_
-   period_1=44714._rk
-   amp_1=_ZERO_
-   phase_1=_ZERO_
-   period_2=43200._rk
-   amp_2=_ZERO_
-   phase_2=_ZERO_
-
-!  Wind waves - 'wave_nml' namelist
-   wave_method=0
-   wave_file='wave.dat'
-   Hs=_ZERO_
-   Tz=_ZERO_
-   phiw=_ZERO_
-
-!  Observed velocity profile profiles - typically from ADCP
-   vel_prof_method=0
-   vel_prof_file='velprof.dat'
-   vel_relax_tau=3600._rk
-   vel_relax_ramp=86400._rk
-
-!  Observed dissipation profiles
-   e_prof_method=0
-   e_obs_const=1.e-12_rk
-   e_prof_file='eprof.dat'
-
-!  Buoyancy - 'bprofile' namelist
-   b_obs_surf=_ZERO_
-   b_obs_NN=_ZERO_
-   b_obs_sbf=_ZERO_
-
-   open(namlst,file=fn,status='old',action='read',err=80)
-   read(namlst,nml=sprofile,err=81)
-   read(namlst,nml=tprofile,err=82)
-   read(namlst,nml=ext_pressure,err=83)
-   read(namlst,nml=int_pressure,err=84)
-   read(namlst,nml=extinct,err=85)
-   read(namlst,nml=w_advspec,err=86)
-   read(namlst,nml=zetaspec,err=87)
-   read(namlst,nml=wave_nml,err=88)
-   read(namlst,nml=velprofile,err=89)
-   read(namlst,nml=eprofile,err=90)
-   read(namlst,nml=bprofile,err=91)
-   read(namlst,nml=o2_profile,err=92)
-   close(namlst)
-
-   if (s_prof_method == ANALYTICAL) s_prof_method = ANALYTICAL_OFFSET + s_analyt_method
-   if (t_prof_method == ANALYTICAL) t_prof_method = ANALYTICAL_OFFSET + t_analyt_method
-   call sprof_input%configure(method=s_prof_method, path=s_prof_file, index=1, constant_value=s_1)
-   call tprof_input%configure(method=t_prof_method, path=t_prof_file, index=1, constant_value=t_1)
-
-   call h_press_input%configure(method=ext_press_method, path=ext_press_file, index=1, constant_value=PressHeight)
-   call dpdx_input%configure(method=ext_press_method, path=ext_press_file, index=2, constant_value=PressConstU)
-   call dpdy_input%configure(method=ext_press_method, path=ext_press_file, index=3, constant_value=PressConstV)
-
-   call dsdx_input%configure(method=int_press_method, path=int_press_file, index=1, constant_value=const_dsdx)
-   call dsdy_input%configure(method=int_press_method, path=int_press_file, index=2, constant_value=const_dsdy)
-   call dtdx_input%configure(method=int_press_method, path=int_press_file, index=3, constant_value=const_dtdx)
-   call dtdy_input%configure(method=int_press_method, path=int_press_file, index=4, constant_value=const_dtdy)
-
-   if (extinct_method == 0) then
-      extinct_method = 7
-      call A_input%configure(method=2, path=extinct_file, index=1, constant_value=A)
-      call g1_input%configure(method=2, path=extinct_file, index=2, constant_value=g1)
-      call g2_input%configure(method=2, path=extinct_file, index=3, constant_value=g2)
-   else
-      call A_input%configure(method=0, path=extinct_file, index=1, constant_value=A)
-      call g1_input%configure(method=0, path=extinct_file, index=2, constant_value=g1)
-      call g2_input%configure(method=0, path=extinct_file, index=3, constant_value=g2)
-   end if
-
-   call w_adv_input%configure(method=w_adv_method, path=w_adv_file, index=1, constant_value=w_adv0)
-   call w_height_input%configure(method=max(1, w_adv_method), path=w_adv_file, index=2, constant_value=w_adv_height0)
-
-   call zeta_input%configure(method=zeta_method, path=zeta_file, index=1, constant_value=zeta_0, scale_factor=zeta_scale, add_offset=zeta_offset)
-
-   call Hs_input%configure(method=wave_method, path=wave_file, index=1, constant_value=Hs)
-   call Tz_input%configure(method=wave_method, path=wave_file, index=2, constant_value=Tz)
-   call phiw_input%configure(method=wave_method, path=wave_file, index=3, constant_value=phiw)
-
-   call uprof_input%configure(method=vel_prof_method, path=vel_prof_file, index=1)
-   call vprof_input%configure(method=vel_prof_method, path=vel_prof_file, index=2)
-
-   call epsprof_input%configure(method=e_prof_method, path=e_prof_file, index=1, constant_value=e_obs_const)
-
-   call o2_prof_input%configure(method=o2_prof_method, path=o2_prof_file, index=1)
-   select case (o2_units)
-   case (1) ! mg/l
-      o2_prof_input%scale_factor=mmol_o2_per_gram
-   case (2) ! ml/l
-      o2_prof_input%scale_factor=mmol_o2_per_liter
-   end select
-
-   LEVEL2 'done.'
-
-   return
-
-80 FATAL 'Unable to open "',fn,'" for reading'
-   stop 'init_observations'
-81 FATAL 'I could not read "sprofile" namelist'
-   stop 'init_observations'
-82 FATAL 'I could not read "tprofile" namelist'
-   stop 'init_observations'
-83 FATAL 'I could not read "ext_pressure" namelist'
-   stop 'init_observations'
-84 FATAL 'I could not read "int_pressure" namelist'
-   stop 'init_observations'
-85 FATAL 'I could not read "extinct" namelist'
-   stop 'init_observations'
-86 FATAL 'I could not read "w_advspec" namelist'
-   stop 'init_observations'
-87 FATAL 'I could not read "zetaspec" namelist'
-   stop 'init_observations'
-88 FATAL 'I could not read "wave_nml" namelist'
-   stop 'init_observations'
-89 FATAL 'I could not read "velprofile" namelist'
-   stop 'init_observations'
-90 FATAL 'I could not read "eprofile" namelist'
-   stop 'init_observations'
-91 FATAL 'I could not read "bprofile" namelist'
-   stop 'init_observations'
-92 FATAL 'I could not read "o2_profile" namelist'
-   stop 'init_observations'
-
-   end subroutine init_observations_nml
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialise the observation module
-!
-! !INTERFACE:
    subroutine init_observations_yaml()
 !
 ! !DESCRIPTION:
-!  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
-!  file with a number of different namelists and takes actions according
-!  to the specifications in the different namelists.
+!  The {\tt init\_observations()} subroutine basically reads the observation 
+!  section in {\tt gotm.yaml}
 !  In this routine also memory is allocated to hold the 'observations'.
 !  Finally, all variables are initialised to sane values, either by
 !  reading from files, by prescribing constant values, or by using analytical
 !  expressions.
 !
 ! !USES:
-   use settings
    use util, only: UPSTREAM, P2, MUSCL, Superbee, P2_PDM
    IMPLICIT NONE
 !
@@ -595,11 +255,11 @@
    twig => branch%get_typed_child('two_layer')
    call twig%get(z_s1, 'z_s', 'depth where upper layer ends', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(s_1, 's_s', 'upper layer salinity', 'psu', &
+   call twig%get(s_1, 's_s', 'upper layer salinity', 'g/kg', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
    call twig%get(z_s2, 'z_b', 'depth where lower layer begins', 'm', &
                    minimum=0._rk,default=0._rk)
-   call twig%get(s_2, 's_b', 'lower layer salinity', 'psu', &
+   call twig%get(s_2, 's_b', 'lower layer salinity', 'g/kg', &
                    minimum=0._rk,maximum=40._rk,default=0._rk)
    call branch%get(s_obs_NN, 'NN', 'square of buoyancy frequency', 's^-2', &
                    minimum=0._rk,default=0._rk)
@@ -745,13 +405,6 @@
    subroutine post_init_observations(depth,nlev,z,zi,h,gravity)
 !
 ! !DESCRIPTION:
-!  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
-!  file with a number of different namelists and takes actions according
-!  to the specifications in the different namelists.
-!  In this routine also memory is allocated to hold the 'observations'.
-!  Finally, all variables are initialised to sane values, either by
-!  reading from files, by prescribing constant values, or by using analytical
-!  expressions.
 !
 ! !USES:
    IMPLICIT NONE
@@ -811,7 +464,7 @@
          LEVEL2 ''
          LEVEL2 '***************************************************'
          LEVEL2 'SRelaxTau at i=',i,' is not a positive value.'
-         LEVEL2 'Please correct obs.nml and rerun.'
+         LEVEL2 'Please correct gotm.yaml and rerun.'
          LEVEL2 'Program aborted.'
          LEVEL2 '***************************************************'
          stop 'init_observations'
@@ -829,9 +482,10 @@
 
 !  The salinity profile
    call register_input(sprof_input)
+   sprof_input%data=sprof_input%constant_value
    select case (sprof_input%method)
-      case (ANALYTICAL_OFFSET + CONST_PROF)
-          sprof_input%data=sprof_input%constant_value
+!KB      case (ANALYTICAL_OFFSET + CONST_PROF)
+!KB          sprof_input%data=sprof_input%constant_value
       case (ANALYTICAL_OFFSET + TWO_LAYERS)
          call analytical_profile(nlev,z,z_s1,s_1,z_s2,s_2,sprof_input%data)
       case (ANALYTICAL_OFFSET + CONST_NN)
@@ -847,14 +501,16 @@
             stop 'init_observations'
          endif
 
-         call const_NNS(nlev,z,z,s_1,t_1,s_obs_NN,gravity,sprof_input%data)
+         call const_NNS(nlev,z,zi,s_1,tprof_input%constant_value,s_obs_NN,gravity,sprof_input%data)
    end select
 
+   
 !  The temperature profile
    call register_input(tprof_input)
+   tprof_input%data=tprof_input%constant_value
    select case (tprof_input%method)
-      case (ANALYTICAL_OFFSET + CONST_PROF)
-          tprof_input%data=tprof_input%constant_value
+!KB      case (ANALYTICAL_OFFSET + CONST_PROF)
+!KB          tprof_input%data=tprof_input%constant_value
       case (ANALYTICAL_OFFSET + TWO_LAYERS)
          call analytical_profile(nlev,z,z_t1,t_1,z_t2,t_2,tprof_input%data)
       case (ANALYTICAL_OFFSET + CONST_NN)
@@ -871,7 +527,8 @@
             stop 'init_observations'
          endif
 
-         call const_NNT(nlev,z,z,t_1,s_1,t_obs_NN,gravity,tprof_input%data)
+ 
+         call const_NNT(nlev,z,zi,t_1,sprof_input%constant_value,t_obs_NN,gravity,tprof_input%data)
    end select
 
 !  The external pressure
@@ -1060,52 +717,52 @@
    LEVEL2 'w_adv,w_height',w_adv,w_height
    LEVEL2 'A,g1,g2',A,g1,g2
 
-   LEVEL2 'salinity namelist',                                  &
+   LEVEL2 'salinity configuration',                             &
             s_prof_method,s_analyt_method,                      &
             s_prof_file,z_s1,s_1,z_s2,s_2,s_obs_NN,             &
             SRelaxTauM,SRelaxTauS,SRelaxTauB,                   &
             SRelaxSurf,SRelaxBott
 
-   LEVEL2 'temperature namelist',                               &
+   LEVEL2 'temperature configuration',                          &
             t_prof_method,t_analyt_method,                      &
             t_prof_file,z_t1,t_1,z_t2,t_2,t_obs_NN,             &
             TRelaxTauM,TRelaxTauS,TRelaxTauB,                   &
             TRelaxSurf,TRelaxBott
 
-   LEVEL2 'oxygen namelist',                                    &
+   LEVEL2 'oxygen configuration',                               &
             o2_prof_method,o2_units,o2_prof_file
 
-   LEVEL2 'external pressure namelist',                         &
+   LEVEL2 'external pressure configuration',                    &
             ext_press_method,ext_press_mode,ext_press_file,     &
             PressConstU,PressConstV,PressHeight,                &
             PeriodM,AmpMu,AmpMv,PhaseMu,PhaseMv,                &
             PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv
 
-   LEVEL2 'internal_pressure namelist',                         &
+   LEVEL2 'internal_pressure configuration',                    &
             int_press_method,int_press_type,int_press_file,     &
             const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
             s_adv,t_adv,plume_slope_x,plume_slope_y
 
-   LEVEL2 'extinct namelist',extinct_method,extinct_file
+   LEVEL2 'extinct configuration',extinct_method,extinct_file
 
-   LEVEL2 'w_advspec namelist',                                 &
+   LEVEL2 'w_advspec configuration',                            &
             w_adv_method,w_adv0,w_adv_height0,w_adv_file,w_adv_discr
 
-   LEVEL2 'zetaspec namelist',                                  &
+   LEVEL2 'zetaspec configuration',                             &
             zeta_method,zeta_file,zeta_0,                       &
             period_1,amp_1,phase_1,period_2,amp_2,phase_2
 
-   LEVEL2 'wave_nml namelist',                                  &
+   LEVEL2 'wave_nml configuration',                             &
             wave_method,wave_file,Hs,Tz,phiw
 
-   LEVEL2 'observed velocity profiles namelist',                &
+   LEVEL2 'observed velocity profiles configuration',           &
             vel_prof_method,vel_prof_file,                      &
             vel_relax_tau,vel_relax_ramp
 
-   LEVEL2 'observed dissipation profiles namelist',             &
+   LEVEL2 'observed dissipation profiles configuration',        &
             e_prof_method,e_obs_const,e_prof_file
 
-   LEVEL2 'bprofile namelist',b_obs_surf,b_obs_NN,b_obs_sbf
+   LEVEL2 'bprofile configuration',b_obs_surf,b_obs_NN,b_obs_sbf
 
    end subroutine print_state_observations
 !EOC

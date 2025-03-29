@@ -31,7 +31,7 @@
 ! $\kappa$ being the von K{\'a}rm{\'a}n constant and ${\cal L}_z$ some
 ! measure for the distance from the wall. Different possiblities
 ! for  ${\cal L}_z$ are implemented in GOTM, which can be activated
-! be setting the parameter {\tt MY\_length} in {\tt gotmturb.nml} to
+! be setting the parameter {\tt MY\_length} in {\tt gotm.yaml} to
 ! appropriate values. Close to the wall, however, one always has
 ! ${\cal L}_z= \overline{z}$, where $\overline{z}$ is the distance from
 ! the wall.
@@ -45,7 +45,7 @@
 ! \end{equation}
 ! where $S_l$ is a constant of the model. The values for the model
 ! constants recommended by \cite{MellorYamada82} are displayed in
-! \tab{tab:MY_constants}. They can be set in {\tt gotmturb.nml}. Note,
+! \tab{tab:MY_constants}. They can be set in {\tt gotm.yaml}. Note,
 ! that the parameter $E_3$ in stably stratifed flows is in principle
 ! a function of the so-called steady state Richardson-number,
 ! as discussed by \cite{Burchard2001c}, see discussion in the context
@@ -64,7 +64,7 @@
 !
 ! At the end of this routine the length-scale can be constrained according to a
 ! suggestion of \cite{Galperinetal88}. This feature is optional and can be activated
-! by setting {\tt length\_lim = .true.} in {\tt gotmturb.nml}.
+! by setting {\tt length\_lim = .true.} in {\tt gotm.yaml}.
 !
 ! !USES:
    use turbulence, only: P,B,Px,PSTK
@@ -72,7 +72,7 @@
    use turbulence, only: kappa,e1,e2,e3,ex,e6,b1
    use turbulence, only: MY_length,cm0,cde,galp,length_lim
    use turbulence, only: q2l_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
-   use turbulence, only: sl
+   use turbulence, only: sl_var
    use util,       only: Dirichlet,Neumann
 
    IMPLICIT NONE
@@ -156,7 +156,7 @@
    do i=1,nlev-1
 
 !     compute diffusivity
-      avh(i)      =  sl*sqrt(2.*tkeo(i))*L(i)
+      avh(i)      =  sl_var(i) * sqrt(2.*tkeo(i))*L(i)
 
 !     compute production terms in q^2 l - equation
       prod        =  L(i) * ( e1*P(i) + ex*Px(i) + e6*PSTK(i) )

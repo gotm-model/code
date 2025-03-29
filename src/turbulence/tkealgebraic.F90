@@ -31,7 +31,7 @@
 !  small (e.g.\ {\tt c\_filt = 0.2}) in order to reduce the strong oscillations
 !  associated with this scheme, and to couple it with an algebraically prescribed
 !  length scale with the length scale limitation active ({\tt length\_lim=.true.} in
-!  {\tt gotmturb.nml}, see \cite{Galperinetal88}).
+!  {\tt gotm.yaml}, see \cite{Galperinetal88}).
 !
 ! !USES:
    use turbulence,   only: tke,tkeo,L,k_min

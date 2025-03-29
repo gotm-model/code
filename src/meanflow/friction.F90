@@ -51,7 +51,7 @@
 !   \point
 !  \end{equation}
 !  The model constant $\alpha$ is read in as {\tt charnock\_val} from
-!  the {\tt meanflow} namelist.
+!  the {\tt gotm.yaml}.
 !
 ! !USES:
    use density,       only: rho0

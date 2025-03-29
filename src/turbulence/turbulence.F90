@@ -37,7 +37,7 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_turbulence,post_init_turbulence,do_turbulence
-   public k_bc,q2over2_bc,epsilon_bc,psi_bc,q2l_bc
+   public k_bc,q2over2_bc,epsilon_bc,omega_bc,psi_bc,q2l_bc
    public clean_turbulence
 #ifdef _PRINTSTATE_
    public print_state_turbulence
@@ -49,8 +49,8 @@
    end interface
 
 ! !PUBLIC DATA MEMBERS:
-!  TKE, rate of dissipation, turbulent length-scale
-   REALTYPE, public, dimension(:), allocatable, target :: tke,eps,L
+!  TKE, rate of dissipation, omega, turbulent length-scale
+   REALTYPE, public, dimension(:), allocatable, target :: tke,eps,omega,L
 
 !  TKE at old time level
    REALTYPE, public, dimension(:), allocatable, target   :: tkeo
@@ -74,6 +74,11 @@
    REALTYPE, public, dimension(:), allocatable, target :: nuh
    REALTYPE, public, dimension(:), allocatable         :: nus
 
+!  turbulent eddy coefficient for momentum flux down Stokes gradient
+!  in second moment closures with Craik-Leibovich vortex force in the
+!  algebraic Reynolds stress and flux models.
+   REALTYPE, public, dimension(:), allocatable         :: nucl
+
 !  non-local fluxes of momentum
    REALTYPE, public, dimension(:), allocatable   :: gamu,gamv
 
@@ -82,13 +87,23 @@
    REALTYPE, public, dimension(:), allocatable   :: gamb,gamh,gams
 
 !  non-dimensional  stability functions
-   REALTYPE, public, dimension(:), allocatable   :: cmue1,cmue2
+   REALTYPE, public, dimension(:), allocatable   :: cmue1,cmue2, cmue3
+
+!  spatially varying sq and sl for q2over2 and lengthscale
+   REALTYPE, public, dimension(:), allocatable   :: sq_var, sl_var
 
 !  non-dimensional counter-gradient term
    REALTYPE, public, dimension(:), allocatable   :: gam
 
 !  alpha_M, alpha_N, and alpha_B
    REALTYPE, public, dimension(:), allocatable   :: as,an,at
+
+!  alpha_V, alpha_W
+!  dimensionless Stokes-Eulerian cross-shear and Stokes shear^2
+   REALTYPE, public, dimension(:), allocatable   :: av,aw
+
+!  surface proximity function
+   REALTYPE, public, dimension(:), allocatable   :: SPF
 
 !  time scale ratio r
    REALTYPE, public, dimension(:), allocatable   :: r
@@ -179,6 +194,15 @@
    REALTYPE, public                              :: sig_e
    logical,  public                              :: sig_peps
 
+!  the 'kw' namelist
+   REALTYPE, public                              :: cw1
+   REALTYPE, public                              :: cw2
+   REALTYPE, public                              :: cw3minus
+   REALTYPE, public                              :: cw3plus
+   REALTYPE, public                              :: cw4
+   REALTYPE, public                              :: sig_kw   
+   REALTYPE, public                              :: sig_w
+ 
 !  the 'my' namelist
    REALTYPE, public                              :: e1
    REALTYPE, public                              :: e2
@@ -217,7 +241,7 @@
 ! !DEFINED PARAMETERS:
 
 !  general outline of the turbulence model
-   integer, parameter, public                    :: convective=0
+   integer, parameter, public                    :: no_model=0
    integer, parameter, public                    :: algebraic=1
    integer, parameter, public                    :: first_order=2
    integer, parameter, public                    :: second_order=3
@@ -231,7 +255,6 @@
    integer, parameter, public                    :: Constant=1
    integer, parameter, public                    :: Munk_Anderson=2
    integer, parameter, public                    :: Schumann_Gerz=3
-   integer, parameter, public                    :: Eifler_Schrimpf=4
 
 !  method to update length scale
    integer, parameter, public                    :: Parabolic=1
@@ -240,8 +263,8 @@
    integer, parameter, public                    :: Robert_Ouellet=4
    integer, parameter, public                    :: Blackadar=5
    integer, parameter, public                    :: Bougeault_Andre=6
-   integer, parameter, public                    :: ispra_length=7
    integer, parameter, public                    :: diss_eq=8
+   integer, parameter, public                    :: omega_eq=11
    integer, parameter, public                    :: length_eq=9
    integer, parameter, public                    :: generic_eq=10
 
@@ -256,6 +279,7 @@
    integer, parameter                            :: quasi_Eq=1
    integer, parameter                            :: weak_Eq_Kb_Eq=2
    integer, parameter                            :: weak_Eq_Kb=3
+   integer, parameter                            :: quasi_Eq_H15=4
 
 !  method to solve equation for k_b
    integer, parameter                            :: kb_algebraic=1
@@ -356,6 +380,9 @@
    namelist /keps/          ce1,ce2,ce3minus,ce3plus,cex,ce4,  &
                             sig_k,sig_e,sig_peps
 
+   namelist /kw/            cw1,cw2,cw3minus,cw3plus,cw4,      &
+                            sig_kw,sig_w   
+
    namelist /my/            e1,e2,e3,ex,e6,sq,sl,my_length, new_constr
 
    namelist /scnd/          scnd_method,kb_method,epsb_method, &
@@ -415,12 +442,12 @@
    cm0_fix=0.5477
    Prandtl0_fix=0.74
    cw=100.0
-   compute_kappa=.false.
+   compute_kappa=.true.
    kappa=0.4
-   compute_c3=.false.
+   compute_c3=.true.
    ri_st=0.25
-   length_lim=.false.
-   galp=0.53
+   length_lim=.true.
+   galp=0.27
    const_num=5.0e-4
    const_nuh=5.0e-4
    k_min=1.0e-8
@@ -449,12 +476,21 @@
    ce1=1.44
    ce2=1.92
    ce3minus=0.0
-   ce3plus=1.0
+   ce3plus=1.5
    cex=ce1
    ce4=_ZERO_
    sig_k=1.0
    sig_e=1.3
    sig_peps=.false.
+
+!  the 'kw' namelist
+   cw1=0.555
+   cw2=0.833
+   cw3minus=0.0
+   cw3plus=0.5
+   cw4=0.15
+   sig_kw=2.0
+   sig_w=2.0
 
 !  the 'my' namelist
    e1=1.8
@@ -497,16 +533,21 @@
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=turbulence,err=81)
 
-   if (turb_method.eq.99) then
+   if (turb_method.eq.100) then
       close (namlst)
    else
       read(namlst,nml=bc,err=82)
       read(namlst,nml=turb_param,err=83)
       read(namlst,nml=generic,err=84)
       read(namlst,nml=keps,err=85)
-      read(namlst,nml=my,err=86)
-      read(namlst,nml=scnd,err=87)
-      read(namlst,nml=iw,err=88)
+      select case(len_scale_method)
+         case(omega_eq)
+            read(namlst,nml=kw,err=86)
+         case default
+      end select
+      read(namlst,nml=my,err=87)
+      read(namlst,nml=scnd,err=88)
+      read(namlst,nml=iw,err=89)
       close (namlst)
    endif
    LEVEL2 'done.'
@@ -527,11 +568,13 @@
    stop 'init_turbulence'
 85 FATAL 'I could not read "keps" namelist'
    stop 'init_turbulence'
-86 FATAL 'I could not read "my" namelist'
+86 FATAL 'I could not read "kw" namelist'
+   stop 'init_turbulence'   
+87 FATAL 'I could not read "my" namelist'
    stop 'init_turbulence'
-87 FATAL 'I could not read "scnd" namelist'
+88 FATAL 'I could not read "scnd" namelist'
    stop 'init_turbulence'
-88 FATAL 'I could not read "iw" namelist'
+89 FATAL 'I could not read "iw" namelist'
    stop 'init_turbulence'
 
  end subroutine init_turbulence_nml
@@ -585,15 +628,15 @@
    LEVEL1 'init_turbulence_yaml'
 
    call branch%get(turb_method, 'turb_method', 'turbulence closure', &
-                   options=(/option(convective, 'convective adjustment', 'convective'), option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
+                   options=(/option(no_model, 'constant nuh and num', 'no_model'), option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
    call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
-                   options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-epsilon style)', 'tke'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
+                   options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-eps or k-w style)', 'tke'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
-                   options=(/option(parabolic, 'parabolic', 'parabolic'), option(triangular, 'triangular', 'triangular'), option(Xing_Davies, 'Xing and Davies (1995)', 'Xing_Davies'), option(Robert_Ouellet, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), option(Blackadar, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(Bougeault_Andre, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), option(ispra_length, 'Eifler and Schrimpf (ISPRAMIX) (1992)', 'Eifler_Schrimpf'), option(diss_eq, 'dynamic dissipation rate equation', 'dissipation'), option(length_eq, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(generic_eq, 'generic length scale (GLS)', 'gls')/),default=diss_eq)
+                   options=(/option(parabolic, 'parabolic', 'parabolic'), option(triangular, 'triangular', 'triangular'), option(Xing_Davies, 'Xing and Davies (1995)', 'Xing_Davies'), option(Robert_Ouellet, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), option(Blackadar, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(Bougeault_Andre, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), option(diss_eq, 'dynamic dissipation rate equation', 'dissipation'),  option(omega_eq, 'dynamic omega equation', 'omega'), option(length_eq, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(generic_eq, 'generic length scale (GLS)', 'gls')/),default=diss_eq)
    call branch%get(stab_method, 'stab_method', 'stability functions', &
-                   options=(/option(1, 'constant', 'constant'), option(Munk_Anderson, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(Schumann_Gerz, 'Schumann and Gerz (1995)', 'Schumann_Gerz'), option(Eifler_Schrimpf, 'Eifler and Schrimpf (1992)', 'Eifler_Schrimpf')/),default=1)
+                   options=(/option(1, 'constant', 'constant'), option(Munk_Anderson, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(Schumann_Gerz, 'Schumann and Gerz (1995)', 'Schumann_Gerz')/),default=1)
 
-   twig => branch%get_child('bc', 'boundary conditions', display=display_advanced)
+   twig => branch%get_child('bc', 'boundary conditions')
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
                    options=(/option(Dirichlet, 'Dirichlet', 'Dirichlet'), option(Neumann, 'Neumann', 'Neumann')/), default=Neumann)
    call twig%get(k_lbc, 'k_lbc', 'lower boundary condition for k-equation', &
@@ -616,7 +659,7 @@
    call twig%get(cw, 'cw', 'constant of the wave-breaking model', '-', &
                    minimum=0._rk,default=100._rk)
    call twig%get(compute_kappa, 'compute_kappa', 'compute von Karman constant from model parameters', &
-                   default=.false.)
+                   default=.true.)
    call twig%get(kappa, 'kappa', 'von Karman constant', '-', &
                    minimum=0._rk,default=0.4_rk)
    call twig%get(compute_c3, 'compute_c3', 'compute c3 (E3 for Mellor-Yamada) from steady-state Richardson number', &
@@ -640,7 +683,7 @@
    call twig%get(epsb_min, 'epsb_min', 'minimum buoyancy variance destruction rate', 'm^2/s^5', &
                    minimum=0._rk,default=1.e-14_rk)
 
-   twig => branch%get_child('generic', 'generic length scale (GLS) model', display=display_advanced)
+   twig => branch%get_child('generic', 'generic length scale (GLS) model')
    call twig%get(compute_param, 'compute_param', 'compute the model parameters', &
                    default=.false.)
    call twig%get(gen_m, 'gen_m', 'exponent for k', '-', &
@@ -672,7 +715,7 @@
    call twig%get(gen_l, 'gen_l', 'slope L of the length scale in shear-free turbulence', '-', &
                    default=0.2_rk)
 
-   twig => branch%get_child('keps', 'k-epsilon model', display=display_advanced)
+   twig => branch%get_child('keps', 'k-epsilon model')
    call twig%get(ce1, 'ce1', 'empirical coefficient ce1 in dissipation equation', '-', &
                    default=1.44_rk)
    call twig%get(ce2, 'ce2', 'empirical coefficient ce2 in dissipation equation', '-', &
@@ -680,19 +723,35 @@
    call twig%get(ce3minus, 'ce3minus', 'ce3 for stable stratification', '-', &
                    default=0._rk)
    call twig%get(ce3plus, 'ce3plus', 'ce3 for unstable stratification', '-', &
-                   default=1.0_rk)
+                   default=1.5_rk)
    call twig%get(cex, 'cex', 'empirical coefficient cex in dissipation equation', '-', &
                    default=ce1)
    call twig%get(ce4, 'ce4', 'empirical coefficient ce4 in dissipation equation', '-', &
-                   default=0._rk)
+                   default=0.0_rk)
    call twig%get(sig_k, 'sig_k', 'Schmidt number for TKE diffusivity', '-', &
-                   default=1._rk)
+                   default=1.0_rk)
    call twig%get(sig_e, 'sig_e', 'Schmidt number for dissipation diffusivity', '-', &
                    default=1.3_rk)
    call twig%get(sig_peps, 'sig_peps', 'use Burchard (2001) wave breaking parameterisation', &
-                   default=.false.)
+                 default=.false.)
+   
+   twig => branch%get_child('kw', 'k-omega model')
+   call twig%get(cw1, 'cw1', 'empirical coefficient cw1 in omega equation', '-', &
+                   default=0.555_rk)
+   call twig%get(cw2, 'cw2', 'empirical coefficient cw2 in omega equation', '-', &
+                   default=0.833_rk)
+   call twig%get(cw3minus, 'cw3minus', 'cw3 for stable stratification', '-', &
+                   default=0.0_rk)
+   call twig%get(cw3plus, 'cw3plus', 'cw3 for unstable stratification', '-', &
+                   default=0.5_rk)
+   call twig%get(cw4, 'cw4', 'empirical coefficient cw4 in omega equation', '-', &
+                   default=0.15_rk)
+   call twig%get(sig_kw, 'sig_kw', 'Schmidt number for TKE diffusivity', '-', &
+                   default=2.0_rk)
+   call twig%get(sig_w, 'sig_w', 'Schmidt number for omega diffusivity', '-', &
+                   default=2.0_rk)
 
-   twig => branch%get_child('my', 'Mellor-Yamada model', display=display_advanced)
+   twig => branch%get_child('my', 'Mellor-Yamada model')
    call twig%get(e1, 'e1', 'coefficient e1 in q^2 l equation', '-', &
                    default=1.8_rk)
    call twig%get(e2, 'e2', 'coefficient e2 in q^2 l equation', '-', &
@@ -710,39 +769,39 @@
    call twig%get(my_length, 'length', 'barotropic length scale in q^2 l equation', &
                    options=(/option(1, 'parabolic', 'parabolic'), option(2, 'triangular', 'triangular'), option(3, 'linear from surface', 'linear')/),default=1)
 
-   twig => branch%get_child('scnd', 'second-order model', display=display_advanced)
+   twig => branch%get_child('scnd', 'second-order model')
    call twig%get(scnd_method, 'method', 'method', &
-                   options=(/option(quasi_eq, 'quasi-equilibrium', 'quasi_eq'), option(weak_eq_kb_eq, 'weak equilibrium with algebraic buoyancy variance', 'weak_eq_kb_eq')/), default=weak_eq_kb_eq)
+                   options=(/option(quasi_eq, 'quasi-equilibrium', 'quasi_eq'), option(weak_eq_kb_eq, 'weak equilibrium with algebraic buoyancy variance', 'weak_eq_kb_eq'),option(quasi_eq_h15, 'quasi-equilibrium with Langmuir (Harcourt, 2015)', 'quasi_eq_h15')/), default=weak_eq_kb_eq)
    call twig%get(kb_method, 'kb_method', 'equation for buoyancy variance', &
-                   options=(/option(kb_algebraic, 'algebraic', 'algebraic'), option(kb_dynamic, 'prognostic', 'prognostic')/), default=1)
+                   options=(/option(kb_algebraic, 'algebraic', 'algebraic'), option(kb_dynamic, 'prognostic', 'prognostic')/), default=1, display=display_advanced)
    call twig%get(epsb_method, 'epsb_method', 'equation for variance destruction', &
-                   options=(/option(epsb_algebraic, 'algebraic', 'algebraic')/), default=epsb_algebraic)
+                   options=(/option(epsb_algebraic, 'algebraic', 'algebraic')/), default=epsb_algebraic, display=display_advanced)
    call twig%get(scnd_coeff, 'scnd_coeff', 'coefficients of second-order model', &
                    options=(/option(LIST, 'custom', 'custom'), option(GL78, 'Gibson and Launder (1978)', 'Gibson_Launder'), option(MY82, 'Mellor and Yamada (1982)', 'Mellor_Yamada'), option(KC94, 'Kantha and Clayson (1994)', 'Kantha_Clayson'), option(LDOR96, 'Luyten et al. (1996)', 'Luyten'), option(CHCD01A, 'Canuto et al. (2001) (version A)', 'Canuto-A'), option(CHCD01B, 'Canuto et al. (2001) (version B)', 'Canuto-B'), option(CCH02, 'Cheng et al. (2002)', 'Cheng')/),default=CHCD01A)
    call twig%get(cc1, 'cc1', 'cc1', '-', &
-                   default=3.6_rk)
+                   default=3.6_rk, display=display_advanced)
    call twig%get(cc2, 'cc2', 'cc2', '-', &
-                   default=0.8_rk)
+                   default=0.8_rk, display=display_advanced)
    call twig%get(cc3, 'cc3', 'cc3', '-', &
-                   default=1.2_rk)
+                   default=1.2_rk, display=display_advanced)
    call twig%get(cc4, 'cc4', 'cc4', '-', &
-                   default=1.2_rk)
+                   default=1.2_rk, display=display_advanced)
    call twig%get(cc5, 'cc5', 'cc5', '-', &
-                   default=0.0_rk)
+                   default=0.0_rk, display=display_advanced)
    call twig%get(cc6, 'cc6', 'cc6', '-', &
-                   default=0.3_rk)
+                   default=0.5_rk, display=display_advanced)
    call twig%get(ct1, 'ct1', 'ct1', '-', &
-                   default=3.28_rk)
+                   default=3.0_rk, display=display_advanced)
    call twig%get(ct2, 'ct2', 'ct2', '-', &
-                   default=0.4_rk)
+                   default=0.33_rk, display=display_advanced)
    call twig%get(ct3, 'ct3', 'ct3', '-', &
-                   default=0.4_rk)
+                   default=0.33_rk, display=display_advanced)
    call twig%get(ct4, 'ct4', 'ct4', '-', &
-                   default=0.0_rk)
+                   default=0.0_rk, display=display_advanced)
    call twig%get(ct5, 'ct5', 'ct5', '-', &
-                   default=0.4_rk)
+                   default=0.33_rk, display=display_advanced)
    call twig%get(ctt, 'ctt', 'ctt', '-', &
-                   default=0.8_rk)
+                   default=0.8_rk, display=display_advanced)
 
    twig => branch%get_child('iw', 'internal wave mixing', display=display_advanced)
    call twig%get(iw_model, 'method', 'method', &
@@ -902,6 +961,10 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (nus)'
    nus = 1.0D-6
 
+   allocate(nucl(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (nucl)'
+   nucl = _ZERO_
+
    allocate(gamu(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gamu)'
    gamu = _ZERO_
@@ -930,6 +993,18 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (cmue2)'
    cmue2 = _ZERO_
 
+   allocate(cmue3(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (cmue3)'
+   cmue3 = _ZERO_
+
+   allocate(sq_var(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (sq_var)'
+   sq_var = sq
+
+   allocate(sl_var(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (sl_var)'
+   sl_var = sl
+
    allocate(gam(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gam)'
    gam = _ZERO_
@@ -945,6 +1020,18 @@
    allocate(at(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (at)'
    at = _ZERO_
+
+   allocate(av(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (av)'
+   av = _ZERO_
+
+   allocate(aw(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (aw)'
+   aw = _ZERO_
+
+   allocate(SPF(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (SPF)'
+   SPF = _ONE_
 
    allocate(r(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (r)'
@@ -995,6 +1082,12 @@
 # endif
 
    LEVEL2 'done.'
+
+   if (turb_method .eq. no_model) then
+      nuh = const_nuh
+      num = const_num
+      return
+   end if
 
    if (turb_method .eq. 100) return
 
@@ -1949,13 +2042,6 @@
       gen_l     = kappa
       gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
 
-   case(ispra_length)
-
-      if (compute_kappa) kappa=0.4
-      gen_l     = kappa
-      gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
-
-
    case(diss_eq)
 
       ! compute kappa from the parameters
@@ -2009,6 +2095,43 @@
       else
          ri_st     =  compute_rist(ce1,ce2,ce3minus)
       endif
+      
+   case(omega_eq)
+
+      ! compute kappa from the parameters
+      if (compute_kappa)  then
+         rad=sig_w*(cw2-cw1)
+         if (rad .gt. 0) then
+            kappa=cm0*sqrt(rad)
+         else
+            STDERR 'Negative radicand discovered in computing'
+            STDERR 'kappa for the k-omega model.'
+            STDERR 'Possible reason: you took cw2 < cw1 '
+            STDERR 'Please change gotmturb.nml accordingly.'
+            STDERR 'Program aborts now in turbulence.F90'
+            stop
+         endif
+
+      ! or compute the Schmidt-number for given kappa
+      else
+         sig_w= kappa**2/(cw2-cw1)/cm0**2
+      endif
+
+
+      ! compute model propeties
+      sig_k      = sig_kw
+      gen_d      = - 1./cw2
+      gen_alpha  = 4.*sqrt(sig_k)/(3.*sqrt(sig_k)-sqrt(sig_k+24.*sig_w*cw2))
+      gen_l      = cm0*sqrt(rcm)*sqrt( (5.*sig_k+12.*sig_w*cw2 -  &
+                   3.*sqrt(sig_k*(sig_k+24.*sig_w*cw2 ) ) ) / 12. )
+
+      ! compute c3 from given steady-state Richardson-number, or vice-versa
+      if (compute_c3)  then
+         cw3minus  =  compute_cpsi3(cw1,cw2,Ri_st)
+      else
+         ri_st     =  compute_rist(cw1,cw2,cw3minus)
+      endif
+      
    case(generic_eq)
       rad=sig_psi*(cpsi2-cpsi1)/gen_n**2.
       if (rad.gt.0) then
@@ -2021,6 +2144,8 @@
          STDERR 'Program aborts now in turbulence.F90'
          stop
       endif
+      
+      ! compute model propeties
       sig_k      = sig_kpsi
       gen_d      = -2.*gen_n/(2.*gen_m + gen_n - 2.*cpsi2)
       gen_alpha  = -4.*gen_n*sqrt(sig_k) / &
@@ -2221,24 +2346,6 @@
          LEVEL3 'Schmidt-number for k,          sig_k =', sig_k
          LEVEL3 'von Karman constant,           kappa =', kappa
          LEVEL2 ' '
-      case(ispra_length)
-         LEVEL2 ' '
-         LEVEL2 'You are using a one-equation model'
-         LEVEL2 'with the ISPRAMIX length-scale (see GOTM-report)'
-         LEVEL2 'The properties of this model are:'
-         LEVEL2 ' '
-         LEVEL3 'Schmidt-number for k,          sig_k =', sig_k
-         LEVEL3 'von Karman constant,          kappa  =', kappa
-         LEVEL2 ' '
-         LEVEL3 'Value of the stability function'
-         LEVEL3 'in the log-law,                   cm0 =', cm0
-         LEVEL3 'in shear-free turbulence,        cmsf =', cmsf
-         LEVEL2 ' '
-         LEVEL3 'At the surface:'
-         LEVEL3 'spatial decay rate (no shear), alpha =', gen_alpha
-         LEVEL3 'length-scale slope (no shear),     L =', gen_l
-         LEVEL2 '--------------------------------------------------------'
-         LEVEL2 ' '
       case(diss_eq)
          LEVEL2 ' '
          LEVEL2 '--------------------------------------------------------'
@@ -2253,6 +2360,31 @@
          LEVEL3 'ce4                                  =', ce4
          LEVEL3 'sig_k                                =', sig_k
          LEVEL3 'sig_e                                =', sig_e
+         LEVEL2 ' '
+         LEVEL3 'Value of the stability function'
+         LEVEL3 'in the log-law,                   cm0 =', cm0
+         LEVEL3 'in shear-free turbulence,        cmsf =', cmsf
+         LEVEL2 ' '
+         LEVEL3 'von Karman constant,           kappa =', kappa
+         LEVEL3 'homogeneous decay rate,            d =', gen_d
+         LEVEL3 'spatial decay rate (no shear), alpha =', gen_alpha
+         LEVEL3 'length-scale slope (no shear),     L =', gen_l
+         LEVEL3 'steady-state Richardson-number, Ri_st=', ri_st
+         LEVEL2 '--------------------------------------------------------'
+         LEVEL2 ' '
+      case(omega_eq)
+         LEVEL2 ' '
+         LEVEL2 '--------------------------------------------------------'
+         LEVEL2 'You are using the k-omega model'
+         LEVEL2 'with the following properties:'
+         LEVEL2 ' '
+         LEVEL3 'cw1                                  =', cw1
+         LEVEL3 'cw2                                  =', cw2
+         LEVEL3 'cw3minus                             =', cw3minus
+         LEVEL3 'cw3plus                              =', cw3plus
+         LEVEL3 'cw4                                  =', cw4         
+         LEVEL3 'sig_k                                =', sig_k
+         LEVEL3 'sig_w                                =', sig_w
          LEVEL2 ' '
          LEVEL3 'Value of the stability function'
          LEVEL3 'in the log-law,                   cm0 =', cm0
@@ -2336,7 +2468,7 @@
 !
 ! !INTERFACE:
    subroutine do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP, SSCSTK)
+                            NN,SS,xP, SSCSTK, SSSTK)
 !
 ! !DESCRIPTION: This routine is the central point of the
 ! turbulence scheme. It determines the order, in which
@@ -2356,10 +2488,6 @@
 ! of the calls in {\tt do\_turbulence()}. At the moment, the following
 ! model types are available:
 ! \begin{itemize}
-!   \item {\tt turb\_method = 0} corresponds to the "convective adjustment"
-!   algorithm, see \sect{sec:convective}. Since this model is not a real
-!   one-point turbulence closure, it is not called from {\tt do\_turbulence} but
-!   directly from the main GOTM loop.
 !   \item {\tt turb\_method = 1} corresponds to a purely algebraic description
 !   of the turbulent diffusivities.
 !  \item  {\tt turb\_method = 2} corresponds to models computing the diffusivities
@@ -2396,13 +2524,22 @@
    IMPLICIT NONE
 
    interface
-      subroutine production(nlev,NN,SS,xP, SSCSTK)
+      subroutine production(nlev,NN,SS,xP, SSCSTK, SSSTK)
         integer,  intent(in)                :: nlev
         REALTYPE, intent(in)                :: NN(0:nlev)
         REALTYPE, intent(in)                :: SS(0:nlev)
         REALTYPE, intent(in), optional      :: xP(0:nlev)
         REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
+        REALTYPE, intent(in), optional      :: SSSTK (0:nlev)
       end subroutine production
+
+      subroutine alpha_mnb(nlev,NN,SS, SSCSTK, SSSTK)
+        integer,  intent(in)                :: nlev
+        REALTYPE, intent(in)                :: NN(0:nlev)
+        REALTYPE, intent(in)                :: SS(0:nlev)
+        REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
+        REALTYPE, intent(in), optional      :: SSSTK (0:nlev)
+      end subroutine alpha_mnb
    end interface
 
 !
@@ -2441,6 +2578,9 @@
 
 !  Stokes-Eulerian cross-shear (1/s^2)
    REALTYPE, intent(in), optional      :: SSCSTK(0:nlev)
+
+!  Stokes shear squared (1/s^2)
+   REALTYPE, intent(in), optional      :: SSSTK (0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -2451,12 +2591,14 @@
 !BOC
 
    select case (turb_method)
+   case (no_model)
+      return
    case (algebraic)
 !  solve a model for algebraically described diffusity
 
       STDERR '----------------------------------------------------------'
       STDERR 'Model for turb_method=1 not coded yet.'
-      STDERR 'Choose  turb_method=0,2,3,99'
+      STDERR 'Choose  turb_method=1,2,3,100'
       STDERR 'Program execution stopped ...'
       stop 'turbulence.F90'
       STDERR '----------------------------------------------------------'
@@ -2465,13 +2607,7 @@
 !  solve a model for tke, length scale
 !  empirical stability function
 
-      if ( PRESENT(xP) ) then
-!        with seagrass turbulence
-         call production(nlev,NN,SS,xP, SSCSTK=SSCSTK)
-      else
-!        without
-         call production(nlev,NN,SS, SSCSTK=SSCSTK)
-      end if
+      call production(nlev,NN,SS, xP=xP, SSCSTK=SSCSTK, SSSTK=SSSTK)
 
       call alpha_mnb(nlev,NN,SS)
       call stabilityfunctions(nlev)
@@ -2486,13 +2622,7 @@
 
 !  solve a model for the second moments
 
-      if ( PRESENT(xP) ) then
-!        with seagrass turbulence
-         call production(nlev,NN,SS,xP, SSCSTK=SSCSTK)
-      else
-!        without
-         call production(nlev,NN,SS, SSCSTK=SSCSTK)
-      end if
+      call production(nlev,NN,SS, xP=xP, SSCSTK=SSCSTK, SSSTK=SSSTK)
 
       select case(scnd_method)
       case (quasi_Eq)
@@ -2525,6 +2655,21 @@
       STDERR 'Program execution stopped ...'
       stop 'turbulence.F90'
 
+      case (quasi_Eq_H15)
+         ! quasi-equilibrium model
+         ! SMC model of Langmuir turbulence (Harcourt, 2015)
+!        KK-TODO: test whether SSCSTK and SSSTK are present?
+
+         call alpha_mnb(nlev,NN,SS, SSCSTK=SSCSTK, SSSTK=SSSTK)
+         call surface_proximity_function(nlev,depth,h)
+         call cmue_d_h15(nlev)
+         call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_kb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call alpha_mnb(nlev,NN,SS, SSCSTK=SSCSTK, SSSTK=SSSTK)
+         call kolpran(nlev)
+
       case default
 
       STDERR 'Not a valid method for second-order model'
@@ -2537,7 +2682,7 @@
    case default
 
       STDERR 'Not a valid method for turbulence calculation'
-      STDERR 'Choose  turb_method=0,1,2,3'
+      STDERR 'Choose  turb_method=1,2,3'
       STDERR 'Program execution stopped ...'
       stop 'turbulence.F90'
 
@@ -2702,6 +2847,8 @@
    select case(len_scale_method)
       case(diss_eq)
          call dissipationeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+      case(omega_eq)
+         call omegaeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)         
       case(generic_eq)
          call genericeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case(length_eq)
@@ -2824,6 +2971,8 @@
       nuh(i)   =  cmue2(i)*x
 !     salinity
       nus(i)   =  cmue2(i)*x
+!     momentum down Stokes gradient
+      nucl(i)  =  cmue3(i)*x
    end do
 
    return
@@ -2876,8 +3025,6 @@
          call cmue_ma(nlev)
       case(Schumann_Gerz)
          call cmue_sg(nlev)
-      case(Eifler_Schrimpf)
-         call cmue_rf(nlev)
       case default
 
       STDERR '... not a valid stability function'
@@ -2993,9 +3140,6 @@
         case(Schumann_Gerz)
            cm0  = cm0_fix
            cmsf = cm0_fix
-        case(Eifler_Schrimpf)
-           cm0  = cm0_fix
-           cmsf = cm0_fix
         case default
 
            STDERR '... not a valid stability function to compute cm0'
@@ -3022,6 +3166,78 @@
      end subroutine compute_cm0
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute the surface proximity function
+!
+! !INTERFACE:
+   subroutine surface_proximity_function(nlev,depth,h)
+!
+! !DESCRIPTION:
+! Compute the surface proximity function (SPF) used the second moment
+! closure model of Langmuir turbulence \citep{Harcourt2015}. SPF is defined
+! as $\mathrm{SPF} = 1-f_z^S$, where
+! \begin{equation}
+! f_z^S=1+\tanh\left(C_l^S z/l^S\right),
+! \end{equation}
+! with $C_l^S=0.25$. The length scale $l^S$ is an average of the dissipation
+! length scale weighted by positive CL vortex production,
+! \begin{equation}
+! l^S=\langle l \rangle_{P^S>0}\equiv\frac{\int l P^S_+ dz}{\int P^S_+ dz}
+! \end{equation}
+! where $P^S_+=\max(0,P^S)$.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)                 :: nlev
+   REALTYPE, intent(in)                 :: depth
+   REALTYPE, intent(in)                 :: h(0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer                  :: i
+   REALTYPE                 :: lS, znrm, dz
+   REALTYPE                 :: fzS(0:nlev), zz(0:nlev)
+   REALTYPE, parameter      :: ClS = 0.25
+!
+!-----------------------------------------------------------------------
+!BOC
+
+   ! find the length scale
+   lS = _ZERO_
+   znrm = _ZERO_
+   do i=1,nlev-1
+      dz = 0.5*(h(i)+h(i+1))
+      znrm = znrm + max(_ZERO_,PSTK(i))*dz
+      lS = lS + L(i)*max(_ZERO_,PSTK(i))*dz
+   end do
+   znrm = znrm + 0.5*max(_ZERO_,PSTK(nlev))*h(nlev)
+   lS = lS + 0.5*L(nlev)*max(_ZERO_,PSTK(nlev))*h(nlev)
+   lS = lS/max(SMALL,znrm)
+
+   ! get depth at cell interface
+   zz(0) = -depth
+   do i=1,nlev
+      zz(i) = zz(i-1) + h(i)
+   end do
+
+   fzS = _ZERO_
+   do i=0,nlev
+      ! compute fzS
+      fzS(i) = _ONE_ + tanh(ClS*zz(i)/lS)
+      ! surface proximity function
+      SPF(i) = _ONE_ - fzS(i)
+   end do
+
+   end subroutine surface_proximity_function
+!EOC
 
 !-----------------------------------------------------------------------
 !BOP
@@ -3440,6 +3656,72 @@
     end function epsilon_bc
 !EOC
 
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Boundary conditons for the epsilon-equation\label{sec:epsilonBC}
+!
+! !INTERFACE:
+   REALTYPE function  omega_bc(bc,type,zi,ki,z0,u_tau)
+!
+!
+!DESCRIPTION:
+! Under construction. Please refer to Umlauf et al. (2003) and Umlauf and Burchard (2003)
+! for the basic documentation of the $k$-$\omega$ model and its boundary conditions.      
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: bc,type
+   REALTYPE, intent(in)                :: zi,ki,z0,u_tau
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+     REALTYPE                :: K
+     REALTYPE                :: f_k
+     REALTYPE, external      :: fk_craig
+!
+!-----------------------------------------------------------------------
+!BOC
+! Compute the boundary conditions
+   select case(type)
+      case(viscous)
+         STDERR 'Sorry, viscous boundary layers not yet implemented.'
+         STDERR 'Please change gotmturb.nml accordingly'
+         STDERR 'Program aborts now in turbulence.F90'
+         stop
+      case(logarithmic)
+         if (bc.eq.Dirichlet) then
+            omega_bc = ki**0.5/(cm0*kappa*(zi+z0))
+         else
+            omega_bc = ki/(sig_w*(zi+z0))
+         endif
+      case(injection)
+         ! compute the capital K from the analytical solution
+         ! for shear-free flows
+         ! compute the flux of k from the wave-breaking model
+         f_k  = fk_craig(u_tau,cw)
+
+         K    = (-sig_k*f_k/(cmsf*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
+
+         if (bc.eq.Dirichlet) then
+            omega_bc = K**0.5/(cm0*gen_l)*(zi+z0)**(0.5*gen_alpha-1.)
+         else
+            omega_bc = -cmsf*K*(0.5*gen_alpha-1.)/(sig_w*cm0) &
+                         *(zi+z0)**(gen_alpha-1.)
+         endif
+      case default
+   end select
+    end function omega_bc
+!EOC
+    
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -3748,6 +4030,7 @@
    if (allocated(num)) deallocate(num)
    if (allocated(nuh)) deallocate(nuh)
    if (allocated(nus)) deallocate(nus)
+   if (allocated(nucl)) deallocate(nucl)
    if (allocated(gamu)) deallocate(gamu)
    if (allocated(gamv)) deallocate(gamv)
    if (allocated(gamb)) deallocate(gamb)
@@ -3755,10 +4038,14 @@
    if (allocated(gams)) deallocate(gams)
    if (allocated(cmue1)) deallocate(cmue1)
    if (allocated(cmue2)) deallocate(cmue2)
+   if (allocated(cmue3)) deallocate(cmue3)
    if (allocated(gam)) deallocate(gam)
    if (allocated(an)) deallocate(an)
    if (allocated(as)) deallocate(as)
    if (allocated(at)) deallocate(at)
+   if (allocated(av)) deallocate(av)
+   if (allocated(aw)) deallocate(aw)
+   if (allocated(SPF)) deallocate(SPF)
    if (allocated(r)) deallocate(r)
    if (allocated(Rig)) deallocate(Rig)
    if (allocated(xRf)) deallocate(xRf)
@@ -3798,21 +4085,21 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (turb_method.eq.99) return
+   if (turb_method.eq.100) return
 
    LEVEL1 'State of turbulence module:'
    LEVEL2 'tke,eps,L',tke,eps,L
    LEVEL2 'tkeo',tkeo
    LEVEL2 'kb,epsb',kb,epsb
-   LEVEL2 'P,B,Pb',P,B,Pb
-   LEVEL2 'Px', Px
-   LEVEL2 'PSTK', PSTK
-   LEVEL2 'num,nuh,nus',num,nuh,nus
+   LEVEL2 'P,B,Pb,Px,PSTK',P,B,Pb,Px, PSTK
+   LEVEL2 'num,nuh,nus,nucl',num,nuh,nus, nucl
    LEVEL2 'gamu,gamv',gamu,gamv
    LEVEL2 'gamb,gamh,gams',gamb,gamh,gams
-   LEVEL2 'cmue1,cmue2',cmue1,cmue2
+   LEVEL2 'cmue1,cmue2,cmue3',cmue1,cmue2, cmue3
    LEVEL2 'gam',gam
    LEVEL2 'as,an,at',as,an,at
+   LEVEL2 'av aw', av, aw
+   LEVEL2 'SPF', SPF
    LEVEL2 'r',r
    LEVEL2 'Rig',Rig
    LEVEL2 'xRf',xRf
@@ -3850,6 +4137,9 @@
 
    LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,cex,ce4,  &
                             sig_k,sig_e,sig_peps
+
+   LEVEL2 'kw namelist',    cw1,cw2,cw3minus,cw3plus,cw4,      &
+                            sig_kw,sig_w
 
    LEVEL2 'my namelist',    e1,e2,e3,ex,e6,sq,sl,my_length,new_constr
 

@@ -5,69 +5,64 @@
 ! !ROUTINE: The dynamic epsilon-equation \label{sec:dissipationeq}
 !
 ! !INTERFACE:
-   subroutine dissipationeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+   subroutine omegaeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
 
 ! !DESCRIPTION:
-! The $k$-$\epsilon$ model in its form suggested by \cite{Rodi87} has been
-! implemented in GOTM.
-! In this model, the rate of dissipation is balanced according to
+! The $k$-$\omega$ model described by \cite{UmlaufEtAl3003} solves
+! a transport equation for the inverse turbulence time scale,
+! $ \omega = (c_\mu^0)^4 \varepsilon /k$, of the following form:     
 ! \begin{equation}
-!   \label{dissipation}
-!   \dot{\epsilon}
+!   \label{omega}
+!   \dot{\omega}
 !   =
-!   {\cal D}_\epsilon
-!   + \frac{\epsilon}{k} ( c_{\epsilon 1} P + c_{\epsilon 3} G
-!                        - c_{\epsilon 2} \epsilon )
+!   {\cal D}_\omega
+!   + \frac{\omega}{k} ( c_{\omega 1} P + c_{\omega 3} G
+!                        - c_{\omega 2} \varepsilon )
 !   \comma
 ! \end{equation}
-! where $\dot{\epsilon}$ denotes the material derivative of $\epsilon$.
+! where $\dot{\omega}$ denotes the material derivative of $\omega$.
 ! The production terms $P$ and $G$ follow from \eq{PandG} and
-! ${\cal D}_\epsilon$ represents the sum of the viscous and turbulent
+! ${\cal D}_\omega$ represents the sum of the viscous and turbulent
 ! transport terms.
 !
-! For horizontally homogeneous flows, the transport term ${\cal D}_\epsilon$
+! For horizontally homogeneous flows, the transport term ${\cal D}_\omega$
 ! appearing in \eq{dissipation} is presently expressed by a simple
 ! gradient formulation,
 ! \begin{equation}
-!   \label{diffusionEps}
-!   {\cal D}_\epsilon = \frstder{z}
-!    \left( \dfrac{\nu_t}{\sigma_\epsilon} \partder{\epsilon}{z} \right)
+!   \label{diffusionOmega}
+!   {\cal D}_\omega = \frstder{z}
+!    \left( \dfrac{\nu_t}{\sigma_\omega} \partder{\omega}{z} \right)
 !  \comma
 ! \end{equation}
-! where $\sigma_\epsilon$ is the constant Schmidt-number for $\epsilon$.
+! where $\sigma_\omega$ is the constant Schmidt-number for $\omega$.
 !
-! It should be pointed out that not all authors retain the buoyancy term
-! in \eq{dissipation}, see e.g.\ \cite{GibsonLaunder76}.  Similar to the
-! model of \cite{MellorYamada82}, \cite{Craftetal96a} set
-! $c_{\epsilon 1}=c_{\epsilon 3}$.
-! However, in both cases, the $k$-$\epsilon$ model cannot
-! predict a proper state of full equilibrium in stratified flows at a
-! predefined value of the Richardson number (see
-! \cite{Umlaufetal2003} and discussion around \eq{Ri_st}). Model constants are
-! summarised in \tab{tab:KE_constants}.
+! Model constants are summarized in \tab{tab:KW_constants}. Similar
+! to the two-equations models, the model parameter $c_{omega 3}$
+! determines the value of the stationory Richardson number. It is
+! computed numerically by solving \eq{Ri_st}.
 ! \begin{table}[ht]
 !   \begin{center}
 ! \begin{tabular}{cccccc}
-!     & $c_\mu^0$ & $\sigma_k$  & $\sigma_\epsilon$
-!     & $c_{\epsilon 1}$ & $c_{\epsilon 2}$  \\[1mm] \hline
-!     \cite{Rodi87} & $0.5577$ & $1.0$ &  $1.3$ & $1.44$ & $1.92$ \\
+!     & $c_\mu^0$ & $\sigma_k$  & $\sigma_\omega$
+!     & $c_{\omega 1}$ & $c_{\omega 2}$  \\[1mm] \hline
+!     \cite{Rodi87} & $0.55$ & $2.0$ &  $2.0$ & $0.56$ & $0.83$ \\
 !   \end{tabular}
-!   \caption{\label{tab:KE_constants} Constants appearing in
-!    \eq{dissipation} and \eq{epsilon}.}
+!   \caption{\label{tab:KW_constants} Constants appearing in
+!    \eq{omega} and \eq{diffusionOmega}.}
 !   \end{center}
 ! \end{table}
 !
 ! At the end of this routine the length-scale can be constrained according to a
 ! suggestion of \cite{Galperinetal88}. This feature is optional and can be activated
-! by setting {\tt length\_lim = .true.} in {\tt gotm.yaml}.
+! by setting {\tt length\_lim = .true.} in {\tt gotm.yaml}.     
 !
 ! !USES:
-   use turbulence, only: P,B,Px,PSTK,num
+   use turbulence, only: P,B,PSTK,num
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: ce1,ce2,ce3plus,ce3minus,cex,ce4
+   use turbulence, only: cw1,cw2,cw3plus,cw3minus,cw4
    use turbulence, only: cm0,cde,galp,length_lim
-   use turbulence, only: epsilon_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
-   use turbulence, only: sig_e,sig_e0,sig_peps
+   use turbulence, only: omega_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
+   use turbulence, only: sig_w
    use util,       only: Dirichlet,Neumann
 
    IMPLICIT NONE
@@ -97,66 +92,54 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
-!                     (re-write after first version of
-!                      H. Burchard and K. Bolding
+!
 !EOP
 !
 ! !LOCAL VARIABLES:
-   REALTYPE                  :: DiffEpsup,DiffEpsdw,pos_bc
+   REALTYPE                  :: DiffOmgUp,DiffOmgDw,pos_bc
    REALTYPE                  :: prod,buoyan,diss
    REALTYPE                  :: prod_pos,prod_neg,buoyan_pos,buoyan_neg
-   REALTYPE                  :: ki,epslim,peps,EpsOverTke,NN_pos
+   REALTYPE                  :: ki,epslim,OmgOverTke,NN_pos
    REALTYPE                  :: cnpar=_ONE_
-   REALTYPE                  :: avh(0:nlev),sig_eff(0:nlev)
+   REALTYPE                  :: omega(0:nlev)   
+   REALTYPE                  :: avh(0:nlev)
    REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
-   REALTYPE                  :: ce3
+   REALTYPE                  :: cw3
 
    integer                   :: i
 !
 !------------------------------------------------------------------------
 !BOC
 !
-!  Determination of the turbulent Schmidt number for the Craig & Banner (1994)
-!  parameterisation for breaking surface waves suggested by Burchard (2001):
-
-   if (sig_peps) then          ! With wave breaking
-      sig_eff(nlev)=sig_e0
-      do i=1,nlev-1
-         peps=(P(i)+B(i))/eps(i)
-         if (peps .gt. 1.) peps=_ONE_
-         sig_eff(i)=peps*sig_e+(_ONE_-peps)*sig_e0
-      end do
-      sig_eff(0)=sig_e
-   else                        ! No wave breaking
-      do i=1,nlev-1
-         sig_eff(i)=sig_e
-      enddo
-   end if
-
+!  re-construct omega at "old" timestep
+   do i=0,nlev
+      omega(i) = 1./cm0 * tkeo(i)**0.5 / L(i)
+   end do
+   
 !  compute RHS
    do i=1,nlev-1
 
 !     compute epsilon diffusivity
-      avh(i) = num(i)/sig_eff(i)
+      avh(i) = num(i)/sig_w
 
 !     compute production terms in eps-equation
       if (B(i).gt.0) then
-         ce3=ce3plus
+         cw3=cw3plus
       else
-         ce3=ce3minus
+         cw3=cw3minus
       end if
 
-      EpsOverTke  = eps(i)/tkeo(i)
-      prod        = EpsOverTke * ( ce1*P(i) + cex*Px(i) + ce4*PSTK(i) )
-      buoyan      = ce3*EpsOverTke*B(i)
-      diss        = ce2*EpsOverTke*eps(i)
+      OmgOverTke  = omega(i)/tkeo(i)
+      prod        = cw1*OmgOverTke*P(i) + cw4*OmgOverTke*PSTK(i)
+      buoyan      = cw3*OmgOverTke*B(i)
+      diss        = cw2*OmgOverTke*eps(i)
 
       if (prod+buoyan.gt.0) then
-         Qsour(i)  = prod+buoyan
-         Lsour(i) = -diss/eps(i)
+         Qsour(i) = prod+buoyan
+         Lsour(i) = -diss/omega(i)
       else
          Qsour(i)  = prod
-         Lsour(i) = -(diss-buoyan)/eps(i)
+         Lsour(i) = -(diss-buoyan)/omega(i)
       end if
 
    end do
@@ -178,7 +161,7 @@
    end if
 
 !  obtain BC for upper boundary of type "ubc_type"
-   DiffEpsup  = epsilon_bc(psi_ubc,ubc_type,pos_bc,ki,z0s,u_taus)
+   DiffOmgUp  = omega_bc(psi_ubc,ubc_type,pos_bc,ki,z0s,u_taus)
 
 
 !  TKE and position for lower BC
@@ -197,24 +180,27 @@
    end if
 
 !  obtain BC for lower boundary of type "lbc_type"
-   DiffEpsdw  = epsilon_bc(psi_lbc,lbc_type,pos_bc,ki,z0b,u_taub)
+   DiffOmgDw  = omega_bc(psi_lbc,lbc_type,pos_bc,ki,z0b,u_taub)
 
 
 !  do diffusion step
    call diff_face(nlev,dt,cnpar,h,psi_ubc,psi_lbc,                          &
-                  DiffEpsup,DiffEpsdw,avh,Lsour,Qsour,eps)
+                  DiffOmgUp,DiffOmgDw,avh,Lsour,Qsour,omega)
 
 
 !  fill top and bottom value with something nice
 !  (only for output)
-   eps(nlev)  = epsilon_bc(Dirichlet,ubc_type,z0s,tke(nlev),z0s,u_taus)
-   eps(0   )  = epsilon_bc(Dirichlet,lbc_type,z0b,tke(0   ),z0b,u_taub)
+   omega(nlev)  = omega_bc(Dirichlet,ubc_type,z0s,tke(nlev),z0s,u_taus)
+   omega(0   )  = omega_bc(Dirichlet,lbc_type,z0b,tke(0   ),z0b,u_taub)
 
-!  clip at eps_min
    do i=0,nlev
+!     recover dissipation rate from k and omega
+      eps(i)=cm0**4. * tke(i) * omega(i)
+
+!     clip at eps_min
       eps(i) = max(eps(i),eps_min)
    enddo
-
+   
 !  limit dissipation rate under stable stratification,
 !  see Galperin et al. (1988)
    if (length_lim) then
@@ -238,7 +224,7 @@
       enddo
 
    return
-   end subroutine dissipationeq
+   end subroutine omegaeq
 !EOC
 
 !-----------------------------------------------------------------------

@@ -19,6 +19,7 @@
    use cmdline
    use time
    use gotm
+   use turbulence, only: turb_method, no_model
 #ifdef _FABM_
    use fabm, only: fabm_finalize_library
    use fabm_driver, only: driver
@@ -53,7 +54,11 @@
                               systemdate(7:8),      &
                       ' at ', systemtime(1:2), ':', &
                               systemtime(3:4), ':', &
+#ifdef DEBUG
+                              systemtime(5:6), ' - DEBUG compilation'
+#else
                               systemtime(5:6)
+#endif
    STDERR LINE
 #else
    STDERR LINE
@@ -99,6 +104,17 @@
    call fabm_finalize_library()
    if (associated(driver)) deallocate(driver)
 #endif
+
+   if (turb_method .eq. no_model) then
+   STDERR ''
+   STDERR '-------------------WARNING - WARNING ----------------------'
+   STDERR 'The simulation was carried out with - turb_method=no_model'
+   STDERR 'i.e. both viscosity and diffusion are constant. This should'
+   STDERR 'not be used for ANY production runs and is only included for'
+   STDERR 'demonstration purposes - please change turb_method and rerun'
+   STDERR '-------------------WARNING - WARNING -----------------------'
+   STDERR ''
+   end if
 
 end program
 

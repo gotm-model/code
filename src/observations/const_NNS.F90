@@ -7,15 +7,12 @@
 ! !INTERFACE:
    subroutine const_NNS(nlev,z,zi,S_top,T_const,NN,gravity,S)
 !
-!
 ! !DESCRIPTION:
 ! This routine creates a vertical profile {\tt prof} with value
 ! {\tt v1}
-
-
+!
 ! !USES:
-   use gsw_mod_toolbox, only: gsw_beta
-   use density, only: density_method,dsr0
+   use density, only: get_beta
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -32,22 +29,28 @@
 !  Original author(s): Lars Umlauf
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   REALTYPE                  :: beta
+   integer                               :: i
+    REALTYPE                             :: lbeta   
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   beta=dsr0 ! density_method=2,3
+    S(nlev) = S_top ! must be done here
 
-   S(nlev) = S_top
-   do i=nlev-1,1,-1
-      if (density_method == 1) then
-stop 'Constant NN configuration has been disabled for full TEOS-10 - for the time being'
-         beta = gsw_beta(S(i+1),T_const,-zi(i))
-      end if
-      S(i) = S(i+1) + _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))
+    do i=nlev-1,1,-1
+      ! estimate interface beta based on S above the interface
+      lbeta = get_beta(S(i+1),T_const,-zi(i))
+
+      ! use this to estimate S below the interface
+      S(i)  = S(i+1) + _ONE_/(gravity*lbeta)*NN*(z(i+1)-z(i))
+
+      ! compute improved interface beta
+      lbeta  = get_beta(0.5*(S(i+1)+S(i)),T_const,-zi(i))
+
+      ! compute final salinity profile
+      S(i)   = S(i+1) + _ONE_/(gravity*lbeta)*NN*(z(i+1)-z(i))
    end do
-   end subroutine const_NNS
+   
+   end subroutine const_NNS   
 !EOC
 
 !-----------------------------------------------------------------------
