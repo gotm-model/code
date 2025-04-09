@@ -4131,8 +4131,8 @@
                             kb_min,epsb_min
 
    LEVEL2 'generic namelist', compute_param,gen_m,gen_n,gen_p, &
-                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,cpsix,cpsi4, &
-                            sig_kpsi,sig_psi,                  &
+                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,  &
+                            cpsix,cpsi4,sig_kpsi,sig_psi,      &
                             gen_d,gen_alpha,gen_l
 
    LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,cex,ce4,  &
