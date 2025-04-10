@@ -199,6 +199,7 @@
    REALTYPE, public                              :: cw2
    REALTYPE, public                              :: cw3minus
    REALTYPE, public                              :: cw3plus
+   REALTYPE, public                              :: cwx
    REALTYPE, public                              :: cw4
    REALTYPE, public                              :: sig_kw   
    REALTYPE, public                              :: sig_w
@@ -380,7 +381,7 @@
    namelist /keps/          ce1,ce2,ce3minus,ce3plus,cex,ce4,  &
                             sig_k,sig_e,sig_peps
 
-   namelist /kw/            cw1,cw2,cw3minus,cw3plus,cw4,      &
+   namelist /kw/            cw1,cw2,cw3minus,cw3plus,cwx,cw4,  &
                             sig_kw,sig_w   
 
    namelist /my/            e1,e2,e3,ex,e6,sq,sl,my_length, new_constr
@@ -488,6 +489,7 @@
    cw2=0.833
    cw3minus=0.0
    cw3plus=0.5
+   cwx=cw1
    cw4=0.15
    sig_kw=2.0
    sig_w=2.0
@@ -744,6 +746,9 @@
                    default=0.0_rk)
    call twig%get(cw3plus, 'cw3plus', 'cw3 for unstable stratification', '-', &
                    default=0.5_rk)
+   call twig%get(cwx, 'cwx', 'empirical coefficient cwx in omega equation', '-', &
+                   default=cw1)
+
    call twig%get(cw4, 'cw4', 'empirical coefficient cw4 in omega equation', '-', &
                    default=0.15_rk)
    call twig%get(sig_kw, 'sig_kw', 'Schmidt number for TKE diffusivity', '-', &
@@ -2382,7 +2387,8 @@
          LEVEL3 'cw2                                  =', cw2
          LEVEL3 'cw3minus                             =', cw3minus
          LEVEL3 'cw3plus                              =', cw3plus
-         LEVEL3 'cw4                                  =', cw4         
+         LEVEL3 'cwx                                  =', cwx
+         LEVEL3 'cw4                                  =', cw4
          LEVEL3 'sig_k                                =', sig_k
          LEVEL3 'sig_w                                =', sig_w
          LEVEL2 ' '
@@ -4138,7 +4144,7 @@
    LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,cex,ce4,  &
                             sig_k,sig_e,sig_peps
 
-   LEVEL2 'kw namelist',    cw1,cw2,cw3minus,cw3plus,cw4,      &
+   LEVEL2 'kw namelist',    cw1,cw2,cw3minus,cw3plus,cwx,cw4,  &
                             sig_kw,sig_w
 
    LEVEL2 'my namelist',    e1,e2,e3,ex,e6,sq,sl,my_length,new_constr
