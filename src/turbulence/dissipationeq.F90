@@ -122,7 +122,7 @@
    if (sig_peps) then          ! With wave breaking
       sig_eff(nlev)=sig_e0
       do i=1,nlev-1
-         peps=(P(i)+B(i))/eps(i)
+         peps=(P(i)+Px(i)+B(i))/eps(i)
          if (peps .gt. 1.) peps=_ONE_
          sig_eff(i)=peps*sig_e+(_ONE_-peps)*sig_e0
       end do

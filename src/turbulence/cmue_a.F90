@@ -85,7 +85,7 @@
 !
 ! !USES:
    use turbulence, only: eps
-   use turbulence, only: P,B,Pb,epsb
+   use turbulence, only: P,B,Px,Pb,epsb
    use turbulence, only: an,as,at,r
    use turbulence, only: cmue1,cmue2,gam
    use turbulence, only: cm0
@@ -158,7 +158,7 @@
 
      do i=1,nlev-1
 
-        Pe   =   ( P(i) + B(i) )/eps(i)
+        Pe   =   ( P(i) + Px(i) + B(i) )/eps(i)
         Pbeb =   Pb(i)/epsb(i)
         r_i  =   1./r(i)
 

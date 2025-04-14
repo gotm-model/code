@@ -45,7 +45,7 @@
 !
 ! !USES:
   use turbulence,  only:     uu,vv,ww
-  use turbulence,  only:     tke,eps,P,B,num
+  use turbulence,  only:     tke,eps,P,B,Px,num
   use turbulence,  only:     cc1,ct1,a2,a3,a5
   IMPLICIT NONE
 !
@@ -90,7 +90,7 @@
       vv(i) = tke(i)*( fac1 + fac2*( fac3*num(i)*SSV(i)                &
                           - fac5*num(i)*SSU(i) - 4./3.*a5*B(i) ) )
 
-      ww(i) = tke(i)*( fac1 + fac2*( fac4*P(i) + 8./3.*a5*B(i) ) )
+      ww(i) = tke(i)*( fac1 + fac2*( fac4*(P(i)+Px(i)) + 8./3.*a5*B(i) ) )
 
    enddo
 
