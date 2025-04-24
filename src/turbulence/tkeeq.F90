@@ -16,12 +16,15 @@
 !   \label{tkeA}
 !   \dot{k}
 !   =
-!   {\cal D}_k +  P + G  - \epsilon
+!   {\cal D}_k +  P + G + P_x + P_s - \epsilon
 !   \comma
 ! \end{equation}
 ! where $\dot{k}$ denotes the material derivative of $k$. $P$ and $G$ are
 ! the production of $k$ by mean shear and buoyancy, respectively, and
-! $\epsilon$ the rate of dissipation. ${\cal D}_k$ represents the sum of
+! $\epsilon$ the rate of dissipation.
+! $P_s$ is Stokes shear production defined in \eq{computePs}
+! and $P_x$ accounts for extra turbulence production.
+! ${\cal D}_k$ represents the sum of
 ! the viscous and turbulent transport terms.
 ! For horizontally homogeneous flows, the transport term ${\cal D}_k$
 ! appearing in \eq{tkeA} is presently expressed by a simple

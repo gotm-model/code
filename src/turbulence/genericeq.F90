@@ -43,12 +43,16 @@
 !   \label{generic}
 !   \dot{\psi} = {\cal D}_\psi
 !   + \frac{\psi}{k} (  c_{\psi_1} P + c_{\psi_3} G
+!                     + c_{\psi x} P_x
+!                     + c_{\psi 4} P_s
 !    - c_{\psi 2} \epsilon )
 !   \comma
 ! \end{equation}
 ! where $\dot{\psi}$ denotes the material derivative of $\psi$,
 ! see \cite{UmlaufBurchard2003}.
 ! The production terms $P$ and $G$ follow from \eq{PandG}.
+! $P_s$ is Stokes shear production defined in \eq{computePs}
+! and $P_x$ accounts for extra turbulence production.
 ! ${\cal D}_\psi$ represents the sum of the viscous and turbulent
 ! transport terms. The rate of dissipation can computed by solving
 ! \eq{psi_l} for $l$ and inserting the result into \eq{epsilon}.

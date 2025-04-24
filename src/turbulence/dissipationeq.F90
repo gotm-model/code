@@ -17,11 +17,15 @@
 !   =
 !   {\cal D}_\epsilon
 !   + \frac{\epsilon}{k} ( c_{\epsilon 1} P + c_{\epsilon 3} G
+!                        + c_{\epsilon x} P_x
+!                        + c_{\epsilon 4} P_s
 !                        - c_{\epsilon 2} \epsilon )
 !   \comma
 ! \end{equation}
 ! where $\dot{\epsilon}$ denotes the material derivative of $\epsilon$.
-! The production terms $P$ and $G$ follow from \eq{PandG} and
+! The production terms $P$ and $G$ follow from \eq{PandG}.
+! $P_s$ is Stokes shear production defined in \eq{computePs}
+! and $P_x$ accounts for extra turbulence production.
 ! ${\cal D}_\epsilon$ represents the sum of the viscous and turbulent
 ! transport terms.
 !

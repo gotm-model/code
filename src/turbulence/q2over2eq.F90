@@ -13,7 +13,7 @@
 !   \label{tkeB}
 !   \dot{\overline{q^2/2}}
 !   =
-!   {\cal D}_q +  P + G  - \epsilon
+!   {\cal D}_q +  P + G + P_x + P_s - \epsilon
 !   \comma
 ! \end{equation}
 ! where $\dot{\overline{q^2/2}}$ denotes the material derivative of $q^2/2$.

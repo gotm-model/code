@@ -14,11 +14,14 @@
 ! \begin{equation}
 !   \label{MY}
 !   \dot{\overline{q^2 l}}
-!   = {\cal D}_l + l ( E_1  P + E_3 G - E_2  F \epsilon )
+!   = {\cal D}_l + l ( E_1  P + E_3 G + E_x P_x + E_6 P_s - E_2  F \epsilon )
 !   \comma
 ! \end{equation}
 ! where $\dot{\overline{q^2 l}}$ denotes the material derivative of $q^2 l$.
-! The production terms $P$ and $G$ follow from \eq{PandG}, and $\epsilon$
+! The production terms $P$ and $G$ follow from \eq{PandG}.
+! $P_s$ is Stokes shear production defined in \eq{computePs}
+! and $P_x$ accounts for extra turbulence production.
+! $\epsilon$
 ! can be computed either directly from \eq{epsilonMY}, or from \eq{epsilon}
 ! with the help \eq{B1}.
 !
