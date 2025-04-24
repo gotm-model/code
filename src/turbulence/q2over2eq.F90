@@ -13,7 +13,7 @@
 !   \label{tkeB}
 !   \dot{\overline{q^2/2}}
 !   =
-!   {\cal D}_q +  P + G  - \epsilon
+!   {\cal D}_q +  P + G + P_x + P_s - \epsilon
 !   \comma
 ! \end{equation}
 ! where $\dot{\overline{q^2/2}}$ denotes the material derivative of $q^2/2$.
@@ -44,7 +44,7 @@
 ! \end{equation}
 !
 ! !USES:
-   use turbulence,   only: P,B, PSTK
+   use turbulence,   only: P,B,Px,PSTK
    use turbulence,   only: tke,tkeo,k_min,eps,L
    use turbulence,   only: q2over2_bc, k_ubc, k_lbc, ubc_type, lbc_type
    use turbulence,   only: sq_var
@@ -103,7 +103,7 @@
       avh(i) = sq_var(i) * sqrt( 2.*tke(i) )*L(i)
 
 !     compute production terms in q^2/2-equation
-      prod     = P(i) + PSTK(i)
+      prod     = P(i) + Px(i) + PSTK(i)
       buoyan   = B(i)
       diss     = eps(i)
 

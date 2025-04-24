@@ -43,12 +43,16 @@
 !   \label{generic}
 !   \dot{\psi} = {\cal D}_\psi
 !   + \frac{\psi}{k} (  c_{\psi_1} P + c_{\psi_3} G
+!                     + c_{\psi x} P_x
+!                     + c_{\psi 4} P_s
 !    - c_{\psi 2} \epsilon )
 !   \comma
 ! \end{equation}
 ! where $\dot{\psi}$ denotes the material derivative of $\psi$,
 ! see \cite{UmlaufBurchard2003}.
 ! The production terms $P$ and $G$ follow from \eq{PandG}.
+! $P_s$ is Stokes shear production defined in \eq{computePs}
+! and $P_x$ accounts for extra turbulence production.
 ! ${\cal D}_\psi$ represents the sum of the viscous and turbulent
 ! transport terms. The rate of dissipation can computed by solving
 ! \eq{psi_l} for $l$ and inserting the result into \eq{epsilon}.
@@ -118,9 +122,9 @@
 ! implemented in GOTM and are described in \sect{sec:generate}.
 !
 ! !USES:
-   use turbulence, only: P,B,PSTK,num
+   use turbulence, only: P,B,Px,PSTK,num
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,cpsi4,sig_psi
+   use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,cpsix,cpsi4,sig_psi
    use turbulence, only: gen_m,gen_n,gen_p
    use turbulence, only: cm0,cde,galp,length_lim
    use turbulence, only: psi_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
@@ -199,7 +203,7 @@
 
 !     compute production terms in psi-equation
       PsiOverTke  = psi(i)/tkeo(i)
-      prod        = cpsi1*PsiOverTke*P(i) + cpsi4*PsiOverTke*PSTK(i)
+      prod        = PsiOverTke * ( cpsi1*P(i) + cpsix*Px(i) + cpsi4*PSTK(i) )
       buoyan      = cpsi3*PsiOverTke*B(i)
       diss        = cpsi2*PsiOverTke*eps(i)
 

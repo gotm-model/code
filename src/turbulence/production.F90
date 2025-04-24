@@ -9,12 +9,12 @@
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the production terms of turbulent kinetic
-!  energy as defined in \eq{PandG} and the production of buoayancy
+!  energy as defined in \eq{PandG} and the production of buoyancy
 !  variance as defined in \eq{Pbvertical}.
-!  The shear-production is computed according to
+!  The Eulerian shear-production is computed according to
 !  \begin{equation}
 !    \label{computeP}
-!     P = \nu_t (M^2 + \alpha_w N^2) + X_P
+!     P = \nu_t (M^2 + \alpha_w N^2) + \nu^S_t S_c^2
 !    \comma
 !  \end{equation}
 !  with the turbulent diffusivity of momentum, $\nu_t$, defined in
@@ -22,7 +22,19 @@
 !  in \sect{sec:shear}.
 !   The term multiplied by $\alpha_w$ traces back to
 !  a parameterisation of breaking internal waves suggested by
-!  \cite{Mellor89}. $X_P$ is an extra production term, connected for
+!  \cite{Mellor89}.
+!  The turbulent momentum fluxes due to Stokes velocities induce the
+!  Stokes-Eulerian cross-shear term
+!  $S_c^2 = \frac{\partial u}{\partial z}\frac{\partial u_s}{\partial z} + \frac{\partial v}{\partial z}\frac{\partial v_s}{\partial z}$
+!  with corresponding diffusivity $\nu^S_t$, and the additional
+!  Stokes shear-production
+!  \begin{equation}
+!    \label{computePs}
+!     P_s = \nu_t S_c^2 + \nu^S_t S_s^2
+!  \end{equation}
+!  with squared Stokes shear
+!  $S_s^2 = \frac{\partial u_s}{\partial z}^2 + \frac{\partial v_s}{\partial z}^2$.
+!  $X_P$ is an extra production term, connected for
 !  example with turbulence production caused by sea-grass, see
 !  \eq{sgProduction} in  \sect{sec:seagrass}. {\tt xP} is an {\tt optional}
 !  argument in the FORTRAN code.
@@ -51,7 +63,7 @@
 !  kinetic and potential energy in \eq{tkeA} and \eq{kbeq}, respectively.
 !
 ! !USES:
-   use turbulence, only: P,B,Pb, PSTK
+   use turbulence, only: P,B,Pb,Px,PSTK
    use turbulence, only: num,nuh, nucl
    use turbulence, only: alpha,iw_model
    IMPLICIT NONE
@@ -92,19 +104,17 @@
       alpha_eff=alpha
    end if
 
+   do i=0,nlev
+      P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) )
+      B(i)    = -nuh(i)*NN(i)
+      Pb(i)   = -  B(i)*NN(i)
+   end do
+
    if ( PRESENT(xP) ) then
       do i=0,nlev
-         P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) ) + xP(i)
-         B(i)    = -nuh(i)*NN(i)
-         Pb(i)   = -  B(i)*NN(i)
-      enddo
-   else
-      do i=0,nlev
-         P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) )
-         B(i)    = -nuh(i)*NN(i)
-         Pb(i)   = -  B(i)*NN(i)
-      enddo
-   endif
+         Px(i) = xP(i)
+      end do
+   end if
 
 !  P is -<u'w'>du/dz for q2l production with e1,
 !  PSTK is -<u'w'>dus/dz for q2l prodcution with e6,

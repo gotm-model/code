@@ -17,11 +17,15 @@
 !   =
 !   {\cal D}_\epsilon
 !   + \frac{\epsilon}{k} ( c_{\epsilon 1} P + c_{\epsilon 3} G
+!                        + c_{\epsilon x} P_x
+!                        + c_{\epsilon 4} P_s
 !                        - c_{\epsilon 2} \epsilon )
 !   \comma
 ! \end{equation}
 ! where $\dot{\epsilon}$ denotes the material derivative of $\epsilon$.
-! The production terms $P$ and $G$ follow from \eq{PandG} and
+! The production terms $P$ and $G$ follow from \eq{PandG}.
+! $P_s$ is Stokes shear production defined in \eq{computePs}
+! and $P_x$ accounts for extra turbulence production.
 ! ${\cal D}_\epsilon$ represents the sum of the viscous and turbulent
 ! transport terms.
 !
@@ -62,9 +66,9 @@
 ! by setting {\tt length\_lim = .true.} in {\tt gotm.yaml}.
 !
 ! !USES:
-   use turbulence, only: P,B,PSTK,num
+   use turbulence, only: P,B,Px,PSTK,num
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: ce1,ce2,ce3plus,ce3minus,ce4
+   use turbulence, only: ce1,ce2,ce3plus,ce3minus,cex,ce4
    use turbulence, only: cm0,cde,galp,length_lim
    use turbulence, only: epsilon_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
    use turbulence, only: sig_e,sig_e0,sig_peps
@@ -122,7 +126,7 @@
    if (sig_peps) then          ! With wave breaking
       sig_eff(nlev)=sig_e0
       do i=1,nlev-1
-         peps=(P(i)+B(i))/eps(i)
+         peps=(P(i)+Px(i)+B(i))/eps(i)
          if (peps .gt. 1.) peps=_ONE_
          sig_eff(i)=peps*sig_e+(_ONE_-peps)*sig_e0
       end do
@@ -147,7 +151,7 @@
       end if
 
       EpsOverTke  = eps(i)/tkeo(i)
-      prod        = ce1*EpsOverTke*P(i) + ce4*EpsOverTke*PSTK(i)
+      prod        = EpsOverTke * ( ce1*P(i) + cex*Px(i) + ce4*PSTK(i) )
       buoyan      = ce3*EpsOverTke*B(i)
       diss        = ce2*EpsOverTke*eps(i)
 

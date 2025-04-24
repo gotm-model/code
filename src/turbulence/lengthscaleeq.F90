@@ -14,11 +14,14 @@
 ! \begin{equation}
 !   \label{MY}
 !   \dot{\overline{q^2 l}}
-!   = {\cal D}_l + l ( E_1  P + E_3 G - E_2  F \epsilon )
+!   = {\cal D}_l + l ( E_1  P + E_3 G + E_x P_x + E_6 P_s - E_2  F \epsilon )
 !   \comma
 ! \end{equation}
 ! where $\dot{\overline{q^2 l}}$ denotes the material derivative of $q^2 l$.
-! The production terms $P$ and $G$ follow from \eq{PandG}, and $\epsilon$
+! The production terms $P$ and $G$ follow from \eq{PandG}.
+! $P_s$ is Stokes shear production defined in \eq{computePs}
+! and $P_x$ accounts for extra turbulence production.
+! $\epsilon$
 ! can be computed either directly from \eq{epsilonMY}, or from \eq{epsilon}
 ! with the help \eq{B1}.
 !
@@ -67,9 +70,9 @@
 ! by setting {\tt length\_lim = .true.} in {\tt gotm.yaml}.
 !
 ! !USES:
-   use turbulence, only: P,B, PSTK
+   use turbulence, only: P,B,Px,PSTK
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: kappa,e1,e2,e3,e6,b1
+   use turbulence, only: kappa,e1,e2,e3,ex,e6,b1
    use turbulence, only: MY_length,cm0,cde,galp,length_lim
    use turbulence, only: q2l_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
    use turbulence, only: sl_var
@@ -159,7 +162,7 @@
       avh(i)      =  sl_var(i) * sqrt(2.*tkeo(i))*L(i)
 
 !     compute production terms in q^2 l - equation
-      prod        =  e1*L(i)*P(i) + e6*L(i)*PSTK(i)
+      prod        =  L(i) * ( e1*P(i) + ex*Px(i) + e6*PSTK(i) )
       buoyan      =  e3*L(i)*B(i)
       diss        =  q3(i)/b1*(1.+e2*(L(i)/Lz(i))*(L(i)/Lz(i)))
 

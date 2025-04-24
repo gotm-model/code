@@ -17,11 +17,15 @@
 !   =
 !   {\cal D}_\omega
 !   + \frac{\omega}{k} ( c_{\omega 1} P + c_{\omega 3} G
+!                        + c_{\omega x} P_x
+!                        + c_{\omega 4} P_s
 !                        - c_{\omega 2} \varepsilon )
 !   \comma
 ! \end{equation}
 ! where $\dot{\omega}$ denotes the material derivative of $\omega$.
-! The production terms $P$ and $G$ follow from \eq{PandG} and
+! The production terms $P$ and $G$ follow from \eq{PandG}.
+! $P_s$ is Stokes shear production defined in \eq{computePs}
+! and $P_x$ accounts for extra turbulence production.
 ! ${\cal D}_\omega$ represents the sum of the viscous and turbulent
 ! transport terms.
 !
@@ -57,9 +61,9 @@
 ! by setting {\tt length\_lim = .true.} in {\tt gotm.yaml}.     
 !
 ! !USES:
-   use turbulence, only: P,B,PSTK,num
+   use turbulence, only: P,B,Px,PSTK,num
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: cw1,cw2,cw3plus,cw3minus,cw4
+   use turbulence, only: cw1,cw2,cw3plus,cw3minus,cwx,cw4
    use turbulence, only: cm0,cde,galp,length_lim
    use turbulence, only: omega_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
    use turbulence, only: sig_w
@@ -130,7 +134,7 @@
       end if
 
       OmgOverTke  = omega(i)/tkeo(i)
-      prod        = cw1*OmgOverTke*P(i) + cw4*OmgOverTke*PSTK(i)
+      prod        = OmgOverTke * ( cw1*P(i) + cwx*Px(i) + cw4*PSTK(i) )
       buoyan      = cw3*OmgOverTke*B(i)
       diss        = cw2*OmgOverTke*eps(i)
 
