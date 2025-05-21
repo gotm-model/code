@@ -90,7 +90,7 @@
 
 !  the 'meanflow' configuration
    REALTYPE, public                    :: h0b
-   logical,  public                    :: bottom_stress
+   logical,  public                    :: calc_bottom_stress
    REALTYPE, public                    :: z0s_min
    logical,  public                    :: charnock
    REALTYPE, public                    :: charnock_val
@@ -169,7 +169,7 @@
    LEVEL1 'init_meanflow_yaml'
 
    branch => settings_store%get_typed_child('bottom')
-   call branch%get(bottom_stress, 'bottom_stress', 'compute bottom stress (default: true)', &
+   call branch%get(calc_bottom_stress, 'calc_bottom_stress', 'compute bottom stress (default: true)', &
                    default=.true.)
    call branch%get(h0b, 'h0b', 'physical bottom roughness', 'm', &
                 minimum=0._rk,default=0.05_rk, description='physical bottom roughness or bed roughness. This variable, h0b, relates to the hydrodynamic bottom roughness z0b as z0b = 0.03*h0b + 0.1*nu/ustar.')
@@ -555,7 +555,7 @@
       grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm, &
       SSnorm,dsurf,dtgrid,grid_file,gravity,        &
       rotation_period,rho_0,avmolu,avmolT, avmolS,  &
-      MaxItz0b,no_shear,bottom_stress
+      MaxItz0b,no_shear,calc_bottom_stress
 
    LEVEL2 'z0b,z0s,za',z0b,z0s,za
    LEVEL2 'cori',cori

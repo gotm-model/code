@@ -58,7 +58,7 @@
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
    use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taubo,u_taus,drag,taub
-   use meanflow,      only: bottom_stress
+   use meanflow,      only: calc_bottom_stress
    use meanflow,      only: charnock,charnock_val,z0s_min
 !
    IMPLICIT NONE
@@ -95,7 +95,7 @@
       z0s=z0s_min
    end if
 
-   if (bottom_stress) then
+   if (calc_bottom_stress) then
       if (first) then
          u_taub = u_taubo
          first = .false.
