@@ -115,7 +115,7 @@
    REALTYPE,allocatable,dimension(:),target :: par,pres,swr,k_par,z,nuh_ct
 
    ! External variables
-   REALTYPE :: dt,dt_eff   ! External and internal time steps
+   REALTYPE, target :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(:) :: nuh,h,bioshade,w,rho
    REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
@@ -124,6 +124,7 @@
    REALTYPE,pointer :: I_0,A,g1,g2
    integer,pointer  :: yearday,secondsofday
    REALTYPE, target :: decimal_yearday
+   REALTYPE, target :: decimal_year
    logical          :: fabm_ready
 
    REALTYPE,pointer :: fabm_airp
@@ -836,6 +837,13 @@
 
 !-----------------------------------------------------------------------
 !BOC
+
+   if ( model%variable_needs_values( standard_variables%calendar_year ) ) then
+      if ( associated(fabm_calendar_date) .and. associated(fabm_julianday) ) then
+         call model%link_scalar( standard_variables%calendar_year, decimal_year )
+      end if
+   end if
+
    call fabm_check_ready(model)
    fabm_ready = .true.
 
@@ -1032,6 +1040,7 @@
 
    ! Calculate and save internal time step.
    dt_eff = dt/split_factor
+   call model%link_scalar( standard_variables%maximum_time_step, dt_eff )
 
    I_0 => I_0_
    A => A_
@@ -1229,6 +1238,7 @@
    do split=1,split_factor
       if (has_date) then
          call fabm_update_time(model, itime, yyyy, mm, dd, real(secondsofday, gotmrk))
+         decimal_year = real( yyyy, gotmrk )
       else
          call fabm_update_time(model, itime)
       end if
