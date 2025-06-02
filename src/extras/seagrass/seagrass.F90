@@ -35,6 +35,7 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
    REALTYPE, dimension(:), allocatable :: exc,vfric,grassz,xxP
+   integer                   :: method
    character(len=PATH_MAX)   :: grassfile='seagrass.dat'
    REALTYPE                  :: alpha
    integer                   :: grassind
@@ -75,7 +76,7 @@
 
 
    branch => settings_store%get_typed_child('seagrass','calculate seagrass effect on turbulence')
-   call branch%get(i, 'method', '', options=(/option(0, 'off'), option(1, 'from file')/), default=0)
+   call branch%get(method, 'method', '', options=(/option(0, 'off'), option(1, 'from file')/), default=0)
    call branch%get(grassfile, 'file', 'path to file with grass specifications', default='seagrass.dat')
    call branch%get(alpha, 'alpha', 'efficiency of leafes turbulence production', '',default=0._rk)
 

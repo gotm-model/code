@@ -63,6 +63,9 @@
 #ifdef _CVMIX_
    LEVEL0 'CVMix:   included'
 #endif
+#ifdef _SEAGRASS_
+   LEVEL0 'Seagrass:included'
+#endif
 #ifdef NETCDF_FMT
    LEVEL0 'NetCDF:  ',trim(NF90_INQ_LIBVERS())
 #endif
