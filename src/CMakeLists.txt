@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.10)
 
 if(NOT PROJECT_NAME STREQUAL gotm)
    message(FATAL_ERROR "You are using ${CMAKE_CURRENT_LIST_DIR} as source directory. Please use its parent directory instead.")

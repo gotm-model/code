@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.10)
 
 if(NOT PROJECT_NAME STREQUAL gotm)
    project(gotm VERSION 6.0.4 LANGUAGES Fortran)
