@@ -1,7 +1,10 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.10)
 
 if(NOT PROJECT_NAME STREQUAL gotm)
-   message(FATAL_ERROR "You are using ${CMAKE_CURRENT_LIST_DIR} as source directory. Please use its parent directory instead.")
+  message(
+    FATAL_ERROR
+      "You are using ${CMAKE_CURRENT_LIST_DIR} as source directory. Please use its parent directory instead."
+  )
 endif()
 
 # ----------------------------
@@ -30,7 +33,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/modules")
 # Preprocessor definitions
 add_definitions(-DFORTRAN95)
 if(GOTM_USE_NetCDF)
-   add_definitions(-DNETCDF_FMT)
+  add_definitions(-DNETCDF_FMT)
 endif()
 if(GOTM_USE_FABM)
   add_definitions(-D_FABM_)
@@ -54,15 +57,15 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/util util)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/turbulence turbulence)
 
 if(GOTM_USE_FABM)
-   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm fabm)
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fabm fabm)
 endif()
 
 if(GOTM_USE_CVMIX)
-    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/cvmix gotm_cvmix)
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/cvmix gotm_cvmix)
 endif()
 
 if(GOTM_BUILD_LIBRARIES_ONLY)
-   return()
+  return()
 endif()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/input input)
@@ -72,19 +75,20 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/meanflow meanflow)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/stokes_drift stokes_drift)
 
 if(GOTM_USE_SEAGRASS)
-   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/extras/seagrass seagrass)
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/extras/seagrass seagrass)
 endif()
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/gotm gotmlib)
 
 # Build GOTM executable.
-add_executable(gotm_exe
-   ${CMAKE_CURRENT_LIST_DIR}/gotm/main.F90
-)
+add_executable(gotm_exe ${CMAKE_CURRENT_LIST_DIR}/gotm/main.F90)
 set_property(TARGET gotm_exe PROPERTY RUNTIME_OUTPUT_NAME "gotm")
 target_link_libraries(gotm_exe PRIVATE gotm)
 
 # Install GOTM executable
 install(TARGETS gotm_exe RUNTIME DESTINATION bin)
 
-install(EXPORT gotmConfig DESTINATION cmake NAMESPACE gotm::)
+install(
+  EXPORT gotmConfig
+  DESTINATION cmake
+  NAMESPACE gotm::)
