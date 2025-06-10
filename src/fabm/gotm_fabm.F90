@@ -116,7 +116,8 @@
    REALTYPE,allocatable,dimension(:),target :: par,pres,swr,k_par,z,nuh_ct
 
    ! External variables
-   REALTYPE :: dt,dt_eff   ! External and internal time steps
+   REALTYPE :: dt               ! External time step
+   REALTYPE, target :: dt_eff   ! Internal time step
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(:) :: nuh,h,bioshade,w,rho
    REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
@@ -707,6 +708,8 @@
    ! and link it to FABM.
    decimal_yearday = _ZERO_
    call model%link_scalar(standard_variables%number_of_days_since_start_of_the_year,decimal_yearday)
+
+   call model%link_scalar(standard_variables%maximum_time_step,dt_eff)
 
    allocate(Qsour(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (Qsour)'
