@@ -21,7 +21,7 @@
    REALTYPE, public, parameter         :: cpa=1008.
    REALTYPE, public, parameter         :: cpw=3985.
    REALTYPE, public, parameter         :: emiss=0.97
-   REALTYPE, public, parameter         :: bolz=5.67e-8
+   REALTYPE, public, parameter         :: bolz=5.670374419e-8
    REALTYPE, public, parameter         :: kelvin=273.15
    REALTYPE, public, parameter         :: const06=0.62198
    REALTYPE, public, parameter         :: rgas = 287.1    !
