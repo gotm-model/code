@@ -160,14 +160,14 @@
 !  These parameters are:
 !
 !  \begin{tabular}{ll}
-! {\tt calc\_fluxes}     & {\tt .true.}: Sensible, latent and back-radiation are calculated by    \\
+! {\tt calc\_fluxes}     & {\tt .true.}: Sensible, latent and longwave-radiation are calculated by    \\
 !                          & means of bulk formulae. In this case, {\tt meteo\_file} must be      \\
 !                          & given and {\tt hum\_method} must be specified.                         \\
 !                          & {\tt .false.}: Surface fluxes and solar radiation are prescribed.      \\
 ! {\tt fluxes\_method}   & Select which parameterisation to use for latent and sensible fluxes:   \\
 !                          & 1: Kondo (1975)                                                        \\
 !                          & 2: Fairall et al. (1996)                                               \\
-! {\tt back\_radiation\_method}   & Select which parameterisation to use:                        \\
+! {\tt longwave\_radiation\_method}   & Select which parameterisation to use:                        \\
 !                          & 1: Clark et al. (1974)                                                 \\
 !                          & 2: Hastenrath and Lamb (1978)                                          \\
 !                          & 3: Bignami et al. (1995)                                               \\
@@ -247,7 +247,7 @@
    twig => branch%get_typed_child('fluxes', 'heat and momentum fluxes')
    call twig%get(fluxes_method, 'method', 'method to calculate fluxes from meteorological conditions', &
                 options=(/option(0, 'use prescribed fluxes', 'off'), option(1, 'Kondo (1975)', 'kondo'), option(2, 'Fairall et al. (1996)', 'fairall')/), default=0)
-   call twig%get(heat_input, 'heat', 'prescribed total heat flux (sensible, latent and net back-radiation)', 'W/m^2', &
+   call twig%get(heat_input, 'heat', 'prescribed total heat flux (sensible, latent and net longwave-radiation)', 'W/m^2', &
                 default=0._rk)
    call twig%get(tx_input, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
                 default=0._rk)
@@ -313,14 +313,14 @@
 !  These parameters are:
 !
 !  \begin{tabular}{ll}
-! {\tt calc\_fluxes}     & {\tt .true.}: Sensible, latent and back-radiation are calculated by    \\
+! {\tt calc\_fluxes}     & {\tt .true.}: Sensible, latent and longwave-radiation are calculated by    \\
 !                          & means of bulk formulae. In this case, {\tt meteo\_file} must be      \\
 !                          & given and {\tt hum\_method} must be specified.                         \\
 !                          & {\tt .false.}: Surface fluxes and solar radiation are prescribed.      \\
 ! {\tt fluxes\_method}   & Select which parameterisation to use for latent and sensible fluxes:   \\
 !                          & 1: Kondo (1975)                                                        \\
 !                          & 2: Fairall et al. (1996)                                               \\
-! {\tt back\_radiation\_method}   & Select which parameterisation to use:                        \\
+! {\tt longwave\_radiation\_method}   & Select which parameterisation to use:                        \\
 !                          & 1: Clark et al. (1974)                                                 \\
 !                          & 2: Hastenrath and Lamb (1978)                                          \\
 !                          & 3: Bignami et al. (1995)                                               \\
@@ -677,7 +677,7 @@
 !  in  {\tt meteo\_file} the
 !  fluxes of heat and momentum, and the net
 !  longwave radiation by calling the routines {\tt humidity},
-!  {\tt back\_radiation} and {\tt airsea\_fluxes}, see sections
+!  {\tt longwave\_radiation} and {\tt airsea\_fluxes}, see sections
 !  \sect{sec:humidity}, \sect{sec:back-rad}, and \sect{sec:airsea-fluxes},
 !  a wrapper routine for using the bulk fomulae from either \cite{Kondo75}
 !  or \cite{Fairalletal96a}. Afterwards, the airsea fluxes

@@ -12,7 +12,7 @@
 !  A wrapper around the different methods for calculating momentum
 !  fluxes and sensible and latent heat fluxes at the air-sea interface.
 !  To have a complete air-sea exchange also the short wave radiation
-!  and back-wave radiation must be calculated.
+!  and longwave-wave radiation must be calculated.
 !
 ! !USES:
    IMPLICIT NONE
