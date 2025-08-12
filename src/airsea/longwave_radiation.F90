@@ -12,12 +12,12 @@
 ! Here, the net longwave radiation is calculated by means of one out
 ! of six methods, which depend on the value given to the parameter
 ! {\tt method}:
-! {\tt method}=1: \cite{Clarketal74},
-! {\tt method}=2: \cite{HastenrathLamb78},
-! {\tt method}=3: \cite{Bignamietal95},
-! {\tt method}=4: \cite{BerliandBerliand52}.
-! {\tt method}=5: \cite{Joseyetal2003} - (J1,9).
-! {\tt method}=6: \cite{Joseyetal2003} - (J2,14).
+! {\tt method}=3: \cite{Clarketal74},
+! {\tt method}=4: \cite{HastenrathLamb78},
+! {\tt method}=5: \cite{Bignamietal95},
+! {\tt method}=6: \cite{BerliandBerliand52}.
+! {\tt method}=7: \cite{Joseyetal2003} - (J1,9).
+! {\tt method}=8: \cite{Joseyetal2003} - (J2,14).
 ! It should be noted that the latitude must here be given in degrees.
 !
 ! !USES:
@@ -31,7 +31,7 @@
    REALTYPE, intent(in)                :: dlat,tw,ta,cloud
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: ql
+   REALTYPE, intent(inout)               :: ql
 !
 ! !REVISION HISTORY:
 !  Original author(s): Adolf Stips, Hans Burchard & Karsten Bolding

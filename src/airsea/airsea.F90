@@ -62,6 +62,7 @@
 ! !PUBLIC DATA MEMBERS:
 !
 !  Meteorological forcing variables
+   integer,  public :: longwave_type
    integer,  public :: hum_method
    character(len=PATH_MAX) :: meteo_file
    type (type_scalar_input), public, target :: u10_input,v10_input
@@ -168,12 +169,12 @@
 !                          & 1: Kondo (1975)                                                        \\
 !                          & 2: Fairall et al. (1996)                                               \\
 ! {\tt longwave\_radiation\_method}   & Select which parameterisation to use:                        \\
-!                          & 1: Clark et al. (1974)                                                 \\
-!                          & 2: Hastenrath and Lamb (1978)                                          \\
-!                          & 3: Bignami et al. (1995)                                               \\
-!                          & 4: Berliandand Berliand (1952)                                         \\
-!                          & 5: Josey et al. (2003) - 1                                         \\
-!                          & 6: Josey et al. (2003) - 2                                         \\
+!                          & 3: Clark et al. (1974)                                                 \\
+!                          & 4: Hastenrath and Lamb (1978)                                          \\
+!                          & 5: Bignami et al. (1995)                                               \\
+!                          & 6: Berliandand Berliand (1952)                                         \\
+!                          & 7: Josey et al. (2003) - 1                                         \\
+!                          & 8: Josey et al. (2003) - 2                                         \\
 ! {\tt meteo\_file}      & file with meteo data (for {\tt calc\_fluxes=.true.}) with            \\
 !                          & date: {\tt yyyy-mm-dd hh:mm:ss}                                        \\
 !                          & $x$-component of wind (10 m) in m\,s$^{-1}$                            \\
@@ -281,8 +282,10 @@
    call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
                 minimum=0._rk,default=0._rk, method_constant=1, method_file=2, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
    call branch%get(ql_input, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
-                default=0._rk, &
+                pchild=leaf, default=0._rk, method_file=2, &
                extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
+   call leaf%get(longwave_type, 'type', 'longwave type from file', &
+     options=(/option(1, 'net longwave radiation'), option(2, 'downward longwave radiation')/), default=1)
 
    twig => branch%get_typed_child('albedo')
    call twig%get(albedo_method, 'method', 'method to compute albedo', &
@@ -438,20 +441,7 @@
    dlon = lon
    dlat = lat
 
-!  The short wave radiation
-   select case (I_0%method)
-      case (3)
-         if (fluxes_method == 0) then
-            LEVEL2 'Not possible to calculate swr if heat and momentum fluxes are prescribed'
-            stop 'init_airsea'
-         else
-            LEVEL2 'Calculating swr=swr(t(lon),lat,cloud)'
-         end if
-         LEVEL2 'Albedo method: ',albedo_method
-      case default
-         call register_input(I_0)
-   end select
-
+   LEVEL1 'Air-sea fluxes:'
    if (fluxes_method /= 0) then
 
 #ifndef INTERPOLATE_METEO
@@ -464,36 +454,60 @@
       call register_input(hum_input)
       call register_input(cloud_input)
 #endif
-      LEVEL2 'Air-sea exchanges will be calculated'
 
-      LEVEL3 'heat- and momentum-fluxes:'
+      LEVEL2 'albedo method: ',albedo_method
+
+!  The short wave radiation
+      LEVEL2 'short wave radation:'
+      select case (I_0%method)
+         case (3)
+            LEVEL3 'swr=swr(t(lon),lat,cloud)'
+         case default
+            call register_input(I_0)
+      end select
+
+      LEVEL2 'latent, sensible and momentum-fluxes:'
       select case (fluxes_method)
          case(1)
-            LEVEL4 'using Kondo formulation'
+            LEVEL3 'using Kondo formulation'
          case(2)
-            LEVEL4 'using Fairall et. all formulation'
+            LEVEL3 'using Fairall et. all formulation'
          case default
       end select
-      LEVEL3 'net longwave radiation:'
-      call register_input(ql_input)
       select case (ql_input%method)
+         case(2)
+           call register_input(ql_input)
+           select case (longwave_type)
+               case(1)
+                  LEVEL3 'net longwave radiation'
+               case(2)
+                  LEVEL3 'downward longwave radiation'
+            end select
          case(CLARK)
-            LEVEL4 'using Clark formulation'
+            LEVEL2 'longwave radiation:'
+            LEVEL3 'using Clark formulation'
          case(HASTENRATH_LAMB)
-            LEVEL4 'using Hastenrath formulation'
+            LEVEL2 'longwave radiation:'
+            LEVEL3 'using Hastenrath formulation'
          case(BIGNAMI)
-            LEVEL4 'using Bignami formulation'
+            LEVEL2 'longwave radiation:'
+            LEVEL3 'using Bignami formulation'
          case(BERLIAND_BERLIAND)
-            LEVEL4 'using Berliand formulation'
+            LEVEL2 'longwave radiation:'
+            LEVEL3 'using Berliand formulation'
          case(JOSEY1)
-            LEVEL4 'using Josey-1 formulation'
+            LEVEL2 'longwave radiation:'
+            LEVEL3 'using Josey-1 formulation'
          case(JOSEY2)
-            LEVEL4 'using Josey-2 formulation'
+            LEVEL2 'longwave radiation:'
+            LEVEL3 'using Josey-2 formulation'
          case default
       end select
 
    else
 
+      LEVEL2 'Air-sea exchanges will be read from file(s)'
+      call register_input(I_0)
 !     The heat fluxes
       call register_input(heat_input)
 
@@ -772,9 +786,18 @@
       cloud1 = cloud2
 
       call humidity(hum_method,hum_input,airp_input,tw,ta)
-      if (ql_input%method .gt. 2) then
+      if (ql_input%method .eq. 0) then
+         ! constant
+       elseif (ql_input%method .eq. 2) then
+         select case(longwave_type)
+            case(1)
+               ! already read in
+            case(2)
+               ql_input%value=ql_input%value-bolz*emiss*(tw**4)
+         end select
+      else  ! (ql_input%method .gt. 2) then
          call longwave_radiation(ql_input%method, &
-                                 dlat,tw_k,ta_k,cloud,ql_input)
+                                 dlat,tw_k,ta_k,cloud_input%value,ql_input%value)
       end if
 #if 0
       call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
@@ -824,10 +847,20 @@
    end if
 
    call humidity(hum_method,hum_input%value,airp_input%value,tw,ta)
-   if (ql_input%method .gt. 2) then
+   if (ql_input%method .eq. 0) then
+      ! constant
+    elseif (ql_input%method .eq. 2) then
+      select case(longwave_type)
+         case(1)
+            ! already read in
+         case(2)
+            ql_input%value=ql_input%value-bolz*emiss*(tw_k**4)
+      end select
+   else  ! (ql_input%method .gt. 2) then
       call longwave_radiation(ql_input%method, &
-                          dlat,tw_k,ta_k,cloud_input%value,ql_input%value)
-   endif
+                              dlat,tw_k,ta_k,cloud_input%value,ql_input%value)
+   end if
+
    call airsea_fluxes(fluxes_method, &
                       tw,ta,u10_input%value-ssu,v10_input%value-ssv,precip_input%value,evap,tx_input%value,ty_input%value,qe,qh)
    heat_input%value = (ql_input%value+qe+qh)
