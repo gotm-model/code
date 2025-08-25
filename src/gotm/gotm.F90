@@ -412,6 +412,7 @@
 !  However, before that happens, it is already used in updategrid.
 !  therefore, we set to to a reasonable default here.
    zeta%value = _ZERO_
+   if (zeta%method == 3 .and. water_balance_method == 3) zeta%value=zeta%constant_value
    w_adv%method = 0
 
    restart = restart_online .or. restart_offline
@@ -462,6 +463,7 @@
 
 !KB   call post_init_observations(julianday,secondsofday,depth,nlev,z,h,gravity,rho_0)
    call post_init_observations(depth,nlev,z,h,gravity,rho_0,lake)
+   if (zeta%method == 3 .and. water_balance_method == 3) zeta%value=zeta%constant_value
    call get_all_obs(julianday,secondsofday,nlev,z)
    call post_init_streams(nlev)
 
