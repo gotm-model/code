@@ -62,6 +62,7 @@
 ! !PUBLIC DATA MEMBERS:
 !
 !  Meteorological forcing variables
+   integer,  public :: shortwave_type
    integer,  public :: longwave_type
    integer,  public :: hum_method
    character(len=PATH_MAX) :: meteo_file
@@ -280,7 +281,9 @@
                 default=.false.)
 
    call branch%get(I_0, 'swr', 'shortwave radiation', 'W/m^2', &
-                minimum=0._rk,default=0._rk, method_constant=1, method_file=2, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
+                pchild=leaf, minimum=0._rk,default=0._rk, method_constant=1, method_file=2, extra_options=(/option(3, 'from time, location and cloud cover', 'calculate')/))
+   call leaf%get(shortwave_type, 'type', 'shortwave type from file', &
+     options=(/option(1, 'net shortwave radiation'), option(2, 'downward shortwave radiation')/), default=1)
    call branch%get(ql_input, 'longwave_radiation', 'net longwave radiation', 'W/m^2', &
                 pchild=leaf, default=0._rk, method_file=2, &
                extra_options=(/option(CLARK, 'Clark et al. (1974)', 'Clark'), option(HASTENRATH_LAMB, 'Hastenrath and Lamb (1978)', 'Hastenrath_Lamb'), option(BIGNAMI, 'Bignami et al. (1995)', 'Bignami'), option(BERLIAND_BERLIAND, 'Berliand and Berliand (1952)', 'Berliand_Berliand'), option(JOSEY1, 'Josey et al. (2003) - 1', 'Josey1'), option(JOSEY2, 'Josey et al. (2003) - 2', 'Josey2')/), default_method=CLARK)
@@ -459,11 +462,17 @@
 
 !  The short wave radiation
       LEVEL2 'short wave radation:'
+      call register_input(I_0)
       select case (I_0%method)
+         case(2)
+           select case (shortwave_type)
+               case(1)
+                  LEVEL3 'net shortwave radiation'
+               case(2)
+                  LEVEL3 'downward shortwave radiation'
+            end select
          case (3)
             LEVEL3 'swr=swr(t(lon),lat,cloud)'
-         case default
-            call register_input(I_0)
       end select
 
       LEVEL2 'latent, sensible and momentum-fluxes:'
@@ -622,7 +631,7 @@
       heat_input%value = heat_input%scale_factor*heat_input%value
    end if
 
-   if (I_0%method .ne. CONSTVAL) then
+   if (I_0%method .eq. 3 .or. shortwave_type .eq. 2) then
       if (.not. have_zenith_angle) then
          hh = secs*(_ONE_/3600)
          zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
