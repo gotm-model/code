@@ -461,7 +461,7 @@
       LEVEL2 'albedo method: ',albedo_method
 
 !  The short wave radiation
-      LEVEL2 'short wave radation:'
+      LEVEL2 'short wave radition:'
       call register_input(I_0)
       select case (I_0%method)
          case(2)
