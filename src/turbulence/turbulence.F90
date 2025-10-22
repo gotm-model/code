@@ -4045,6 +4045,8 @@
    if (allocated(cmue1)) deallocate(cmue1)
    if (allocated(cmue2)) deallocate(cmue2)
    if (allocated(cmue3)) deallocate(cmue3)
+   if (allocated(sq_var)) deallocate(sq_var)
+   if (allocated(sl_var)) deallocate(sl_var)
    if (allocated(gam)) deallocate(gam)
    if (allocated(an)) deallocate(an)
    if (allocated(as)) deallocate(as)
