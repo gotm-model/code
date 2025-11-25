@@ -138,13 +138,13 @@
    call fm%register('airp', 'Pa', 'air pressure', standard_name='', data0d=airp_input%value, category='surface')
    select case (hum_method)
       case (1) ! relative humidity in % given
-         call fm%register('hum', '%', 'relative humidity', standard_name='', data0d=hum_input%value, category='surface')
+         call fm%register('hum', '%', 'relative humidity', standard_name='relative_humidity', data0d=hum_input%value, category='surface')
       case (2)  ! Specific humidity from wet bulb temperature
          call fm%register('hum', 'Celsius', 'wet bulb temperature', standard_name='', data0d=hum_input%value, category='surface')
       case (3)  ! Specific humidity from dew point temperature
          call fm%register('hum', 'Celsius', 'dew point temperature', standard_name='', data0d=hum_input%value, category='surface')
       case (4)  ! Specific humidity given
-         call fm%register('hum', 'kg/kg', 'specific humidity', standard_name='', data0d=hum_input%value, category='surface')
+         call fm%register('hum', 'kg/kg', 'specific humidity', standard_name='specific_humidity', data0d=hum_input%value, category='surface')
    end select
    call fm%register('es', 'Pa', 'saturation water vapor pressure', standard_name='', data0d=es, category='surface')
    call fm%register('ea', 'Pa', 'actual water vapor presure', standard_name='', data0d=ea, category='surface')
@@ -428,10 +428,10 @@
 !BOC
    LEVEL2 'register_meanflow_variables()'
    call fm%register('zeta', 'm', 'sea surface elevation', standard_name='sea_surface_elevation', data0d=zeta,category='surface')
-   call fm%register('temp', 'Celsius', 'temperature (conservative)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=T(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
-   call fm%register('salt', 'g/kg', 'salinity (absolute)', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=S(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
+   call fm%register('temp', 'Celsius', 'temperature (conservative)', standard_name='sea_water_conservative_temperature', dimensions=(/id_dim_z/), data1d=T(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
+   call fm%register('salt', 'g/kg', 'salinity (absolute)', standard_name='sea_water_absolute_salinity', dimensions=(/id_dim_z/), data1d=S(1:nlev),category='temperature_and_salinity', part_of_state=.true.)
    if (density_method == 1) then
-      call fm%register('temp_p', 'Celsius', 'temperature (potential)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Tp(1:nlev),category='temperature_and_salinity')
+      call fm%register('temp_p', 'Celsius', 'temperature (potential)', standard_name='sea_water_potential_temperature', dimensions=(/id_dim_z/), data1d=Tp(1:nlev),category='temperature_and_salinity')
       call fm%register('temp_i', 'Celsius', 'temperature (in-situ)', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=Ti(1:nlev),category='temperature_and_salinity')
       call fm%register('salt_p', 'PSU', 'salinity (practical)', standard_name='sea_water_practical_salinity', dimensions=(/id_dim_z/), data1d=Sp(1:nlev),category='temperature_and_salinity')
    end if
