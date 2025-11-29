@@ -5,8 +5,8 @@
 
 ! Non-spatial system. ODE solvers operate on vector with state only.
 #define _SIZE_ numc
-#define _INCC_(m,i) (m)
-#define _INPP_(m,n,i) (m,n)
+#define _INCCMAP_(m,ci) (m)
+#define _INPPMAP_(m,n,ci) (m,n)
 #define _ODE_DECLARE_ITERATOR_
 #define _ODE_LOOP_BEGIN_
 #define _ODE_LOOP_END_
@@ -15,17 +15,20 @@
 
 ! One spatial dimension. ODE solvers operate on matrix with state and space dimensions.
 #define _SIZE_ numc,ni
-#define _INCC_(m,i) (i,m)
-#define _INPP_(m,n,i) (i,m,n)
+#define _INCCMAP_(m,ci) (ci,m)
+#define _INPPMAP_(m,n,ci) (ci,m,n)
 #define _ODE_DECLARE_ITERATOR_ integer :: ci
 #define _ODE_LOOP_BEGIN_ do ci=1,ni
 #define _ODE_LOOP_END_ end do
 
 #endif
 
+#define _INCC_(m) _INCCMAP_(m,ci)
+#define _INPP_(m,n) _INPPMAP_(m,n,ci)
+
 ! Dimension specifications for procedure arguments
-#define _DIMCC_ _INCC_(1:numc,_LOWI_:ni)
-#define _DIMPP_ _INPP_(1:numc,1:numc,_LOWI_:ni)
+#define _DIMCC_ _INCCMAP_(1:numc,_LOWI_:ni)
+#define _DIMPP_ _INPPMAP_(1:numc,1:numc,_LOWI_:ni)
 
 ! Dimension specifications for automatic (temporary) arrays
 #define _LOCDIMCC_ _DIMCC_
@@ -344,10 +347,10 @@
          ppsum=_ZERO_
          ddsum=_ZERO_
          do j=1,numc
-            ppsum=ppsum+pp _INPP_(i,j,ci)
-            ddsum=ddsum+dd _INPP_(i,j,ci)
+            ppsum=ppsum+pp _INPP_(i,j)
+            ddsum=ddsum+dd _INPP_(i,j)
          end do
-         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum)/(_ONE_+dt*ddsum/cc _INCC_(i,ci))
+         cc _INCC_(i)=(cc _INCC_(i)+dt*ppsum)/(_ONE_+dt*ddsum/cc _INCC_(i))
       end do
    _ODE_LOOP_END_
 
@@ -404,13 +407,13 @@
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
-         ppsum _INCC_(i,ci)=_ZERO_
-         ddsum _INCC_(i,ci)=_ZERO_
+         ppsum _INCC_(i)=_ZERO_
+         ddsum _INCC_(i)=_ZERO_
          do j=1,numc
-            ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
-            ddsum _INCC_(i,ci)=ddsum _INCC_(i,ci)+dd _INPP_(i,j,ci)
+            ppsum _INCC_(i)=ppsum _INCC_(i)+pp _INPP_(i,j)
+            ddsum _INCC_(i)=ddsum _INCC_(i)+dd _INPP_(i,j)
          end do
-         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
+         cc1 _INCC_(i)=(cc _INCC_(i)+dt*ppsum _INCC_(i))/(_ONE_+dt*ddsum _INCC_(i)/cc _INCC_(i))
       end do
    _ODE_LOOP_END_
 
@@ -419,10 +422,10 @@
    _ODE_LOOP_BEGIN_
       do i=1,numc
          do j=1,numc
-            ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
-            ddsum _INCC_(i,ci)=ddsum _INCC_(i,ci)+dd _INPP_(i,j,ci)
+            ppsum _INCC_(i)=ppsum _INCC_(i)+pp _INPP_(i,j)
+            ddsum _INCC_(i)=ddsum _INCC_(i)+dd _INPP_(i,j)
          end do
-         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt/2*ppsum _INCC_(i,ci))/(_ONE_+dt/2*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
+         cc _INCC_(i)=(cc _INCC_(i)+dt/2*ppsum _INCC_(i))/(_ONE_+dt/2*ddsum _INCC_(i)/cc1 _INCC_(i))
       end do
    _ODE_LOOP_END_
 
@@ -456,13 +459,13 @@
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
-         ppsum _INCC_(i,ci)=_ZERO_
-         ddsum _INCC_(i,ci)=_ZERO_
+         ppsum _INCC_(i)=_ZERO_
+         ddsum _INCC_(i)=_ZERO_
          do j=1,numc
-            ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
-            ddsum _INCC_(i,ci)=ddsum _INCC_(i,ci)+dd _INPP_(i,j,ci)
+            ppsum _INCC_(i)=ppsum _INCC_(i)+pp _INPP_(i,j)
+            ddsum _INCC_(i)=ddsum _INCC_(i)+dd _INPP_(i,j)
          end do
-         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
+         cc1 _INCC_(i)=(cc _INCC_(i)+dt*ppsum _INCC_(i))/(_ONE_+dt*ddsum _INCC_(i)/cc _INCC_(i))
       end do
    _ODE_LOOP_END_
 
@@ -470,13 +473,13 @@
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
-         ppsum1 _INCC_(i,ci)=_ZERO_
-         ddsum1 _INCC_(i,ci)=_ZERO_
+         ppsum1 _INCC_(i)=_ZERO_
+         ddsum1 _INCC_(i)=_ZERO_
          do j=1,numc
-            ppsum1 _INCC_(i,ci)=ppsum1 _INCC_(i,ci)+pp _INPP_(i,j,ci)
-            ddsum1 _INCC_(i,ci)=ddsum1 _INCC_(i,ci)+dd _INPP_(i,j,ci)
+            ppsum1 _INCC_(i)=ppsum1 _INCC_(i)+pp _INPP_(i,j)
+            ddsum1 _INCC_(i)=ddsum1 _INCC_(i)+dd _INPP_(i,j)
          end do
-         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum1 _INCC_(i,ci))/(_ONE_+dt*ddsum1 _INCC_(i,ci)/cc1 _INCC_(i,ci))
+         cc1 _INCC_(i)=(cc _INCC_(i)+dt*ppsum1 _INCC_(i))/(_ONE_+dt*ddsum1 _INCC_(i)/cc1 _INCC_(i))
       end do
    _ODE_LOOP_END_
 
@@ -484,13 +487,13 @@
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
-         ppsum2 _INCC_(i,ci)=_ZERO_
-         ddsum2 _INCC_(i,ci)=_ZERO_
+         ppsum2 _INCC_(i)=_ZERO_
+         ddsum2 _INCC_(i)=_ZERO_
          do j=1,numc
-            ppsum2 _INCC_(i,ci)=ppsum2 _INCC_(i,ci)+pp _INPP_(i,j,ci)
-            ddsum2 _INCC_(i,ci)=ddsum2 _INCC_(i,ci)+dd _INPP_(i,j,ci)
+            ppsum2 _INCC_(i)=ppsum2 _INCC_(i)+pp _INPP_(i,j)
+            ddsum2 _INCC_(i)=ddsum2 _INCC_(i)+dd _INPP_(i,j)
          end do
-         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum2 _INCC_(i,ci))/(_ONE_+dt*ddsum2 _INCC_(i,ci)/cc1 _INCC_(i,ci))
+         cc1 _INCC_(i)=(cc _INCC_(i)+dt*ppsum2 _INCC_(i))/(_ONE_+dt*ddsum2 _INCC_(i)/cc1 _INCC_(i))
       end do
    _ODE_LOOP_END_
 
@@ -498,15 +501,15 @@
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
-         ppsum3 _INCC_(i,ci)=_ZERO_
-         ddsum3 _INCC_(i,ci)=_ZERO_
+         ppsum3 _INCC_(i)=_ZERO_
+         ddsum3 _INCC_(i)=_ZERO_
          do j=1,numc
-            ppsum3 _INCC_(i,ci)=ppsum3 _INCC_(i,ci)+pp _INPP_(i,j,ci)
-            ddsum3 _INCC_(i,ci)=ddsum3 _INCC_(i,ci)+dd _INPP_(i,j,ci)
+            ppsum3 _INCC_(i)=ppsum3 _INCC_(i)+pp _INPP_(i,j)
+            ddsum3 _INCC_(i)=ddsum3 _INCC_(i)+dd _INPP_(i,j)
          end do
-         ppsum _INCC_(i,ci)=(ppsum _INCC_(i,ci)/2+ppsum1 _INCC_(i,ci)+ppsum2 _INCC_(i,ci)+ppsum3 _INCC_(i,ci)/2)/3
-         ddsum _INCC_(i,ci)=(ddsum _INCC_(i,ci)/2+ddsum1 _INCC_(i,ci)+ddsum2 _INCC_(i,ci)+ddsum3 _INCC_(i,ci)/2)/3
-         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
+         ppsum _INCC_(i)=(ppsum _INCC_(i)/2+ppsum1 _INCC_(i)+ppsum2 _INCC_(i)+ppsum3 _INCC_(i)/2)/3
+         ddsum _INCC_(i)=(ddsum _INCC_(i)/2+ddsum1 _INCC_(i)+ddsum2 _INCC_(i)+ddsum3 _INCC_(i)/2)/3
+         cc _INCC_(i)=(cc _INCC_(i)+dt*ppsum _INCC_(i))/(_ONE_+dt*ddsum _INCC_(i)/cc1 _INCC_(i))
       end do
    _ODE_LOOP_END_
 
@@ -554,14 +557,14 @@
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc _INCC_(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j)/cc _INCC_(j)
          end do
-         a(i,i)=dt*a(i,i)/cc _INCC_(i,ci)
+         a(i,i)=dt*a(i,i)/cc _INCC_(i)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
+         r(i)=cc _INCC_(i)+dt*pp _INPP_(i,i)
       end do
-      call matrix(numc,a,r,cc _INCC_(:,ci))
+      call matrix(numc,a,r,cc _INCC_(:))
    _ODE_LOOP_END_
 
    end subroutine modified_patankar
@@ -633,14 +636,14 @@
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc _INCC_(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j)/cc _INCC_(j)
          end do
-         a(i,i)=dt*a(i,i)/cc _INCC_(i,ci)
+         a(i,i)=dt*a(i,i)/cc _INCC_(i)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
+         r(i)=cc _INCC_(i)+dt*pp _INPP_(i,i)
       end do
-      call matrix(numc,a,r,cc1 _INCC_(:,ci))
+      call matrix(numc,a,r,cc1 _INCC_(:))
    _ODE_LOOP_END_
 
    call get_ppdd(.false.,_SIZE_,cc1,pp1,dd1)
@@ -652,14 +655,14 @@
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc1 _INCC_(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j)/cc1 _INCC_(j)
          end do
-         a(i,i)=dt*a(i,i)/cc1 _INCC_(i,ci)
+         a(i,i)=dt*a(i,i)/cc1 _INCC_(i)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
+         r(i)=cc _INCC_(i)+dt*pp _INPP_(i,i)
       end do
-      call matrix(numc,a,r,cc _INCC_(:,ci))
+      call matrix(numc,a,r,cc _INCC_(:))
    _ODE_LOOP_END_
 
    end subroutine modified_patankar_2
@@ -698,14 +701,14 @@
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc _INCC_(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j)/cc _INCC_(j)
          end do
-         a(i,i)=dt*a(i,i)/cc _INCC_(i,ci)
+         a(i,i)=dt*a(i,i)/cc _INCC_(i)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
+         r(i)=cc _INCC_(i)+dt*pp _INPP_(i,i)
       end do
-      call matrix(numc,a,r,cc1 _INCC_(:,ci))
+      call matrix(numc,a,r,cc1 _INCC_(:))
    _ODE_LOOP_END_
 
    call get_ppdd(first,_SIZE_,cc1,pp1,dd1)
@@ -714,14 +717,14 @@
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd1 _INPP_(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp1 _INPP_(i,j,ci)/cc1 _INCC_(j,ci)
+            a(i,i)=a(i,i)+dd1 _INPP_(i,j)
+            if (i.ne.j) a(i,j)=-dt*pp1 _INPP_(i,j)/cc1 _INCC_(j)
          end do
-         a(i,i)=dt*a(i,i)/cc1 _INCC_(i,ci)
+         a(i,i)=dt*a(i,i)/cc1 _INCC_(i)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc _INCC_(i,ci)+dt*pp1 _INPP_(i,i,ci)
+         r(i)=cc _INCC_(i)+dt*pp1 _INPP_(i,i)
       end do
-      call matrix(numc,a,r,cc1 _INCC_(:,ci))
+      call matrix(numc,a,r,cc1 _INCC_(:))
    _ODE_LOOP_END_
 
    call get_ppdd(first,_SIZE_,cc1,pp2,dd2)
@@ -730,14 +733,14 @@
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd2 _INPP_(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp2 _INPP_(i,j,ci)/cc1 _INCC_(j,ci)
+            a(i,i)=a(i,i)+dd2 _INPP_(i,j)
+            if (i.ne.j) a(i,j)=-dt*pp2 _INPP_(i,j)/cc1 _INCC_(j)
          end do
-         a(i,i)=dt*a(i,i)/cc1 _INCC_(i,ci)
+         a(i,i)=dt*a(i,i)/cc1 _INCC_(i)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc _INCC_(i,ci)+dt*pp2 _INPP_(i,i,ci)
+         r(i)=cc _INCC_(i)+dt*pp2 _INPP_(i,i)
       end do
-      call matrix(numc,a,r,cc1 _INCC_(:,ci))
+      call matrix(numc,a,r,cc1 _INCC_(:))
    _ODE_LOOP_END_
 
    call get_ppdd(first,_SIZE_,cc1,pp3,dd3)
@@ -749,14 +752,14 @@
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc1 _INCC_(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j)/cc1 _INCC_(j)
          end do
-         a(i,i)=dt*a(i,i)/cc1 _INCC_(i,ci)
+         a(i,i)=dt*a(i,i)/cc1 _INCC_(i)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
+         r(i)=cc _INCC_(i)+dt*pp _INPP_(i,i)
       end do
-      call matrix(numc,a,r,cc _INCC_(:,ci))
+      call matrix(numc,a,r,cc _INCC_(:))
    _ODE_LOOP_END_
 
    end subroutine modified_patankar_4
@@ -798,8 +801,8 @@
    call get_rhs(.true.,_SIZE_,cc,derivative)
 
    _ODE_LOOP_BEGIN_
-      call findp_bisection(numc, cc _INCC_(:,ci), derivative _INCC_(:,ci), dt, 1.d-9, pi)
-      cc _INCC_(:,ci) = cc _INCC_(:,ci) + dt*derivative _INCC_(:,ci)*pi
+      call findp_bisection(numc, cc _INCC_(:), derivative _INCC_(:), dt, 1.d-9, pi)
+      cc _INCC_(:) = cc _INCC_(:) + dt*derivative _INCC_(:)*pi
    _ODE_LOOP_END_
 
    end subroutine emp_1
@@ -858,23 +861,23 @@
    call get_rhs(.true.,_SIZE_,cc,rhs)
 
    _ODE_LOOP_BEGIN_
-      call findp_bisection(numc, cc _INCC_(:,ci), rhs _INCC_(:,ci), dt, 1.d-9, pi)
-      cc_med _INCC_(:,ci) = cc _INCC_(:,ci) + dt*rhs _INCC_(:,ci)*pi
+      call findp_bisection(numc, cc _INCC_(:), rhs _INCC_(:), dt, 1.d-9, pi)
+      cc_med _INCC_(:) = cc _INCC_(:) + dt*rhs _INCC_(:)*pi
    _ODE_LOOP_END_
 
    call get_rhs(.false.,_SIZE_,cc_med,rhs_med)
 
    _ODE_LOOP_BEGIN_
-      rhs _INCC_(:,ci) = (rhs _INCC_(:,ci) + rhs_med _INCC_(:,ci))/2
+      rhs _INCC_(:) = (rhs _INCC_(:) + rhs_med _INCC_(:))/2
 
       ! Correct for the state variables that will be included in 'p'.
       do i=1,numc
-         if (rhs _INCC_(i,ci) .lt. 0.) rhs _INCC_(:,ci) = rhs _INCC_(:,ci) * cc _INCC_(i,ci)/cc_med _INCC_(i,ci)
+         if (rhs _INCC_(i) .lt. 0.) rhs _INCC_(:) = rhs _INCC_(:) * cc _INCC_(i)/cc_med _INCC_(i)
       end do
 
-      call findp_bisection(numc, cc _INCC_(:,ci), rhs _INCC_(:,ci), dt, 1.d-9, pi)
+      call findp_bisection(numc, cc _INCC_(:), rhs _INCC_(:), dt, 1.d-9, pi)
 
-      cc _INCC_(:,ci) = cc _INCC_(:,ci) + dt*rhs _INCC_(:,ci)*pi
+      cc _INCC_(:) = cc _INCC_(:) + dt*rhs _INCC_(:)*pi
    _ODE_LOOP_END_ ! ci (z-levels)
 
    end subroutine emp_2
