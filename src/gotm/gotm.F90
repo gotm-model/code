@@ -784,7 +784,7 @@
 #ifdef _ICE_
          I_0%value = transmissivity*I_0%value
          swf=melt_rate
-         shf=ocean_ice_heat_flux
+         shf=ocean_ice_heat_flux + T(nlev)*swf
          ssf=ocean_ice_salt_flux
 #endif
       else

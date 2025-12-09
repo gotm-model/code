@@ -137,10 +137,10 @@
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
 
-!  HB:
-!  Note that this is the surface temperature flux for rigid-lid models like GOTM.
-!  For a free surface model the surface temperature flux must be - -hflux/(rho0*cp)
-   DiffTup = -T(nlev)*wflux-hflux/(rho0*cp)
+!  For the open ocean the surface temperature flux is only the diffusive
+!  component.  In case of ice cover, hflux is defined as the sum of a diffusive
+!  and advective component.
+   DiffTup = -hflux/(rho0*cp)
 #ifndef _ICE_
    ! simple sea ice model: surface heat flux switched off for sst < freezing temp
    if (T(nlev) .le. -0.0575*S(nlev)) then
