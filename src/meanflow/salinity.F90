@@ -116,7 +116,7 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*wflux-sflux
+   DiffSup        = -sflux
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided

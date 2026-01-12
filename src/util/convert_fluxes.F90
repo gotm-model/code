@@ -70,7 +70,7 @@
    btFlux  = gravity*alpha0*tFlux
    
    ! salinity flux and associated buoyancy flux
-   sFlux   = -Ssrf*swf - ssf     
+   sFlux   = - ssf
    bsFlux  = -gravity*beta0*sFlux   
 
    ! radiative temperature and buoyancy flux profiles

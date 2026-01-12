@@ -784,12 +784,13 @@
 #ifdef _ICE_
          I_0%value = transmissivity*I_0%value
          swf=melt_rate
-         shf=ocean_ice_heat_flux + T(nlev)*swf
-         ssf=ocean_ice_salt_flux
+         shf=ocean_ice_heat_flux + rho0*cp*T(nlev)*swf
+         ssf=ocean_ice_salt_flux + S(nlev)*swf
 #endif
       else
          swf=precip_input%value+evap
          shf=-heat_input%value ! temperature() changed to positive heat flux upwards (v7)
+         ssf= S(nlev)*swf
          tx = tx/rho0
          ty = ty/rho0
       end if
