@@ -66,11 +66,11 @@
    beta0   = get_beta(Ssrf,Tsrf,_ZERO_)
 
    ! temperature flux and associated buoyancy flux
-   tFlux   = -Tsrf*swf - shf/(rho0*cp)
-   btFlux  =  gravity*alpha0*tFlux
+   tFlux   = - shf/(rho0*cp)
+   btFlux  = gravity*alpha0*tFlux
    
    ! salinity flux and associated buoyancy flux
-   sFlux   = -Ssrf*swf - ssf     
+   sFlux   = - ssf
    bsFlux  = -gravity*beta0*sFlux   
 
    ! radiative temperature and buoyancy flux profiles
