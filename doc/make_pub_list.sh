@@ -1,6 +1,7 @@
 #bibtex2html -s siam -r -d gotm_pub.bib 
 bibtex2html -nodoc -noheader -s ieeetr -r -d gotm_pub.bib 
 #bibtex2html -nodoc -noheader -s ieeetr -a gotm_pub.bib 
-scp gotm_pub.html gotm_pub_bib.html gotm.net:/var/www/www.gotm.net/htdocs/pages/documentation/
+#scp gotm_pub.html gotm_pub_bib.html gotm.net:/var/www/www.gotm.net/htdocs/pages/documentation/
+cp gotm_pub.html gotm_pub_bib.html ../../hugo/static/html/
 rm gotm_pub.html gotm_pub_bib.html
 
