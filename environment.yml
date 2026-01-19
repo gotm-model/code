@@ -1,0 +1,9 @@
+name: gfortran
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - cmake
+  - ninja
+  - gfortran=14
+  - netcdf-fortran
