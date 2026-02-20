@@ -734,7 +734,7 @@
    end if
    do n=MinN,MaxN
 
-      if(mod(n,progress) .eq. 0 .or. i == 0) then
+      if(mod( 10*n , MaxN-MinN+1 ) .lt. 10 .or. i == 0) then
          LEVEL0 i,'%'
          i = i +10
       end if
