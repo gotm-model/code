@@ -32,7 +32,7 @@
 !    \begin{equation}
 !       l = \kappa \, \min(d_s+z_0^s,d_b+z_0^b)
 !    \comma
-!    \end{equation}
+!    \end{equation}
 !    which converges always to $\kappa(z+z_0)$ near the bottom
 !   or near the surface.
 !  \item A distorted parabola can be constructed by
@@ -45,7 +45,7 @@
 !        d_b^\text{Xing} =
 !        d_b \exp{\left(-\beta \frac{d_b}{H} \right)}
 !    \comma
-!    \end{equation}
+!    \end{equation}
 !    where it should be noted that only for large water depth
 !    this equation converges to $\kappa(z+z_0)$ near the bottom
 !   or near the surface. The constant $\beta$ is a form parameter
@@ -58,7 +58,7 @@
 !       l = \kappa (d_b+z_0^b)
 !           \sqrt{1-\frac{d_b-z_0^s}{H}}
 !    \comma
-!   \end{equation}
+!    \end{equation}
 !    where it should be noted that only for large water depth
 !    this equation converges to $\kappa(z+z_0)$ near the bottom.
 !    Near the surface, the slope of $l$ is always different from
