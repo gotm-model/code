@@ -62,6 +62,11 @@
    use turbulence,  only: Rig
    use turbulence,  only: kappa
    use turbulence,  only: clean_turbulence
+   use turbulence,  only: do_massflux
+   use turbulence,  only: compute_massflux
+   use turbulence,  only: massflux_on_dynamics 
+   use turbulence,  only: massflux_energy   
+   use turbulence,  only: Fmass,u_p,v_p,T_p,S_p,Pmf,mf_nsub
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
 
@@ -564,6 +569,7 @@
                Ti(1:nlev) = gsw_t_from_ct(S(1:nlev),T(1:nlev),-z(1:nlev))
          end select
    end select
+
 !GSW_KB
    u(1:nlev) = uprof_input%data(1:nlev)
    v(1:nlev) = vprof_input%data(1:nlev)
@@ -847,12 +853,16 @@
          end if
    end select
 !GSW
-!  update shear and stratification
+   if(compute_massflux) then
+      call do_density(nlev,S,T,-z,-zi)
+      call do_massflux     ( nlev,dt,u,v,T,S,rho,h )             ! compute mass flux quantities from the meanflow variables
+      call uvTSequation_mf( nlev,dt,Fmass,u_p,v_p,T_p,S_p,Pmf,mf_nsub,massflux_on_dynamics, massflux_energy ) ! add the mass flux term to the meanflow equation 
+   endif 
+   
    call shear(nlev,cnpar)
    call do_density(nlev,S,T,-z,-zi)
    buoy(1:nlev) = -gravity*(rho_p(1:nlev)-rho0)/rho0
    call stratification(nlev)
-
 #ifdef SPM
       if (spm_calc) then
          call set_env_spm(nlev,rho0,depth,u_taub,h,u,v,nuh,tx,ty,Hs,Tz,Phiw)

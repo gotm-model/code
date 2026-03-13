@@ -16,16 +16,17 @@
 !   \label{tkeA}
 !   \dot{k}
 !   =
-!   {\cal D}_k +  P + G + P_x + P_s - \epsilon
+!   {\cal D}_k +  P + G + P_x + P_s + P_mf + G_mf - \epsilon
 !   \comma
 ! \end{equation}
 ! where $\dot{k}$ denotes the material derivative of $k$. $P$ and $G$ are
 ! the production of $k$ by mean shear and buoyancy, respectively, and
 ! $\epsilon$ the rate of dissipation.
-! $P_s$ is Stokes shear production defined in \eq{computePs}
-! and $P_x$ accounts for extra turbulence production.
+! $P_s$ is Stokes shear production defined in \eq{computePs},
+! $P_x$ accounts for extra turbulence production, $P_{mf}$ and G_{mf} are energy
+! transfers associated to convective plumes when a mass flux scheme is used.
 ! ${\cal D}_k$ represents the sum of
-! the viscous and turbulent transport terms.
+! the viscous and turbulent transport terms. 
 ! For horizontally homogeneous flows, the transport term ${\cal D}_k$
 ! appearing in \eq{tkeA} is presently expressed by a simple
 ! gradient formulation,
@@ -35,7 +36,12 @@
 !  \comma
 ! \end{equation}
 ! where $\sigma_k$ is the constant Schmidt-number for $k$.
-!
+! When a mass flux scheme is used, additional terms are present in the
+! turbulent fluxes of TKE (Perrot and Lemarié, 2025), in particular
+! \begin{equation}
+!   \label{TurbTransportTKE}
+!   {\cal D}_k^{mf} = \frstder{z} \left( \frac{a_p w_p}{2} \| \mathbf{u}_{h,p} - \left< \mathbf{u}_h \right>  \|^2 \right).
+! \end{equation}
 ! In horizontally homogeneous flows, the shear and the buoyancy
 ! production, $P$ and $G$, can be written as
 ! \begin{equation}
@@ -65,6 +71,7 @@
    use turbulence,   only: tke,tkeo,k_min,eps
    use turbulence,   only: k_bc, k_ubc, k_lbc, ubc_type, lbc_type
    use turbulence,   only: sig_k
+   use turbulence,   only: wk_mf,Pmf,Bmf
    use util,         only: Dirichlet,Neumann
 
    IMPLICIT NONE
