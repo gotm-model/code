@@ -129,7 +129,7 @@
 
 !     compute production terms in k-equation
       prod     = P(i) + Px(i) + PSTK(i)
-      buoyan   = B(i)
+      buoyan   = B(i) + Bmf(i) + Pmf(i) + wk_mf(i) ! the contributions Bmf, Pmf, and wk_mf are not positive-definite that's the reason why they are added to buoyan
       diss     = eps(i)
 
 
