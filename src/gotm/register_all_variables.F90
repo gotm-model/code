@@ -556,6 +556,10 @@
       call fm%register('fmass', 'm/s', 'convective mass flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=Fmass(0:nlev),category='turbulence')
       call fm%register('EmD', '', 'Plume entrainment minus detrainment', standard_name='??', dimensions=(/id_dim_zi/), data1d=EmD(0:nlev),category='turbulence') 
       call fm%register('zinv', 'm', 'Penetration depth for convective plumes', standard_name='??', data0d=mf_zinv,category='surface') 
+      if(massflux_on_dynamics) then
+         call fm%register('u_p', 'm/s', 'convective plume x-velocity', standard_name='??', dimensions=(/id_dim_zi/), data1d=u_p(0:nlev),category='turbulence')
+         call fm%register('v_p', 'm/s', 'convective plume y-velocity', standard_name='??', dimensions=(/id_dim_zi/), data1d=v_p(0:nlev),category='turbulence')
+      endif
       if(massflux_energy) then
          call fm%register('Pmf', 'm2/s3', 'shear production by convective plumes', standard_name='??', dimensions=(/id_dim_zi/), data1d=Pmf(0:nlev),category='turbulence/shear')
          call fm%register('Gmf', 'm2/s3', 'buoyancy production by convective plumes', standard_name='??', dimensions=(/id_dim_zi/), data1d=Bmf(0:nlev),category='turbulence/buoyancy')
