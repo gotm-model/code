@@ -549,10 +549,24 @@
    call fm%register('nuh', 'm2/s', 'turbulent diffusivity of heat', standard_name='??', dimensions=(/id_dim_zi/), data1d=nuh(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('nus', 'm2/s', 'turbulent diffusivity of salt', standard_name='??', dimensions=(/id_dim_zi/), data1d=nus(0:nlev),category='turbulence', part_of_state=.true.)
    call fm%register('nucl', 'm2/s', 'turbulent diffusivity of momentum down Stokes gradient', standard_name='??', dimensions=(/id_dim_zi/), data1d=nucl(0:nlev),category='turbulence', part_of_state=.true.)
-   call fm%register('gamu', 'm2/s2', 'non-local flux of u-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamu(0:nlev),category='turbulence')
-   call fm%register('gamv', 'm2/s2', 'non-local flux of v-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamv(0:nlev),category='turbulence')
-   call fm%register('gamh', 'K m/s', 'non-local heat flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamh(0:nlev),category='turbulence')
-   call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gams(0:nlev),category='turbulence')
+   if ( compute_massflux ) then 
+      call fm%register('a_p', 'm2/s2', 'convective plume fractional area', standard_name='??', dimensions=(/id_dim_zi/), data1d=a_p(0:nlev),category='turbulence')
+      call fm%register('w_p', 'm/s', 'convective plume vertical velocity', standard_name='??', dimensions=(/id_dim_zi/), data1d=w_p(0:nlev),category='turbulence')
+      call fm%register('t_p', 'Celsius', 'convective plume temperature', standard_name='??', dimensions=(/id_dim_zi/), data1d=T_p(0:nlev),category='turbulence')
+      call fm%register('fmass', 'm/s', 'convective mass flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=Fmass(0:nlev),category='turbulence')
+      call fm%register('EmD', '', 'Plume entrainment minus detrainment', standard_name='??', dimensions=(/id_dim_zi/), data1d=EmD(0:nlev),category='turbulence') 
+      call fm%register('zinv', 'm', 'Penetration depth for convective plumes', standard_name='??', data0d=mf_zinv,category='surface') 
+      if(massflux_energy) then
+         call fm%register('Pmf', 'm2/s3', 'shear production by convective plumes', standard_name='??', dimensions=(/id_dim_zi/), data1d=Pmf(0:nlev),category='turbulence/shear')
+         call fm%register('Gmf', 'm2/s3', 'buoyancy production by convective plumes', standard_name='??', dimensions=(/id_dim_zi/), data1d=Bmf(0:nlev),category='turbulence/buoyancy')
+         call fm%register('tke_p', 'm2/s2', 'Subplume turbulent kinetic energy', standard_name='??', dimensions=(/id_dim_zi/), data1d=tke_p(0:nlev),category='turbulence')
+      endif 
+   else 
+      call fm%register('gamu', 'm2/s2', 'non-local flux of u-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamu(0:nlev),category='turbulence')
+      call fm%register('gamv', 'm2/s2', 'non-local flux of v-momentum', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamv(0:nlev),category='turbulence')
+      call fm%register('gamh', 'K m/s', 'non-local heat flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gamh(0:nlev),category='turbulence')
+      call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gams(0:nlev),category='turbulence')
+   endif
    call fm%register('Rig', '', 'gradient Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=Rig(0:nlev),category='turbulence')
 
 #ifdef _CVMIX_
