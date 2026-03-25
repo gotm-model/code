@@ -477,13 +477,6 @@
    call field%attributes%set('axis', 'Z')
    call fm%register('h', 'm', 'layer thickness', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='column_structure',part_of_state=.true.)
    call fm%register('ho', 'm', 'layer thickness - old time step', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='column_structure', part_of_state=.true., output_level=output_level_debug)
-#ifdef EXTRA_OUTPUT
-   call fm%register('mean1', '??', '1. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean1(1:nlev),category='meanflow',output_level=output_level_debug)
-   call fm%register('mean2', '??', '2. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean2(1:nlev),category='meanflow',output_level=output_level_debug)
-   call fm%register('mean3', '??', '3. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean3(1:nlev),category='meanflow',output_level=output_level_debug)
-   call fm%register('mean4', '??', '4. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean4(1:nlev),category='meanflow',output_level=output_level_debug)
-   call fm%register('mean5', '??', '5. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean5(1:nlev),category='meanflow',output_level=output_level_debug)
-#endif
 #ifndef _ICE_
    call fm%register('Hice', 'm', 'fake ice thickness', standard_name='', data0d=Hice, category='surface')
 #endif
@@ -581,13 +574,7 @@
    call fm%register('uu', 'm2/s2', 'variance of u-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=uu(0:nlev),category='turbulence/shear')
    call fm%register('vv', 'm2/s2', 'variance of v-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=vv(0:nlev),category='turbulence/shear')
    call fm%register('ww', 'm2/s2', 'variance of w-fluctuations', standard_name='??', dimensions=(/id_dim_zi/), data1d=ww(0:nlev),category='turbulence/shear')
-#ifdef EXTRA_OUTPUT
-   call fm%register('turb1', '', '1. turbulence dummy variable', dimensions=(/id_dim_zi/), data1d=turb1(0:nlev),category='turbulence',output_level=output_level_debug)
-   call fm%register('turb2', '', '2. turbulence dummy variable', dimensions=(/id_dim_zi/), data1d=turb2(0:nlev),category='turbulence',output_level=output_level_debug)
-   call fm%register('turb3', '', '3. turbulence dummy variable', dimensions=(/id_dim_zi/), data1d=turb3(0:nlev),category='turbulence',output_level=output_level_debug)
-   call fm%register('turb4', '', '4. turbulence dummy variable', dimensions=(/id_dim_zi/), data1d=turb4(0:nlev),category='turbulence',output_level=output_level_debug)
-   call fm%register('turb5', '', '5. turbulence dummy variable', dimensions=(/id_dim_zi/), data1d=turb5(0:nlev),category='turbulence',output_level=output_level_debug)
-#endif
+
    return
    end subroutine register_turbulence_variables
 !EOC

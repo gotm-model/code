@@ -44,9 +44,6 @@ endif()
 if(GOTM_USE_SEAGRASS)
   add_definitions(-D_SEAGRASS_)
 endif()
-if(GOTM_EXTRA_OUTPUT)
-  add_definitions(-DEXTRA_OUTPUT)
-endif()
 
 # ----------------------------
 # Targets

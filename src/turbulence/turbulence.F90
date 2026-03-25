@@ -117,13 +117,6 @@
 !  turbulent velocity variances
    REALTYPE, public, dimension(:), allocatable   :: uu,vv,ww
 
-# ifdef EXTRA_OUTPUT
-
-!  dummies for testing
-   REALTYPE, public, dimension(:), allocatable   :: turb1,turb2,turb3,turb4,turb5
-
-# endif
-
 !  some additional constants
    REALTYPE, public                              :: cm0,cmsf,cde,rcm, b1
 
@@ -1061,30 +1054,6 @@
    allocate(ww(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (ww)'
    ww = _ZERO_
-
-# ifdef EXTRA_OUTPUT
-
-   allocate(turb1(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (turb1)'
-   turb1 = _ZERO_
-
-   allocate(turb2(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (turb2)'
-   turb2 = _ZERO_
-
-   allocate(turb3(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (turb3)'
-   turb3 = _ZERO_
-
-   allocate(turb4(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (turb4)'
-   turb4 = _ZERO_
-
-   allocate(turb5(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (turb5)'
-   turb5 = _ZERO_
-
-# endif
 
    LEVEL2 'done.'
 
@@ -4060,13 +4029,6 @@
    if (allocated(uu)) deallocate(uu)
    if (allocated(vv)) deallocate(vv)
    if (allocated(ww)) deallocate(ww)
-# ifdef EXTRA_OUTPUT
-   if (allocated(turb1)) deallocate(turb1)
-   if (allocated(turb2)) deallocate(turb2)
-   if (allocated(turb3)) deallocate(turb3)
-   if (allocated(turb4)) deallocate(turb4)
-   if (allocated(turb5)) deallocate(turb5)
-# endif
    LEVEL2 'done.'
 
    return
@@ -4112,15 +4074,6 @@
    LEVEL2 'Rig',Rig
    LEVEL2 'xRf',xRf
    LEVEL2 'uu,vv,ww',uu,vv,ww
-
-#ifdef EXTRA_OUTPUT
-   LEVEL2 'turb1',turb1
-   LEVEL2 'turb2',turb2
-   LEVEL2 'turb3',turb3
-   LEVEL2 'turb4',turb4
-   LEVEL2 'turb5',turb5
-#endif
-
    LEVEL2 'cm0,cmsf,cde,rcm, b1',cm0,cmsf,cde,rcm, b1
    LEVEL2 'Prandtl0',Prandtl0
    LEVEL2 'craig_m,sig_e0',craig_m,sig_e0

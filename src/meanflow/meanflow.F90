@@ -81,13 +81,6 @@
    REALTYPE, public  :: Hice
 #endif
 
-# ifdef EXTRA_OUTPUT
-
-!  dummies for testing
-   REALTYPE, public, dimension(:), allocatable   :: mean1,mean2,mean3,mean4,mean5
-
-# endif
-
 !  the 'meanflow' configuration
    REALTYPE, public                    :: h0b
    logical,  public                    :: calc_bottom_stress
@@ -394,30 +387,6 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (bioshade)'
    bioshade = _ONE_
 
-# ifdef EXTRA_OUTPUT
-
-   allocate(mean1(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_meanflow: Error allocating (mean1)'
-   mean1 = _ZERO_
-
-   allocate(mean2(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_meanflow: Error allocating (mean2)'
-   mean2 = _ZERO_
-
-   allocate(mean3(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_meanflow: Error allocating (mean3)'
-   mean3 = _ZERO_
-
-   allocate(mean4(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_meanflow: Error allocating (mean4)'
-   mean4 = _ZERO_
-
-   allocate(mean5(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_meanflow: Error allocating (mean5)'
-   mean5 = _ZERO_
-
-# endif
-
    LEVEL2 'done.'
    return
    end subroutine post_init_meanflow
@@ -480,13 +449,6 @@
    if (allocated(rad)) deallocate(rad)
    if (allocated(avh)) deallocate(avh)
    if (allocated(bioshade)) deallocate(bioshade)
-# ifdef EXTRA_OUTPUT
-   if (allocated(mean1)) deallocate(mean1)
-   if (allocated(mean2)) deallocate(mean2)
-   if (allocated(mean3)) deallocate(mean3)
-   if (allocated(mean4)) deallocate(mean4)
-   if (allocated(mean5)) deallocate(mean5)
-# endif
    LEVEL2 'done.'
 
    return
@@ -542,13 +504,6 @@
    if (allocated(fric)) LEVEL2 'fric',fric
    if (allocated(drag)) LEVEL2 'drag',drag
    if (allocated(bioshade)) LEVEL2 'bioshade',bioshade
-# ifdef EXTRA_OUTPUT
-   if (allocated(mean1)) LEVEL2 'mean1',mean1
-   if (allocated(mean2)) LEVEL2 'mean2',mean2
-   if (allocated(mean3)) LEVEL2 'mean3',mean3
-   if (allocated(mean4)) LEVEL2 'mean4',mean4
-   if (allocated(mean5)) LEVEL2 'mean5',mean5
-# endif
 
    LEVEL2 'meanflow configuration',                 &
       h0b,z0s_min,charnock,charnock_val,ddu,ddl,    &
