@@ -73,6 +73,9 @@
    call register_stream_variables(nlev)
 #endif
    call register_turbulence_variables(nlev)
+#ifdef _CVMIX_
+   call register_cvmix_variables(nlev)
+#endif   
    call register_diagnostic_variables(nlev)
 !   LEVEL2 'registrated ',N,'variables'
    return
@@ -578,6 +581,38 @@
    return
    end subroutine register_turbulence_variables
 !EOC
+
+#ifdef _CVMIX_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: seagrass variable registration
+!
+! !INTERFACE:
+   subroutine register_cvmix_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use gotm_cvmix, only: zsbl,zbbl
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in) :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   call fm%register('cvmix_zsbl', 'm', 'CVMix SBL depth (z-level)', data0d=zsbl,category='cvmix')
+   call fm%register('cvmix_zbbl', 'm', 'CVMix BBL depth (z-level)', data0d=zbbl,category='cvmix')   
+
+ end subroutine register_cvmix_variables
+!EOC
+#endif
+
+   
 
 !-----------------------------------------------------------------------
 !BOP
