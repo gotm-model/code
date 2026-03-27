@@ -38,7 +38,7 @@
 ! !ROUTINE: do_register_all_variables
 !
 ! !INTERFACE:
-   subroutine do_register_all_variables(lat,lon,nlev)
+   subroutine do_register_all_variables(lat,lon,fixed_grid,nlev)
 !
 ! !USES:
    IMPLICIT NONE
@@ -47,6 +47,7 @@
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)                :: lat,lon
+   logical, intent(in)                 :: fixed_grid
    integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
@@ -59,7 +60,7 @@
    LEVEL1 'register_all_variables()'
    call register_coordinate_variables(lat,lon)
    call register_density_variables(nlev)
-   call register_meanflow_variables(nlev)
+   call register_meanflow_variables(fixed_grid,nlev)
 #ifdef _SEAGRASS_
    call register_seagrass_variables(nlev)
 #endif
@@ -411,7 +412,7 @@
 ! !IROUTINE: meanflow variable registration
 !
 ! !INTERFACE:
-   subroutine register_meanflow_variables(nlev)
+   subroutine register_meanflow_variables(fixed_grid,nlev)
 !
 ! !DESCRIPTION:
 !
@@ -422,6 +423,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   logical, intent(in)  :: fixed_grid
    integer, intent(in)  :: nlev
    type (type_field), pointer :: field
 !
@@ -472,10 +474,10 @@
       call fm%register('Af', 'm^2', 'hypsograph at grid interfaces', standard_name='??', dimensions=(/id_dim_z/), data1d=Af(1:nlev), category='column_structure')
    end if
 #endif
-   call fm%register('z', 'm', 'depth (center)', standard_name='??', dimensions=(/id_dim_z/), data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='column_structure',field=field)
+   call fm%register('z', 'm', 'depth (center)', standard_name='??', dimensions=(/id_dim_z/), no_default_dimensions=fixed_grid, data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='column_structure',field=field)
    call field%attributes%set('positive', 'up')
    call field%attributes%set('axis', 'Z')
-   call fm%register('zi', 'm', 'depth (interface)', standard_name='??', dimensions=(/id_dim_zi/), data1d=zi(0:nlev), coordinate_dimension=id_dim_zi,category='column_structure',field=field)
+   call fm%register('zi', 'm', 'depth (interface)', standard_name='??', dimensions=(/id_dim_zi/), no_default_dimensions=fixed_grid, data1d=zi(0:nlev), coordinate_dimension=id_dim_zi,category='column_structure',field=field)
    call field%attributes%set('positive', 'up')
    call field%attributes%set('axis', 'Z')
    call fm%register('h', 'm', 'layer thickness', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='column_structure',part_of_state=.true.)

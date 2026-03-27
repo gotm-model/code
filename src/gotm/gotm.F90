@@ -142,6 +142,7 @@
    REALTYPE :: ssf=_ZERO_ ! surface salinity flux
 
    integer(kind=timestepkind):: progress
+   logical :: fixed_grid
 !-----------------------------------------------------------------------
 
    contains
@@ -464,6 +465,7 @@
 !  However, before that happens, it is already used in updategrid.
 !  therefore, we set to to a reasonable default here.
    w_adv_input%method = 0
+   fixed_grid = (zeta_input%method == 0) .and. (ice_model == 0)
 
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.
@@ -583,7 +585,7 @@
    call post_init_seagrass(nlev)
 #endif
 
-   call do_register_all_variables(latitude,longitude,nlev)
+   call do_register_all_variables(latitude,longitude,fixed_grid,nlev)
 
    !  initialize FABM module
 #ifdef _FABM_
