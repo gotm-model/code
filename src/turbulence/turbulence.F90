@@ -36,7 +36,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_turbulence,post_init_turbulence,do_turbulence
+   public init_turbulence,post_init_turbulence,do_turbulence, do_massflux
    public k_bc,q2over2_bc,epsilon_bc,omega_bc,psi_bc,q2l_bc
    public clean_turbulence
 #ifdef _PRINTSTATE_
@@ -68,6 +68,9 @@
 !  Stokes production
    REALTYPE, public, dimension(:), allocatable   :: PSTK
 
+!  Extra TKE production terms by convective plumes with mass flux scheme 
+   REALTYPE, public, dimension(:), allocatable   :: Pmf,Bmf
+
 !  turbulent diffusivities
 !  of momentum, temperature, salinity
    REALTYPE, public, dimension(:), allocatable, target :: num
@@ -78,6 +81,14 @@
 !  in second moment closures with Craik-Leibovich vortex force in the
 !  algebraic Reynolds stress and flux models.
    REALTYPE, public, dimension(:), allocatable         :: nucl
+
+!  plumes properties for convective mass flux scheme 
+   REALTYPE, public, dimension(:), allocatable   :: a_p,w_p,Fmass
+   REALTYPE, public, dimension(:), allocatable   :: T_p,S_p,wk_mf 
+   REALTYPE, public, dimension(:), allocatable   :: normVp,tke_p
+   REALTYPE, public, dimension(:), allocatable   :: u_p,v_p,EmD
+   REALTYPE, public                              :: mf_zinv, mf_d0
+   integer , public                              :: mf_nsub
 
 !  non-local fluxes of momentum
    REALTYPE, public, dimension(:), allocatable   :: gamu,gamv
@@ -231,6 +242,20 @@
    REALTYPE, public                              :: numiw
    REALTYPE, public                              :: nuhiw
    REALTYPE, public                              :: numshear
+
+! the 'mfconvec' namelist 
+   logical , public                              :: compute_massflux
+   logical , public                              :: massflux_on_dynamics 
+   logical , public                              :: massflux_energy 
+   REALTYPE, public                              :: mf_ap0
+   REALTYPE, public                              :: mf_wp0
+   REALTYPE, public                              :: mf_Cent 
+   REALTYPE, public                              :: mf_Cdet 
+   REALTYPE, public                              :: mf_aa 
+   REALTYPE, public                              :: mf_bb  
+   REALTYPE, public                              :: mf_bp
+   REALTYPE, public                              :: mf_uv
+   REALTYPE, public                              :: mf_dbkg
 !
 ! !DEFINED PARAMETERS:
 
@@ -249,6 +274,7 @@
    integer, parameter, public                    :: Constant=1
    integer, parameter, public                    :: Munk_Anderson=2
    integer, parameter, public                    :: Schumann_Gerz=3
+   integer, parameter, public                    :: Prandtl_nemo=4 
 
 !  method to update length scale
    integer, parameter, public                    :: Parabolic=1
@@ -257,6 +283,7 @@
    integer, parameter, public                    :: Robert_Ouellet=4
    integer, parameter, public                    :: Blackadar=5
    integer, parameter, public                    :: Bougeault_Andre=6
+   integer, parameter, public                    :: Gaspar_nemo=7
    integer, parameter, public                    :: diss_eq=8
    integer, parameter, public                    :: omega_eq=11
    integer, parameter, public                    :: length_eq=9
@@ -386,6 +413,10 @@
 
    namelist /iw/            iw_model,alpha,klimiw,rich_cr,     &
                             numiw,nuhiw,numshear
+
+   namelist /mfconvec/      compute_massflux,mf_ap0,mf_wp0,mf_Cent,     &
+                            mf_Cdet,mf_aa,mf_bb,mf_bp,mf_uv,mf_dbkg
+
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -524,6 +555,20 @@
    nuhiw=5.e-5
    numshear=5.e-3
 
+!  the 'mfconvec' namelist
+   compute_massflux=.false.
+   massflux_on_dynamics=.false.
+   massflux_energy=.false.
+   mf_ap0  = 0.2
+   mf_wp0  = -0.5e-8
+   mf_Cent = 0.99 
+   mf_Cdet = 1.99
+   mf_aa   = 1.0
+   mf_bb   = 1.0
+   mf_bp   = 0.75
+   mf_uv   = 0.5
+   mf_dbkg = 1.125
+
    ! read the variables from the namelist file
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=turbulence,err=81)
@@ -543,6 +588,7 @@
       read(namlst,nml=my,err=87)
       read(namlst,nml=scnd,err=88)
       read(namlst,nml=iw,err=89)
+      read(namlst,nml=mfconvec,err=90)
       close (namlst)
    endif
    LEVEL2 'done.'
@@ -570,6 +616,8 @@
 88 FATAL 'I could not read "scnd" namelist'
    stop 'init_turbulence'
 89 FATAL 'I could not read "iw" namelist'
+   stop 'init_turbulence'
+90 FATAL 'I could not read "mfconvec" namelist'
    stop 'init_turbulence'
 
  end subroutine init_turbulence_nml
@@ -625,11 +673,17 @@
    call branch%get(turb_method, 'turb_method', 'turbulence closure', &
                    options=(/option(no_model, 'constant nuh and num', 'no_model'), option(first_order, 'first-order', 'first_order'), option(second_order, 'second-order', 'second_order'), option(100, 'cvmix', 'cvmix')/),default=second_order)
    call branch%get(tke_method, 'tke_method', 'turbulent kinetic energy equation', &
-                   options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-eps or k-w style)', 'tke'), option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
+                   options=(/option(tke_local_eq, 'algebraic length scale equation', 'local_eq'), option(tke_keps, 'differential equation for tke (k-eps, k-w, or 1eq k style)', 'tke'), &
+                   option(tke_MY, 'differential equation for q^2/2 (Mellor-Yamada style)', 'Mellor_Yamada')/),default=tke_keps)
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
-                   options=(/option(parabolic, 'parabolic', 'parabolic'), option(triangular, 'triangular', 'triangular'), option(Xing_Davies, 'Xing and Davies (1995)', 'Xing_Davies'), option(Robert_Ouellet, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), option(Blackadar, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(Bougeault_Andre, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), option(diss_eq, 'dynamic dissipation rate equation', 'dissipation'),  option(omega_eq, 'dynamic omega equation', 'omega'), option(length_eq, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(generic_eq, 'generic length scale (GLS)', 'gls')/),default=diss_eq)
+                   options=(/option(parabolic, 'parabolic', 'parabolic'), option(triangular, 'triangular', 'triangular'), &
+                   option(Xing_Davies, 'Xing and Davies (1995)', 'Xing_Davies'), option(Robert_Ouellet, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), &
+                   option(Blackadar, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(Bougeault_Andre, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), &
+                   option(Gaspar_nemo, 'Gaspar (1990)', 'Gaspar_nemo'), &
+                   option(diss_eq, 'dynamic dissipation rate equation', 'dissipation'),  option(omega_eq, 'dynamic omega equation', 'omega'), option(length_eq, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(generic_eq, 'generic length scale (GLS)', 'gls')/),default=diss_eq)
    call branch%get(stab_method, 'stab_method', 'stability functions', &
-                   options=(/option(1, 'constant', 'constant'), option(Munk_Anderson, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(Schumann_Gerz, 'Schumann and Gerz (1995)', 'Schumann_Gerz')/),default=1)
+                   options=(/option(1, 'constant', 'constant'), option(Munk_Anderson, 'Munk and Anderson (1954)', 'Munk_Anderson'), &
+                   option(Schumann_Gerz, 'Schumann and Gerz (1995)', 'Schumann_Gerz'), option(Prandtl_nemo, 'Madec et al. (2025)', 'Prandtl_nemo')/),default=1)
 
    twig => branch%get_child('bc', 'boundary conditions')
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
@@ -816,6 +870,28 @@
                    default=1.e-4_rk)
    call twig%get(nuhiw, 'nuh', 'background diffusivity for internal wave breaking', 'm^2/s', &
                    default=1.e-5_rk)
+
+   twig => branch%get_child('MFconvec', 'mass flux convection scheme', display=display_advanced)
+   call twig%get(compute_massflux, 'compute_massflux', 'Compute convective mass flux term', default=.false.)
+   call twig%get(massflux_on_dynamics, 'massflux_on_dynamics', 'Apply mass flux to horizontal velocities', default=.false.)
+   call twig%get(massflux_energy, 'massflux_energy', 'Add contribution of mass flux terms to TKE equation', default=.false.)
+   call twig%get(mf_ap0, 'mf_ap0', 'surface bdy condition for plume area', '-', default=0.2_rk)
+   call twig%get(mf_wp0, 'mf_wp0', 'surface bdy condition for plume vertical velocity', 'm/s', &
+                   default=-0.5e-8_rk)
+   call twig%get(mf_Cent, 'mf_Cent', 'coefficient for entrainment param', '-', &
+                   default=0.99_rk)
+   call twig%get(mf_Cdet, 'mf_Cdet', 'coefficient for detrainment param', '-', &
+                   default=1.99_rk)
+   call twig%get(mf_aa, 'mf_aa', 'a coefficient in wp eqn', '-', &
+                   default=1.0_rk)
+   call twig%get(mf_bb, 'mf_bb', 'b coefficient in wp eqn', '-', &
+                   default=1.0_rk)
+   call twig%get(mf_bp, 'mf_bp', 'b prime coeficient in wp eqn', '-', &
+                   default=0.75_rk)
+   call twig%get(mf_uv, 'mf_uv', 'Cu coefficient in the up eqn', '-', &
+                   default=0.5_rk)
+   call twig%get(mf_dbkg, 'mf_dbkg', 'background detrainment', '-', &
+                   default=1.125_rk)
    LEVEL2 'done.'
    return
 
@@ -946,6 +1022,16 @@
    allocate(PSTK(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (PSTK)'
    PSTK = _ZERO_
+   
+   ! Mass flux production 
+   allocate(Pmf(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (Pmf)'
+   Pmf = _ZERO_    
+
+   ! Mass flux production
+   allocate(Bmf(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (Bmf)'
+   Bmf = _ZERO_
 
    allocate(num(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (num)'
@@ -962,6 +1048,54 @@
    allocate(nucl(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (nucl)'
    nucl = _ZERO_
+
+   allocate(a_p(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (a_p)'
+   a_p = _ZERO_
+
+   allocate(w_p(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (w_p)'
+   w_p = _ZERO_   
+
+   allocate(Fmass(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (Fmass)'
+   Fmass = _ZERO_
+
+   allocate(u_p(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (u_p)'
+   u_p = _ZERO_
+
+   allocate(v_p(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (v_p)'
+   v_p = _ZERO_
+
+   allocate(T_p(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (T_p)'
+   T_p = _ZERO_
+
+   allocate(S_p(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (S_p)'
+   S_p = _ZERO_         
+
+   allocate(normVp(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (normVp)'
+   normVp = _ZERO_  
+
+   allocate(wk_mf(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (wk_mf)'
+   wk_mf = _ZERO_  
+
+   allocate(tke_p(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (tke_p)'
+   tke_p = _ZERO_  
+
+   allocate(EmD(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (EmD)'
+   EmD = _ZERO_  
+
+   mf_zinv = _ZERO_
+   mf_d0   = _ZERO_
+   mf_nsub = 1
 
    allocate(gamu(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gamu)'
@@ -2320,6 +2454,17 @@
          LEVEL3 'Schmidt-number for k,          sig_k =', sig_k
          LEVEL3 'von Karman constant,           kappa =', kappa
          LEVEL2 ' '
+      case(Gaspar_nemo) ! Florian 
+         LEVEL2 ' '
+         LEVEL2 '--------------------------------------------------------'
+         LEVEL2 'You are using a one-equation model'
+         LEVEL2 'with the length-scale of Gaspar (1990)'
+         LEVEL2 'as implemented in the NEMO model (Madec et al.)'
+         LEVEL2 'The properties of this model are:'
+         LEVEL2 ' '
+         LEVEL3 'cm                                       =', cm0_fix
+         LEVEL3 'ceps                                     =', 0.5*SQRT(2.)
+         LEVEL2 ' '         
       case(diss_eq)
          LEVEL2 ' '
          LEVEL2 '--------------------------------------------------------'
@@ -2583,15 +2728,15 @@
 !  empirical stability function
 
       call production(nlev,NN,SS, xP=xP, SSCSTK=SSCSTK, SSSTK=SSSTK)
-
       call alpha_mnb(nlev,NN,SS)
       call stabilityfunctions(nlev)
       call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+      if(compute_massflux .and. massflux_energy) then 
+         call tkeeq_mf(nlev,dt,h)
+      endif
       call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
       call kolpran(nlev)
-
       call internal_wave(nlev,NN,SS)
-
 
    case (second_order)
 
@@ -2709,9 +2854,9 @@
    select case (tke_method)
       case(tke_local_eq)
          ! use algebraic length scale equation
-          call tkealgebraic(nlev,u_taus,u_taub,NN,SS)
+         call tkealgebraic(nlev,u_taus,u_taub,NN,SS)
       case(tke_keps)
-         ! use differential equation for tke (k-epsilon style)
+         ! use differential equation for tke (k-epsilon style) - works also for 1 equation case (with Gaspar_nemo mixing lengths)
          call tkeeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case(tke_MY)
          ! use differential equation for q^2/2 (Mellor-Yamada style)
@@ -2830,6 +2975,8 @@
          call lengthscaleeq(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case(Bougeault_Andre)
          call potentialml(nlev,z0b,z0s,h,depth,NN)
+      case(Gaspar_nemo) 
+         call lengthscale_gaspar(nlev,z0s,z0b,h,NN) 
       case default
          call algebraiclength(len_scale_method,nlev,z0b,z0s,depth,h,NN)
    end select
@@ -2838,6 +2985,55 @@
    end subroutine do_lengthscale
 !-----------------------------------------------------------------------
 !EOC
+
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Handle convection for first-order TKE schemes using a mass flux formalism\label{sec:convec}
+!
+! !INTERFACE:
+   subroutine do_massflux(nlev,dt,umean,vmean,Tmean,Smean,Rmean,h)
+!
+! !DESCRIPTION:
+! Based on user input, this routine calls the appropriate routines for
+! calculating the plume properties ($U_p$, $V_p$, $\Theta_p$, $S_p$, $w_p$, $a_p$) 
+! from a set of nonlinear ordinary differential equations. 
+! This is the basis for the representation of the effect of 
+! coherent structures with a mass flux formalism (Perrot and Lemarié, 2025).
+! When the energetic consistency is required, an extra term ${\cal D}_k^{mf}$ 
+! is computed following \eqref{TurbTransportTKE}.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)                :: nlev
+   REALTYPE, intent(in)                :: dt
+   REALTYPE, intent(in)                :: umean(0:nlev)
+   REALTYPE, intent(in)                :: vmean(0:nlev)
+   REALTYPE, intent(in)                :: Tmean(0:nlev)
+   REALTYPE, intent(in)                :: Smean(0:nlev)
+   REALTYPE, intent(in)                :: Rmean(0:nlev)
+   REALTYPE, intent(in)                :: h(0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Florian Lemarié 
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   call massfluxeq(nlev,dt,umean,vmean,tmean,smean,Rmean,h)
+   if( massflux_energy ) call tke_transport_mf(nlev,umean,vmean,h)
+   return
+ end subroutine do_massflux
+!-----------------------------------------------------------------------
+!EOC
+
+
+
+
 
 
 !-----------------------------------------------------------------------
@@ -3000,6 +3196,8 @@
          call cmue_ma(nlev)
       case(Schumann_Gerz)
          call cmue_sg(nlev)
+      case(Prandtl_nemo)
+         call cmue_nemo(nlev)
       case default
 
       STDERR '... not a valid stability function'
@@ -3115,6 +3313,9 @@
         case(Schumann_Gerz)
            cm0  = cm0_fix
            cmsf = cm0_fix
+        case(Prandtl_nemo)
+           cm0  = 0.1
+           cmsf = 0.1
         case default
 
            STDERR '... not a valid stability function to compute cm0'
@@ -4114,6 +4315,9 @@
 
    LEVEL2 'iw namelist',    iw_model,alpha,klimiw,rich_cr,     &
                             numiw,nuhiw,numshear
+
+   LEVEL2 'mfconvec namelist',    compute_massflux,massflux_on_dynamics,massflux_energy,    &
+                                  mf_ap0,mf_wp0,mf_Cent,mf_Cdet,mf_aa,mf_bb,mf_bp,mf_uv, mf_dbkg
 
    end subroutine print_state_turbulence
 !EOC
