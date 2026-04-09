@@ -83,6 +83,7 @@
    use gotm_fabm, only: fabm_airp, fabm_calendar_date, fabm_julianday
    use gotm_fabm_input,only: configure_gotm_fabm_input, init_gotm_fabm_input
 #endif
+   use register_all_variables,only: fixed_grid
 
    IMPLICIT NONE
    private
@@ -142,7 +143,6 @@
    REALTYPE :: ssf=_ZERO_ ! surface salinity flux
 
    integer(kind=timestepkind):: progress
-   logical :: fixed_grid
 !-----------------------------------------------------------------------
 
    contains
@@ -587,7 +587,7 @@
    call post_init_seagrass(nlev)
 #endif
 
-   call do_register_all_variables(latitude,longitude,fixed_grid,nlev)
+   call do_register_all_variables(latitude,longitude,nlev)
 
    !  initialize FABM module
 #ifdef _FABM_

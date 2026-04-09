@@ -21,6 +21,7 @@
 !
 ! !PUBLIC DATA MEMBERS:
    type (type_field_manager), public, target :: fm
+   logical, public                           :: fixed_grid
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Jorn Bruggeman
@@ -38,7 +39,7 @@
 ! !ROUTINE: do_register_all_variables
 !
 ! !INTERFACE:
-   subroutine do_register_all_variables(lat,lon,fixed_grid,nlev)
+   subroutine do_register_all_variables(lat,lon,nlev)
 !
 ! !USES:
    IMPLICIT NONE
@@ -47,7 +48,6 @@
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)                :: lat,lon
-   logical, intent(in)                 :: fixed_grid
    integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
@@ -60,7 +60,7 @@
    LEVEL1 'register_all_variables()'
    call register_coordinate_variables(lat,lon)
    call register_density_variables(nlev)
-   call register_meanflow_variables(fixed_grid,nlev)
+   call register_meanflow_variables(nlev)
 #ifdef _SEAGRASS_
    call register_seagrass_variables(nlev)
 #endif
@@ -412,7 +412,7 @@
 ! !IROUTINE: meanflow variable registration
 !
 ! !INTERFACE:
-   subroutine register_meanflow_variables(fixed_grid,nlev)
+   subroutine register_meanflow_variables(nlev)
 !
 ! !DESCRIPTION:
 !
@@ -423,7 +423,6 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   logical, intent(in)  :: fixed_grid
    integer, intent(in)  :: nlev
    type (type_field), pointer :: field
 !
