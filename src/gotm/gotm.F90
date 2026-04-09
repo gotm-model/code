@@ -83,6 +83,7 @@
    use gotm_fabm, only: fabm_airp, fabm_calendar_date, fabm_julianday
    use gotm_fabm_input,only: configure_gotm_fabm_input, init_gotm_fabm_input
 #endif
+   use register_all_variables,only: fixed_grid
 
    IMPLICIT NONE
    private
@@ -273,6 +274,9 @@
                    minimum=0._rk, default=0._rk)
    call branch%get(grid_file, 'file', 'path to file with layer thicknesses', &
                    default='')
+   call branch%get(fixed_grid, 'fixed_grid', &
+   'whether the vertical grid is fixed in time (enables static z coordinate in output)', &
+   default=.false.)
 #if 0
    twig => branch%get_child('adaptation')
    call twig%get(c1ad, 'c1ad', 'weighting factor for buoyancy frequency', '-', &

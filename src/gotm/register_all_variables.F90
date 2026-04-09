@@ -21,6 +21,7 @@
 !
 ! !PUBLIC DATA MEMBERS:
    type (type_field_manager), public, target :: fm
+   logical, public                           :: fixed_grid
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Jorn Bruggeman
@@ -472,10 +473,10 @@
       call fm%register('Af', 'm^2', 'hypsograph at grid interfaces', standard_name='??', dimensions=(/id_dim_z/), data1d=Af(1:nlev), category='column_structure')
    end if
 #endif
-   call fm%register('z', 'm', 'depth (center)', standard_name='??', dimensions=(/id_dim_z/), data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='column_structure',field=field)
+   call fm%register('z', 'm', 'depth (center)', standard_name='??', dimensions=(/id_dim_z/), no_default_dimensions=fixed_grid, data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='column_structure',field=field)
    call field%attributes%set('positive', 'up')
    call field%attributes%set('axis', 'Z')
-   call fm%register('zi', 'm', 'depth (interface)', standard_name='??', dimensions=(/id_dim_zi/), data1d=zi(0:nlev), coordinate_dimension=id_dim_zi,category='column_structure',field=field)
+   call fm%register('zi', 'm', 'depth (interface)', standard_name='??', dimensions=(/id_dim_zi/), no_default_dimensions=fixed_grid, data1d=zi(0:nlev), coordinate_dimension=id_dim_zi,category='column_structure',field=field)
    call field%attributes%set('positive', 'up')
    call field%attributes%set('axis', 'Z')
    call fm%register('h', 'm', 'layer thickness', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='column_structure',part_of_state=.true.)
