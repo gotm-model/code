@@ -142,7 +142,7 @@
    REALTYPE :: ssf=_ZERO_ ! surface salinity flux
 
    integer(kind=timestepkind):: progress
-   logical :: auto_z_grid
+   logical :: fixed_grid
 !-----------------------------------------------------------------------
 
    contains
@@ -274,8 +274,9 @@
                    minimum=0._rk, default=0._rk)
    call branch%get(grid_file, 'file', 'path to file with layer thicknesses', &
                    default='')
-   call branch%get(auto_z_grid, 'auto_z_grid', &
-   'true: automatically detect fixed/dynamic vertical grid. false: force dynamic grid', default=.true.)
+   call branch%get(fixed_grid, 'fixed_grid', &
+   'whether the vertical grid is fixed in time (enables static z coordinate in output)', &
+   default=.false.)
 #if 0
    twig => branch%get_child('adaptation')
    call twig%get(c1ad, 'c1ad', 'weighting factor for buoyancy frequency', '-', &
@@ -467,9 +468,6 @@
 !  However, before that happens, it is already used in updategrid.
 !  therefore, we set to to a reasonable default here.
    w_adv_input%method = 0
-   if (auto_z_grid) then
-       auto_z_grid = (zeta_input%method == 0) .and. (ice_model == 0)
-   end if
 
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.
@@ -589,7 +587,7 @@
    call post_init_seagrass(nlev)
 #endif
 
-   call do_register_all_variables(latitude,longitude,auto_z_grid,nlev)
+   call do_register_all_variables(latitude,longitude,fixed_grid,nlev)
 
    !  initialize FABM module
 #ifdef _FABM_
