@@ -38,6 +38,8 @@
          call kondo(sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
       case (2) ! Fairall et. all
          call fairall(sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
+      case (3) ! Constant cd
+         call constant_cd(sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
       case default
    end select
 
