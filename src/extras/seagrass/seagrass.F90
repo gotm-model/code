@@ -68,8 +68,6 @@
 !
 ! !LOCAL VARIABLES:
    class (type_gotm_settings), pointer :: branch
-     !! GOTM settings variable
-   integer :: i
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -80,7 +78,7 @@
    call branch%get(grassfile, 'file', 'path to file with grass specifications', default='seagrass.dat')
    call branch%get(alpha, 'alpha', 'efficiency of leafes turbulence production', '',default=0._rk)
 
-   if (i .ne. 0) seagrass_calc = .true.
+   if (method .ne. 0) seagrass_calc = .true.
 
    if (seagrass_calc) LEVEL2 'seagrass initialise ...'
    end subroutine init_seagrass
