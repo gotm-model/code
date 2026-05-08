@@ -35,6 +35,7 @@
    REALTYPE, public                    :: L
    REALTYPE, public                    :: rhoa
    REALTYPE, public, target            :: ta              ! 2m air temperature (degree_Celsius)
+   REALTYPE, public                    :: const_cdd, const_ced, const_chd
    logical, public                     :: rain_impact
    logical, public                     :: calc_evaporation
 !

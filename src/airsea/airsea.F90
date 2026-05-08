@@ -169,6 +169,7 @@
 ! {\tt fluxes\_method}   & Select which parameterisation to use for latent and sensible fluxes:   \\
 !                          & 1: Kondo (1975)                                                        \\
 !                          & 2: Fairall et al. (1996)                                               \\
+!                          & 3: user input exchange coefs (cdd, chd, ced)                           \\
 ! {\tt longwave\_radiation\_method}   & Select which parameterisation to use:                        \\
 !                          & 3: Clark et al. (1974)                                                 \\
 !                          & 4: Hastenrath and Lamb (1978)                                          \\
@@ -248,7 +249,7 @@
 
    twig => branch%get_typed_child('fluxes', 'heat and momentum fluxes')
    call twig%get(fluxes_method, 'method', 'method to calculate fluxes from meteorological conditions', &
-                options=(/option(0, 'use prescribed fluxes', 'off'), option(1, 'Kondo (1975)', 'kondo'), option(2, 'Fairall et al. (1996)', 'fairall')/), default=0)
+                options=(/option(0, 'use prescribed fluxes', 'off'), option(1, 'Kondo (1975)', 'kondo'), option(2, 'Fairall et al. (1996)', 'fairall'), option(3, 'prescribed exchange coefs', 'constant_cd')/), default=0)
    call twig%get(heat_input, 'heat', 'prescribed total heat flux (sensible, latent and net longwave-radiation)', 'W/m^2', &
                 default=0._rk)
    call twig%get(tx_input, 'tx', 'prescribed momentum flux in West-East direction', 'Pa', &
@@ -300,6 +301,9 @@
                 default=0._rk, display=display_advanced)
    call branch%get(sss_input, 'sss', 'observed surface salinity', 'psu', &
                 default=0._rk, display=display_advanced)
+   call branch%get(const_cdd, 'cdd', 'momentum exchange coefficient', '1', default=0._rk)
+   call branch%get(const_chd, 'chd', 'heat exchange coefficient', '1', default=0._rk)
+   call branch%get(const_ced, 'ced', 'humidity exchange coefficient', '1', default=0._rk)
    LEVEL2 'done'
    return
    end subroutine init_airsea_yaml
@@ -326,6 +330,7 @@
 ! {\tt fluxes\_method}   & Select which parameterisation to use for latent and sensible fluxes:   \\
 !                          & 1: Kondo (1975)                                                        \\
 !                          & 2: Fairall et al. (1996)                                               \\
+!                          & 3: user input cdd, chd, ced                                            \\
 ! {\tt longwave\_radiation\_method}   & Select which parameterisation to use:                        \\
 !                          & 1: Clark et al. (1974)                                                 \\
 !                          & 2: Hastenrath and Lamb (1978)                                          \\
@@ -481,6 +486,11 @@
             LEVEL3 'using Kondo formulation'
          case(2)
             LEVEL3 'using Fairall et. all formulation'
+         case(3)
+            LEVEL3 'user input exchange coefficients'
+            LEVEL3 'cdd=',const_cdd
+            LEVEL3 'chd=',const_chd
+            LEVEL3 'ced=',const_ced
          case default
       end select
       select case (ql_input%method)
