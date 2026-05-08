@@ -8,6 +8,7 @@ add_library(turbulence
    cmue_d_h15.F90
    cmue_ma.F90
    cmue_sg.F90
+   cmue_nemo.F90
    compute_cpsi3.F90
    compute_rist.F90
    dissipationeq.F90
@@ -20,6 +21,8 @@ add_library(turbulence
    kbalgebraic.F90
    kbeq.F90
    lengthscaleeq.F90
+   lengthscale_gaspar.F90
+   massfluxeq.F90
    potentialml.F90
    production.F90
    q2over2eq.F90
