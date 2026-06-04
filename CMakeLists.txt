@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 if(NOT PROJECT_NAME STREQUAL gotm)
-   project(gotm VERSION 6.0.4 LANGUAGES Fortran)
+   project(gotm VERSION 6.0.8 LANGUAGES Fortran)
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
