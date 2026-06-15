@@ -731,6 +731,7 @@
 !BOC
    if (i == 0 .and. .not. restart) then
       LEVEL1 'saving initial conditions'
+      call do_diagnostics(nlev)
       call output_manager_save(julianday,int(fsecondsofday),int(mod(fsecondsofday,_ONE_)*1000000),0)
       STDERR LINE
       LEVEL1 'integrate_gotm'
