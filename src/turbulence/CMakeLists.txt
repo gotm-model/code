@@ -8,6 +8,7 @@ add_library(turbulence
    cmue_d_h15.F90
    cmue_ma.F90
    cmue_sg.F90
+   cmue_icon.F90   
    compute_cpsi3.F90
    compute_rist.F90
    dissipationeq.F90

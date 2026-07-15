@@ -249,6 +249,7 @@
    integer, parameter, public                    :: Constant=1
    integer, parameter, public                    :: Munk_Anderson=2
    integer, parameter, public                    :: Schumann_Gerz=3
+   integer, parameter, public                    :: ICON=4   
 
 !  method to update length scale
    integer, parameter, public                    :: Parabolic=1
@@ -629,7 +630,7 @@
    call branch%get(len_scale_method, 'len_scale_method', 'dissipative length scale', &
                    options=(/option(parabolic, 'parabolic', 'parabolic'), option(triangular, 'triangular', 'triangular'), option(Xing_Davies, 'Xing and Davies (1995)', 'Xing_Davies'), option(Robert_Ouellet, 'Robert and Ouellet (1987)', 'Robert_Ouellet'), option(Blackadar, 'Blackadar (two boundaries) (1962)', 'Blackadar'), option(Bougeault_Andre, 'Bougeault and Andre (1986)', 'Bougeault_Andre'), option(diss_eq, 'dynamic dissipation rate equation', 'dissipation'),  option(omega_eq, 'dynamic omega equation', 'omega'), option(length_eq, 'dynamic Mellor-Yamada q^2 l-equation', 'Mellor_Yamada'), option(generic_eq, 'generic length scale (GLS)', 'gls')/),default=diss_eq)
    call branch%get(stab_method, 'stab_method', 'stability functions', &
-                   options=(/option(1, 'constant', 'constant'), option(Munk_Anderson, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(Schumann_Gerz, 'Schumann and Gerz (1995)', 'Schumann_Gerz')/),default=1)
+                   options=(/option(1, 'constant', 'constant'), option(Munk_Anderson, 'Munk and Anderson (1954)', 'Munk_Anderson'), option(Schumann_Gerz, 'Schumann and Gerz (1995)', 'Schumann_Gerz'), option(ICON, 'Brueggemann et al. (2024)', 'ICON')/),default=1)
 
    twig => branch%get_child('bc', 'boundary conditions')
    call twig%get(k_ubc, 'k_ubc', 'upper boundary condition for k-equation', &
@@ -2250,10 +2251,10 @@
          LEVEL2 ' '
          LEVEL3 'At the surface:'
          LEVEL3 'spatial decay rate (no shear), alpha =', gen_alpha
-         LEVEL3 'length-scale slope (no shear),    L =', gen_l
+         LEVEL3 'length-scale slope (no shear), L     =', gen_l
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
-      case(Xing_Davies)
+       case(Xing_Davies)
          LEVEL2 ' '
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 'You are using a one-equation model'
@@ -3000,6 +3001,8 @@
          call cmue_ma(nlev)
       case(Schumann_Gerz)
          call cmue_sg(nlev)
+      case(ICON)
+         call cmue_icon(nlev)
       case default
 
       STDERR '... not a valid stability function'
@@ -3115,6 +3118,9 @@
         case(Schumann_Gerz)
            cm0  = cm0_fix
            cmsf = cm0_fix
+        case(ICON)
+           cm0  = cm0_fix
+           cmsf = cm0_fix           
         case default
 
            STDERR '... not a valid stability function to compute cm0'

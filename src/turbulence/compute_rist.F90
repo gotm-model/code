@@ -24,6 +24,7 @@
    use turbulence, only:           Constant
    use turbulence, only:           Munk_Anderson
    use turbulence, only:           Schumann_Gerz
+   use turbulence, only:           ICON
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -65,6 +66,8 @@
                   call cmue_ma(2)
                case(Schumann_Gerz)
                   call cmue_sg(2)
+               case(ICON)
+                  call cmue_icon(2)                  
             end select
          else
             call cmue_d(2)
@@ -81,6 +84,8 @@
                   call cmue_ma(2)
                case(Schumann_Gerz)
                   call cmue_sg(2)
+               case(ICON)
+                  call cmue_icon(2)                                   
             end select
          else
             call cmue_d(2)
@@ -118,6 +123,8 @@
                call cmue_ma(2)
             case(Schumann_Gerz)
                call cmue_sg(2)
+             case(ICON)
+               call cmue_icon(2)                                 
          end select
       else
          call cmue_d(2)
@@ -139,6 +146,8 @@
                   call cmue_ma(2)
                case(Schumann_Gerz)
                   call cmue_sg(2)
+               case(ICON)
+                  call cmue_icon(2)                                   
             end select
          else
             call cmue_d(2)
@@ -155,6 +164,8 @@
                   call cmue_ma(2)
                case(Schumann_Gerz)
                   call cmue_sg(2)
+              case(ICON)
+                  call cmue_icon(2)                                    
             end select
          else
             call cmue_d(2)
@@ -189,6 +200,8 @@
                call cmue_ma(2)
             case(Schumann_Gerz)
                call cmue_sg(2)
+            case(ICON)
+                call cmue_icon(2)                                 
           end select
       else
          call cmue_d(2)

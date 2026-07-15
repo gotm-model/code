@@ -81,7 +81,7 @@ DOCSRC_turbulence = $(SRCDIR)/turbulence/turbulence.F90       \
                     $(SRCDIR)/turbulence/cmue_d.F90           \
                     $(SRCDIR)/turbulence/cmue_ma.F90          \
                     $(SRCDIR)/turbulence/cmue_sg.F90          \
-                    $(SRCDIR)/turbulence/cmue_rf.F90          \
+                    $(SRCDIR)/turbulence/cmue_icon.F90          \
                     $(SRCDIR)/turbulence/compute_cpsi3.F90    \
                     $(SRCDIR)/turbulence/compute_rist.F90     \
                     $(SRCDIR)/turbulence/internal_wave.F90    \
