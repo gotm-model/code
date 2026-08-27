@@ -461,14 +461,6 @@
       LEVEL4 'updated: ',start,' -> ',stop
    end if
 
-!KB - rephrase
-!  zeta is initialized to 0 - but might have been over written by the ice module.
-!  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
-!  will be set by init_observations.
-!  However, before that happens, it is already used in updategrid.
-!  therefore, we set to to a reasonable default here.
-   w_adv_input%method = 0
-
    restart = restart_online .or. restart_offline
    if (restart_online) restart_offline = .false.
 

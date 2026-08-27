@@ -56,7 +56,6 @@
    use meanflow,     only: depth0,depth
    use meanflow,     only: ga,z,zi,h,ho,ddu,ddl,grid_method
    use meanflow,     only: grid_file,w
-   use observations, only: w_adv_input,w_height_input
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
