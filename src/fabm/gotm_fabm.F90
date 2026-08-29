@@ -100,7 +100,7 @@
 ! !PRIVATE DATA MEMBERS:
    REALTYPE                  :: cnpar
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor,configuration_method
-   logical                   :: fabm_calc,repair_state, &
+   logical                   :: fabm_calc,check_state,repair_state, &
                                 bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
                                 freshwater_impact,salinity_relaxation_to_freshwater_flux, &
                                 save_inputs, no_surface
@@ -207,6 +207,8 @@
                 default=.false.)
    call branch%get(biodrag_feedback, 'surface_drag', 'surface drag', &
                 default=.false.)
+   call cfg%get(check_state, 'check_state', 'check state for minimum/maximum boundaries', &
+                default=.true.)
    call cfg%get(repair_state, 'repair_state', 'clip state to minimum/maximum boundaries', &
                 default=.false.)
    branch => cfg%get_child('numerics', display=display_advanced)
@@ -1316,6 +1318,8 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+   if (.not. check_state) return
+
    call fabm_check_state(model,1,nlev,repair_state,valid)
    if (repair_state.and..not.valid) repair_interior_count = repair_interior_count + 1
    if (valid .or. repair_state) then
