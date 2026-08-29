@@ -12,6 +12,7 @@ add_library(airsea
    longwave_radiation.F90
    fairall.F90
    kondo.F90
+   constant_cd.F90
    solar_zenith_angle.F90
    albedo_water.F90
    shortwave_radiation.F90
